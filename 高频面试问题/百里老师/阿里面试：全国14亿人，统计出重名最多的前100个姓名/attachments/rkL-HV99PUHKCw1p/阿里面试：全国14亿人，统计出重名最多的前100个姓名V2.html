@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阿里面试：全国14亿人，统计出重名最多的前100个姓名 (优化版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* --- 全局动画与背景 (已整合) --- */
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fade-in-down { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pop-in { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        @keyframes background-pan { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { box-shadow: 0 0 30px 15px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 70% { box-shadow: 0 0 30px 15px rgba(239, 68, 68, 0); } }
+        @keyframes subtle-pulse-blue { 0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { box-shadow: 0 0 30px 15px rgba(59, 130, 246, 0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 50%, 90% { transform: translateX(-6px); } 30%, 70% { transform: translateX(6px); } }
+        @keyframes arrow-stream { 0% { opacity: 0; transform: translateX(-20px); } 40% { opacity: 1; } 80% { opacity: 0; transform: translateX(20px); } 100% { opacity: 0; } }
+        @keyframes stress { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes breathing { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+
+        /* --- 全局基础样式 --- */
+        html { scroll-behavior: smooth; }
+        body { 
+            background-color: #020617; 
+            color: #e2e8f0; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-image: linear-gradient(135deg, #0f172a 0%, #020617 74%);
+            background-size: 400% 400%;
+            animation: background-pan 15s ease infinite;
+        }
+        .slide { 
+            min-height: 100vh; 
+            width: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 3rem 1.5rem; 
+            opacity: 0; 
+            animation: slide-in-up 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; 
+            border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+        }
+        .slide:last-of-type { border-bottom: none; }
+        .slide-title { animation: fade-in-down 1s ease-out 0.5s forwards; opacity: 0; }
+        .slide-subtitle { animation: fade-in-down 1s ease-out 0.7s forwards; opacity: 0; }
+        .slide .content-panel { animation: fade-in-up 1s ease-out 0.9s forwards; opacity: 0; }
+
+        .content-panel { 
+            background-color: rgba(15, 23, 42, 0.4); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+            border: 1px solid rgba(148, 163, 184, 0.2); 
+            border-radius: 1.5rem; 
+            padding: 2.5rem;
+            width: 100%; 
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .diagram-node { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            gap: 0.75rem; padding: 1.25rem 1.75rem; border-radius: 1rem; 
+            font-weight: 600; text-align: center; border: 1px solid; 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+            background-color: rgba(30, 41, 59, 0.5);
+        }
+        .diagram-node:hover { 
+            transform: translateY(-5px) scale(1.03); 
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            border-color: rgba(148, 163, 184, 0.5);
+        }
+        .diagram-arrow { font-size: 2.5rem; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 1rem; position: relative; }
+        .diagram-node-bad { animation: subtle-pulse-red 2s infinite ease-in-out; }
+        .diagram-node-good { animation: subtle-pulse-green 2.5s infinite ease-in-out; }
+        .diagram-node-wisdom { animation: subtle-pulse-blue 2.5s infinite ease-in-out, breathing 3s infinite ease-in-out; }
+        
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.4); border-radius: 50%; transition: all 0.3s ease; border: 2px solid transparent; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); border-color: #f1f5f9; }
+        .annotation { position: absolute; background-color: rgba(225, 29, 72, 0.85); color: white; padding: 0.3rem 0.6rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: bold; white-space: nowrap; box-shadow: 0 0 10px rgba(225, 29, 72, 0.5); }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场 (V3.2 精简版) -->
+    <section id="slide1" class="slide">
+        <div class="relative z-10 text-center w-full max-w-7xl mx-auto flex flex-col items-center justify-center">
+            <h1 class="slide-title text-5xl md:text-7xl font-extrabold tracking-tight gradient-text bg-gradient-to-r from-amber-400 to-yellow-300">
+                阿里面试：全国14亿人，统计出重名最多的前100个姓名
+            </h1>
+            <h2 class="slide-subtitle text-2xl md:text-3xl font-bold mt-4 text-slate-300">
+                从理论到实践，大数据Top K问题的终极解决方案
+            </h2>
+
+            <div class="mt-16 w-full flex items-center justify-center gap-8">
+                <!-- 左侧数据源 -->
+                <div class="data-source-node flex flex-col items-center gap-3">
+                    <i class="fa-solid fa-database text-6xl text-sky-300"></i>
+                    <h4 class="font-bold text-lg">海量姓名数据</h4>
+                    <div class="flex items-center gap-2 font-mono text-xl text-sky-300 bg-black/30 px-3 py-1 rounded-md">
+                        <i class="fa-solid fa-hashtag"></i>
+                        <span id="counter">0</span>
+                    </div>
+                </div>
+
+                <!-- 中心处理核心 -->
+                <div class="core-visual">
+                    <div class="core-icon-ring">
+                        <i class="fa-solid fa-brain text-7xl text-amber-300"></i>
+                    </div>
+                </div>
+
+                <!-- 右侧结果 -->
+                <div class="result-node flex flex-col items-center gap-3">
+                    <i class="fa-solid fa-trophy text-6xl text-green-300"></i>
+                    <h4 class="font-bold text-lg">Top 100 结果</h4>
+                    <div class="font-mono text-xl text-green-300 bg-black/30 px-3 py-1 rounded-md">
+                        <i class="fa-solid fa-award"></i>
+                        <span>Ranking</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            /* --- Slide 1 V3.2 专属样式 --- */
+            @keyframes pulse-core {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(252, 211, 77, 0.7); }
+                70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(252, 211, 77, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(252, 211, 77, 0); }
+            }
+            .core-visual {
+                position: relative;
+                width: 200px;
+                height: 200px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .core-icon-ring {
+                width: 150px;
+                height: 150px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: radial-gradient(circle, rgba(252, 211, 77, 0.1) 0%, rgba(252, 211, 77, 0) 70%);
+                animation: pulse-core 2.5s infinite cubic-bezier(0.66, 0, 0, 1);
+            }
+
+            @keyframes data-stream-left {
+                from { transform: translateX(-100%); opacity: 0; }
+                50% { opacity: 0.7; }
+                to { transform: translateX(0); opacity: 0; }
+            }
+            @keyframes data-stream-right {
+                from { transform: translateX(100%); opacity: 0; }
+                50% { opacity: 0.7; }
+                to { transform: translateX(0); opacity: 0; }
+            }
+            .core-visual::before, .core-visual::after {
+                content: '';
+                position: absolute;
+                width: 80px;
+                height: 2px;
+                background: linear-gradient(to right, rgba(56, 189, 248, 0), #38bdf8);
+                animation-name: data-stream-left;
+                animation-duration: 2s;
+                animation-timing-function: linear;
+                animation-iteration-count: infinite;
+            }
+            .core-visual::after {
+                background: linear-gradient(to left, rgba(56, 189, 248, 0), #38bdf8);
+                animation-name: data-stream-right;
+            }
+            .data-source-node, .result-node {
+                animation: fade-in-up 1s ease-out 1.2s forwards;
+                opacity: 0;
+            }
+        </style>
+    </section>
+
+    <!-- Slide 2: 核心挑战 (V3.0 交互式动画版) -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="slide-title text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-red-500 to-orange-400">
+                核心矛盾：有限内存 vs 海量数据
+            </h2>
+            <p class="slide-subtitle mt-4 text-xl text-slate-400">
+                直接处理几十GB数据，任何单机都将因内存溢出 (OOM) 而崩溃。
+            </p>
+            <div class="content-panel mt-12 border-red-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-around gap-8 md:gap-16">
+
+                    <!-- 1. 数据源 -->
+                    <div class="diagram-node">
+                        <i class="fa-solid fa-database text-7xl text-sky-300"></i>
+                        <h4 class="font-bold mt-2 text-lg">14亿数据 (几十GB)</h4>
+                    </div>
+
+                    <!-- 2. 动态数据流 -->
+                    <div class="data-stream-arrow">
+                        <div class="arrow-body"></div>
+                        <div class="arrow-head"></div>
+                    </div>
+
+                    <!-- 3. 待崩溃的服务器 (悬停以触发) -->
+                    <div class="server-node-wrapper">
+                        <div class="diagram-node server-node">
+                            <div class="crack-overlay"></div>
+                            <i class="fa-solid fa-server text-7xl text-red-300"></i>
+                            <h4 class="font-bold mt-2 text-lg">服务器 (8GB内存)</h4>
+                            <div class="oom-badge">OOM!</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <style>
+            /* --- Slide 2 V3.0 专属样式 --- */
+            .diagram-node {
+                opacity: 0;
+                animation: fade-in-up 1s ease-out 0.5s forwards;
+            }
+
+            .data-stream-arrow {
+                width: 150px; height: 40px; position: relative;
+                transform: rotate(90deg) md:rotate(0deg);
+                opacity: 0;
+                animation: fade-in-up 1s ease-out 0.8s forwards;
+            }
+            .arrow-body {
+                width: 100%; height: 12px;
+                background: linear-gradient(90deg, #38bdf8, #f87171);
+                border-radius: 6px; position: absolute; top: 50%;
+                transform: translateY(-50%); overflow: hidden;
+            }
+            .arrow-body::before {
+                content: ''; position: absolute; top: 0; left: 0;
+                width: 200%; height: 100%;
+                background-image: linear-gradient(90deg, transparent 50%, rgba(255, 255, 255, 0.6) 55%, transparent 60%);
+                background-size: 40px 100%;
+                animation: stream-flow 1s linear infinite;
+            }
+            .arrow-head {
+                width: 0; height: 0;
+                border-top: 20px solid transparent; border-bottom: 20px solid transparent;
+                border-left: 20px solid #f87171;
+                position: absolute; right: -20px; top: 50%;
+                transform: translateY(-50%);
+            }
+            @keyframes stream-flow {
+                from { transform: translateX(0); }
+                to { transform: translateX(-40px); }
+            }
+
+            .server-node-wrapper {
+                position: relative;
+                opacity: 0;
+                animation: fade-in-up 1s ease-out 1s forwards;
+                cursor: help;
+                transition: transform 0.2s ease-in-out;
+            }
+            .server-node-wrapper:hover {
+                transform: scale(1.03);
+            }
+            .server-node {
+                opacity: 1;
+                position: relative;
+                border: 3px solid transparent;
+                background-color: rgba(127, 29, 29, 0.2);
+                border-radius: 0.75rem;
+                padding: 1.5rem;
+            }
+            .crack-overlay {
+                position: absolute; inset: 0;
+                background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0 L80 100 M0 50 L100 50' stroke='rgba(252, 165, 165, 0.7)' stroke-width='2'/%3E%3Cpath d='M0 20 L100 80 M50 0 L50 100' stroke='rgba(252, 165, 165, 0.7)' stroke-width='1'/%3E%3C/svg%3E");
+                background-size: cover; opacity: 0; transform: scale(0.8);
+            }
+            .oom-badge {
+                position: absolute; top: -1rem; right: -1rem;
+                background-color: #ef4444; color: white; font-weight: bold;
+                padding: 0.25rem 0.75rem; border-radius: 9999px;
+                font-size: 1.125rem; transform: scale(0);
+                box-shadow: 0 0 20px #ef4444;
+            }
+
+            .server-node-wrapper:hover .server-node {
+                animation: server-alert 0.5s linear infinite, server-shake 0.1s linear 0.8s 5;
+            }
+            .server-node-wrapper:hover .crack-overlay {
+                animation: crack-appear 0.2s ease-out 0.8s forwards;
+            }
+            .server-node-wrapper:hover .oom-badge {
+                animation: oom-pop 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) 0.5s forwards;
+            }
+
+            @keyframes server-alert {
+                50% { border-color: #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.7); }
+            }
+            @keyframes server-shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-5px); }
+                75% { transform: translateX(5px); }
+            }
+            @keyframes crack-appear {
+                to { opacity: 1; transform: scale(1); }
+            }
+            @keyframes oom-pop {
+                to { transform: scale(1); }
+            }
+        </style>
+    </section>
+
+    <!-- Slide 3: 方案一 (V2.0 动画增强版) -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="slide-title text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-emerald-400 to-green-400">
+                内存优化利器：Trie树 (前缀树)
+            </h2>
+            <p class="slide-subtitle mt-4 text-xl text-slate-400">
+                通过共用字符串前缀，极大减少冗余存储，适用于内存充足的单机场景。
+            </p>
+            <div class="content-panel mt-8 border-green-500/40">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+
+                    <!-- 问题: 哈希表 -->
+                    <div class="problem-node bg-red-900/30 border-red-600/50 p-6 rounded-xl">
+                        <h4 class="font-bold text-xl mb-3 text-red-300">普通哈希表存储</h4>
+                        <div class="space-y-3 w-full text-left font-mono">
+                            <div class="hash-item bg-slate-800/70 p-3 rounded-lg">"张伟" -> count: 1</div>
+                            <div class="hash-item bg-slate-800/70 p-3 rounded-lg">"张三" -> count: 1</div>
+                            <div class="hash-item bg-slate-800/70 p-3 rounded-lg">"李四" -> count: 1</div>
+                        </div>
+                        <p class="conclusion-text text-red-400 font-semibold">内存浪费严重！</p>
+                    </div>
+
+                    <!-- 解决方案: 前缀树 -->
+                    <div class="solution-node bg-green-900/40 border-green-500/80 p-6 rounded-xl">
+                        <h4 class="font-bold text-xl mb-3 text-green-300">前缀树 (Trie) 存储</h4>
+                        <div class="trie-visualization">
+                            <div class="trie-node trie-root">
+                                <i class="fa-solid fa-folder-tree text-sky-400"></i> root
+                            </div>
+                            <div class="trie-level">
+                                <!-- 分支: 张 -->
+                                <div class="trie-branch">
+                                    <div class="trie-node trie-char shared-node">张</div>
+                                    <div class="trie-level">
+                                        <div class="trie-branch">
+                                            <div class="trie-node trie-char trie-leaf">伟</div>
+                                        </div>
+                                        <div class="trie-branch">
+                                            <div class="trie-node trie-char trie-leaf">三</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 分支: 李 -->
+                                <div class="trie-branch">
+                                    <div class="trie-node trie-char">李</div>
+                                    <div class="trie-level">
+                                        <div class="trie-branch">
+                                            <div class="trie-node trie-char trie-leaf">四</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shared-node-caption">共享节点</div>
+                        </div>
+                        <p class="conclusion-text text-green-400 font-semibold">内存效率极高！</p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <style>
+            /* --- Slide 3 V2.0 专属样式 --- */
+            @keyframes draw-line {
+                from { height: 0; }
+                to { height: 30px; } /* 连接线长度 */
+            }
+            @keyframes glow {
+                0%, 100% { box-shadow: 0 0 20px 5px rgba(250, 204, 21, 0.7); }
+                50% { box-shadow: 0 0 30px 10px rgba(250, 204, 21, 0.9); }
+            }
+
+            /* 入场动画 */
+            .problem-node { opacity: 0; animation: fade-in-down 0.7s ease-out 0.5s forwards; }
+            .problem-node .hash-item { opacity: 0; animation: fade-in-down 0.5s ease-out forwards; }
+            .problem-node .hash-item:nth-child(1) { animation-delay: 1.0s; }
+            .problem-node .hash-item:nth-child(2) { animation-delay: 1.2s; }
+            .problem-node .hash-item:nth-child(3) { animation-delay: 1.4s; }
+            .problem-node .conclusion-text { opacity: 0; animation: pop-in 0.5s ease-out 1.8s forwards; }
+
+            .solution-node { opacity: 0; animation: fade-in-down 0.7s ease-out 2.2s forwards; }
+            .solution-node .conclusion-text { opacity: 0; animation: pop-in 0.5s ease-out 5.0s forwards; }
+            
+            /* Trie 可视化 */
+            .trie-visualization { display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: monospace; }
+            .trie-node {
+                padding: 8px 12px; border-radius: 8px; background-color: #1f2937;
+                border: 1px solid #4b5563; color: white; font-weight: bold;
+                position: relative; z-index: 1; opacity: 0;
+            }
+            .trie-root { animation: pop-in 0.5s ease-out 2.8s forwards; }
+            .trie-char { animation: pop-in 0.5s ease-out forwards; }
+            
+            .trie-level { display: flex; justify-content: center; gap: 20px; }
+            .trie-branch { display: flex; flex-direction: column; align-items: center; position: relative; }
+            
+            /* 连接线 */
+            .trie-branch > .trie-node::before {
+                content: ''; position: absolute; bottom: 100%; left: 50%;
+                transform: translateX(-50%); width: 2px;
+                background-color: #6b7280; z-index: 0;
+                opacity: 0; animation: draw-line 0.4s linear forwards;
+            }
+            .trie-level > .trie-branch::before {
+                content: ''; position: absolute; bottom: 100%; left: -50%;
+                width: 100%; height: 2px; background-color: #6b7280;
+            }
+            .trie-level > .trie-branch:first-child::before { left: 50%; width: 50%; }
+            .trie-level > .trie-branch:last-child::before { width: 50%; }
+            .trie-level > .trie-branch:only-child::before { display: none; }
+
+            /* Trie 动画序列 */
+            .trie-level:nth-of-type(1) > .trie-branch > .trie-node { animation-delay: 3.2s; } /* 张, 李 */
+            .trie-level:nth-of-type(1) > .trie-branch > .trie-node::before { animation-delay: 3.2s; }
+            
+            .trie-branch > .trie-level .trie-char { animation-delay: 3.8s; } /* 伟, 三, 四 */
+            .trie-branch > .trie-level .trie-char::before { animation-delay: 3.8s; }
+
+            /* 共享节点高亮 */
+            .shared-node { animation: pop-in 0.5s ease-out 3.2s forwards, glow 1.5s ease-in-out 4.2s infinite; }
+            .shared-node-caption {
+                opacity: 0; color: #facc15; font-weight: bold; margin-top: 10px;
+                animation: pop-in 0.5s ease-out 4.2s forwards;
+            }
+            .trie-leaf::after {
+                content: '(end)'; font-size: 10px; color: #9ca3af;
+                position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+            }
+        </style>
+    </section>
+
+    <!-- Slide 4: 方案一 (Min-Heap) -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="slide-title text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-emerald-400 to-green-400">高效找出Top K：小顶堆</h2>
+            <p class="slide-subtitle mt-4 text-xl text-slate-400">维持一个大小为K的堆，内存占用恒定，实时淘汰非Top K元素。</p>
+            <div class="content-panel mt-8 border-green-500/40">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-6 text-center">
+                    <div class="diagram-node border-slate-600 p-4">
+                        <i class="fa-solid fa-file-lines text-4xl text-sky-300"></i>
+                        <h4 class="font-bold mt-2">新数据</h4>
+                        <p class="font-mono text-xl text-amber-300">"王五", count: 20</p>
+                    </div>
+                    <div class="diagram-arrow text-4xl text-sky-400"><i class="fa-solid fa-arrow-right-long"></i></div>
+                    <div class="diagram-node bg-red-900/30 border-red-500/50 p-4 w-full md:w-auto">
+                        <h4 class="font-bold text-lg mb-2"><i class="fa-solid fa-filter-circle-xmark text-red-300"></i> 小顶堆 (大小=3)</h4>
+                        <div class="bg-slate-900/50 p-3 rounded-lg w-full text-left text-sm font-mono space-y-2">
+                           <p class="text-red-400 font-bold">Heap Top (Min): "赵六", count: 10</p>
+                           <p>"钱七", count: 12</p>
+                           <p>"孙八", count: 15</p>
+                        </div>
+                    </div>
+                    <div class="diagram-arrow text-4xl text-sky-400 flex flex-col items-center">
+                        <i class="fa-solid fa-arrow-right-long"></i>
+                        <span class="text-base font-bold mt-2 text-amber-300">20 > 10 ? <span class="text-green-400">Yes!</span></span>
+                    </div>
+                    <div class="diagram-node diagram-node-good bg-green-900/40 border-green-500/80 p-4 w-full md:w-auto">
+                         <h4 class="font-bold text-lg mb-2"><i class="fa-solid fa-filter text-green-300"></i> 新的堆</h4>
+                         <div class="bg-slate-900/50 p-3 rounded-lg w-full text-left text-sm font-mono space-y-2">
+                           <p class="font-bold">New Top: "钱七", count: 12</p>
+                           <p>"孙八", count: 15</p>
+                           <p class="text-amber-300 font-bold">"王五", count: 20 <i class="fa-solid fa-arrow-left text-green-400 ml-2"></i> New</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 方案二 (分治) -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="slide-title text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-blue-400">应对内存瓶颈：分治策略与哈希分片</h2>
+            <p class="slide-subtitle mt-4 text-xl text-slate-400">通过哈希将大文件切分为小文件，确保相同姓名被分配到同一文件处理。</p>
+            <div class="content-panel mt-8 border-sky-500/40">
+                <div class="flex flex-col items-center justify-center gap-6">
+                    <div class="diagram-node border-slate-600 p-4">
+                        <i class="fa-solid fa-database text-5xl text-sky-300"></i>
+                        <h4 class="font-bold mt-2">14亿姓名数据流</h4>
+                    </div>
+                    <div class="diagram-arrow text-4xl text-sky-400"><i class="fa-solid fa-arrow-down"></i></div>
+                    <div class="diagram-node diagram-node-wisdom bg-blue-900/40 border-blue-500/80 p-6">
+                        <i class="fa-solid fa-shuffle text-6xl text-blue-300"></i>
+                        <h4 class="font-bold mt-2 text-lg">哈希路由</h4>
+                        <p class="font-mono text-amber-300">hash(name) % 1000</p>
+                    </div>
+                    <div class="w-full mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-white">
+                        <div class="flex flex-col items-center gap-2"><i class="fa-solid fa-arrow-down text-blue-400"></i><div class="diagram-node border-slate-700 w-full p-3"><i class="fa-solid fa-file-zipper"></i> File_001.txt</div></div>
+                        <div class="flex flex-col items-center gap-2"><i class="fa-solid fa-arrow-down text-blue-400"></i><div class="diagram-node border-slate-700 w-full p-3"><i class="fa-solid fa-file-zipper"></i> File_002.txt</div></div>
+                        <div class="flex flex-col items-center gap-2"><i class="fa-solid fa-arrow-down text-slate-600"></i><p class="font-mono text-2xl text-slate-500">...</p></div>
+                        <div class="flex flex-col items-center gap-2"><i class="fa-solid fa-arrow-down text-blue-400"></i><div class="diagram-node border-slate-700 w-full p-3"><i class="fa-solid fa-file-zipper"></i> File_1000.txt</div></div>
+                    </div>
+                     <p class="mt-6 text-lg text-sky-300 font-semibold bg-slate-800/50 px-4 py-2 rounded-lg">相同姓名 <i class="fa-solid fa-arrow-right-long mx-2"></i> 相同文件</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: 方案对比 -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="slide-title text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-400 to-purple-400">方案选型：性能、资源与复杂度的权衡</h2>
+            <p class="slide-subtitle mt-4 text-xl text-slate-400">单机内存充足选方案一；海量数据或内存受限，分治是必然选择。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-violet-500/40 overflow-x-auto">
+                <table class="w-full text-left text-base md:text-lg border-collapse">
+                    <thead>
+                        <tr class="border-b-2 border-slate-600">
+                            <th class="p-4">方案</th><th class="p-4">内存占用</th><th class="p-4">性能</th><th class="p-4">复杂度</th><th class="p-4">适用场景</th><th class="p-4">结论</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700">
+                        <tr class="hover:bg-slate-800/40 transition-colors">
+                            <td class="p-4 font-bold">理想方案<br><span class="text-sm font-normal text-slate-400">(Trie + MinHeap)</span></td>
+                            <td class="p-4 text-green-400 font-bold">优</td><td class="p-4 text-green-400 font-bold">高</td>
+                            <td class="p-4">中</td>
+                            <td class="p-4">单机内存充足</td>
+                            <td class="p-4 font-semibold"><i class="fa-solid fa-lightbulb text-yellow-400 mr-2"></i>理论最优</td>
+                        </tr>
+                        <tr class="transition-colors" style="background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(15, 23, 42, 0) 70%);">
+                            <td class="p-4 font-bold">现实方案<br><span class="text-sm font-normal text-slate-400">(分治 + Map + MinHeap)</span></td>
+                            <td class="p-4 text-green-400 font-bold">极优</td>
+                            <td class="p-4 text-green-400 font-bold">高 (可并行)</td>
+                            <td class="p-4 text-amber-400 font-bold">高</td>
+                            <td class="p-4 font-bold text-sky-300">海量数据 / 内存受限</td>
+                            <td class="p-4 text-violet-300 font-bold text-lg" style="text-shadow: 0 0 10px rgba(196, 181, 253, 0.7);"><i class="fa-solid fa-crown mr-2"></i>王者之选</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: 最终总结 -->
+    <section id="slide7" class="slide">
+        <div class="text-center w-full max-w-5xl mx-auto">
+            <h2 class="slide-title text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-400 to-yellow-300">核心思想提炼：解决海量数据问题的通用范式</h2>
+            <p class="slide-subtitle mt-4 text-xl text-slate-400">估算、分治、抽象：从问题规模出发，选择最合适的数据结构与算法。</p>
+            <div class="content-panel mt-8 border-amber-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-lg">
+                    <div class="flex flex-col items-center text-center gap-4 p-4 rounded-xl hover:bg-slate-800/50 transition-colors">
+                        <i class="fa-solid fa-infinity text-6xl bg-clip-text text-transparent bg-gradient-to-br from-sky-400 to-blue-500"></i>
+                        <div><h5 class="font-bold text-2xl">没有银弹</h5><p class="text-slate-400 mt-2 text-base">所有架构都是在特定约束下的权衡与最优解。</p></div>
+                    </div>
+                    <div class="flex flex-col items-center text-center gap-4 p-4 rounded-xl hover:bg-slate-800/50 transition-colors">
+                        <i class="fa-solid fa-object-ungroup text-6xl bg-clip-text text-transparent bg-gradient-to-br from-emerald-400 to-green-500"></i>
+                        <div><h5 class="font-bold text-2xl">化繁为简</h5><p class="text-slate-400 mt-2 text-base">分治是处理海量数据、复杂问题的核心思想。</p></div>
+                    </div>
+                    <div class="flex flex-col items-center text-center gap-4 p-4 rounded-xl hover:bg-slate-800/50 transition-colors">
+                        <i class="fa-solid fa-cubes text-6xl bg-clip-text text-transparent bg-gradient-to-br from-violet-400 to-purple-500"></i>
+                        <div><h5 class="font-bold text-2xl">基础为王</h5><p class="text-slate-400 mt-2 text-base">数据结构和算法是构建一切复杂系统的坚实地基。</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="text-center py-8 text-slate-500">
+        Created by Gemini
+    </footer>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 脚本1: 导航点逻辑 ---
+        const slides = document.querySelectorAll('.slide');
+        const navContainer = document.getElementById('nav-dots');
+        if (slides.length > 0 && navContainer) {
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            const navDots = navContainer.querySelectorAll('a');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            slides.forEach(slide => { observer.observe(slide); });
+        }
+
+        // --- 脚本2: Slide 1 数字滚动动画 ---
+        const counter = document.getElementById('counter');
+        if (counter && !counter.hasAttribute('data-animated')) {
+            counter.setAttribute('data-animated', 'true');
+            
+            const target = 1400000000;
+            const duration = 2000; // 动画时长 ms
+            const pauseDuration = 3000; // 滚动到顶后暂停时长 ms
+            const stepTime = 50; // 更新间隔 ms
+            const steps = duration / stepTime;
+            const increment = target / steps;
+            let current = 0;
+
+            const updateCounter = () => {
+                current += increment;
+                
+                if (current >= target) {
+                    counter.innerText = target.toLocaleString('en-US');
+                    setTimeout(() => {
+                        current = 0;
+                        counter.innerText = '0';
+                        setTimeout(updateCounter, stepTime);
+                    }, pauseDuration);
+                } else {
+                    counter.innerText = Math.floor(current).toLocaleString('en-US');
+                    setTimeout(updateCounter, stepTime);
+                }
+            };
+            
+            setTimeout(updateCounter, 1000); // 首次启动延迟
+        }
+    });
+    </script>
+</body> 
+</html>
+

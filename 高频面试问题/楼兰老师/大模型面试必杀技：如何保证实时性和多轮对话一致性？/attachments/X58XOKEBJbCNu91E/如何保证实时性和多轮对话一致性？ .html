@@ -1,0 +1,312 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大模型面试必杀技 - 实时性与多轮对话一致性</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <style>
+        .reveal h1, .reveal h2, .reveal h3 {
+            text-transform: none !important;
+        }
+        .reveal {
+            font-size: 38px;
+        }
+        .reveal h1 {
+            font-size: 3.5em;
+            margin-bottom: 0.3em;
+        }
+        .reveal h2 {
+            font-size: 2.5em;
+            margin-bottom: 0.5em;
+        }
+        .reveal h3 {
+            font-size: 1.8em;
+            margin-bottom: 1em;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            margin-top: 60px;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 50px;
+            margin-top: 100px;
+        }
+        .grid-4 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 50px;
+        }
+        .info-box {
+            padding: 40px 30px;
+            border-radius: 25px;
+            line-height: 1.8;
+            text-align: center;
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .gradient-box {
+            padding: 50px;
+            border-radius: 20px;
+            margin-top: 80px;
+            font-size: 1.3em;
+            text-align: center;
+        }
+        .reveal ul {
+            line-height: 2.5;
+            list-style: none;
+        }
+        .reveal strong {
+            color: #60a5fa;
+        }
+        .icon-large {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        .center-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 600px;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            
+            <!-- 第1页：开场 -->
+            <section data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+                <h1>🎯 大模型面试必杀技</h1>
+                <h2>如何保证实时性和多轮对话一致性？</h2>
+                <div style="margin-top: 150px; font-size: 0.8em; opacity: 0.9;">
+                    💡 从面试场景到实战方案的完整拆解
+                </div>
+            </section>
+
+            <!-- 第2页：考察意图 -->
+            <section>
+                <h2>💭 面试官的考察意图</h2>
+                <div class="grid-3" style="font-size: 1em;">
+                    <div class="info-box" style="background: rgba(59, 130, 246, 0.15);">
+                        <div class="icon-large">🎯</div>
+                        <p style="font-size: 1.4em; font-weight: bold; margin-bottom: 20px;">业务理解</p>
+                        <p style="font-size: 0.9em;">懂用户对"快""稳""顺"的需求</p>
+                    </div>
+                    <div class="info-box" style="background: rgba(16, 185, 129, 0.15);">
+                        <div class="icon-large">🧠</div>
+                        <p style="font-size: 1.4em; font-weight: bold; margin-bottom: 20px;">系统思维</p>
+                        <p style="font-size: 0.9em;">能拆解问题给完整方案</p>
+                    </div>
+                    <div class="info-box" style="background: rgba(251, 191, 36, 0.15);">
+                        <div class="icon-large">⚙️</div>
+                        <p style="font-size: 1.4em; font-weight: bold; margin-bottom: 20px;">工程能力</p>
+                        <p style="font-size: 0.9em;">方案能落地有架构意识</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 第3页：答题思路 -->
+            <section>
+                <h2>📋 答题思路三步走</h2>
+                <div class="center-content">
+                    <div style="font-size: 1.3em; line-height: 3; text-align: left; width: 70%;">
+                        <p><strong style="font-size: 1.3em;">①</strong> 总览场景与诉求</p>
+                        <p><strong style="font-size: 1.3em;">②</strong> 针对难点给方案</p>
+                        <p><strong style="font-size: 1.3em;">③</strong> 体现工程意识</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 第4页：实时性优化 -->
+            <section>
+                <h2>⚡ 一、实时性优化</h2>
+                <div class="grid-4" style="font-size: 0.95em;">
+                    <div class="info-box" style="background: rgba(59, 130, 246, 0.1);">
+                        <div class="icon-large">🔧</div>
+                        <p style="font-size: 1.3em; font-weight: bold;">模型优化</p>
+                        <p style="margin-top: 20px;">量化 · 蒸馏 · 裁剪</p>
+                    </div>
+                    <div class="info-box" style="background: rgba(16, 185, 129, 0.1);">
+                        <div class="icon-large">⚙️</div>
+                        <p style="font-size: 1.3em; font-weight: bold;">工程加速</p>
+                        <p style="margin-top: 20px;">分布式 · 并行 · 批处理</p>
+                    </div>
+                    <div class="info-box" style="background: rgba(139, 92, 246, 0.1);">
+                        <div class="icon-large">💾</div>
+                        <p style="font-size: 1.3em; font-weight: bold;">缓存机制</p>
+                        <p style="margin-top: 20px;">热点预计算 · 向量检索</p>
+                    </div>
+                    <div class="info-box" style="background: rgba(236, 72, 153, 0.1);">
+                        <div class="icon-large">🌊</div>
+                        <p style="font-size: 1.3em; font-weight: bold;">流式返回</p>
+                        <p style="margin-top: 20px;">边生成边展示</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 第5页：多轮对话一致性 -->
+            <section>
+                <h2>🧠 二、多轮对话一致性</h2>
+                <div class="grid-3" style="font-size: 0.95em;">
+                    <div class="info-box" style="background: rgba(139, 92, 246, 0.15);">
+                        <div class="icon-large">📝</div>
+                        <p style="font-size: 1.3em; font-weight: bold; margin-bottom: 25px;">上下文管理</p>
+                        <p>滑动窗口<br/>重要性评分<br/>动态截断</p>
+                    </div>
+                    <div class="info-box" style="background: rgba(236, 72, 153, 0.15);">
+                        <div class="icon-large">📊</div>
+                        <p style="font-size: 1.3em; font-weight: bold; margin-bottom: 25px;">知识摘要</p>
+                        <p>长对话压缩<br/>关键信息提取<br/>结构化存储</p>
+                    </div>
+                    <div class="info-box" style="background: rgba(251, 191, 36, 0.15);">
+                        <div class="icon-large">🎭</div>
+                        <p style="font-size: 1.3em; font-weight: bold; margin-bottom: 25px;">身份识别</p>
+                        <p>用户标识<br/>场景上下文<br/>会话隔离</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 第6页：系统架构 -->
+            <section>
+                <h2>🏗️ 三、系统架构设计</h2>
+                <div class="center-content">
+                    <div style="font-size: 1.1em;">
+                        <pre><code class="language-text" style="font-size: 1.3em; padding: 50px; border-radius: 20px;">
+      用户层
+         ↓
+   API Gateway
+         ↓
+     负载均衡
+         ↓
+  ┌──────┴──────┐
+推理集群    缓存层
+  GPU       Redis
+         ↓
+   监控 + 告警
+                        </code></pre>
+                    </div>
+                    <div style="margin-top: 60px; font-size: 1.2em;">
+                        <strong>微服务 | 高可用 | 弹性伸缩 | 全链路监控</strong>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 第7页：挑战与权衡 -->
+            <section>
+                <h2>⚖️ 四、挑战与权衡</h2>
+                <div class="center-content">
+                    <div style="font-size: 1.2em; line-height: 3; text-align: left; width: 75%;">
+                        <p><strong>🔄 实时性 vs 一致性</strong><br/>
+                        <span style="font-size: 0.85em;">速度快 ↔ 历史全</span></p>
+                        
+                        <p><strong>🎯 模型能力 vs 响应速度</strong><br/>
+                        <span style="font-size: 0.85em;">大模型效果好 ↔ 小模型快</span></p>
+                        
+                        <p><strong>💰 成本 vs 性能</strong><br/>
+                        <span style="font-size: 0.85em;">分布式高配 ↔ 预算控制</span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 第8页：评估指标 -->
+            <section>
+                <h2>📊 五、评估指标</h2>
+                <div class="grid-2" style="margin-top: 100px; font-size: 1em;">
+                    <div class="info-box" style="background: rgba(59, 130, 246, 0.1);">
+                        <div class="icon-large">⚡</div>
+                        <p style="font-size: 1.4em; font-weight: bold; margin-bottom: 30px;">性能指标</p>
+                        <p>响应时延 · 并发吞吐<br/>资源利用率</p>
+                    </div>
+                    <div class="info-box" style="background: rgba(16, 185, 129, 0.1);">
+                        <div class="icon-large">🎯</div>
+                        <p style="font-size: 1.4em; font-weight: bold; margin-bottom: 30px;">质量指标</p>
+                        <p>一致性得分 · 用户满意度<br/>系统稳定性 SLA</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 第9页：参考值 -->
+            <section>
+                <h2>📈 优秀系统参考值</h2>
+                <div class="center-content">
+                    <div style="font-size: 1.3em; line-height: 2.8; text-align: left; width: 70%;">
+                        <p><strong>⚡ 响应时延：</strong> P95 &lt; 2s</p>
+                        <p><strong>🚀 并发吞吐：</strong> 单节点 50-200 QPS</p>
+                        <p><strong>🎯 一致性：</strong> 得分 &gt; 90分</p>
+                        <p><strong>📊 可用性：</strong> SLA ≥ 99.9%</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 第10页：答题框架 -->
+            <section>
+                <h2>🎓 完整答题框架</h2>
+                <div class="grid-2" style="margin-top: 100px; font-size: 1.1em;">
+                    <div class="info-box" style="background: rgba(59, 130, 246, 0.08); text-align: left; padding-left: 60px;">
+                        <p style="font-size: 1.3em; font-weight: bold; margin-bottom: 30px;">📌 开场</p>
+                        <p>考察意图 + 答题思路</p>
+                        
+                        <p style="font-size: 1.3em; font-weight: bold; margin-top: 50px; margin-bottom: 30px;">💡 核心方案</p>
+                        <p>实时性 + 一致性 + 架构</p>
+                    </div>
+                    <div class="info-box" style="background: rgba(16, 185, 129, 0.08); text-align: left; padding-left: 60px;">
+                        <p style="font-size: 1.3em; font-weight: bold; margin-bottom: 30px;">🔍 体现深度</p>
+                        <p>权衡 + 指标</p>
+                        
+                        <p style="font-size: 1.3em; font-weight: bold; margin-top: 50px; margin-bottom: 30px;">✨ 展现经验</p>
+                        <p>案例 + 数据 + 改进</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 第11页：结尾 -->
+            <section data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+                <div class="center-content">
+                    <h2 style="font-size: 2.5em; line-height: 2;">思路清晰 · 方案完整<br/>工程意识 · 妥妥加分</h2>
+                    <div style="margin-top: 150px; font-size: 0.7em; opacity: 0.9;">
+                        👍 觉得有用就点个赞
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            width: 1920,
+            height: 1080,
+            margin: 0.04,
+            minScale: 0.2,
+            maxScale: 2.0,
+            center: true,
+            hash: true,
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            keyboard: {
+                38: 'prev',
+                40: 'next',
+                37: 'prev',
+                39: 'next'
+            },
+            help: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all'
+        });
+    </script>
+</body>
+</html>

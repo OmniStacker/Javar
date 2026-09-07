@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT注销失效 - 短视频白板讲稿</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 22px 0 88px 0; }
+        .slide-container { width: 1408px; /* 1280 * 1.1 */ height: 792px; /* 720 * 1.1 */ margin: 0 auto; position: relative; overflow: hidden; border-radius: 13.2px; /* 12 * 1.1 */ box-shadow: 0 0 33px rgba(0,0,0,0.15); /* 30 * 1.1 */ }
+        .slide { width: 100%; height: 100%; background: #fff; padding: 33px 44px; /* 30*1.1, 40*1.1 */ display: none; flex-direction: column; }
+        .slide.active { display: flex; }
+        /* 标题样式 */
+        .slide-title { font-size: 33px; /* 30 * 1.1 */ font-weight: 700; color: #1e3a8a; margin-bottom: 27.5px; /* 25 * 1.1 */ border-left: 8.8px solid #3b82f6; /* 8 * 1.1 */ padding-left: 16.5px; /* 15 * 1.1 */ }
+        /* 内容容器 */
+        .slide-content { width: 100%; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 19.8px; /* 18 * 1.1 */ overflow-y: auto; padding: 10px 0; }
+        /* 全局底部导航 */
+        .global-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 66px; /* 60 * 1.1 */ background: #fff; box-shadow: 0 -2.2px 11px rgba(0,0,0,0.05); /* 2*1.1, 10*1.1 */ display: flex; align-items: center; justify-content: center; gap: 27.5px; /* 25 * 1.1 */ z-index: 999; }
+        .nav-btn { padding: 11px 30.8px; /* 10*1.1, 28*1.1 */ border-radius: 8.8px; /* 8 * 1.1 */ border: none; background: #3b82f6; color: white; font-size: 17.6px; /* 16 * 1.1 */ font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8.8px; /* 8 * 1.1 */ }
+        .nav-btn:hover { background: #2563eb; transform: translateY(-2.2px); /* 2 * 1.1 */ }
+        .nav-btn:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; }
+        .nav-page { font-size: 17.6px; /* 16 * 1.1 */ color: #1e3a8a; font-weight: 600; }
+        /* 通用组件 */
+        .tech-card { background: #f1f5f9; border-radius: 13.2px; /* 12 * 1.1 */ padding: 22px; /* 20 * 1.1 */ border-top: 4.4px solid #3b82f6; /* 4 * 1.1 */ width: 100%; max-width: 880px; /* 800 * 1.1 */ text-align: left; margin: 0 auto; }
+        .small-tech-card { padding: 11px 16.5px; /* 10*1.1, 15*1.1 */ margin: 0 auto; }
+        .card-title { font-size: 20.9px; /* 19 * 1.1 */ color: #1e3a8a; margin-bottom: 5.5px; /* 5*1.1 */ font-weight: 600; }
+        .card-desc { font-size: 16.5px; /* 15 * 1.1 */ color: #334155; line-height: 1.4; }
+        .flow { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8.8px; /* 8 * 1.1 */ width: 100%; max-width: 990px; /* 900 * 1.1 */ margin: 0 auto; }
+        .flow-node { background: #3b82f6; color: white; padding: 8.8px 17.6px; /* 8*1.1, 16*1.1 */ border-radius: 26.4px; /* 24 * 1.1 */ font-size: 15.4px; /* 14 * 1.1 */ text-align: center; white-space: nowrap; }
+        .flow-node.warning { background: #ef4444; }
+        .flow-node.success { background: #22c55e; }
+        .flow-arrow { color: #94a3b8; font-size: 19.8px; /* 18 * 1.1 */ margin: 0 5px; }
+        .code-snippet { background: #1e293b; color: #e2e8f0; padding: 11px; /* 10 * 1.1 */ border-radius: 8.8px; /* 8 * 1.1 */ font-size: 13.2px; /* 12 * 1.1 进一步减小字体 */ line-height: 1.2; width: 100%; max-width: 1250px; /* 最大化宽度 */ text-align: left; overflow: hidden; margin: 0 auto; }
+        .highlight { color: #3b82f6; font-weight: 600; }
+        .table-simple { width: 100%; max-width: 990px; /* 900 * 1.1 */ border-collapse: collapse; text-align: left; margin: 0 auto; }
+        .table-simple th, .table-simple td { border: 1.1px solid #e2e8f0; /* 1 * 1.1 */ padding: 13.2px; /* 12 * 1.1 */ font-size: 17.6px; /* 16 * 1.1 */ }
+        .table-simple th { background: #f8fafc; color: #1e3a8a; font-weight: 600; }
+        .timeline-simple { position: relative; padding-left: 27.5px; /* 25 * 1.1 */ width: 100%; max-width: 990px; /* 900 * 1.1 */ text-align: left; margin: 0 auto; }
+        .timeline-simple::before { content: ''; position: absolute; left: 7.7px; /* 7 * 1.1 */ top: 0; bottom: 0; width: 2.2px; /* 2 * 1.1 */ background: #3b82f6; }
+        .timeline-item { position: relative; margin-bottom: 8.8px; /* 8 * 1.1 进一步减小间距 */ font-size: 15.4px; /* 14 * 1.1 减小字体 */ color: #334155; line-height: 1.3; }
+        .timeline-item::before { content: ''; position: absolute; left: -23.1px; /* 21 * 1.1 */ top: 4.4px; /* 4 * 1.1 */ width: 12.1px; /* 11 * 1.1 减小圆点 */ height: 12.1px; /* 11 * 1.1 */ border-radius: 50%; background: #3b82f6; border: 2.2px solid #fff; /* 2 * 1.1 减小边框 */ }
+        /* 布局相关 */
+        .single-col { display: flex; flex-direction: column; gap: 16.5px; /* 15 * 1.1 */ width: 100%; align-items: center; }
+        .section-title { font-size: 17.6px; /* 16 * 1.1 减小字体 */ font-weight: 600; color: #1e3a8a; text-align: left; width: 100%; max-width: 880px; /* 800 * 1.1 */ margin: 0 auto; }
+        .two-card-container { display: flex; gap: 19.8px; /* 18 * 1.1 减小间距 */ width: 100%; max-width: 880px; /* 800 * 1.1 */ margin: 0 auto; flex-wrap: wrap; }
+        .two-card-container .tech-card { flex: 1; min-width: 280px; max-width: none; }
+        .center-text { text-align: center; width: 100%; max-width: 880px; margin: 0 auto; }
+        .large-text { font-size: 46.2px; /* 42 * 1.1 */ color: #1e3a8a; font-weight: 700; margin: 15px 0; }
+        .medium-text { font-size: 19.8px; /* 18 * 1.1 */ color: #334155; line-height: 1.8; margin: 10px 0; }
+        /* 第5页专属样式 */
+        .slide-5-content { gap: 8.8px !important; /* 大幅减小整体间距 */ }
+        /* 方案4专属样式（确保适用场景和代码完整显示） */
+        .slide-4-custom .tech-card { padding: 16.5px; /* 调整内边距 */ }
+        .slide-4-custom .card-desc { line-height: 1.5; }
+        .slide-4-custom .code-snippet { max-width: 1300px; font-size: 12.8px; }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <!-- 第1页：封面 -->
+        <div class="slide active" data-index="0">
+            <div class="slide-title">JWT注销失效？面试必考题！</div>
+            <div class="slide-content">
+                <div class="center-text">
+                    <div class="large-text">JWT注销后Token仍有效？</div>
+                    <div class="flow" style="margin: 22px 0;">
+                        <div class="flow-node">JWT无状态</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node warning">注销仍可访问</div>
+                    </div>
+                    <div style="font-size: 19.8px; color: #64748b;">4种落地方案 + 极简伪代码</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第2页：面试官核心考点 -->
+        <div class="slide" data-index="1">
+            <div class="slide-title">面试官真正想考什么？</div>
+            <div class="slide-content" style="justify-content: flex-start; gap: 22px;">
+                <div class="two-card-container">
+                    <div class="tech-card">
+                        <div class="card-title">基础认知</div>
+                        <div class="card-desc">是否懂JWT有效性依赖「签名+过期时间」，与用户状态无关</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="card-title">场景思维</div>
+                        <div class="card-desc">能否根据并发量、架构（单体/分布式）选方案</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="card-title">工程能力</div>
+                        <div class="card-desc">是否考虑性能、安全性（如黑名单查询效率）</div>
+                    </div>
+                </div>
+                <div style="width: 100%; max-width: 880px; font-size: 19.8px; color: #3b82f6; font-weight: 600; text-align: center; margin-top: 11px;">
+                    关键：不是背方案，是「场景匹配能力」！
+                </div>
+            </div>
+        </div>
+
+        <!-- 第3页：冲突本质 -->
+        <div class="slide" data-index="2">
+            <div class="slide-title">冲突本质：为什么注销后仍生效？</div>
+            <div class="slide-content">
+                <div class="center-text">
+                    <div style="font-size: 19.8px; font-weight: 600; color: #1e3a8a; margin-bottom: 16.5px;">
+                        JWT有效性判断逻辑
+                    </div>
+                    <div class="flow">
+                        <div class="flow-node">签名正确？</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node">未过期？</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node success">默认有效</div>
+                    </div>
+                </div>
+                <div class="medium-text">
+                    核心结论：<br>
+                    JWT只认「<span class="highlight">技术层面</span>」（签名+过期），<br>
+                    不认「<span class="highlight">业务层面</span>」（注销/封号）！
+                </div>
+                <div class="code-snippet">
+<pre>// JWT核心特性（伪代码）
+JWT验证(token) {
+  return 签名通过 && 未过期; // 不关心业务状态
+}</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第4页：方案1 黑名单机制 -->
+        <div class="slide" data-index="3">
+            <div class="slide-title">方案1：黑名单机制（中小规模首选）</div>
+            <div class="slide-content">
+                <div class="tech-card">
+                    <div class="card-title">适用场景</div>
+                    <div class="card-desc">QPS<1万、单体/小型分布式、需立即失效（金融/隐私接口）</div>
+                </div>
+                <div style="width: 100%; max-width: 880px; margin: 0 auto;">
+                    <div style="font-size: 19.8px; font-weight: 600; color: #1e3a8a; margin-bottom: 16.5px; text-align: left;">
+                        核心逻辑
+                    </div>
+                    <div class="flow">
+                        <div class="flow-node">用户注销</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node">Token存Redis黑名单</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node">接口校验黑名单</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node warning">拒绝访问</div>
+                    </div>
+                </div>
+                <div class="code-snippet">
+<pre>// 极简伪代码
+注销(token) {
+  Redis.set("黑名单:"+token, 1, 过期时间);
+}
+
+验证(token) {
+  return JWT验证(token) && !Redis.exists("黑名单:"+token);
+}</pre>
+                </div>
+                <div style="width: 100%; max-width: 880px; font-size: 17.6px; color: #64748b; text-align: center; margin-top: 11px;">
+                    核心优势：实现简单、成本低，支持立即失效
+                </div>
+            </div>
+        </div>
+
+        <!-- 第5页：方案2 双Token机制 - 重点修复 -->
+        <div class="slide" data-index="4">
+            <div class="slide-title">方案2：双Token（高并发首选）</div>
+            <!-- 大幅减小整体间距 -->
+            <div class="slide-content slide-5-content">
+                <!-- 适用场景一行描述 + 最小化卡片 -->
+                <div class="tech-card small-tech-card">
+                    <div class="card-title">适用场景</div>
+                    <div class="card-desc">QPS>1万、分布式系统、允许5分钟短窗口有效</div>
+                </div>
+                
+                <div class="two-card-container">
+                    <div class="tech-card">
+                        <div class="card-title">Access Token（访问令牌）</div>
+                        <div class="card-desc">• 短期有效：5分钟<br>• 用途：接口请求<br>• 特点：有效期短，风险低</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="card-title">Refresh Token（刷新令牌）</div>
+                        <div class="card-desc">• 长期有效：7天<br>• 用途：刷新Access Token<br>• 特点：仅存Redis，安全性高</div>
+                    </div>
+                </div>
+                
+                <div style="width: 100%; max-width: 880px; margin: 0 auto; margin-bottom: 2.2px;">
+                    <div class="section-title">核心流程</div>
+                    <div class="timeline-simple">
+                        <div class="timeline-item"><strong>登录：</strong>服务器返回双Token，Refresh Token存入Redis</div>
+                        <div class="timeline-item"><strong>接口请求：</strong>用Access Token访问，过期则发起刷新</div>
+                        <div class="timeline-item"><strong>注销：</strong>删除Redis中Refresh Token，旧Token过期后无法续期</div>
+                    </div>
+                </div>
+                
+                <!-- 最大化代码块宽度，最小化字体，确保无滚动 -->
+                <div class="code-snippet" style="max-width: 1300px; font-size: 12.8px; letter-spacing: 0.1px;">
+<pre>// 极简伪代码
+刷新Token(刷新Token, 用户ID) {
+  if (Redis.get("刷新:"+用户ID) == 刷新Token) {
+    return 生成新访问Token;
+  }
+  return 失效;
+}
+
+注销(用户ID) {
+  Redis.delete("刷新:"+用户ID); // 无法再刷新
+}</pre>
+                </div>
+                <div style="width: 100%; max-width: 880px; font-size: 16.5px; color: #64748b; text-align: center; margin-top: 2.2px;">
+                    核心优势：性能优、无黑名单查询开销，扩展性强
+                </div>
+            </div>
+        </div>
+
+        <!-- 第6页：方案3 令牌撤销中心（独立页面） -->
+        <div class="slide" data-index="5">
+            <div class="slide-title">方案3：令牌撤销中心（大规模微服务）</div>
+            <div class="slide-content">
+                <div class="single-col">
+                    <div class="tech-card">
+                        <div class="card-title">适用场景</div>
+                        <div class="card-desc">
+                            • 大规模微服务架构<br>
+                            • 核心需求：统一管理Token注销、封号、批量失效<br>
+                            • 并发量：QPS>5万、多服务协同场景
+                        </div>
+                    </div>
+
+                    <div class="section-title">架构逻辑</div>
+                    <div style="width: 100%; display: flex; flex-direction: column; gap: 16.5px; align-items: center; max-width: 880px; margin: 0 auto;">
+                        <div class="flow">
+                            <div class="flow-node">业务服务A/B/C</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node">Feign调用</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node" style="background: #1e40af; font-weight: 600;">撤销中心</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node">Redis集群</div>
+                        </div>
+                    </div>
+
+                    <div class="section-title">核心伪代码</div>
+                    <div class="code-snippet">
+<pre>// 撤销中心接口
+撤销Token(token) {
+  Redis.set("已撤销:"+token, 1, 过期时间);
+}
+
+// 微服务验证
+验证Token(token) {
+  return JWT验证(token) && !撤销中心.是否已撤销(token);
+}
+
+// 批量撤销（封号）
+批量撤销(用户IDs) {
+  用户IDs.forEach(ID => Redis.set("用户禁用:"+ID, 1));
+}</pre>
+                    </div>
+
+                    <div style="width: 100%; max-width: 880px; font-size: 17.6px; color: #64748b; text-align: left; margin-top: 11px;">
+                        核心优势：集中管理、支持跨服务批量操作、适配微服务架构
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第7页：方案4 自定义声明（独立页面）- 确保适用场景和代码完整显示 -->
+        <div class="slide slide-4-custom" data-index="6">
+            <div class="slide-title">方案4：自定义声明（批量失效场景）</div>
+            <div class="slide-content">
+                <div class="single-col">
+                    <div class="tech-card" style="padding: 16.5px;">
+                        <div class="card-title">适用场景</div>
+                        <div class="card-desc">
+                            • 批量失效某类用户Token（如违规用户、离职员工）<br>
+                            • 核心需求：一键禁用、快速失效、操作简单<br>
+                            • 场景举例：平台封号、部门权限变更
+                        </div>
+                    </div>
+
+                    <div class="section-title">核心逻辑</div>
+                    <div class="timeline-simple">
+                        <div class="timeline-item"><strong>生成Token：</strong>加入version自定义声明（如version=1）</div>
+                        <div class="timeline-item"><strong>存储版本：</strong>服务器Redis存储用户最新version</div>
+                        <div class="timeline-item"><strong>触发失效：</strong>注销/封号时，更新version（如1→2）</div>
+                        <div class="timeline-item"><strong>接口校验：</strong>Token version ≠ 服务器version → 拒绝访问</div>
+                    </div>
+
+                    <div class="section-title">核心伪代码</div>
+                    <div class="code-snippet" style="max-width: 1300px; font-size: 12.8px;">
+<pre>// 生成Token
+生成Token(用户ID) {
+  版本 = Redis.get("版本:"+用户ID) || 1;
+  return JWT签名({用户ID, 版本});
+}
+
+// 验证Token
+验证Token(token) {
+  载荷 = JWT解析(token);
+  当前版本 = Redis.get("版本:"+载荷.用户ID);
+  return 载荷.版本 == 当前版本 && JWT未过期;
+}
+
+// 批量失效
+批量失效(用户ID) {
+  Redis.incr("版本:"+用户ID); // 版本+1，旧Token失效
+}</pre>
+                    </div>
+
+                    <div style="width: 100%; max-width: 880px; font-size: 17.6px; color: #64748b; text-align: left; margin-top: 11px;">
+                        核心优势：操作简单、无黑名单存储、支持批量快速失效
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全局底部导航（浏览器底部） -->
+    <div class="global-nav">
+        <button class="nav-btn" id="prevBtn" disabled>
+            <svg width="19.8px" height="19.8px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 19L8 12L15 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            上一页
+        </button>
+        <div class="nav-page" id="pageInfo">1/7</div>
+        <button class="nav-btn" id="nextBtn">
+            下一页
+            <svg width="19.8px" height="19.8px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 5L16 12L9 19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        // 翻页逻辑
+        const slides = document.querySelectorAll('.slide');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const pageInfo = document.getElementById('pageInfo');
+        let currentIndex = 0;
+
+        // 更新导航状态
+        function updateNav() {
+            pageInfo.textContent = `${currentIndex + 1}/${slides.length}`;
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = currentIndex === slides.length - 1;
+        }
+
+        // 切换页面
+        function switchSlide(index) {
+            if (index >= 0 && index < slides.length) {
+                slides[currentIndex].classList.remove('active');
+                currentIndex = index;
+                slides[currentIndex].classList.add('active');
+                updateNav();
+            }
+        }
+
+        // 绑定导航事件
+        prevBtn.addEventListener('click', () => switchSlide(currentIndex - 1));
+        nextBtn.addEventListener('click', () => switchSlide(currentIndex + 1));
+
+        // 键盘导航
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') switchSlide(currentIndex + 1);
+            if (e.key === 'ArrowLeft') switchSlide(currentIndex - 1);
+        });
+
+        // 初始化
+        updateNav();
+    </script>
+</body>
+</html>

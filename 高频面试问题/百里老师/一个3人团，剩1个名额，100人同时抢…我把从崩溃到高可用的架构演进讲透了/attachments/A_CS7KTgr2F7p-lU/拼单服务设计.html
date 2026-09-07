@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高并发拼单服务设计精要</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
+        html {
+            scroll-behavior: smooth; /* 为点击跳转增加平滑滚动效果 */
+        }
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #111827; /* Dark background */
+            color: #E5E7EB; /* Light text */
+        }
+        .slide {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            border-bottom: 2px solid #374151;
+        }
+        .gradient-text {
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .diagram-node {
+            background-color: rgba(31, 41, 55, 0.7);
+            border: 1px solid #4B5563;
+            border-radius: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .diagram-arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #6B7280;
+            position: relative;
+        }
+        .shake-anim {
+            animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .comparison-box {
+            background-color: #1F2937;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* --- 新增：右侧导航点样式 --- */
+        .side-nav {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .nav-dot {
+            width: 12px;
+            height: 12px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .nav-dot:hover {
+            background-color: #fff;
+        }
+        .nav-dot.active {
+            background-color: #fff;
+            transform: scale(1.2);
+            box-shadow: 0 0 10px #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 新增：右侧导航容器 -->
+    <nav id="side-nav" class="side-nav"></nav>
+
+    <!-- Slide 1: 开场 -->
+    <section id="slide1" class="slide">
+        <h2 class="text-4xl md:text-6xl font-bold mb-4 text-center">一个3人团，只剩最后1个名额...</h2>
+        <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-center gradient-text bg-gradient-to-r from-red-500 to-amber-400 mt-4">如果100人同时来抢，会发生什么？</h1>
+        
+        <div class="mt-12 w-full max-w-7xl grid grid-cols-1 md:grid-cols-3 items-center gap-8 md:gap-4 p-4">
+            <!-- 混乱：系统崩溃 -->
+            <div class="flex flex-col items-center text-center relative">
+                <h3 class="text-3xl font-bold text-red-500 mb-6">初始问题：并发超卖</h3>
+                <div class="relative w-64 h-64 flex items-center justify-center">
+                    <i class="fa-solid fa-user text-4xl text-slate-300 absolute animate-ping" style="top: 10%; left: 40%;"></i>
+                    <i class="fa-solid fa-user text-4xl text-slate-300 absolute animate-ping" style="left: 15%; top: 60%; animation-delay: 0.2s;"></i>
+                    <i class="fa-solid fa-user text-4xl text-slate-300 absolute animate-ping" style="right: 15%; top: 25%; animation-delay: 0.4s;"></i>
+                    <i class="fa-solid fa-user text-4xl text-slate-300 absolute animate-ping" style="bottom: 10%; right: 45%; animation-delay: 0.6s;"></i>
+                    <div class="flex flex-col items-center justify-center text-center">
+                        <i class="fa-solid fa-burst text-9xl text-red-600 shake-anim"></i>
+                        <p class="mt-4 text-2xl font-bold text-red-400">系统崩溃 (超卖)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 箭头 -->
+            <div class="diagram-arrow text-6xl md:text-8xl my-4 md:my-0 rotate-90 md:rotate-0">
+                <i class="fa-solid fa-arrow-right-long"></i>
+                <p class="text-2xl font-bold absolute -bottom-10 md:-top-8">演进</p>
+            </div>
+
+            <!-- 有序：解决方案 -->
+            <div class="flex flex-col items-center text-center">
+                 <h3 class="text-3xl font-bold text-green-400 mb-6">优化方案：稳健架构</h3>
+                 <div class="relative w-64 h-64 flex items-center justify-center">
+                    <div class="absolute left-[-80px] flex flex-col gap-4">
+                        <i class="fa-solid fa-user text-3xl text-slate-400"></i>
+                        <i class="fa-solid fa-user text-3xl text-slate-400"></i>
+                        <i class="fa-solid fa-user text-3xl text-slate-400"></i>
+                    </div>
+                    <i class="fa-solid fa-lock text-5xl text-sky-400 absolute left-[-10px] animate-pulse"></i>
+                    <div class="flex flex-col items-center justify-center text-center">
+                        <i class="fa-solid fa-chair text-8xl text-green-400" style="text-shadow: 0 0 20px #22c55e;"></i>
+                        <p class="mt-4 text-2xl font-bold text-green-300">一人一单，稳如泰山</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 核心业务流程 -->
+    <section id="slide2" class="slide">
+        <h2 class="text-5xl font-extrabold mb-12 text-center">表面平静的流程，<span class="gradient-text bg-gradient-to-r from-amber-400 to-red-500">暗藏杀机</span></h2>
+        <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+            <div class="diagram-node w-48 h-32"><i class="fa-solid fa-user-plus text-4xl mb-2 text-sky-400"></i><p>用户A发起拼单</p></div>
+            <div class="diagram-arrow text-4xl"><i class="fa-solid fa-arrow-right"></i></div>
+            <div class="diagram-node w-48 h-32"><i class="fa-solid fa-hourglass-half text-4xl mb-2 text-amber-400"></i><p>状态：拼单中 (2/3)</p></div>
+            <div class="diagram-arrow text-4xl"><i class="fa-solid fa-arrow-right"></i></div>
+            <div class="relative diagram-node w-48 h-32 border-red-500 border-2 shadow-lg shadow-red-500/50">
+                <i class="fa-solid fa-triangle-exclamation text-5xl text-red-500 absolute -top-5 -right-5 animate-pulse"></i>
+                <i class="fa-solid fa-users text-4xl mb-2 text-red-400"></i>
+                <p class="font-bold">B/C同时加入</p>
+            </div>
+            <div class="diagram-arrow text-4xl"><i class="fa-solid fa-arrow-right"></i></div>
+            <div class="diagram-node w-48 h-32"><i class="fa-solid fa-circle-check text-4xl mb-2 text-green-400"></i><p>拼单成功 (3/3)</p></div>
+        </div>
+        <p class="mt-12 text-2xl text-slate-300 text-center max-w-4xl">
+            流程看似简单，但在“B/C同时加入”这一步，就是风暴的中心！如果没有任何保护，系统就会在这里被瞬间击穿。
+        </p>
+    </section>
+
+    <!-- Slide 3: 并发超卖与分布式锁 -->
+    <section id="slide3" class="slide">
+        <h2 class="text-5xl font-extrabold mb-12 text-center">并发挑战：Redis锁化身“<span class="gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">检票员</span>”</h2>
+        <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- 方案一：悲观锁 -->
+            <div class="comparison-box border-2 border-red-700">
+                <h3 class="text-3xl font-bold text-center text-red-500 mb-6">错误示范：数据库悲观锁</h3>
+                <div class="flex flex-col items-center justify-center h-full">
+                    <i class="fa-solid fa-database text-8xl text-slate-500 relative">
+                        <i class="fa-solid fa-lock text-7xl text-red-800 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></i>
+                    </i>
+                    <p class="mt-8 text-xl text-center text-slate-400">简单粗暴，直接锁死数据库的行，<br>但同一时间只能有一个请求处理，<br>高并发下，其他请求全部堵塞，性能雪崩！</p>
+                    <p class="text-6xl mt-8">😭</p>
+                </div>
+            </div>
+            <!-- 方案二：Redis分布式锁 -->
+            <div class="comparison-box border-2 border-green-500">
+                <h3 class="text-3xl font-bold text-center text-green-400 mb-6">正确方案：Redis分布式锁</h3>
+                <div class="flex flex-col items-center justify-center h-full">
+                    <div class="flex items-center gap-8">
+                        <div class="flex flex-col gap-4">
+                           <i class="fa-solid fa-user text-3xl text-slate-400"></i>
+                           <i class="fa-solid fa-user text-3xl text-slate-400"></i>
+                           <i class="fa-solid fa-user text-3xl text-slate-400"></i>
+                        </div>
+                        <i class="fa-brands fa-redis text-8xl text-red-500 animate-pulse"></i>
+                        <div class="diagram-arrow text-4xl"><i class="fa-solid fa-arrow-right-long"></i></div>
+                        <i class="fa-solid fa-user text-3xl text-green-400"></i>
+                        <div class="diagram-arrow text-4xl"><i class="fa-solid fa-arrow-right-long"></i></div>
+                        <i class="fa-solid fa-chair text-6xl text-green-400"></i>
+                    </div>
+                    <p class="mt-8 text-xl text-center text-slate-300">Redis化身“检票员”，内存操作，性能极高。<br>谁先抢到锁(票)，谁就能上车，<br>其他人排队等待，优雅而高效！</p>
+                    <p class="text-6xl mt-8">😎</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 超时处理与延迟消息 -->
+    <section id="slide4" class="slide">
+        <h2 class="text-5xl font-extrabold mb-12 text-center">超时处理：“<span class="gradient-text bg-gradient-to-r from-amber-400 to-yellow-300">智能闹钟</span>”与“人工巡逻”</h2>
+        <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- 方案一：定时任务轮询 -->
+            <div class="comparison-box border-2 border-red-700">
+                <h3 class="text-3xl font-bold text-center text-red-500 mb-6">低效方案：定时任务巡逻</h3>
+                <div class="flex flex-col items-center justify-center h-full">
+                    <div class="relative">
+                        <i class="fa-solid fa-database text-9xl text-slate-500"></i>
+                        <i class="fa-solid fa-person-running text-6xl text-amber-500 absolute -left-16 top-4 animate-pulse"></i>
+                        <i class="fa-solid fa-magnifying-glass text-3xl text-amber-300 absolute -left-4 top-8"></i>
+                    </div>
+                    <p class="mt-8 text-xl text-center text-slate-400">就像一个保安，每分钟都要把所有订单<br>从数据库里翻出来检查一遍，<br>订单量一多，数据库直接被扫到崩溃！</p>
+                    <p class="text-6xl mt-8">🥵</p>
+                </div>
+            </div>
+            <!-- 方案二：MQ延迟消息 -->
+            <div class="comparison-box border-2 border-green-500">
+                <h3 class="text-3xl font-bold text-center text-green-400 mb-6">优雅方案：MQ延迟消息</h3>
+                <div class="flex flex-col items-center justify-center h-full">
+                    <div class="flex items-center gap-8">
+                        <div class="text-center">
+                            <i class="fa-solid fa-box-open text-6xl text-sky-400"></i>
+                            <p class="font-bold mt-2">创建订单</p>
+                        </div>
+                        <div class="diagram-arrow text-4xl"><i class="fa-solid fa-arrow-right-long"></i></div>
+                        <div class="text-center relative">
+                            <i class="fa-solid fa-clock text-8xl text-amber-400 animate-pulse"></i>
+                            <p class="font-bold text-lg absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">24:00</p>
+                            <p class="font-bold mt-2">设定“智能闹钟”</p>
+                        </div>
+                        <div class="diagram-arrow text-4xl"><i class="fa-solid fa-arrow-right-long"></i></div>
+                        <div class="text-center">
+                            <i class="fa-solid fa-bell text-6xl text-green-400"></i>
+                            <p class="font-bold mt-2">到期自动提醒</p>
+                        </div>
+                    </div>
+                    <p class="mt-8 text-xl text-center text-slate-300">为每个拼单设置一个“专属闹钟”。<br>到时间后，MQ自动把消息推送给你处理，<br>精准、高效，对数据库零压力！</p>
+                    <p class="text-6xl mt-8">🥳</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 可靠通知 -->
+    <section id="slide5" class="slide">
+        <h2 class="text-5xl font-extrabold mb-12 text-center">可靠通知：巧用“<span class="gradient-text bg-gradient-to-r from-indigo-400 to-purple-400">发件箱底稿</span>”模式</h2>
+        <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- 问题：直接通知 -->
+            <div class="comparison-box border-2 border-red-700">
+                <h3 class="text-3xl font-bold text-center text-red-500 mb-6">问题所在：直接远程调用</h3>
+                <div class="flex flex-col items-center justify-center h-full">
+                     <div class="flex items-center gap-8">
+                        <i class="fa-solid fa-server text-7xl text-blue-400"></i>
+                        <div class="relative text-center">
+                           <i class="fa-solid fa-arrow-right-long text-5xl text-slate-500"></i>
+                           <i class="fa-solid fa-cloud-bolt text-4xl text-red-500 absolute top-[-20px] left-1/2 -translate-x-1/2"></i>
+                           <p class="text-red-500 font-bold">网络抖动</p>
+                        </div>
+                        <i class="fa-solid fa-money-bill-transfer text-7xl text-slate-600"></i>
+                    </div>
+                    <p class="mt-8 text-xl text-center text-slate-400">拼单成功了，要去通知支付服务退款。<br>如果直接调用接口，万一网络抖动、服务宕机，<br>消息就丢了，用户就收不到退款！</p>
+                    <p class="text-6xl mt-8">🤯</p>
+                </div>
+            </div>
+            <!-- 方案：本地消息表 -->
+            <div class="comparison-box border-2 border-green-500 relative">
+                <h3 class="text-3xl font-bold text-center text-green-400 mb-6">可靠方案：本地消息表</h3>
+                 <div class="flex flex-col items-center justify-center h-full">
+                     <div class="flex items-center gap-6">
+                        <i class="fa-solid fa-server text-7xl text-blue-400"></i>
+                        <div>
+                            <p class="text-center mb-2 font-bold">1. 先记账</p>
+                            <i class="fa-solid fa-file-pen text-5xl text-green-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-center mb-2 font-bold">2. 再通知</p>
+                            <i class="fa-solid fa-arrow-right-long text-5xl text-slate-500"></i>
+                        </div>
+                        <i class="fa-solid fa-money-bill-transfer text-7xl text-green-400"></i>
+                    </div>
+                    <p class="mt-8 text-xl text-center text-slate-300">像写邮件先存草稿箱一样，先把“要通知”这件事<br>记在自己的数据库（本地消息表）里，再去通知。<br>即使通知失败，也有“检查员”定时检查，重新发送，使命必达！</p>
+                    <p class="text-6xl mt-8">🫡</p>
+                    <div class="absolute bottom-8 right-8 text-center">
+                        <i class="fa-solid fa-user-secret text-4xl text-indigo-400"></i>
+                        <p class="font-bold mt-1">检查员定时核对</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: 最终架构图 -->
+    <section id="slide6" class="slide">
+        <h2 class="text-5xl font-extrabold mb-4 text-center">最终架构：<span class="gradient-text bg-gradient-to-r from-sky-300 to-indigo-500">构建稳健的拼单服务</span></h2>
+        <p class="text-xl text-slate-400 mb-12">整合所有关键技术点，构建完整、可靠的服务架构。</p>
+        <div class="w-full max-w-5xl bg-gray-900/50 p-8 rounded-2xl border-2 border-sky-800 shadow-2xl shadow-sky-500/20">
+            <div class="grid grid-cols-3 gap-8 items-center">
+                <!-- 入口 -->
+                <div class="flex flex-col items-center gap-4">
+                    <i class="fa-solid fa-users text-6xl text-slate-300"></i>
+                    <p class="font-bold text-lg">高并发请求</p>
+                </div>
+                
+                <!-- 核心服务 -->
+                <div class="col-span-2 grid grid-cols-2 gap-6">
+                    <div class="diagram-node h-full border-red-500"><i class="fa-brands fa-redis text-4xl mb-2 text-red-400"></i><p class="font-bold">检票员<br>(分布式锁)</p></div>
+                    <div class="diagram-node h-full border-amber-500"><i class="fa-solid fa-clock text-4xl mb-2 text-amber-400"></i><p class="font-bold">智能闹钟<br>(延迟消息)</p></div>
+                    <div class="diagram-node h-full border-indigo-500"><i class="fa-solid fa-file-pen text-4xl mb-2 text-indigo-400"></i><p class="font-bold">发件箱底稿<br>(本地消息表)</p></div>
+                    <div class="diagram-node h-full border-purple-500"><i class="fa-solid fa-layer-group text-4xl mb-2 text-purple-400"></i><p class="font-bold">状态机<br>(管理订单状态)</p></div>
+                </div>
+            </div>
+            <div class="flex justify-center my-6">
+                <i class="fa-solid fa-arrow-down text-4xl text-slate-600"></i>
+            </div>
+             <div class="grid grid-cols-3 gap-4">
+                <div class="diagram-node h-full border-green-500 bg-green-500/10"><i class="fa-solid fa-database text-4xl mb-2 text-green-300"></i><p class="font-bold">数据库</p></div>
+                <div class="diagram-node h-full border-green-500 bg-green-500/10"><i class="fa-solid fa-server text-4xl mb-2 text-green-300"></i><p class="font-bold">拼单核心服务</p></div>
+                <div class="diagram-node h-full border-green-500 bg-green-500/10"><i class="fa-solid fa-paper-plane text-4xl mb-2 text-green-300"></i><p class="font-bold">可靠消息服务</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: 结尾 -->
+    <section id="slide7" class="slide border-none">
+        <i class="fa-solid fa-thumbs-up text-8xl text-sky-400 mb-8"></i>
+        <h2 class="text-6xl font-extrabold text-center">你，学废了吗？</h2>
+        <p class="mt-4 text-2xl text-slate-400">点赞关注，带你架构升天！</p>
+    </section>
+
+    <!-- --- 新增：导航点功能的JavaScript逻辑 --- -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sections = document.querySelectorAll('section.slide');
+            const navContainer = document.getElementById('side-nav');
+            const navDots = [];
+
+            // 1. 根据section数量创建导航点
+            sections.forEach((section, index) => {
+                const dot = document.createElement('div');
+                dot.classList.add('nav-dot');
+                dot.dataset.index = index;
+                
+                // 2. 为每个导航点添加点击事件，滚动到对应section
+                dot.addEventListener('click', () => {
+                    section.scrollIntoView({ behavior: 'smooth' });
+                });
+
+                navContainer.appendChild(dot);
+                navDots.push(dot);
+            });
+
+            // 3. 使用IntersectionObserver来监听哪个section在可视区域内
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const index = Array.from(sections).indexOf(entry.target);
+                        
+                        // 移除所有导航点的active状态
+                        navDots.forEach(d => d.classList.remove('active'));
+                        
+                        // 为当前可视区域的section对应的导航点添加active状态
+                        if (navDots[index]) {
+                            navDots[index].classList.add('active');
+                        }
+                    }
+                });
+            }, { 
+                root: null, // 使用浏览器视口作为根
+                threshold: 0.5 // 当section的50%进入视口时触发
+            });
+
+            // 4. 让observer开始监听所有的section
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+
+</body>
+</html>

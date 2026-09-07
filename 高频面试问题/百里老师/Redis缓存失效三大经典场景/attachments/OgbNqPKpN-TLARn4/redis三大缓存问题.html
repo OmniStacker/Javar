@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redis 缓存失效三大经典场景 - 终极演示版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 基础设置 --- */
+        * { box-sizing: border-box; }
+        .reveal { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace !important; }
+        
+        /* --- 布局核心 --- */
+        .reveal .slides > section {
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            /* 关键：允许内部容器控制布局 */
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; 
+            overflow: hidden !important; 
+        }
+
+        /* --- 核心容器：安全区域 --- */
+        .content-container {
+            width: 1150px; 
+            height: 680px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* 默认居中，JS 会根据页面类型修改这个属性 */
+            justify-content: center; 
+            position: relative;
+        }
+
+        /* --- 视觉组件样式 --- */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        /* 标题样式 - 增加高度占位，防止抖动 */
+        .slide-title {
+            font-size: 3.2rem;
+            font-weight: 800;
+            margin-bottom: 0; /* 由 JS 控制间距 */
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            text-align: center;
+            width: 100%;
+            flex-shrink: 0;
+            line-height: 1.2;
+            height: 80px; /* 固定标题区域高度 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 主题色定义 */
+        .theme-cover { --gradient-start: #f87171; --gradient-end: #fb923c; }
+        .theme-penetration { --gradient-start: #a78bfa; --gradient-end: #c084fc; }
+        .theme-breakdown { --gradient-start: #fbbf24; --gradient-end: #fcd34d; }
+        .theme-avalanche { --gradient-start: #22d3ee; --gradient-end: #67e8f9; }
+        .theme-summary { --gradient-start: #e2e8f0; --gradient-end: #94a3b8; }
+
+        /* 动画定义 */
+        @keyframes float-arrow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+        }
+        .animate-float { animation: float-arrow 1.5s ease-in-out infinite; }
+        
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+
+        /* Reveal Fragment 修复 */
+        .reveal .slides section .fragment.visible:not(.current-fragment) {}
+        .reveal .slides section .fragment:not(.visible) { opacity: 0; visibility: hidden; }
+        .reveal .slides section .fragment.visible { opacity: 1; visibility: visible; }
+
+    </style>
+</head>
+<body>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- ================= 封面页 ================= -->
+            <section class="theme-cover" data-background-gradient="linear-gradient(135deg, #450a0a 0%, #7c2d12 100%)">
+                <div class="content-container">
+                    <!-- 顶部标签 -->
+                    <div class="flex items-center gap-3 mb-10 fragment fade-down">
+                        <span class="px-3 py-1.5 border border-red-400/50 rounded-md text-red-100 font-mono text-xs bg-red-900/30 flex items-center gap-2 backdrop-blur-sm">
+                            <i class="fa-brands fa-redis text-red-400"></i>
+                            Redis 核心架构指南
+                        </span>
+                        <span class="h-px w-8 bg-gradient-to-r from-red-500/50 to-transparent"></span>
+                        <span class="text-red-300/80 text-xs tracking-widest font-bold">高可用系列</span>
+                    </div>
+
+                    <!-- 主标题 -->
+                    <div class="text-center mb-6 relative z-10">
+                        <h1 class="text-[5.5rem] font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-red-100 to-red-200 leading-[1.1] drop-shadow-[0_0_35px_rgba(220,38,38,0.6)] tracking-tight">
+                            缓存失效
+                        </h1>
+                        <div class="text-[3.5rem] font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-200 via-orange-100 to-orange-200 mt-2 drop-shadow-md">
+                            三大经典场景
+                        </div>
+                    </div>
+
+                    <!-- 副标题 -->
+                    <p class="text-lg text-red-100/60 font-light mb-16 tracking-[0.2em] uppercase fragment fade-up">
+                        从 <span class="text-red-300 font-normal">攻击原理</span> 到 <span class="text-orange-300 font-normal">生产级防御</span> 的完整解析
+                    </p>
+
+                    <!-- 底部卡片 -->
+                    <div class="grid grid-cols-3 gap-6 w-full max-w-5xl px-8 fragment fade-up" style="transition-delay: 0.2s">
+                        <div class="glass-panel p-5 text-center border-t-4 border-purple-500/80 bg-gradient-to-b from-purple-900/20 to-transparent hover:-translate-y-1 transition-transform duration-300">
+                            <div class="mb-3 w-12 h-12 mx-auto rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
+                                <i class="fa-solid fa-ghost text-purple-300 text-xl"></i>
+                            </div>
+                            <div class="text-purple-100 font-bold text-xl mb-1">缓存穿透</div>
+                            <div class="text-[10px] text-purple-300/60 font-mono uppercase tracking-wider">Penetration</div>
+                        </div>
+                        <div class="glass-panel p-5 text-center border-t-4 border-yellow-500/80 bg-gradient-to-b from-yellow-900/20 to-transparent hover:-translate-y-1 transition-transform duration-300">
+                            <div class="mb-3 w-12 h-12 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center border border-yellow-500/30">
+                                <i class="fa-solid fa-bolt text-yellow-300 text-xl"></i>
+                            </div>
+                            <div class="text-yellow-100 font-bold text-xl mb-1">缓存击穿</div>
+                            <div class="text-[10px] text-yellow-300/60 font-mono uppercase tracking-wider">Breakdown</div>
+                        </div>
+                        <div class="glass-panel p-5 text-center border-t-4 border-cyan-500/80 bg-gradient-to-b from-cyan-900/20 to-transparent hover:-translate-y-1 transition-transform duration-300">
+                            <div class="mb-3 w-12 h-12 mx-auto rounded-full bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30">
+                                <i class="fa-solid fa-mountain text-cyan-300 text-xl"></i>
+                            </div>
+                            <div class="text-cyan-100 font-bold text-xl mb-1">缓存雪崩</div>
+                            <div class="text-[10px] text-cyan-300/60 font-mono uppercase tracking-wider">Avalanche</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= 场景1：缓存穿透 (修复版：高度自适应) ================= -->
+<section class="theme-penetration" data-background-gradient="linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)">
+    <div class="content-container">
+        <h2 class="slide-title">🕳️ 缓存穿透</h2>
+        
+        <!-- 布局调整：高度从 480px 压缩到 420px，确保底部有空间 -->
+        <div class="grid grid-cols-2 gap-10 w-full items-center px-4 mt-2">
+            
+            <!-- 左侧：正常业务流程 -->
+            <div class="glass-panel p-5 flex flex-col items-center justify-between h-[420px] fragment fade-right border-l-4 border-emerald-500/50">
+                <!-- 头部状态栏 -->
+                <div class="w-full border-b border-white/10 pb-2 mb-2 flex justify-between items-center shrink-0">
+                    <span class="text-emerald-300 font-bold flex items-center gap-2 text-base">
+                        <i class="fa-solid fa-circle-check"></i> 正常请求
+                    </span>
+                    <span class="text-[10px] font-mono bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-200 border border-emerald-500/30">id=1001</span>
+                </div>
+                
+                <!-- 流程图 (紧凑版) -->
+                <div class="flex flex-col items-center gap-2 w-full flex-1 justify-center relative">
+                    <!-- 用户 -->
+                    <div class="flex flex-col items-center z-10">
+                        <div class="w-12 h-12 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-lg shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+                            <i class="fa-solid fa-user text-emerald-200"></i>
+                        </div>
+                        <span class="text-[10px] text-emerald-200/70 mt-0.5">普通用户</span>
+                    </div>
+
+                    <!-- 向下箭头 -->
+                    <i class="fa-solid fa-arrow-down text-emerald-400/80 animate-float text-sm"></i>
+
+                    <!-- Redis (命中) -->
+                    <div class="w-full py-2 px-3 bg-emerald-600/20 border border-emerald-400/50 rounded-lg text-center backdrop-blur-sm z-10">
+                        <div class="flex items-center justify-center gap-2 mb-0.5">
+                            <i class="fa-brands fa-redis text-xl text-emerald-300"></i>
+                            <span class="font-bold text-emerald-100 text-sm">Redis 缓存</span>
+                        </div>
+                        <div class="text-[10px] text-emerald-300 font-bold bg-emerald-500/20 inline-block px-2 rounded-full">✓ 命中数据</div>
+                    </div>
+
+                    <!-- 向上返回箭头 -->
+                    <div class="flex items-center gap-1">
+                        <i class="fa-solid fa-arrow-up text-emerald-400/80 animate-float text-sm"></i>
+                        <span class="text-[10px] text-emerald-400/80">直接返回</span>
+                    </div>
+
+                    <!-- 数据库 (安全) -->
+                    <div class="w-full py-2 px-3 bg-gray-800/40 border border-gray-600/30 rounded-lg text-center opacity-60 grayscale">
+                        <div class="flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-database text-base text-gray-400"></i>
+                            <span class="text-xs text-gray-300">数据库</span>
+                        </div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">未被访问 (空闲)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：穿透攻击流程 -->
+            <div class="glass-panel p-5 flex flex-col items-center justify-between h-[420px] fragment fade-left border-l-4 border-red-500/50">
+                <!-- 头部状态栏 -->
+                <div class="w-full border-b border-white/10 pb-2 mb-2 flex justify-between items-center shrink-0">
+                    <span class="text-red-300 font-bold flex items-center gap-2 text-base">
+                        <i class="fa-solid fa-triangle-exclamation"></i> 穿透攻击
+                    </span>
+                    <span class="text-[10px] font-mono bg-red-500/20 px-2 py-0.5 rounded text-red-200 border border-red-500/30 animate-pulse">id=-1</span>
+                </div>
+                
+                <!-- 流程图 (紧凑版) -->
+                <div class="flex flex-col items-center gap-2 w-full flex-1 justify-center relative">
+                    <!-- 黑客 -->
+                    <div class="flex flex-col items-center z-10">
+                        <div class="w-12 h-12 rounded-full bg-red-500/20 border-2 border-red-400 flex items-center justify-center text-lg shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+                            <i class="fa-solid fa-user-secret text-red-200"></i>
+                        </div>
+                        <span class="text-[10px] text-red-200/70 mt-0.5">恶意攻击者</span>
+                    </div>
+
+                    <!-- 向下箭头 -->
+                    <i class="fa-solid fa-arrow-down text-red-400/80 animate-float text-sm"></i>
+
+                    <!-- Redis (未命中) -->
+                    <div class="w-full py-2 px-3 bg-orange-600/20 border border-orange-400/50 rounded-lg text-center backdrop-blur-sm z-10">
+                        <div class="flex items-center justify-center gap-2 mb-0.5">
+                            <i class="fa-brands fa-redis text-xl text-orange-300"></i>
+                            <span class="font-bold text-orange-100 text-sm">Redis 缓存</span>
+                        </div>
+                        <div class="text-[10px] text-orange-300 font-bold bg-orange-500/20 inline-block px-2 rounded-full">✗ 未找到</div>
+                    </div>
+
+                    <!-- 穿透箭头 -->
+                    <div class="flex flex-col items-center -my-1">
+                        <i class="fa-solid fa-arrow-down-long text-red-500 text-xl animate-bounce drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]"></i>
+                        <span class="text-[10px] text-red-400 font-bold tracking-widest uppercase scale-75">Penetrate</span>
+                    </div>
+
+                    <!-- 数据库 (过载) -->
+                    <div class="w-full py-2 px-3 bg-red-900/40 border-2 border-red-500 rounded-lg text-center shadow-[0_0_25px_rgba(220,38,38,0.4)] animate-pulse">
+                        <div class="flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-database text-base text-red-200"></i>
+                            <span class="text-xs text-red-100 font-bold">数据库</span>
+                        </div>
+                        <div class="text-[10px] text-red-300 mt-0.5 font-bold">⚠️ 压力过载 (Overload)</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 底部核心总结 (现在有足够的空间显示了) -->
+        <div class="mt-8 text-center fragment fade-up shrink-0">
+            <p class="text-base text-purple-200/80 bg-purple-900/30 px-6 py-2 rounded-full inline-block border border-purple-500/30 backdrop-blur-md shadow-lg">
+                <span class="font-bold text-red-300">核心问题：</span>查询<span class="border-b border-red-400/50 mx-1 font-bold text-white">不存在的数据</span>，导致流量直接冲击数据库
+            </p>
+        </div>
+    </div>
+</section>
+
+
+            <!-- ================= 穿透防御：布隆过滤器 ================= -->
+            <section class="theme-penetration" data-background-gradient="linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)">
+                <div class="content-container">
+                    <h2 class="slide-title">🛡️ 解决方案：布隆过滤器</h2>
+                    
+                    <div class="flex items-center justify-center w-full h-[320px] gap-6 mt-6">
+                        <div class="flex flex-col items-center fragment fade-right" data-fragment-index="1">
+                            <div class="glass-panel w-24 h-24 rounded-full flex items-center justify-center border-2 border-blue-400 bg-blue-600/20 shadow-[0_0_20px_rgba(96,165,250,0.3)]">
+                                <i class="fa-solid fa-paper-plane text-3xl text-blue-200"></i>
+                            </div>
+                            <div class="mt-3 text-sm font-bold text-blue-200">客户端请求</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-2xl text-white/20 fragment fade-in" data-fragment-index="2"></i>
+                        <div class="flex flex-col items-center fragment zoom-in" data-fragment-index="2">
+                            <div class="glass-panel w-48 h-48 rounded-2xl flex flex-col items-center justify-center border-4 border-emerald-400 bg-gradient-to-br from-emerald-600/30 to-teal-600/30 shadow-[0_0_40px_rgba(52,211,153,0.4)] relative overflow-hidden group">
+                                <div class="absolute top-4 flex gap-1 opacity-50">
+                                    <div class="w-2 h-2 bg-emerald-300 rounded-sm"></div>
+                                    <div class="w-2 h-2 bg-emerald-300/30 rounded-sm"></div>
+                                    <div class="w-2 h-2 bg-emerald-300 rounded-sm"></div>
+                                    <div class="w-2 h-2 bg-emerald-300/30 rounded-sm"></div>
+                                    <div class="w-2 h-2 bg-emerald-300 rounded-sm"></div>
+                                </div>
+                                <i class="fa-solid fa-filter text-6xl text-emerald-200 mb-3 mt-2 group-hover:scale-110 transition-transform duration-300"></i>
+                                <div class="text-xl font-bold text-emerald-100">Bloom Filter</div>
+                                <div class="text-xs text-emerald-300 mt-1 bg-emerald-900/40 px-2 py-0.5 rounded">快速存在性检测</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col h-40 justify-between py-2 fragment fade-left" data-fragment-index="3">
+                            <div class="flex items-center gap-4 group">
+                                <div class="flex items-center gap-2 w-32 justify-end">
+                                    <span class="text-xs text-red-300 font-mono opacity-0 group-hover:opacity-100 transition-opacity">Key不存在</span>
+                                    <div class="h-[2px] w-12 bg-red-500/50 relative">
+                                        <div class="absolute right-0 -top-1 w-2 h-2 bg-red-500 rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div class="glass-panel px-5 py-3 rounded-lg border border-red-500/50 bg-red-900/40 flex items-center gap-3 w-40">
+                                    <i class="fa-solid fa-ban text-red-400 text-xl"></i>
+                                    <div class="text-sm font-bold text-red-200">直接拦截</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4 group">
+                                <div class="flex items-center gap-2 w-32 justify-end">
+                                    <span class="text-xs text-emerald-300 font-mono opacity-0 group-hover:opacity-100 transition-opacity">可能存在</span>
+                                    <div class="h-[2px] w-12 bg-emerald-500/50 relative">
+                                        <div class="absolute right-0 -top-1 w-2 h-2 bg-emerald-500 rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div class="glass-panel px-5 py-3 rounded-lg border border-emerald-500/50 bg-emerald-900/40 flex items-center gap-3 w-40">
+                                    <i class="fa-brands fa-redis text-emerald-400 text-xl"></i>
+                                    <div class="text-sm font-bold text-emerald-200">放行至缓存</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-8 w-full mt-10 px-8 fragment fade-up" data-fragment-index="4">
+                        <div class="glass-panel p-4 flex items-center gap-4 border-l-4 border-emerald-400 bg-emerald-900/20 hover:bg-emerald-900/30 transition-colors">
+                            <div class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                <i class="fa-solid fa-hard-drive text-emerald-300"></i>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-emerald-400 font-mono">1.2 MB</div>
+                                <div class="text-xs text-gray-400">存储 100万 数据</div>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-4 flex items-center gap-4 border-l-4 border-blue-400 bg-blue-900/20 hover:bg-blue-900/30 transition-colors">
+                            <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                <i class="fa-solid fa-bolt text-blue-300"></i>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-blue-400 font-mono">O(k)</div>
+                                <div class="text-xs text-gray-400">极速查询效率</div>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-4 flex items-center gap-4 border-l-4 border-purple-400 bg-purple-900/20 hover:bg-purple-900/30 transition-colors">
+                            <div class="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                <i class="fa-solid fa-shield-halved text-purple-300"></i>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-purple-400 font-mono">99.9%</div>
+                                <div class="text-xs text-gray-400">非法请求拦截率</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= 场景2：缓存击穿 ================= -->
+            <section class="theme-breakdown" data-background-gradient="linear-gradient(135deg, #78350f 0%, #92400e 100%)">
+                <div class="content-container">
+                    <h2 class="slide-title">⚡ 缓存击穿</h2>
+                    
+                    <div class="flex items-center justify-between w-full h-[420px] relative mt-6 px-8">
+                        <div class="absolute top-1/2 left-10 right-10 h-1 bg-gradient-to-r from-emerald-500/50 via-yellow-500/50 to-red-500/50 -z-10 rounded-full"></div>
+                        <div class="flex flex-col items-center group">
+                            <div class="mb-4 px-3 py-1 rounded bg-emerald-900/50 border border-emerald-500/30 text-emerald-300 text-sm font-mono">T0: 正常服务</div>
+                            <div class="glass-panel w-40 h-40 rounded-2xl flex flex-col items-center justify-center border-2 border-emerald-500 bg-emerald-900/20 shadow-[0_0_20px_rgba(16,185,129,0.2)] transition-transform hover:scale-105">
+                                <div class="relative">
+                                    <i class="fa-solid fa-fire text-4xl text-emerald-400 mb-2"></i>
+                                    <span class="absolute -top-2 -right-2 flex h-3 w-3">
+                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                    </span>
+                                </div>
+                                <div class="text-lg font-bold text-emerald-100">热点 Key</div>
+                                <div class="text-xs text-emerald-300/70 mt-1">微博热搜 / 秒杀</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center fragment fade-up" data-fragment-index="1">
+                            <div class="mb-4 px-3 py-1 rounded bg-yellow-900/50 border border-yellow-500/30 text-yellow-300 text-sm font-mono">T1: 瞬间过期</div>
+                            <div class="glass-panel w-40 h-40 rounded-2xl flex flex-col items-center justify-center border-2 border-yellow-500 bg-yellow-900/20 shadow-[0_0_30px_rgba(234,179,8,0.3)] animate-pulse">
+                                <i class="fa-solid fa-hourglass-end text-4xl text-yellow-400 mb-2"></i>
+                                <div class="text-lg font-bold text-yellow-100">TTL 到期</div>
+                                <div class="text-xs text-yellow-300/70 mt-1">毫秒级空窗期</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center justify-center w-32 fragment fade-in" data-fragment-index="2">
+                            <div class="text-red-400 font-bold text-sm mb-2 animate-pulse whitespace-nowrap">🌊 万级并发洪峰</div>
+                            <div class="flex -space-x-4">
+                                <i class="fa-solid fa-angles-right text-4xl text-red-500/40 animate-float" style="animation-delay: 0s"></i>
+                                <i class="fa-solid fa-angles-right text-4xl text-red-500/70 animate-float" style="animation-delay: 0.1s"></i>
+                                <i class="fa-solid fa-angles-right text-4xl text-red-500 animate-float" style="animation-delay: 0.2s"></i>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center fragment fade-up" data-fragment-index="3">
+                            <div class="mb-4 px-3 py-1 rounded bg-red-900/50 border border-red-500/30 text-red-300 text-sm font-mono">T2: 击穿 DB</div>
+                            <div class="glass-panel w-48 h-48 rounded-2xl flex flex-col items-center justify-center border-4 border-red-500 bg-red-900/40 shadow-[0_0_50px_rgba(220,38,38,0.5)] relative overflow-hidden">
+                                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxsaW5lIHgxPSIwIiB5MT0iMCIgeDI9IjEwMCIgeTI9IjEwMCIgc3Ryb2tlPSJyZdi1MzMzIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=')] opacity-20"></div>
+                                <i class="fa-solid fa-database text-5xl text-red-300 mb-3 animate-bounce"></i>
+                                <div class="text-xl font-bold text-red-100">数据库崩溃</div>
+                                <div class="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded mt-2">FATAL ERROR</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-5 mt-10 w-full max-w-4xl border-l-4 border-yellow-500 fragment fade-up bg-gradient-to-r from-yellow-900/20 to-transparent" data-fragment-index="4">
+                        <div class="flex items-start gap-4">
+                            <div class="bg-yellow-500/20 p-2 rounded-lg">
+                                <i class="fa-solid fa-triangle-exclamation text-2xl text-yellow-400"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-yellow-200 mb-1">场景特征</h3>
+                                <p class="text-gray-300 text-sm leading-relaxed">
+                                    <span class="text-yellow-400 font-bold border-b border-yellow-500/50">单个热点 Key</span> 过期，恰逢 <span class="text-red-400 font-bold border-b border-red-500/50">超高并发</span> 访问。
+                                    <br>就像“防洪堤坝”上出现了一个缺口，洪水瞬间集中冲击该点。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= 击穿防御：互斥锁 ================= -->
+            <section class="theme-breakdown" data-background-gradient="linear-gradient(135deg, #78350f 0%, #92400e 100%)">
+                <div class="content-container">
+                    <h2 class="slide-title">🔐 解决方案：互斥锁 (Mutex)</h2>
+
+                    <div class="flex w-full h-[480px] gap-4 items-center justify-center mt-4">
+                        <div class="flex flex-col gap-3 w-52 relative">
+                            <div class="glass-panel px-3 py-3 flex items-center justify-between border-l-4 border-yellow-400 bg-yellow-900/20 fragment fade-right" data-fragment-index="1">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-user-astronaut text-yellow-300"></i> 
+                                    <span class="font-bold text-yellow-100 text-sm">Thread A</span>
+                                </div>
+                                <i class="fa-solid fa-key text-yellow-400 text-xs animate-pulse"></i>
+                            </div>
+                            <div class="glass-panel px-3 py-3 flex items-center justify-between border-l-4 border-gray-600 opacity-60 fragment fade-right" data-fragment-index="1">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-user text-gray-400"></i> 
+                                    <span class="text-gray-300 text-sm">Thread B</span>
+                                </div>
+                                <i class="fa-solid fa-spinner text-gray-400 text-xs animate-spin"></i>
+                            </div>
+                            <div class="glass-panel px-3 py-3 flex items-center justify-between border-l-4 border-gray-600 opacity-60 fragment fade-right" data-fragment-index="1">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-user text-gray-400"></i> 
+                                    <span class="text-gray-300 text-sm">Thread C</span>
+                                </div>
+                                <i class="fa-solid fa-spinner text-gray-400 text-xs animate-spin"></i>
+                            </div>
+                            <div class="absolute -right-5 top-1/2 -translate-y-1/2 w-1 h-32 border-r-2 border-dashed border-gray-500/50"></div>
+                        </div>
+
+                        <div class="flex flex-col items-center gap-2 mx-2 fragment zoom-in" data-fragment-index="2">
+                            <div class="glass-panel w-56 h-56 flex flex-col items-center justify-center border-4 border-yellow-500 bg-gradient-to-b from-yellow-900/40 to-transparent shadow-[0_0_40px_rgba(234,179,8,0.2)] relative">
+                                <div class="relative">
+                                    <i class="fa-solid fa-lock text-6xl text-yellow-400 mb-4 drop-shadow-lg"></i>
+                                    <i class="fa-solid fa-check absolute -bottom-1 -right-1 text-2xl text-green-400 bg-black rounded-full border border-green-400 p-1"></i>
+                                </div>
+                                <div class="text-xl font-bold text-yellow-100 font-mono">SETNX Lock</div>
+                                <div class="mt-3 px-3 py-1 bg-yellow-500/20 rounded text-xs text-yellow-200 border border-yellow-500/30">
+                                    TTL: 10s (防死锁)
+                                </div>
+                            </div>
+                            <span class="text-xs text-gray-400 mt-2">Redis 分布式锁</span>
+                        </div>
+
+                        <div class="flex flex-col gap-6 w-64">
+                            <div class="flex items-center gap-2 fragment fade-left" data-fragment-index="3">
+                                <i class="fa-solid fa-arrow-right text-yellow-500 text-xl"></i>
+                                <div class="glass-panel p-4 border border-emerald-500 bg-emerald-900/30 w-full relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 p-1 bg-emerald-500 text-[10px] font-bold text-black rounded-bl">Thread A</div>
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <i class="fa-solid fa-database text-2xl text-emerald-400"></i>
+                                        <div>
+                                            <div class="font-bold text-emerald-200 text-sm">查询 DB</div>
+                                            <div class="text-[10px] text-emerald-400/70">并回写 Redis</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 fragment fade-left" data-fragment-index="3">
+                                <i class="fa-solid fa-arrow-right text-gray-500 text-xl border-dashed"></i>
+                                <div class="glass-panel p-4 border border-blue-500 bg-blue-900/30 w-full relative opacity-80">
+                                    <div class="absolute top-0 right-0 p-1 bg-blue-500/50 text-[10px] font-bold text-white rounded-bl">Thread B/C</div>
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <i class="fa-solid fa-rotate-right text-2xl text-blue-400 animate-spin-slow"></i>
+                                        <div>
+                                            <div class="font-bold text-blue-200 text-sm">Sleep & Retry</div>
+                                            <div class="text-[10px] text-blue-400/70">等待锁释放</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6 mt-6 px-12 fragment fade-up" data-fragment-index="4">
+                        <div class="glass-panel p-3 flex items-center gap-3 border-l-4 border-green-500 bg-green-900/10">
+                            <i class="fa-solid fa-thumbs-up text-green-400 text-xl"></i>
+                            <div class="text-sm text-gray-300"><span class="text-green-400 font-bold">优点：</span>保证数据强一致性，避免重复查库。</div>
+                        </div>
+                        <div class="glass-panel p-3 flex items-center gap-3 border-l-4 border-red-500 bg-red-900/10">
+                            <i class="fa-solid fa-thumbs-down text-red-400 text-xl"></i>
+                            <div class="text-sm text-gray-300"><span class="text-red-400 font-bold">缺点：</span>线程需要等待，性能有所损耗。</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= 场景3：缓存雪崩 ================= -->
+            <section class="theme-avalanche" data-background-gradient="linear-gradient(135deg, #164e63 0%, #0e7490 100%)">
+                <div class="content-container">
+                    <h2 class="slide-title">❄️ 缓存雪崩 (Cache Avalanche)</h2>
+
+                    <div class="grid grid-cols-12 gap-6 w-full h-[500px] mt-4">
+                        <div class="col-span-5 glass-panel p-0 overflow-hidden relative border-2 border-cyan-500/30 flex flex-col">
+                            <div class="absolute inset-0 pointer-events-none opacity-20">
+                                <i class="fa-regular fa-snowflake absolute top-4 left-4 text-white animate-bounce" style="animation-duration: 3s"></i>
+                                <i class="fa-regular fa-snowflake absolute top-10 right-10 text-white animate-bounce" style="animation-duration: 4s"></i>
+                            </div>
+                            <div class="bg-cyan-900/50 py-2 text-center border-b border-cyan-500/30 shrink-0">
+                                <h3 class="text-cyan-300 font-bold text-sm"><i class="fa-solid fa-triangle-exclamation mr-2"></i>灾难演变</h3>
+                            </div>
+                            <div class="flex-1 flex flex-col justify-center p-4 gap-6">
+                                <div class="w-full fragment fade-in" data-fragment-index="1">
+                                    <div class="flex justify-between items-end mb-1">
+                                        <span class="text-[10px] text-cyan-200">Redis Keys</span>
+                                        <span class="text-[10px] font-bold text-red-400 animate-pulse">TTL: 0s</span>
+                                    </div>
+                                    <div class="grid grid-cols-6 gap-1">
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                        <div class="h-3 rounded bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>
+                                    </div>
+                                    <div class="text-center text-[10px] text-red-300 mt-1 opacity-80">失效瞬间</div>
+                                </div>
+                                <div class="flex justify-center gap-4 fragment fade-in" data-fragment-index="2">
+                                    <i class="fa-solid fa-arrow-down-long text-2xl text-red-500 animate-pulse" style="animation-delay: 0s"></i>
+                                    <i class="fa-solid fa-arrow-down-long text-2xl text-red-500 animate-pulse" style="animation-delay: 0.2s"></i>
+                                    <i class="fa-solid fa-arrow-down-long text-2xl text-red-500 animate-pulse" style="animation-delay: 0.4s"></i>
+                                </div>
+                                <div class="bg-red-900/30 border border-red-500/50 rounded-lg p-3 fragment fade-in" data-fragment-index="2">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-database text-lg text-red-400"></i>
+                                            <span class="text-xs font-bold text-red-200">MySQL</span>
+                                        </div>
+                                        <span class="text-[10px] font-bold text-red-500 bg-black/20 px-1.5 rounded">CRITICAL</span>
+                                    </div>
+                                    <div class="w-full h-3 bg-gray-800 rounded-full overflow-hidden border border-gray-600 relative">
+                                        <div class="absolute top-0 left-0 h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-600 w-full animate-pulse"></div>
+                                    </div>
+                                    <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                                        <span>Load: 0%</span>
+                                        <span class="text-red-400 font-bold">100%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-span-7 flex flex-col gap-4 h-full">
+                            <div class="glass-panel p-4 border-l-4 border-emerald-400 flex-1 flex flex-col justify-center fragment fade-left" data-fragment-index="3">
+                                <h3 class="text-base font-bold text-emerald-300 mb-3 flex items-center gap-2">
+                                    <i class="fa-solid fa-dice text-emerald-400"></i> 策略一：TTL 随机化
+                                </h3>
+                                <div class="flex items-center justify-around w-full px-4">
+                                    <div class="flex flex-col items-center gap-1 opacity-50 grayscale">
+                                        <div class="flex items-end gap-1 h-14">
+                                            <div class="w-3 h-14 bg-red-500 rounded-t"></div>
+                                            <div class="w-3 h-14 bg-red-500 rounded-t"></div>
+                                            <div class="w-3 h-14 bg-red-500 rounded-t"></div>
+                                        </div>
+                                        <span class="text-[10px]">固定过期时间</span>
+                                    </div>
+                                    <i class="fa-solid fa-arrow-right text-gray-500 text-lg"></i>
+                                    <div class="flex flex-col items-center gap-1">
+                                        <div class="flex items-end gap-1 h-14">
+                                            <div class="w-3 h-8 bg-emerald-500 rounded-t"></div>
+                                            <div class="w-3 h-14 bg-emerald-500 rounded-t"></div>
+                                            <div class="w-3 h-5 bg-emerald-500 rounded-t"></div>
+                                            <div class="w-3 h-10 bg-emerald-500 rounded-t"></div>
+                                        </div>
+                                        <span class="text-[10px] text-emerald-200">随机过期时间</span>
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-center">
+                                    <code class="text-xs bg-black/30 px-3 py-1 rounded text-emerald-100 font-mono border border-emerald-500/20">
+                                        expire = base_time + random(0, 300)
+                                    </code>
+                                </div>
+                            </div>
+
+                            <div class="glass-panel p-4 border-l-4 border-blue-400 flex-1 flex flex-col justify-center fragment fade-left" data-fragment-index="4">
+                                <h3 class="text-base font-bold text-blue-300 mb-3 flex items-center gap-2">
+                                    <i class="fa-solid fa-server text-blue-400"></i> 策略二：高可用架构
+                                </h3>
+                                <div class="flex items-center justify-center gap-6">
+                                    <div class="flex flex-col items-center relative">
+                                        <i class="fa-solid fa-crown text-yellow-500 absolute -top-3 text-xs animate-bounce"></i>
+                                        <div class="w-12 h-12 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg border border-blue-400">
+                                            <i class="fa-brands fa-redis text-2xl text-white"></i>
+                                        </div>
+                                        <span class="text-[10px] text-blue-200 mt-1">Master</span>
+                                    </div>
+                                    <div class="flex flex-col gap-2 justify-center">
+                                        <div class="w-8 h-[1px] bg-blue-400/50"></div>
+                                        <div class="w-8 h-[1px] bg-blue-400/50"></div>
+                                    </div>
+                                    <div class="flex flex-col gap-2">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-8 h-8 rounded bg-blue-900/50 flex items-center justify-center border border-blue-500/30">
+                                                <i class="fa-brands fa-redis text-sm text-blue-300"></i>
+                                            </div>
+                                            <span class="text-[10px] text-gray-400">Slave 1</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-8 h-8 rounded bg-blue-900/50 flex items-center justify-center border border-blue-500/30">
+                                                <i class="fa-brands fa-redis text-sm text-blue-300"></i>
+                                            </div>
+                                            <span class="text-[10px] text-gray-400">Slave 2</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-center text-gray-400 mt-3">Redis Cluster / Sentinel 故障转移</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= 总结页 ================= -->
+            <section class="theme-summary" data-background-gradient="linear-gradient(135deg, #0f172a 0%, #1e293b 100%)">
+                <div class="content-container">
+                    <div class="text-center mb-10">
+                        <h2 class="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-cyan-200 mb-4">
+                            🛡️ 核心防御架构总结
+                        </h2>
+                        <p class="text-gray-400 text-lg">Redis 缓存三大经典问题与对策</p>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-8 w-full px-4">
+                        <div class="glass-panel p-0 flex flex-col overflow-hidden group hover:border-purple-400/50 transition-all duration-300 fragment fade-up">
+                            <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/20 blur-3xl rounded-full group-hover:bg-purple-500/30 transition-all"></div>
+                            <div class="p-6 flex-1 text-center relative z-10">
+                                <div class="w-20 h-20 mx-auto bg-purple-900/50 rounded-full flex items-center justify-center mb-4 border border-purple-500/30 group-hover:scale-110 transition-transform duration-300">
+                                    <i class="fa-solid fa-ghost text-4xl text-purple-300"></i>
+                                </div>
+                                <h3 class="text-2xl font-bold text-purple-200 mb-1">缓存穿透</h3>
+                                <div class="text-xs font-mono text-purple-400/60 mb-4">Cache Penetration</div>
+                                <p class="text-sm text-gray-300 leading-relaxed">
+                                    查询<span class="text-purple-300 font-bold">根本不存在</span>的数据<br>
+                                    请求直达数据库
+                                </p>
+                            </div>
+                            <div class="bg-purple-900/30 p-4 border-t border-purple-500/20">
+                                <div class="text-[10px] text-purple-300 uppercase tracking-widest mb-2 text-center">核心解法</div>
+                                <div class="flex flex-col gap-2">
+                                    <div class="bg-purple-600/40 py-2 rounded text-center text-purple-100 font-bold text-sm border border-purple-500/30 shadow-[0_0_10px_rgba(147,51,234,0.3)]">
+                                        <i class="fa-solid fa-filter mr-1"></i> 布隆过滤器
+                                    </div>
+                                    <div class="text-[10px] text-center text-gray-400">备选：缓存空对象 (TTL短)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel p-0 flex flex-col overflow-hidden group hover:border-yellow-400/50 transition-all duration-300 fragment fade-up" data-fragment-index="1">
+                            <div class="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/20 blur-3xl rounded-full group-hover:bg-yellow-500/30 transition-all"></div>
+                            <div class="p-6 flex-1 text-center relative z-10">
+                                <div class="w-20 h-20 mx-auto bg-yellow-900/50 rounded-full flex items-center justify-center mb-4 border border-yellow-500/30 group-hover:scale-110 transition-transform duration-300">
+                                    <i class="fa-solid fa-hammer text-4xl text-yellow-300"></i>
+                                </div>
+                                                                <h3 class="text-2xl font-bold text-yellow-200 mb-1">缓存击穿</h3>
+                                <div class="text-xs font-mono text-yellow-400/60 mb-4">Hotspot Invalid</div>
+                                <p class="text-sm text-gray-300 leading-relaxed">
+                                    <span class="text-yellow-300 font-bold">热点 Key</span> 突然失效<br>
+                                    并发流量击穿 DB
+                                </p>
+                            </div>
+                            <div class="bg-yellow-900/30 p-4 border-t border-yellow-500/20">
+                                <div class="text-[10px] text-yellow-300 uppercase tracking-widest mb-2 text-center">核心解法</div>
+                                <div class="flex flex-col gap-2">
+                                    <div class="bg-yellow-600/40 py-2 rounded text-center text-yellow-100 font-bold text-sm border border-yellow-500/30 shadow-[0_0_10px_rgba(202,138,4,0.3)]">
+                                        <i class="fa-solid fa-lock mr-1"></i> 互斥锁 (Mutex)
+                                    </div>
+                                    <div class="text-[10px] text-center text-gray-400">备选：逻辑过期 (不删除)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel p-0 flex flex-col overflow-hidden group hover:border-cyan-400/50 transition-all duration-300 fragment fade-up" data-fragment-index="2">
+                            <div class="absolute -top-10 -right-10 w-32 h-32 bg-cyan-500/20 blur-3xl rounded-full group-hover:bg-cyan-500/30 transition-all"></div>
+                            <div class="p-6 flex-1 text-center relative z-10">
+                                <div class="w-20 h-20 mx-auto bg-cyan-900/50 rounded-full flex items-center justify-center mb-4 border border-cyan-500/30 group-hover:scale-110 transition-transform duration-300">
+                                    <i class="fa-solid fa-mountain text-4xl text-cyan-300"></i>
+                                </div>
+                                <h3 class="text-2xl font-bold text-cyan-200 mb-1">缓存雪崩</h3>
+                                <div class="text-xs font-mono text-cyan-400/60 mb-4">Cache Avalanche</div>
+                                <p class="text-sm text-gray-300 leading-relaxed">
+                                    海量 Key <span class="text-cyan-300 font-bold">同时过期</span><br>
+                                    或 Redis 宕机
+                                </p>
+                            </div>
+                            <div class="bg-cyan-900/30 p-4 border-t border-cyan-500/20">
+                                <div class="text-[10px] text-cyan-300 uppercase tracking-widest mb-2 text-center">核心解法</div>
+                                <div class="flex flex-col gap-2">
+                                    <div class="bg-cyan-600/40 py-2 rounded text-center text-cyan-100 font-bold text-sm border border-cyan-500/30 shadow-[0_0_10px_rgba(8,145,178,0.3)]">
+                                        <i class="fa-solid fa-shuffle mr-1"></i> TTL 随机化
+                                    </div>
+                                    <div class="text-[10px] text-center text-gray-400">备选：Redis 集群高可用</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        // 初始化 Reveal.js
+        Reveal.initialize({
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: false,
+            progress: false,
+            center: true, 
+            hash: true,
+            transition: 'slide',
+            backgroundTransition: 'fade',
+            fragments: true
+        }).then(() => {
+            // --- 核心修复逻辑：JS 强制统一标题高度 ---
+            // 目的：确保除封面外的所有页面，标题都在完全相同的垂直位置，避免切换时跳动
+            
+            const slides = document.querySelectorAll('.reveal .slides > section');
+            
+            slides.forEach((slide, index) => {
+                // 跳过第一页（封面页通常需要垂直居中）
+                if (index === 0) return;
+
+                const container = slide.querySelector('.content-container');
+                if (container) {
+                    // 1. 强制取消垂直居中，改为顶部对齐
+                    container.style.justifyContent = 'flex-start';
+                    
+                    // 2. 设置统一的顶部内边距 (Padding Top)
+                    // 这样所有页面的第一个元素（通常是 h2 标题）都会从相同的位置开始
+                    container.style.paddingTop = '40px';
+                    
+                    // 3. 额外保障：确保标题本身没有奇怪的 margin 干扰
+                    const title = container.querySelector('.slide-title');
+                    if (title) {
+                        title.style.marginTop = '0';
+                        title.style.marginBottom = '40px'; // 统一标题与内容的间距
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>白板讲稿：如何加载加密的.class文件</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #0c0a18; /* 深邃科技蓝 */
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(120, 81, 169, 0.3), transparent 30%),
+                radial-gradient(circle at 85% 30%, rgba(0, 119, 255, 0.25), transparent 40%),
+                linear-gradient(to right, #0c0a18, #1a1a3a, #0c0a18);
+            color: #e0e0e0;
+            overscroll-behavior: none;
+            overflow: hidden;
+        }
+        .slide {
+            width: 100%;
+            height: 100vh;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            box-sizing: border-box;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.6s ease-in-out;
+            position: absolute;
+            top: 0; left: 0;
+        }
+        .slide.active {
+            display: flex;
+            opacity: 1;
+        }
+        .title {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 15px rgba(120, 81, 169, 0.8);
+        }
+        .subtitle {
+            font-size: 1.5rem;
+            color: #a0a0c0;
+            margin-bottom: 3rem;
+        }
+        .content-box {
+            background: rgba(26, 26, 58, 0.5);
+            border-radius: 16px;
+            border: 1px solid rgba(120, 81, 169, 0.4);
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            width: 90%;
+            max-width: 900px;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            align-items: center;
+        }
+        .card {
+            background: rgba(40, 40, 70, 0.6);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 119, 255, 0.3);
+        }
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: #87CEFA; /* 淡蓝色 */
+            margin-bottom: 1rem;
+        }
+        .card-text, .text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #c0c0e0;
+        }
+        .emoji {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        code {
+            background-color: #1a1a3a;
+            color: #99d9ea;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #0c0a18;
+            color: #e0e0e0;
+            padding: 1.2rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            text-align: left;
+            border: 1px solid rgba(0, 119, 255, 0.3);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .arrow {
+            font-size: 3rem;
+            color: #f9d71c; /* 金黄色 */
+            margin: 0 2rem;
+            font-weight: bold;
+        }
+        .icon {
+            display: inline-block;
+            width: 4rem; height: 4rem;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            margin-bottom: 1rem;
+        }
+        .icon-lock { background-image: url('https://img.icons8.com/plasticine/100/000000/lock-2.png'); }
+        .icon-unlock { background-image: url('https://img.icons8.com/plasticine/100/000000/unlock-2.png'); }
+        .icon-jvm { background-image: url('https://img.icons8.com/color/96/java-coffee-cup-logo.png'); }
+        .icon-file { background-image: url('https://img.icons8.com/fluency/96/source-code.png'); }
+        .icon-hacker { background-image: url('https://img.icons8.com/fluency/96/hacker.png'); }
+        .icon-guard { background-image: url('https://img.icons8.com/plasticine/100/police-officer-skin-type-4.png'); }
+        .icon-magic { background-image: url('https://img.icons8.com/fluency/96/magic-wand.png'); }
+
+        .navigation {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            background: rgba(26, 26, 58, 0.7);
+            padding: 8px 15px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+        }
+        .nav-btn {
+            background-color: rgba(120, 81, 169, 0.6);
+            color: white;
+            border: none;
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background-color 0.3s;
+        }
+        .nav-btn:hover {
+            background-color: rgba(120, 81, 169, 1);
+        }
+        .nav-btn:disabled {
+            background-color: rgba(70, 70, 90, 0.5);
+            cursor: not-allowed;
+        }
+        #page-indicator {
+            color: #fff;
+            align-self: center;
+            padding: 0 10px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: 封面 - 提出问题 -->
+    <div id="slide-1" class="slide active">
+        <h1 class="title">面试官：如何让JVM加载一个加密的.class文件？</h1>
+        <p class="subtitle">这道题，是在考察你对Java类加载机制的理解深度！</p>
+        <div class="content-box">
+            <div class="grid-container">
+                <div class="flex flex-col items-center">
+                    <div class="icon icon-file"></div>
+                    <p class="text">你的代码.class</p>
+                </div>
+                <div class="arrow">↔️</div>
+                <div class="flex flex-col items-center">
+                    <div class="icon icon-hacker"></div>
+                    <p class="text">反编译工具</p>
+                </div>
+            </div>
+            <p class="mt-8 text-xl text-yellow-300">你的核心代码，在黑客面前就像“皇帝的新衣”，一览无余！</p>
+        </div>
+    </div>
+
+    <!-- Slide 2: 矛盾点 -->
+    <div id="slide-2" class="slide">
+        <h2 class="title">加密？还是不加密？这是一个问题</h2>
+        <div class="grid-container w-full max-w-5xl">
+            <div class="card">
+                <div class="emoji">😭</div>
+                <h3 class="card-title">不加密</h3>
+                <p class="card-text">代码被反编译，核心算法、商业逻辑泄露，公司哭。</p>
+            </div>
+            <div class="card">
+                <div class="emoji">💥</div>
+                <h3 class="card-title">加密后</h3>
+                <p class="card-text">JVM不认识加密文件 (不是<code>CAFEBABE</code>开头)，抛出<code>ClassFormatError</code>，程序崩了，老板哭。</p>
+            </div>
+        </div>
+        <p class="mt-12 text-2xl font-bold">我们陷入了两难的境地！怎么办？</p>
+    </div>
+
+    <!-- Slide 3: 解决方案 -->
+    <div id="slide-3" class="slide">
+        <h2 class="title">唯一的“关卡”：自定义ClassLoader</h2>
+        <p class="subtitle">JVM加载字节码的入口，就像一个海关，我们可以派自己人当“特工”！</p>
+        <div class="content-box">
+             <div class="grid-container items-center" style="grid-template-columns: 1fr auto 1fr auto 1fr;">
+                <div class="flex flex-col items-center">
+                    <div class="icon icon-lock"></div>
+                    <p class="text">加密的.class文件</p>
+                </div>
+                <div class="arrow">➡️</div>
+                <div class="flex flex-col items-center">
+                    <div class="icon icon-guard"></div>
+                    <p class="text font-bold text-yellow-300">自定义ClassLoader</p>
+                    <p class="text-sm">(我们的特工)</p>
+                </div>
+                 <div class="arrow">➡️</div>
+                <div class="flex flex-col items-center">
+                    <div class="icon icon-jvm"></div>
+                    <p class="text">JVM</p>
+                </div>
+            </div>
+            <p class="mt-8 text-xl">这个“特工”懂得我们的“接头暗号”（解密算法），它能在字节码进入JVM前，悄悄完成解密。</p>
+        </div>
+    </div>
+
+    <!-- Slide 4: 核心实现 -->
+    <div id="slide-4" class="slide">
+        <h2 class="title">核心方法：重写 <code>findClass()</code></h2>
+        <p class="subtitle">我们的“特工”主要在这里执行秘密任务。</p>
+        <div class="content-box w-full max-w-4xl text-left">
+            <p class="text mb-4 font-bold text-lg">四步走，完成“瞒天过海”：</p>
+            <ol class="list-decimal list-inside text-lg space-y-4">
+                <li><span class="font-bold text-cyan-300">定位文件</span>：根据类名找到加密文件路径 (e.g., <code>BillingService.class.encrypted</code>)</li>
+                <li><span class="font-bold text-cyan-300">读取密文</span>：把加密文件的所有字节读入内存。</li>
+                <li><span class="font-bold text-cyan-300">执行解密</span>：调用解密算法，把密文还原成原始字节码。 <div class="icon icon-unlock inline-block w-8 h-8 ml-2"></div></li>
+                <li><span class="font-bold text-cyan-300">定义类</span>：调用 <code>defineClass()</code> 方法，把解密后的字节码交给JVM生成Class对象。</li>
+            </ol>
+        </div>
+        <p class="mt-8 text-xl">整个过程对JVM完全透明，它以为自己加载了一个普通类！</p>
+    </div>
+    
+    <!-- Slide 5: 关键代码展示 -->
+    <div id="slide-5" class="slide">
+        <h2 class="title">Show Me The Code</h2>
+        <p class="subtitle"><code>DecryptionClassLoader</code>的核心实现</p>
+        <div class="content-box w-full max-w-5xl">
+        <pre><code>public class DecryptionClassLoader extends ClassLoader {
+    // ... 构造函数 ...
+
+    @Override
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        // 1. 定位并读取加密文件 -> encryptedBytes
+        byte[] encryptedBytes = loadEncryptedClassData(name);
+        
+        if (encryptedBytes == null) {
+            return super.findClass(name); // 找不到就交给父加载器
+        }
+
+        // 3. 执行解密
+        byte[] decryptedBytes = CryptoUtil.decrypt(encryptedBytes);
+
+        // 4. 定义类 (最关键的一步)
+        System.out.println("成功解密并加载: " + name);
+        return defineClass(name, decryptedBytes, 0, decryptedBytes.length);
+    }
+}</code></pre>
+        </div>
+    </div>
+    
+    <!-- Slide 6: 如何使用 -->
+    <div id="slide-6" class="slide">
+        <h2 class="title">见证奇迹的时刻</h2>
+        <p class="subtitle">如何使用我们的“特工”加载器</p>
+        <div class="content-box w-full max-w-5xl text-left">
+            <pre><code>// 1. 创建我们的解密加载器
+DecryptionClassLoader loader = new DecryptionClassLoader("path/to/encrypted/classes");
+
+// 2. 使用它来加载我们的加密类 (注意：不能用import)
+Class<?> clazz = loader.loadClass("com.mycompany.secure.BillingServiceImpl");
+
+// 3. 通过反射创建实例并调用方法
+Object instance = clazz.newInstance();
+Method method = clazz.getMethod("calculate");
+method.invoke(instance);
+
+// --- 运行结果 ---
+// 成功解密并加载: com.mycompany.secure.BillingServiceImpl
+// ====== 正在执行高度机密的核心计费算法 ======</code></pre>
+            <p class="text mt-4 text-center text-yellow-300">我们成功欺骗了JVM，运行了加密的代码！</p>
+        </div>
+    </div>
+    
+    <!-- Slide 7: 总结与升华 -->
+    <div id="slide-7" class="slide">
+        <h2 class="title">总结：从“知道”到“做到”</h2>
+        <p class="subtitle">一个完美的面试回答，应该包含这些层次</p>
+        <div class="content-box text-left">
+            <ul class="list-disc list-inside space-y-3 text-lg">
+                <li><strong class="text-green-300">点出问题</strong>：.class文件易被反编译。</li>
+                <li><strong class="text-green-300">提出方案</strong>：必须用自定义ClassLoader，它是唯一入口。</li>
+                <li><strong class="text-green-300">阐述原理</strong>：重写<code>findClass</code>，完成解密四步曲。</li>
+                <li><strong class="text-yellow-300">[加分] 展示能力</strong>：解释为何要用反射调用（不同加载器的命名空间隔离）。</li>
+                <li><strong class="text-red-400">[顶级加分] 举一反三</strong>：引申到AOP、热部署、APM探针等技术，都基于类似的字节码动态处理技术。</li>
+            </ul>
+        </div>
+        <p class="mt-8 text-2xl font-bold">现在，你也能给面试官秀一波操作了！<span class="icon icon-magic inline-block w-10 h-10 ml-2"></span></p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="navigation">
+        <button id="prevBtn" class="nav-btn">◀</button>
+        <span id="page-indicator">1 / 7</span>
+        <button id="nextBtn" class="nav-btn">▶</button>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const pageIndicator = document.getElementById('page-indicator');
+        const totalSlides = slides.length;
+        let currentSlide = 1;
+
+        function showSlide(slideNumber) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            const activeSlide = document.getElementById(`slide-${slideNumber}`);
+            if(activeSlide) {
+                activeSlide.classList.add('active');
+            }
+            pageIndicator.textContent = `${slideNumber} / ${totalSlides}`;
+            prevBtn.disabled = slideNumber === 1;
+            nextBtn.disabled = slideNumber === totalSlides;
+            currentSlide = slideNumber;
+        }
+
+        prevBtn.addEventListener('click', () => {
+            if (currentSlide > 1) {
+                showSlide(currentSlide - 1);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentSlide < totalSlides) {
+                showSlide(currentSlide + 1);
+            }
+        });
+        
+        document.body.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextBtn.click();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevBtn.click();
+            }
+        });
+
+        showSlide(currentSlide);
+    </script>
+
+<script>window.parent.postMessage({ action: "ready" }, "*"); 
+ 
+window.console = new Proxy(console, {
+  get(target, prop) {
+    if (['log', 'warn', 'error'].includes(prop)) {
+      return new Proxy(target[prop], {
+        apply(fn, thisArg, args) {
+          fn.apply(thisArg, args);
+          window.parent.postMessage({ action: 'console', 
+            type: prop, 
+            args: args.map((arg) => {
+              try {
+                return JSON.stringify(arg).replace(/^["']|["']$/g, '');
+              } catch (e) {
+                return arg;
+              }
+            }) 
+          }, '*');
+        }
+      });
+    }
+    return target[prop];
+  }
+});
+</script></body>
+</html>

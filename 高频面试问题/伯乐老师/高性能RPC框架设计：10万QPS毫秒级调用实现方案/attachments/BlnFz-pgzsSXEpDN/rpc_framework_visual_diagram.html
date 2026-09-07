@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高性能RPC框架视觉看板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            line-height: 1.4;
+            overflow-x: hidden;
+        }
+
+        /* 固定头部 */
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px 40px;
+            z-index: 1000;
+            border-bottom: 3px solid #00ff88;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .main-title {
+            font-size: 3rem;
+            font-weight: 900;
+            text-align: center;
+            background: linear-gradient(45deg, #00ff88, #00d4ff, #ff6b6b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 50px rgba(0, 255, 136, 0.5);
+            margin-bottom: 10px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .sub-titles {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sub-title {
+            padding: 8px 16px;
+            background: linear-gradient(45deg, rgba(0, 255, 136, 0.2), rgba(0, 212, 255, 0.2));
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .sub-title:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
+        }
+
+        /* 内容区域 */
+        .content {
+            margin-top: 180px;
+            padding: 40px 20px;
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .section {
+            margin-bottom: 80px;
+            opacity: 0;
+            transform: translateY(50px);
+            animation: fadeInUp 1s ease forwards;
+        }
+
+        .section:nth-child(1) { animation-delay: 0.2s; }
+        .section:nth-child(2) { animation-delay: 0.4s; }
+        .section:nth-child(3) { animation-delay: 0.6s; }
+        .section:nth-child(4) { animation-delay: 0.8s; }
+        .section:nth-child(5) { animation-delay: 1s; }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            color: #00ff88;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        .section-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        /* 性能指标仪表板 */
+        .metrics-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+            transition: all 0.4s ease;
+            cursor: pointer;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 255, 136, 0.3);
+            border-color: #00ff88;
+        }
+
+        .metric-icon {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            color: #00ff88;
+            display: block;
+        }
+
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #00d4ff;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .metric-label {
+            font-size: 1.3rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* 架构流程图 */
+        .architecture-flow {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            position: relative;
+            align-items: stretch;
+        }
+
+        .flow-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            transition: all 0.4s ease;
+            position: relative;
+            z-index: 2;
+            min-height: 350px;
+            justify-content: space-between;
+        }
+
+        .flow-step:hover {
+            transform: translateY(-15px) scale(1.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: #00ff88;
+        }
+
+        .flow-step::after {
+            content: '→';
+            position: absolute;
+            right: -40px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 3rem;
+            color: #00ff88;
+            z-index: 3;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        .flow-step:last-child::after {
+            display: none;
+        }
+
+        .step-number {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00ff88, #00d4ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #000;
+            margin-bottom: 20px;
+        }
+
+        .step-icon {
+            font-size: 3.5rem;
+            color: #00ff88;
+            margin-bottom: 20px;
+        }
+
+        .step-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .step-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #00ff88;
+        }
+
+        .step-description {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .step-tech {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: auto;
+        }
+
+        .tech-tag {
+            padding: 6px 12px;
+            background: linear-gradient(45deg, rgba(0, 212, 255, 0.3), rgba(255, 107, 107, 0.3));
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        /* 优化策略网格 */
+        .optimization-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            position: relative;
+        }
+
+        .optimization-card {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(255, 195, 0, 0.1));
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 25px 15px;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 2;
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .optimization-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.6s;
+        }
+
+        .optimization-card:hover::before {
+            left: 100%;
+        }
+
+        .optimization-card:hover {
+            transform: translateY(-15px) scale(1.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: #ffc300;
+        }
+
+        .optimization-icon {
+            font-size: 3.5rem;
+            color: #ffc300;
+            margin-bottom: 20px;
+        }
+
+        .optimization-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #ffc300;
+        }
+
+        .optimization-items {
+            list-style: none;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .optimization-items li {
+            padding: 8px 0;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.9);
+            position: relative;
+            padding-left: 25px;
+            line-height: 1.4;
+        }
+
+        .optimization-items li::before {
+            content: '⚡';
+            position: absolute;
+            left: 0;
+            color: #00ff88;
+            font-size: 1rem;
+        }
+
+        /* 性能测试结果 */
+        .benchmark-results {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));
+            border: 3px solid #00ff88;
+            border-radius: 25px;
+            padding: 40px;
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .benchmark-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 30px;
+            color: #00ff88;
+        }
+
+        .benchmark-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+        }
+
+        .benchmark-metric {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+
+        .benchmark-value {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+
+        .benchmark-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* 动画效果 */
+        @keyframes glow {
+            0% { text-shadow: 0 0 50px rgba(0, 255, 136, 0.5); }
+            100% { text-shadow: 0 0 80px rgba(0, 255, 136, 0.8); }
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1200px) {
+            .main-title {
+                font-size: 2.5rem;
+            }
+            
+            .sub-titles {
+                font-size: 1rem;
+            }
+            
+            .architecture-flow {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+            
+            .flow-step::after {
+                display: none;
+            }
+            
+            .optimization-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+            
+            .optimization-grid::before {
+                display: none;
+            }
+            
+            .flow-step::after {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .fixed-header {
+                padding: 15px 20px;
+            }
+            
+            .main-title {
+                font-size: 2rem;
+            }
+            
+            .sub-titles {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .content {
+                margin-top: 220px;
+                padding: 20px 15px;
+            }
+            
+            .architecture-flow {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .architecture-flow::before {
+                display: none;
+            }
+            
+            .flow-step::after {
+                content: '↓';
+                right: 50%;
+                top: auto;
+                bottom: -40px;
+                transform: translateX(50%);
+            }
+            
+            .optimization-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .optimization-grid::before {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 固定头部 -->
+    <div class="fixed-header">
+        <div class="main-title">🚀 10万QPS毫秒级RPC框架设计揭秘</div>
+        <div class="sub-titles">
+            <div class="sub-title">⚡ 极致性能</div>
+            <div class="sub-title">🔧 核心技术</div>
+            <div class="sub-title">📊 架构解析</div>
+            <div class="sub-title">🎯 优化策略</div>
+            <div class="sub-title">📈 基准测试</div>
+        </div>
+    </div>
+
+    <!-- 内容区域 -->
+    <div class="content">
+        
+        <!-- 性能指标仪表板 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-icon">📊</div>
+                <div class="section-title">性能目标仪表板</div>
+            </div>
+            
+            <div class="metrics-dashboard">
+                <div class="metric-card pulse">
+                    <div class="metric-icon">⚡</div>
+                    <div class="metric-value">10万</div>
+                    <div class="metric-label">QPS并发</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">⏱️</div>
+                    <div class="metric-value">&lt;1ms</div>
+                    <div class="metric-label">平均延迟</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">📈</div>
+                    <div class="metric-value">&lt;5ms</div>
+                    <div class="metric-label">P99延迟</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">🎯</div>
+                    <div class="metric-value">99.99%</div>
+                    <div class="metric-label">可用性</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 架构流程图 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-icon">🏗️</div>
+                <div class="section-title">RPC调用架构流程</div>
+            </div>
+            
+            <div class="architecture-flow">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-icon">📡</div>
+                    <div class="step-content">
+                        <div class="step-title">网络通信层</div>
+                        <div class="step-description">基于Netty + Epoll的异步网络通信，支持高并发连接管理</div>
+                        <div class="step-tech">
+                            <div class="tech-tag">Netty NIO</div>
+                            <div class="tech-tag">Epoll优化</div>
+                            <div class="tech-tag">连接池</div>
+                            <div class="tech-tag">零拷贝</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-icon">🔄</div>
+                    <div class="step-content">
+                        <div class="step-title">序列化引擎</div>
+                        <div class="step-description">高性能Protocol Buffers序列化，10:1压缩比</div>
+                        <div class="step-tech">
+                            <div class="tech-tag">Protobuf</div>
+                            <div class="tech-tag">对象池</div>
+                            <div class="tech-tag">直接内存</div>
+                            <div class="tech-tag">二进制协议</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-icon">🎯</div>
+                    <div class="step-content">
+                        <div class="step-title">客户端调用</div>
+                        <div class="step-description">异步调用 + 连接复用 + 智能负载均衡</div>
+                        <div class="step-tech">
+                            <div class="tech-tag">异步调用</div>
+                            <div class="tech-tag">负载均衡</div>
+                            <div class="tech-tag">熔断器</div>
+                            <div class="tech-tag">超时控制</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-icon">⚙️</div>
+                    <div class="step-content">
+                        <div class="step-title">服务端处理</div>
+                        <div class="step-description">IO线程与业务线程分离，避免阻塞</div>
+                        <div class="step-tech">
+                            <div class="tech-tag">线程池</div>
+                            <div class="tech-tag">异步处理</div>
+                            <div class="tech-tag">反射缓存</div>
+                            <div class="tech-tag">监控统计</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 优化策略 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-icon">🚀</div>
+                <div class="section-title">核心优化策略</div>
+            </div>
+            
+            <div class="optimization-grid">
+                <div class="optimization-card">
+                    <div class="optimization-icon">🧠</div>
+                    <div class="optimization-title">内存优化</div>
+                    <ul class="optimization-items">
+                        <li>对象池复用频繁对象</li>
+                        <li>直接内存避免GC压力</li>
+                        <li>零拷贝数据传输</li>
+                        <li>CompositeByteBuf组合</li>
+                    </ul>
+                </div>
+                
+                <div class="optimization-card">
+                    <div class="optimization-icon">💻</div>
+                    <div class="optimization-title">CPU优化</div>
+                    <ul class="optimization-items">
+                        <li>无锁数据结构</li>
+                        <li>ThreadLocal避免争用</li>
+                        <li>位运算哈希优化</li>
+                        <li>方法调用缓存</li>
+                    </ul>
+                </div>
+                
+                <div class="optimization-card">
+                    <div class="optimization-icon">🌐</div>
+                    <div class="optimization-title">网络优化</div>
+                    <ul class="optimization-items">
+                        <li>TCP_NODELAY禁用Nagle</li>
+                        <li>合理缓冲区大小</li>
+                        <li>连接池复用</li>
+                        <li>FileRegion零拷贝</li>
+                    </ul>
+                </div>
+                
+                <div class="optimization-card">
+                    <div class="optimization-icon">🔧</div>
+                    <div class="optimization-title">线程模型</div>
+                    <ul class="optimization-items">
+                        <li>IO与业务线程分离</li>
+                        <li>异步处理避免阻塞</li>
+                        <li>合理线程池配置</li>
+                        <li>线程本地变量</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 性能基准测试 -->
+        <div class="section">
+            <div class="benchmark-results">
+                <div class="benchmark-title">🏆 实战性能基准测试</div>
+                <div class="benchmark-metrics">
+                    <div class="benchmark-metric">
+                        <div class="benchmark-value">120k</div>
+                        <div class="benchmark-label">吞吐量 ops/sec</div>
+                    </div>
+                    
+                    <div class="benchmark-metric">
+                        <div class="benchmark-value">0.8ms</div>
+                        <div class="benchmark-label">平均延迟</div>
+                    </div>
+                    
+                    <div class="benchmark-metric">
+                        <div class="benchmark-value">1.5ms</div>
+                        <div class="benchmark-label">P95延迟</div>
+                    </div>
+                    
+                    <div class="benchmark-metric">
+                        <div class="benchmark-value">3.2ms</div>
+                        <div class="benchmark-label">P99延迟</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 动态效果增强
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为卡片添加点击交互
+            const cards = document.querySelectorAll('.metric-card, .optimization-card');
+            cards.forEach(card => {
+                card.addEventListener('click', function() {
+                    this.style.transform = 'scale(1.05) translateY(-10px)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 200);
+                });
+            });
+
+            // 滚动视差效果
+            window.addEventListener('scroll', function() {
+                const scrolled = window.pageYOffset;
+                const sections = document.querySelectorAll('.section');
+                
+                sections.forEach((section, index) => {
+                    const rate = scrolled * -0.5;
+                    section.style.transform = `translate3d(0, ${rate}px, 0)`;
+                });
+            });
+
+            // 数字动画
+            const animateNumbers = () => {
+                const numbers = document.querySelectorAll('.metric-value, .benchmark-value');
+                numbers.forEach(number => {
+                    const finalValue = number.textContent;
+                    if (finalValue.includes('k') || finalValue.includes('万')) {
+                        let current = 0;
+                        const target = parseFloat(finalValue);
+                        const increment = target / 50;
+                        
+                        const timer = setInterval(() => {
+                            current += increment;
+                            if (current >= target) {
+                                current = target;
+                                clearInterval(timer);
+                            }
+                            number.textContent = current.toFixed(1) + (finalValue.includes('k') ? 'k' : '万');
+                        }, 30);
+                    }
+                });
+            };
+
+            // 启动数字动画
+            setTimeout(animateNumbers, 1000);
+        });
+    </script>
+</body>
+</html>

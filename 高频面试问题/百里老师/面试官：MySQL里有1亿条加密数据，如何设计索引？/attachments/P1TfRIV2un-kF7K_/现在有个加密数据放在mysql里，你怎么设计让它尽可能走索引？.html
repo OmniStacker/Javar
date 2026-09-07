@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加密数据的索引之道</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 引入中文字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 全局字体与重置 */
+        .reveal { font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
+        
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none !important; letter-spacing: -0.02em; }
+        
+        /* 强制每页 Slide 占满高度 */
+        .reveal .slides > section {
+            height: 100% !important;
+            top: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 玻璃拟态核心类 - 增强版 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .glass-panel:hover {
+            transform: translateY(-5px) scale(1.01);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* 布局辅助 */
+        .slide-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 4rem 2rem 2rem 2rem; 
+            box-sizing: border-box;
+        }
+
+        .slide-container.cover-layout {
+            justify-content: center !important;
+            padding: 0 !important;
+        }
+
+        .slide-content-wrapper {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .slide-title {
+            font-size: 3rem !important;
+            font-weight: 900 !important;
+            margin: 0 !important;
+            padding-bottom: 2rem !important;
+            flex-shrink: 0;
+            line-height: 1.1 !important;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            text-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Start Hint Overlay */
+        #start-hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 24px;
+            border-radius: 99px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            letter-spacing: 1px;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        /* 主题色变量 */
+        .slide-cover { --gradient-start: #38bdf8; --gradient-end: #3b82f6; }
+        .slide-conflict { --gradient-start: #f87171; --gradient-end: #dc2626; }
+        .slide-trap { --gradient-start: #fbbf24; --gradient-end: #d97706; }
+        .slide-pipeline { --gradient-start: #34d399; --gradient-end: #059669; }
+        .slide-tree { --gradient-start: #c084fc; --gradient-end: #9333ea; }
+
+    </style>
+</head>
+<body>
+    <div id="start-hint">按任意键 / 点击屏幕 开始</div>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: 封面 (终极优化版) -->
+<section class="slide-cover" data-background-gradient="radial-gradient(circle at center, #1e293b 0%, #020617 100%)">
+    <div class="slide-container cover-layout relative overflow-hidden">
+        
+        <!-- 背景网格 -->
+        <div class="absolute inset-0 opacity-10 pointer-events-none" 
+             style="background-image: linear-gradient(0deg, transparent 24%, rgba(56, 189, 248, .3) 25%, rgba(56, 189, 248, .3) 26%, transparent 27%, transparent 74%, rgba(56, 189, 248, .3) 75%, rgba(56, 189, 248, .3) 76%, transparent 77%, transparent); background-size: 50px 50px;">
+        </div>
+
+        <div class="w-full h-full flex flex-col items-center justify-center relative z-10">
+            
+            <!-- 1. 顶部 Tag -->
+            <div class="mb-10 fragment fade-down">
+                <div class="inline-flex items-center gap-3 px-6 py-2 rounded-full border border-yellow-500/30 bg-yellow-500/10 backdrop-blur-md shadow-[0_0_20px_rgba(234,179,8,0.2)]">
+                    <i class="fa-solid fa-fire text-yellow-500 animate-pulse"></i>
+                    <span class="text-yellow-100 font-bold tracking-wider text-sm">Java 架构师面试 · 高频场景</span>
+                </div>
+            </div>
+
+            <!-- 2. 视觉中心：图标区（调整布局，增强对比） -->
+            <div class="relative w-52 h-52 mb-12 flex items-center justify-center">
+                <!-- 背景光晕 -->
+                <div class="absolute inset-0 bg-blue-500/20 blur-[70px] rounded-full animate-pulse"></div>
+                
+                <!-- 主体容器 -->
+                <div class="glass-panel w-full h-full rounded-3xl border-t border-l border-white/20 bg-white/5 flex items-center justify-center relative shadow-2xl transform rotate-3 hover:rotate-0 transition-all duration-500">
+                    <!-- 数据库 (底座，稍微放大) -->
+                    <i class="fa-solid fa-database text-8xl text-slate-500 absolute opacity-40"></i>
+                    
+                    <!-- 锁 (左上角，增强红色发光) -->
+                    <div class="absolute top-6 left-6 z-10">
+                        <div class="absolute inset-0 bg-red-500/40 blur-xl rounded-full"></div>
+                        <i class="fa-solid fa-lock text-5xl text-red-400 relative drop-shadow-[0_0_15px_rgba(248,113,113,0.8)]"></i>
+                    </div>
+                    
+                    <!-- 闪电 (右下角，增强青色发光和动效) -->
+                    <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-[0_0_40px_rgba(6,182,212,0.8)] animate-bounce z-20" style="animation-duration: 2.5s;">
+                        <i class="fa-solid fa-bolt text-5xl text-white drop-shadow-lg"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 标题区：增强关键词视觉冲击 -->
+            <div class="text-center z-20 max-w-5xl px-4">
+                <!-- 引子：强化"加密数据"的警示色 -->
+                <h2 class="text-2xl md:text-3xl text-slate-400 font-light mb-4 tracking-wide fragment fade-up">
+                    现在有个 
+                    <span class="relative inline-block">
+                        <span class="text-red-400 font-bold px-2 py-1 bg-red-500/10 rounded border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)]">加密数据</span>
+                    </span> 
+                    放在 MySQL 里
+                </h2>
+                
+                <!-- 核心提问：超大化 + 动态扫描线 -->
+                <div class="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 fragment fade-up" style="transition-delay: 100ms">
+                    <span class="text-3xl md:text-5xl text-white font-bold whitespace-nowrap">你怎么设计让它</span>
+                    
+                    <!-- 重点词：增加扫描线动效 -->
+                    <div class="relative group">
+                        <!-- 背景辉光 -->
+                        <div class="absolute -inset-3 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg blur-lg opacity-50 group-hover:opacity-75 transition duration-200"></div>
+                        
+                        <!-- 主文字 -->
+                        <span class="relative text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-cyan-400 to-blue-500 drop-shadow-lg py-2 px-4 block transform group-hover:scale-105 transition-transform duration-200">
+                            尽可能走索引？
+                        </span>
+                        
+                        <!-- 底部强调线 -->
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-cyan-500 shadow-[0_0_15px_#06b6d4]"></div>
+                        
+                        <!-- 扫描线动效 (新增) -->
+                        <div class="absolute inset-0 overflow-hidden rounded-lg">
+                            <div class="absolute w-full h-[3px] bg-gradient-to-r from-transparent via-white to-transparent opacity-60 animate-[scanLine_2s_ease-in-out_infinite]"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- 扫描线动画定义 -->
+    <style>
+        @keyframes scanLine {
+            0% { top: -10%; opacity: 0; }
+            20% { opacity: 0.6; }
+            80% { opacity: 0.6; }
+            100% { top: 110%; opacity: 0; }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 2: 核心冲突 (强化对立+动态叙事) -->
+<section class="slide-conflict" data-background-gradient="linear-gradient(135deg, #2a0a0a 0%, #450a0a 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">⚔️ 核心冲突：秩序 vs 混沌</h2>
+        <div class="slide-content-wrapper">
+            <div class="flex w-full max-w-7xl h-[500px] gap-8 relative">
+                
+                <!-- 左侧：秩序 (B+树) -->
+                <div class="flex-1 glass-panel border-l-4 border-green-500 bg-green-950/10 p-8 flex flex-col relative overflow-hidden fragment fade-right shadow-[0_0_30px_rgba(34,197,94,0.2)]">
+                    <!-- 背景装饰图标 -->
+                    <div class="absolute top-4 right-4 text-green-500/20 text-9xl z-0"><i class="fa-solid fa-layer-group"></i></div>
+                    
+                    <!-- 顶部标题区 -->
+                    <div class="z-10">
+                        <h3 class="text-2xl font-bold text-green-400 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-check-circle"></i>
+                            明文世界
+                        </h3>
+                        <p class="text-sm text-green-200/60">有序排列，二分查找</p>
+                    </div>
+                    
+                    <!-- 中部：数据展示 (增加排序箭头) -->
+                    <div class="flex-1 flex flex-col items-center justify-center gap-6 z-10">
+                        <div class="flex gap-4 items-center">
+                            <div class="w-20 h-14 border-2 border-green-500/50 bg-green-500/20 rounded-lg flex items-center justify-center text-green-300 font-mono text-lg font-bold shadow-lg">100</div>
+                            <i class="fa-solid fa-arrow-right text-green-500 text-xl animate-pulse"></i>
+                            <div class="w-20 h-14 border-2 border-green-500/50 bg-green-500/20 rounded-lg flex items-center justify-center text-green-300 font-mono text-lg font-bold shadow-lg">101</div>
+                            <i class="fa-solid fa-arrow-right text-green-500 text-xl animate-pulse" style="animation-delay: 0.2s"></i>
+                            <div class="w-20 h-14 border-2 border-green-500/50 bg-green-500/20 rounded-lg flex items-center justify-center text-green-300 font-mono text-lg font-bold shadow-lg">102</div>
+                        </div>
+                        
+                        <!-- 说明文字 -->
+                        <div class="text-xs text-green-400/70 font-mono">
+                            <i class="fa-solid fa-sitemap mr-2"></i>B+ Tree 索引结构
+                        </div>
+                        
+                        <div class="w-full h-[1px] bg-green-500/30"></div>
+                        
+                        <!-- 性能标签 -->
+                        <div class="px-6 py-3 bg-green-600/30 text-green-300 rounded-full text-base font-bold border-2 border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]">
+                            <i class="fa-solid fa-bolt mr-2"></i>毫秒级响应
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 中间：冲突爆炸点 (强化视觉冲击) -->
+                <div class="flex flex-col justify-center items-center fragment zoom-in relative z-30">
+                    <!-- 外层脉冲圈 -->
+                    <div class="absolute w-32 h-32 rounded-full border-2 border-red-500/20 animate-ping"></div>
+                    <div class="absolute w-24 h-24 rounded-full border border-yellow-500/30 animate-pulse"></div>
+                    
+                    <!-- 核心图标 -->
+                    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-red-600 to-orange-600 border-2 border-white/20 flex items-center justify-center backdrop-blur-xl shadow-[0_0_40px_rgba(239,68,68,0.6)] z-20 relative">
+                        <i class="fa-solid fa-burst text-3xl text-white drop-shadow-lg"></i>
+                    </div>
+                    
+                    <!-- 标签 -->
+                    <div class="mt-4 px-3 py-1 bg-black/50 border border-red-500/30 rounded-full text-xs text-red-300 font-mono backdrop-blur">
+                        AES 加密
+                    </div>
+                    
+                    <!-- 从左到右的数据流动效果 (新增) -->
+                    <div class="absolute left-[-100px] w-[200px] h-[2px] bg-gradient-to-r from-green-500 via-red-500 to-transparent opacity-50">
+                        <div class="w-3 h-3 rounded-full bg-white absolute top-1/2 -translate-y-1/2 animate-[flowRight_2s_ease-in-out_infinite]"></div>
+                    </div>
+                </div>
+
+                <!-- 右侧：混沌 (加密数据) -->
+                <div class="flex-1 glass-panel border-r-4 border-red-500 bg-red-950/10 p-8 flex flex-col relative overflow-hidden fragment fade-left shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+                    <!-- 背景装饰图标 -->
+                    <div class="absolute top-4 right-4 text-red-500/20 text-9xl z-0"><i class="fa-solid fa-shuffle"></i></div>
+                    
+                    <!-- 顶部标题区 -->
+                    <div class="z-10">
+                        <h3 class="text-2xl font-bold text-red-400 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                            密文世界
+                        </h3>
+                        <p class="text-sm text-red-200/60">随机乱码，失去顺序</p>
+                    </div>
+                    
+                    <!-- 中部：乱码展示 (增加数量+随机感) -->
+                    <div class="flex-1 flex flex-col items-center justify-center gap-4 z-10">
+                        <div class="grid grid-cols-3 gap-3 w-full max-w-xs">
+                            <div class="px-3 py-2 border border-red-500/40 bg-red-500/10 rounded text-sm text-red-300 font-mono text-center animate-shake" style="animation-duration: 3s">Xy9#</div>
+                            <div class="px-3 py-2 border border-red-500/40 bg-red-500/10 rounded text-sm text-red-300 font-mono text-center animate-shake" style="animation-duration: 4s">B7@k</div>
+                            <div class="px-3 py-2 border border-red-500/40 bg-red-500/10 rounded text-sm text-red-300 font-mono text-center animate-shake" style="animation-duration: 2s">mQ2$</div>
+                            <div class="px-3 py-2 border border-red-500/40 bg-red-500/10 rounded text-sm text-red-300 font-mono text-center animate-shake" style="animation-duration: 5s">!zW1</div>
+                            <div class="px-3 py-2 border border-red-500/40 bg-red-500/10 rounded text-sm text-red-300 font-mono text-center animate-shake" style="animation-duration: 3.5s">pL2$</div>
+                            <div class="px-3 py-2 border border-red-500/40 bg-red-500/10 rounded text-sm text-red-300 font-mono text-center animate-shake" style="animation-duration: 4.5s">vQ9&</div>
+                        </div>
+                        
+                        <!-- 说明文字 -->
+                        <div class="text-xs text-red-400/70 font-mono">
+                            <i class="fa-solid fa-question mr-2"></i>无法建立索引
+                        </div>
+                        
+                        <div class="w-full h-[1px] bg-red-500/30"></div>
+                        
+                        <!-- 性能标签 (警告样式) -->
+                        <div class="px-6 py-3 bg-red-600/30 text-red-300 rounded-full text-base font-bold border-2 border-red-500/50 animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                            <i class="fa-solid fa-triangle-exclamation mr-2"></i>全表扫描 (Slow)
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    
+    <!-- 数据流动动画 -->
+    <style>
+        @keyframes flowRight {
+            0% { left: 0; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(-2px) rotate(-1deg); }
+            75% { transform: translateX(2px) rotate(1deg); }
+        }
+        
+        .animate-shake {
+            animation: shake 3s ease-in-out infinite;
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 3: 陷阱 (强化频率分析可视化) -->
+<section class="slide-trap" data-background-gradient="linear-gradient(135deg, #451a03 0%, #78350f 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">🚫 陷阱：确定性加密</h2>
+        <div class="slide-content-wrapper">
+            <div class="w-full max-w-6xl glass-panel p-10 border-amber-500/30 bg-amber-900/20 relative shadow-[0_0_50px_rgba(217,119,6,0.3)]">
+                <!-- 顶部标签 -->
+                <div class="absolute -top-5 left-1/2 -translate-x-1/2 px-8 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-full text-base font-bold shadow-xl border-2 border-amber-400/50">
+                    <i class="fa-solid fa-bug mr-2"></i>频率分析攻击演示
+                </div>
+
+                <div class="flex justify-between items-center mt-8 gap-8">
+                    
+                    <!-- 左侧：真实数据 (明文) -->
+                    <div class="flex flex-col items-center gap-3 fragment fade-up flex-1">
+                        <div class="text-amber-200 font-bold text-lg mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-database text-amber-400"></i>
+                            真实数据 (明文)
+                        </div>
+                        <div class="flex items-end gap-3 h-48 border-b-2 border-amber-500/50 pb-2 px-4">
+                            <!-- 柱子1：北京 -->
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="text-[10px] text-amber-300 font-mono mb-1">10万</div>
+                                <div class="w-16 bg-gradient-to-t from-amber-500 to-amber-400 h-[85%] rounded-t-lg flex items-end justify-center pb-2 text-xs text-black font-bold shadow-lg relative group">
+                                    北京
+                                    <div class="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-lg"></div>
+                                </div>
+                            </div>
+                            <!-- 柱子2：上海 -->
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="text-[10px] text-amber-300 font-mono mb-1">6万</div>
+                                <div class="w-16 bg-gradient-to-t from-amber-500/60 to-amber-400/60 h-[50%] rounded-t-lg flex items-end justify-center pb-2 text-xs text-black font-bold shadow-lg"></div>
+                            </div>
+                            <!-- 柱子3：深圳 -->
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="text-[10px] text-amber-300 font-mono mb-1">4万</div>
+                                <div class="w-16 bg-gradient-to-t from-amber-500/40 to-amber-400/40 h-[35%] rounded-t-lg flex items-end justify-center pb-2 text-xs text-black font-bold shadow-lg"></div>
+                            </div>
+                            <!-- 柱子4：其他 -->
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="text-[10px] text-amber-300 font-mono mb-1">2万</div>
+                                <div class="w-16 bg-gradient-to-t from-amber-500/20 to-amber-400/20 h-[20%] rounded-t-lg flex items-end justify-center pb-2 text-xs text-black font-bold shadow-lg"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-amber-400/70 font-mono mt-2">
+                            <i class="fa-solid fa-chart-bar mr-1"></i>出现频率统计
+                        </div>
+                    </div>
+
+                    <!-- 中间：攻击者 + 连线动画 -->
+                    <div class="flex-1 h-48 flex items-center justify-center relative fragment fade-in" data-fragment-index="2">
+                        <!-- 多条连线（增强匹配感） -->
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
+                            <!-- 连线1：最高柱 -->
+                            <line x1="10%" y1="25%" x2="90%" y2="25%" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5" opacity="0.6" class="animate-[drawLine_1.5s_ease-in-out_infinite]"/>
+                            <!-- 连线2：中柱 -->
+                            <line x1="10%" y1="50%" x2="90%" y2="50%" stroke="#f97316" stroke-width="2" stroke-dasharray="5,5" opacity="0.4" class="animate-[drawLine_1.5s_ease-in-out_infinite]" style="animation-delay: 0.3s"/>
+                            <!-- 连线3：低柱 -->
+                            <line x1="10%" y1="75%" x2="90%" y2="75%" stroke="#fb923c" stroke-width="2" stroke-dasharray="5,5" opacity="0.3" class="animate-[drawLine_1.5s_ease-in-out_infinite]" style="animation-delay: 0.6s"/>
+                        </svg>
+                        
+                        <!-- 攻击者卡片 -->
+                        <div class="bg-black/90 border-2 border-red-500 p-6 rounded-2xl z-10 flex flex-col items-center shadow-[0_0_40px_rgba(239,68,68,0.5)] relative">
+                            <!-- 雷达扫描效果 -->
+                            <div class="absolute inset-0 rounded-2xl overflow-hidden">
+                                <div class="absolute w-full h-full bg-gradient-to-r from-transparent via-red-500/20 to-transparent animate-[scan_2s_linear_infinite]"></div>
+                            </div>
+                            
+                            <i class="fa-solid fa-user-secret text-5xl text-red-500 mb-3 drop-shadow-lg relative z-10 animate-pulse"></i>
+                            <div class="text-red-400 text-sm font-bold relative z-10">特征匹配中...</div>
+                            <div class="flex gap-1 mt-2 relative z-10">
+                                <div class="w-2 h-2 bg-red-500 rounded-full animate-bounce"></div>
+                                <div class="w-2 h-2 bg-red-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                                <div class="w-2 h-2 bg-red-500 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：数据库 (密文) -->
+                    <div class="flex flex-col items-center gap-3 fragment fade-up flex-1">
+                        <div class="text-amber-200 font-bold text-lg mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-lock text-red-400"></i>
+                            数据库 (密文)
+                        </div>
+                        <div class="flex items-end gap-3 h-48 border-b-2 border-amber-500/50 pb-2 px-4">
+                            <!-- 柱子1：Xy9# (对应北京) -->
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="text-[10px] text-red-300 font-mono mb-1">10万</div>
+                                <div class="w-16 bg-gradient-to-t from-amber-500 to-amber-400 h-[85%] rounded-t-lg flex items-end justify-center pb-2 text-xs text-black font-bold shadow-lg border-2 border-red-500 relative animate-pulse">
+                                    Xy9#
+                                    <!-- 警告标记 -->
+                                    <div class="absolute -top-6 left-1/2 -translate-x-1/2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                                        <i class="fa-solid fa-exclamation text-white text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 柱子2 -->
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="text-[10px] text-red-300 font-mono mb-1">6万</div>
+                                <div class="w-16 bg-gradient-to-t from-amber-500/60 to-amber-400/60 h-[50%] rounded-t-lg flex items-end justify-center pb-2 text-xs text-black font-bold shadow-lg border border-red-500/50"></div>
+                            </div>
+                            <!-- 柱子3 -->
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="text-[10px] text-red-300 font-mono mb-1">4万</div>
+                                <div class="w-16 bg-gradient-to-t from-amber-500/40 to-amber-400/40 h-[35%] rounded-t-lg flex items-end justify-center pb-2 text-xs text-black font-bold shadow-lg border border-red-500/50"></div>
+                            </div>
+                            <!-- 柱子4 -->
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="text-[10px] text-red-300 font-mono mb-1">2万</div>
+                                <div class="w-16 bg-gradient-to-t from-amber-500/20 to-amber-400/20 h-[20%] rounded-t-lg flex items-end justify-center pb-2 text-xs text-black font-bold shadow-lg border border-red-500/50"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-red-400/70 font-mono mt-2">
+                            <i class="fa-solid fa-chart-bar mr-1"></i>密文频率统计
+                        </div>
+                    </div>
+
+                </div>
+                
+                <!-- 底部结论 -->
+                <div class="mt-10 text-center text-amber-100 text-base bg-gradient-to-r from-amber-950/60 to-red-950/60 p-4 rounded-xl border-2 border-amber-500/30 fragment fade-up shadow-lg">
+                    <i class="fa-solid fa-shield-halved text-red-500 mr-2 text-xl"></i>
+                    <span class="font-bold">安全漏洞：</span>相同的明文加密成相同的密文 → 频率分布暴露 → 
+                    <span class="text-red-400 font-bold">加密形同虚设</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 动画定义 -->
+    <style>
+        @keyframes drawLine {
+            0%, 100% { stroke-dashoffset: 0; }
+            50% { stroke-dashoffset: 20; }
+        }
+        
+        @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 4: 解决方案 (终极修正版) -->
+<section class="slide-pipeline" data-background-gradient="linear-gradient(135deg, #064e3b 0%, #065f46 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">✅ 黄金方案：盲索引 (Blind Index)</h2>
+        <div class="slide-content-wrapper">
+            <div class="w-full max-w-6xl h-[600px] relative flex flex-col items-center justify-between py-2">
+                
+                <!-- 1. 顶部：输入源 (增加 z-index 确保覆盖管道起点) -->
+                <div class="z-30 fragment fade-down w-full flex justify-center relative">
+                    <div class="glass-panel px-10 py-4 flex items-center gap-6 bg-blue-900/40 border-blue-400/50 shadow-[0_0_30px_rgba(59,130,246,0.3)] rounded-2xl relative bg-opacity-90 backdrop-blur-xl">
+                        <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-lg animate-pulse">
+                            <i class="fa-solid fa-mobile-screen text-xl"></i>
+                        </div>
+                        <div class="flex flex-col text-left">
+                            <span class="text-blue-200 text-xs tracking-wider uppercase">User Input</span>
+                            <span class="text-white font-mono font-bold text-2xl tracking-widest">138-0000-8888</span>
+                        </div>
+                        
+                        <!-- 底部连接点 (新增，遮挡 SVG 起点) -->
+                        <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-blue-500 rounded-full shadow-lg z-40"></div>
+                    </div>
+                </div>
+
+                <!-- 2. 中间：处理核心 (SVG 动态管道) -->
+                <!-- 调整 top 值，让管道直接插入输入框底部 -->
+                <div class="absolute inset-0 top-[70px] bottom-[160px] w-full pointer-events-none z-10">
+                    <svg width="100%" height="100%" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                            <linearGradient id="gradRed" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#9ca3af;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+                            </linearGradient>
+                            <linearGradient id="gradGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#9ca3af;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+                            </linearGradient>
+                            <filter id="glowGreen">
+                                <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+
+                        <!-- 主干道 (加长，确保连接) -->
+                        <path d="M400,-20 L400,60" stroke="#4b5563" stroke-width="8" fill="none" />
+                        
+                        <!-- 左分支 -->
+                        <path d="M400,60 Q400,120 250,180 L250,380" stroke="url(#gradRed)" stroke-width="6" fill="none" stroke-dasharray="10,5" />
+                        
+                        <!-- 右分支 -->
+                        <path d="M400,60 Q400,120 550,180 L550,380" stroke="url(#gradGreen)" stroke-width="6" fill="none" />
+
+                        <!-- 动态数据包 -->
+                        <circle r="6" fill="#fca5a5">
+                            <animateMotion dur="2s" repeatCount="indefinite" path="M400,-20 L400,60 Q400,120 250,180 L250,380" calcMode="linear" keyPoints="0;1" keyTimes="0;1" />
+                        </circle>
+                        <circle r="6" fill="#6ee7b7" filter="url(#glowGreen)">
+                            <animateMotion dur="2s" repeatCount="indefinite" path="M400,-20 L400,60 Q400,120 550,180 L550,380" calcMode="linear" keyPoints="0;1" keyTimes="0;1" />
+                        </circle>
+                    </svg>
+                    
+                    <!-- 分流点 (加大尺寸，调整位置) -->
+                    <div class="absolute top-[60px] left-1/2 -translate-x-1/2 w-16 h-16 bg-gray-800 rounded-full border-4 border-gray-600 flex items-center justify-center shadow-xl z-20">
+                        <i class="fa-solid fa-share-nodes text-gray-300 text-2xl"></i>
+                    </div>
+
+                    <!-- 左侧逻辑卡片 (位置微调) -->
+                    <div class="absolute top-[200px] left-[25%] -translate-x-1/2 fragment fade-right">
+                        <div class="glass-panel px-5 py-3 bg-red-900/40 border-red-500/30 flex items-center gap-3 rounded-xl shadow-lg backdrop-blur-md">
+                            <div class="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center border border-red-500/50">
+                                <i class="fa-solid fa-key text-red-400 text-lg"></i>
+                            </div>
+                            <div class="text-left">
+                                <div class="text-xs text-red-300 font-bold">AES 随机加密</div>
+                                <div class="text-[10px] text-gray-400">每次结果不同</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧逻辑卡片 (位置微调) -->
+                    <div class="absolute top-[200px] right-[25%] translate-x-1/2 fragment fade-left">
+                        <div class="glass-panel px-5 py-3 bg-emerald-900/40 border-emerald-500/30 flex items-center gap-3 rounded-xl shadow-lg backdrop-blur-md relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-1 opacity-50">
+                                <i class="fa-solid fa-cubes-stacked text-emerald-500/20 text-5xl"></i>
+                            </div>
+                            <div class="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/50 z-10">
+                                <i class="fa-solid fa-hashtag text-emerald-400 text-lg"></i>
+                            </div>
+                            <div class="text-left z-10">
+                                <div class="text-xs text-emerald-300 font-bold">HMAC + Salt</div>
+                                <div class="text-[10px] text-gray-400">结果确定且唯一</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 底部：存储层 (高度压缩，留出呼吸感) -->
+                <div class="w-full flex justify-center gap-16 z-20 mt-auto mb-4">
+                    
+                    <!-- 左底：数据列 -->
+                    <div class="w-[320px] glass-panel p-0 overflow-hidden border-2 border-red-500/30 bg-red-950/40 flex flex-col fragment fade-up shadow-[0_0_30px_rgba(239,68,68,0.15)] rounded-xl">
+                        <div class="bg-red-900/30 px-4 py-3 border-b border-red-500/20 flex justify-between items-center">
+                            <span class="text-red-300 font-bold text-sm"><i class="fa-solid fa-database mr-2"></i>数据列 (Data)</span>
+                            <i class="fa-solid fa-lock text-red-400 text-lg"></i>
+                        </div>
+                        <div class="p-5 flex flex-col gap-3 items-center">
+                            <div class="w-full bg-black/40 p-3 rounded-lg border border-red-500/10 font-mono text-xs text-red-200 break-all text-center">
+                                9a8b7c...
+                                <div class="text-[10px] text-gray-500 mt-1">(随机密文)</div>
+                            </div>
+                            <div class="px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] text-red-400">
+                                <i class="fa-solid fa-ban mr-1"></i>不可搜索
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右底：索引列 -->
+                    <div class="w-[320px] glass-panel p-0 overflow-hidden border-2 border-emerald-500/30 bg-emerald-950/40 flex flex-col fragment fade-up shadow-[0_0_30px_rgba(16,185,129,0.15)] rounded-xl" style="transition-delay: 200ms">
+                        <div class="bg-emerald-900/30 px-4 py-3 border-b border-emerald-500/20 flex justify-between items-center">
+                            <span class="text-emerald-300 font-bold text-sm"><i class="fa-solid fa-list-ol mr-2"></i>索引列 (Index)</span>
+                            <i class="fa-solid fa-bolt text-emerald-400 text-lg"></i>
+                        </div>
+                        <div class="p-5 flex flex-col gap-3 items-center">
+                            <div class="w-full bg-black/40 p-3 rounded-lg border border-emerald-500/10 font-mono text-xs text-emerald-200 break-all text-center">
+                                e5f6g7...
+                                <div class="text-[10px] text-gray-500 mt-1">(固定Hash)</div>
+                            </div>
+                            <div class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-bold animate-pulse">
+                                <i class="fa-solid fa-check mr-1"></i>精确匹配
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+
+            <!-- Slide 5: 决策树 (完美连接修复版) -->
+<section class="slide-tree" data-background-gradient="linear-gradient(135deg, #4c1d95 0%, #581c87 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">🧠 场景化决策指南</h2>
+        <div class="slide-content-wrapper">
+            <div class="w-full max-w-6xl h-[600px] flex flex-col items-center justify-start pt-4 relative">
+                
+                <!-- 1. 根节点 (Z-Index 30, 确保在最上层) -->
+                <div class="z-30 fragment fade-down">
+                    <div class="glass-panel px-8 py-3 bg-white/10 border-white/20 text-xl font-bold text-white shadow-[0_0_40px_rgba(167,139,250,0.3)] backdrop-blur-xl rounded-2xl flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center animate-pulse">
+                            <i class="fa-solid fa-question text-white text-sm"></i>
+                        </div>
+                        你的查询需求是？
+                        <!-- 底部连接点 -->
+                        <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-400 rounded-full"></div>
+                    </div>
+                </div>
+
+                <!-- 2. 动态连接线 (关键修复：Z-Index 0, 缩短路径) -->
+                <!-- 调整 top 和 height，限制 SVG 的绘制区域，不让它画到卡片里去 -->
+                <div class="absolute inset-0 top-[70px] h-[100px] w-full pointer-events-none z-0">
+                    <svg width="100%" height="100%" viewBox="0 0 1000 100" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="gradPath" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#a78bfa;stop-opacity:0.3" />
+                                <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        
+                        <!-- 路径终点 y=90，正好停在标签上方 -->
+                        <!-- 左路 -->
+                        <path d="M500,0 C500,50 166,50 166,90" stroke="url(#gradPath)" stroke-width="3" fill="none" stroke-dasharray="6,4" />
+                        <!-- 中路 -->
+                        <path d="M500,0 C500,50 500,50 500,90" stroke="url(#gradPath)" stroke-width="3" fill="none" stroke-dasharray="6,4" />
+                        <!-- 右路 -->
+                        <path d="M500,0 C500,50 833,50 833,90" stroke="url(#gradPath)" stroke-width="3" fill="none" stroke-dasharray="6,4" />
+
+                        <!-- 粒子动画 -->
+                        <circle r="3" fill="#fff">
+                            <animateMotion dur="1.5s" repeatCount="indefinite" path="M500,0 C500,50 166,50 166,90" />
+                        </circle>
+                        <circle r="3" fill="#fff">
+                            <animateMotion dur="1.5s" repeatCount="indefinite" path="M500,0 C500,50 500,50 500,90" />
+                        </circle>
+                        <circle r="3" fill="#fff">
+                            <animateMotion dur="1.5s" repeatCount="indefinite" path="M500,0 C500,50 833,50 833,90" />
+                        </circle>
+                    </svg>
+                </div>
+
+                <!-- 3. 叶子节点容器 (Z-Index 20, 压住线条) -->
+                <div class="w-full flex justify-between items-start gap-6 mt-16 z-20 px-4">
+                    
+                    <!-- 分支 1: 精确匹配 -->
+                    <div class="flex-1 flex flex-col items-center fragment fade-up group">
+                        <!-- 连接点 (接收上方线条) -->
+                        <div class="w-2 h-2 bg-emerald-400 rounded-full mb-1 opacity-50"></div>
+                        
+                        <div class="mb-3 px-5 py-1.5 bg-purple-900/90 rounded-full text-purple-200 text-xs font-bold border border-purple-500/50 shadow-lg z-30">
+                            <i class="fa-solid fa-equals mr-2 text-emerald-400"></i>精确匹配
+                        </div>
+                        
+                        <div class="glass-panel w-full p-6 border-t-4 border-emerald-500 bg-gradient-to-b from-emerald-900/20 to-transparent hover:bg-emerald-900/30 transition-all duration-300 min-h-[280px]">
+                            <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center mb-4 mx-auto border border-emerald-500/30">
+                                <i class="fa-solid fa-eye-slash text-2xl text-emerald-400"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-white mb-2 leading-tight">盲索引<br><span class="text-sm font-normal opacity-80">(Blind Index)</span></h3>
+                            <div class="w-full h-[1px] bg-white/10 mb-3"></div>
+                            <div class="text-xs text-gray-300 leading-relaxed">
+                                <p class="mb-1"><span class="text-emerald-400 font-bold">✅ 性价比之王</span></p>
+                                <p>仅需一次 Hash 计算，性能损耗极低。</p>
+                                <p class="mt-1 opacity-70">绝大多数场景首选。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 分支 2: 范围查询 -->
+                    <div class="flex-1 flex flex-col items-center fragment fade-up group" style="transition-delay: 100ms">
+                        <div class="w-2 h-2 bg-amber-400 rounded-full mb-1 opacity-50"></div>
+                        
+                        <div class="mb-3 px-5 py-1.5 bg-purple-900/90 rounded-full text-purple-200 text-xs font-bold border border-purple-500/50 shadow-lg z-30">
+                            <i class="fa-solid fa-arrows-left-right mr-2 text-amber-400"></i>范围查询
+                        </div>
+                        
+                        <div class="glass-panel w-full p-6 border-t-4 border-amber-500 bg-gradient-to-b from-amber-900/20 to-transparent hover:bg-amber-900/30 transition-all duration-300 min-h-[280px]">
+                            <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-4 mx-auto border border-amber-500/30">
+                                <i class="fa-solid fa-tags text-2xl text-amber-400"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-white mb-2 leading-tight">区间标签法<br><span class="text-sm font-normal opacity-80">(Range Tags)</span></h3>
+                            <div class="w-full h-[1px] bg-white/10 mb-3"></div>
+                            <div class="text-xs text-gray-300 leading-relaxed">
+                                <p class="mb-1"><span class="text-amber-400 font-bold">⚖️ 折中方案</span></p>
+                                <p>存储 "1k-2k" 粗粒度标签。</p>
+                                <p class="mt-1 opacity-70">取回少量数据在内存解密过滤。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 分支 3: 模糊搜索 -->
+                    <div class="flex-1 flex flex-col items-center fragment fade-up group" style="transition-delay: 200ms">
+                        <div class="w-2 h-2 bg-pink-400 rounded-full mb-1 opacity-50"></div>
+                        
+                        <div class="mb-3 px-5 py-1.5 bg-purple-900/90 rounded-full text-purple-200 text-xs font-bold border border-purple-500/50 shadow-lg z-30">
+                            <i class="fa-solid fa-magnifying-glass mr-2 text-pink-400"></i>模糊搜索
+                        </div>
+                        
+                        <div class="glass-panel w-full p-6 border-t-4 border-pink-500 bg-gradient-to-b from-pink-900/20 to-transparent hover:bg-pink-900/30 transition-all duration-300 min-h-[280px]">
+                            <div class="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center mb-4 mx-auto border border-pink-500/30">
+                                <i class="fa-solid fa-server text-2xl text-pink-400"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-white mb-2 leading-tight">异构索引<br><span class="text-sm font-normal opacity-80">(Elasticsearch)</span></h3>
+                            <div class="w-full h-[1px] bg-white/10 mb-3"></div>
+                            <div class="text-xs text-gray-300 leading-relaxed">
+                                <p class="mb-1"><span class="text-pink-400 font-bold">🚀 终极手段</span></p>
+                                <p>别难为 MySQL 做倒排。</p>
+                                <p class="mt-1 opacity-70">数据同步到 ES 处理复杂检索。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: false,
+            progress: false,
+            center: false,
+            hash: true,
+            transition: 'convex',
+            backgroundTransition: 'zoom',
+            fragments: true,
+        });
+
+        /* 自动招揽模式 (Attract Mode) */
+        (function() {
+            let autoPlayInterval;
+            const autoPlaySpeed = 3000; 
+            let isAttractMode = true;
+
+            function startAttractMode() {
+                if (!isAttractMode) return;
+                Reveal.configure({ loop: true });
+                autoPlayInterval = setInterval(() => {
+                    Reveal.next();
+                }, autoPlaySpeed);
+            }
+
+            function stopAttractMode() {
+                if (!isAttractMode) return;
+                isAttractMode = false;
+                clearInterval(autoPlayInterval);
+                Reveal.slide(0);
+                Reveal.configure({ loop: false });
+                
+                const hint = document.getElementById('start-hint');
+                if(hint) {
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.remove(), 500);
+                }
+            }
+
+            window.addEventListener('keydown', stopAttractMode);
+            window.addEventListener('click', stopAttractMode);
+            window.addEventListener('touchstart', stopAttractMode);
+            
+            startAttractMode();
+        })();
+    </script>
+</body>
+</html>

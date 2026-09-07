@@ -1,0 +1,770 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tomcat类加载器隔离机制深度解析</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .slide {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 40px 60px 20px 60px;
+            animation: fadeIn 0.5s ease-in;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 3.5em;
+            margin-bottom: 25px;
+            color: #2c3e50;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 2.5em;
+            margin-bottom: 35px;
+            color: #2c3e50;
+            text-align: center;
+            font-weight: 700;
+            border-bottom: 4px solid #3498db;
+            padding-bottom: 12px;
+            display: inline-block;
+        }
+
+        h3 {
+            font-size: 1.8em;
+            margin: 15px 0;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .content {
+            max-width: 1200px;
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .diagram {
+            background: #ffffff;
+            border: 3px solid #3498db;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .code-block {
+            background: #ffffff;
+            border-left: 5px solid #3498db;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 1.1em;
+            line-height: 1.8;
+            color: #2c3e50;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .highlight {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .box {
+            background: #ffffff;
+            border: 3px solid #3498db;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 12px 0;
+            font-size: 1.3em;
+            line-height: 1.8;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .architecture {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 35px;
+            margin: 25px 0;
+            padding: 20px 0;
+        }
+
+        .layer {
+            background: #ffffff;
+            border: 3px solid #3498db;
+            border-radius: 12px;
+            padding: 18px 35px;
+            min-width: 480px;
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #2c3e50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            position: relative;
+        }
+
+        .arrow-down {
+            font-size: 2.5em;
+            color: #3498db;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1;
+            margin: -15px 0;
+        }
+
+        .layer-row {
+            display: flex;
+            gap: 25px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .layer-small {
+            background: #ffffff;
+            border: 3px solid #3498db;
+            border-radius: 12px;
+            padding: 18px 25px;
+            min-width: 320px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #2c3e50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .split-view {
+            display: flex;
+            gap: 25px;
+            margin: 20px 0;
+        }
+
+        .split-view > div {
+            flex: 1;
+        }
+
+        .error-box {
+            background: #ffffff;
+            border: 3px solid #e74c3c;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #e74c3c;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.15);
+        }
+
+        .success-box {
+            background: #ffffff;
+            border: 3px solid #3498db;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #3498db;
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+        }
+
+        .steps {
+            counter-reset: step;
+        }
+
+        .step {
+            counter-increment: step;
+            background: #ffffff;
+            border-left: 5px solid #3498db;
+            padding: 18px;
+            margin: 12px 0;
+            border-radius: 8px;
+            font-size: 1.2em;
+            position: relative;
+            padding-left: 65px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .step::before {
+            content: counter(step);
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #3498db;
+            color: #ffffff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-top: 2px solid #e0e0e0;
+            min-height: 75px;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn {
+            background: #3498db;
+            border: none;
+            color: white;
+            padding: 14px 38px;
+            font-size: 1.2em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+        }
+
+        .nav-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .page-indicator {
+            font-size: 1.3em;
+            color: #2c3e50;
+            min-width: 120px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            padding: 10px 0;
+            font-size: 1.2em;
+            line-height: 1.8;
+            position: relative;
+            padding-left: 32px;
+        }
+
+        li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: #3498db;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+
+        .emphasis {
+            font-size: 1.5em;
+            color: #e74c3c;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            padding: 18px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.1);
+        }
+
+        .formula {
+            background: #ffffff;
+            border: 3px dashed #3498db;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            font-size: 1.5em;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #2c3e50;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        .center-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        /* 特殊调整：第3页 */
+        .slide-3 .content {
+            justify-content: space-between;
+        }
+
+        .slide-3 .diagram {
+            margin: 15px 0;
+            padding: 25px;
+        }
+
+        .slide-3 .box {
+            margin: 10px 0;
+            padding: 20px;
+        }
+
+        .slide-3 .formula {
+            margin: 15px 0;
+            padding: 20px;
+            font-size: 1.4em;
+        }
+
+        .slide-3 .emphasis {
+            margin: 15px 0;
+            padding: 15px;
+            font-size: 1.4em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 第1页：封面 -->
+        <div class="slide active">
+            <div class="content" style="justify-content: center;">
+                <h1>🚀 Tomcat骚操作</h1>
+                <h2 style="border: none;">Log4j两个版本打架<br/>它凭啥能劝和？</h2>
+                <div class="box" style="margin-top: 80px; font-size: 1.6em; text-align: center;">
+                    <p style="margin-bottom: 20px;">从面试官视角揭秘</p>
+                    <p style="color: #3498db; font-weight: 700;">类加载器隔离的底层魔法</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第2页：问题场景 -->
+        <div class="slide">
+            <div class="content">
+                <div class="center-wrapper">
+                    <h2>⚠️ 冲突现场</h2>
+                </div>
+                <div class="split-view">
+                    <div class="box">
+                        <h3>WebApp-A</h3>
+                        <p style="margin-top: 20px;">依赖：<span class="highlight">Log4j 1.2</span></p>
+                        <p style="margin-top: 15px; color: #7f8c8d;">📦 /WEB-INF/lib/<br/>log4j-1.2.jar</p>
+                    </div>
+                    <div class="box">
+                        <h3>WebApp-B</h3>
+                        <p style="margin-top: 20px;">依赖：<span class="highlight">Log4j 2.5</span></p>
+                        <p style="margin-top: 15px; color: #7f8c8d;">📦 /WEB-INF/lib/<br/>log4j-2.5.jar</p>
+                    </div>
+                </div>
+                <div class="emphasis" style="margin-top: 30px;">
+                    🤔 同一个Tomcat，两个应用都能正常运行？
+                </div>
+                <div class="error-box" style="margin-top: 20px;">
+                    标准Java应用必报错：<br/>NoSuchMethodError / LinkageError
+                </div>
+            </div>
+        </div>
+
+        <!-- 第3页：为什么会冲突 -->
+        <div class="slide slide-3">
+            <div class="content">
+                <div class="center-wrapper">
+                    <h2>💥 为什么普通应用会冲突？</h2>
+                </div>
+                <div class="diagram">
+                    <div class="box" style="border-color: #e74c3c; background: #ffffff;">
+                        <h3 style="color: #e74c3c;">标准Java应用</h3>
+                        <p style="font-size: 1.3em; margin-top: 15px; font-weight: 600;">
+                            只有<span class="highlight">一个AppClassLoader</span>
+                        </p>
+                    </div>
+                    <div class="formula">
+                        org.apache.logging.log4j.Logger
+                    </div>
+                    <div class="split-view">
+                        <div class="error-box">
+                            加载1.2版本<br/>→ WebApp-B崩溃
+                        </div>
+                        <div class="error-box">
+                            加载2.5版本<br/>→ WebApp-A崩溃
+                        </div>
+                    </div>
+                </div>
+                <div class="emphasis">
+                    🏠 就像一个房间里有两个"张伟"，系统直接懵圈！
+                </div>
+            </div>
+        </div>
+
+        <!-- 第4页：JVM的铁律 -->
+        <div class="slide">
+            <div class="content" style="justify-content: center;">
+                <div class="center-wrapper">
+                    <h2>⚖️ JVM判定类相同的铁律</h2>
+                </div>
+                <div class="formula" style="font-size: 2em; padding: 50px; margin-top: 30px;">
+                    类加载器实例<br/>
+                    <span style="font-size: 1.5em; color: #3498db;">+</span><br/>
+                    类的全限定名<br/>
+                    <span style="font-size: 1.5em; color: #3498db;">↓</span><br/>
+                    <span class="highlight" style="font-size: 1.2em;">唯一确定一个类</span>
+                </div>
+                <div class="box" style="margin-top: 40px; border-color: #3498db; background: #ffffff;">
+                    <p style="font-size: 1.5em; text-align: center; font-weight: 600;">
+                        💡 只要其中<span class="highlight">任意一个</span>条件不同<br/>
+                        JVM就认为是<span class="highlight">两个不同的类</span>
+                    </p>
+                </div>
+                <div class="emphasis" style="margin-top: 30px;">
+                    🎯 Tomcat的魔法就藏在这里！
+                </div>
+            </div>
+        </div>
+
+        <!-- 第5页：Tomcat的解决方案 -->
+        <div class="slide">
+            <div class="content">
+                <div class="center-wrapper">
+                    <h2>🔧 Tomcat的解决方案</h2>
+                </div>
+                <div class="success-box" style="font-size: 1.7em; margin: 40px 0;">
+                    为每个应用创建<span class="highlight">独立的类加载器</span>
+                </div>
+                <div class="split-view">
+                    <div class="box" style="background: #ffffff; border-color: #3498db;">
+                        <h3>WebApp-A</h3>
+                        <p style="margin-top: 25px; font-size: 1.2em;">WebAppClassLoader<span class="highlight">@A</span></p>
+                        <p style="margin: 15px 0; font-size: 1.5em; color: #3498db;">↓</p>
+                        <p style="font-weight: 600;">Log4j 1.2</p>
+                    </div>
+                    <div class="box" style="background: #ffffff; border-color: #3498db;">
+                        <h3>WebApp-B</h3>
+                        <p style="margin-top: 25px; font-size: 1.2em;">WebAppClassLoader<span class="highlight">@B</span></p>
+                        <p style="margin: 15px 0; font-size: 1.5em; color: #3498db;">↓</p>
+                        <p style="font-weight: 600;">Log4j 2.5</p>
+                    </div>
+                </div>
+                <div class="emphasis" style="margin-top: 40px;">
+                    🏰 每个应用都有自己的"专属沙箱"<br/>
+                    互不干扰！
+                </div>
+            </div>
+        </div>
+
+        <!-- 第6页：类加载器架构 -->
+        <div class="slide">
+            <div class="content">
+                <div class="center-wrapper">
+                    <h2>🏗️ Tomcat类加载器架构</h2>
+                </div>
+                <div class="architecture">
+                    <div class="layer" style="background: #ffffff;">
+                        Bootstrap ClassLoader<br/>
+                        <span style="font-size: 0.75em; color: #7f8c8d;">JVM核心类 (rt.jar)</span>
+                    </div>
+                    <div class="arrow-down">↓</div>
+                    <div class="layer" style="background: #ffffff;">
+                        System ClassLoader<br/>
+                        <span style="font-size: 0.75em; color: #7f8c8d;">CLASSPATH</span>
+                    </div>
+                    <div class="arrow-down">↓</div>
+                    <div class="layer" style="background: #ffffff;">
+                        Common ClassLoader<br/>
+                        <span style="font-size: 0.75em; color: #7f8c8d;">Tomcat共享类 (lib/)</span>
+                    </div>
+                    <div class="arrow-down">↓</div>
+                    <div class="layer-row">
+                        <div class="layer-small" style="background: #ffffff;">
+                            WebAppClassLoader A<br/>
+                            <span style="font-size: 0.8em; color: #3498db;">WebApp-A独享</span>
+                        </div>
+                        <div class="layer-small" style="background: #ffffff;">
+                            WebAppClassLoader B<br/>
+                            <span style="font-size: 0.8em; color: #3498db;">WebApp-B独享</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第7页：破坏双亲委派 -->
+        <div class="slide">
+            <div class="content">
+                <div class="center-wrapper">
+                    <h2>💡 对双亲委派的"改良"</h2>
+                </div>
+                <div class="split-view">
+                    <div class="box">
+                        <h3 style="color: #2c3e50;">标准双亲委派</h3>
+                        <p style="font-size: 1.4em; margin-top: 30px; font-weight: 600;">
+                            <span class="highlight">先父后子</span><br/><br/>
+                        </p>
+                        <p style="font-size: 1.2em; line-height: 2;">
+                            1️⃣ 先让父加载器加载<br/>
+                            2️⃣ 父加载不到再自己上
+                        </p>
+                    </div>
+                    <div class="box" style="background: #ffffff; border-color: #3498db;">
+                        <h3 style="color: #3498db;">Tomcat WebAppClassLoader</h3>
+                        <p style="font-size: 1.4em; margin-top: 30px; font-weight: 600;">
+                            <span class="highlight">先子后父</span><br/><br/>
+                        </p>
+                        <p style="font-size: 1.2em; line-height: 2;">
+                            1️⃣ 先在自己地盘找<br/>
+                            2️⃣ 找不到再交给父加载器
+                        </p>
+                    </div>
+                </div>
+                <div class="emphasis" style="margin-top: 40px;">
+                    🎯 保证应用对自己依赖的<span class="highlight">最高控制权</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第8页：加载流程 -->
+        <div class="slide">
+            <div class="content">
+                <div class="center-wrapper">
+                    <h2>🔄 WebAppClassLoader加载流程</h2>
+                </div>
+                <div class="steps">
+                    <div class="step">
+                        <span class="highlight">检查缓存</span><br/>
+                        看自己是否已经加载过这个类
+                    </div>
+                    <div class="step">
+                        <span class="highlight">优先自己加载</span><br/>
+                        在 /WEB-INF/classes 和 /WEB-INF/lib 中查找
+                    </div>
+                    <div class="step">
+                        <span class="highlight">找到了？</span><br/>
+                        直接返回，任务完成 ✅
+                    </div>
+                    <div class="step">
+                        <span class="highlight">没找到？</span><br/>
+                        交给父加载器（Common ClassLoader）
+                    </div>
+                    <div class="step">
+                        <span class="highlight">层层向上</span><br/>
+                        一直到Bootstrap ClassLoader
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第9页：为什么要反向 -->
+        <div class="slide">
+            <div class="content">
+                <div class="center-wrapper">
+                    <h2>🤔 为什么要"先子后父"？</h2>
+                </div>
+                <div class="diagram">
+                    <div class="box" style="background: #ffffff; border-color: #e74c3c;">
+                        <h3 style="color: #e74c3c;">如果遵循标准双亲委派</h3>
+                        <p style="font-size: 1.4em; margin-top: 35px; font-weight: 600;">
+                            Common ClassLoader的lib/目录有 <span class="highlight">Log4j 1.1</span>
+                        </p>
+                        <p style="font-size: 2em; margin: 20px 0; color: #3498db;">
+                            ↓
+                        </p>
+                        <p style="font-size: 1.4em; line-height: 1.8;">
+                            所有应用都被<span class="highlight">强制使用1.1</span><br/>
+                            自己打包的1.2或2.5永远<span class="highlight">没有出头之日</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="success-box" style="margin-top: 40px; font-size: 1.5em; padding: 30px;">
+                    💪 反向委派确保每个应用<br/>
+                    对自己依赖的<span class="highlight">完全控制权</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第10页：核心代码逻辑 -->
+        <div class="slide">
+            <div class="content">
+                <div class="center-wrapper">
+                    <h2>💻 核心代码逻辑（简化版）</h2>
+                </div>
+                <div class="code-block" style="font-size: 1.2em;">
+                    <span style="color: #3498db; font-weight: bold;">public</span> Class&lt;?&gt; loadClass(String name) {<br/>
+                    &nbsp;&nbsp;<span style="color: #7f8c8d;">// 1. 检查缓存</span><br/>
+                    &nbsp;&nbsp;<span style="color: #3498db; font-weight: bold;">if</span> (已加载过) <span style="color: #3498db; font-weight: bold;">return</span> 缓存;<br/>
+                    <br/>
+                    &nbsp;&nbsp;<span style="color: #e74c3c; font-weight: bold;">// 2. 🔥 核心：优先自己加载</span><br/>
+                    &nbsp;&nbsp;<span style="color: #3498db; font-weight: bold;">try</span> {<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;Class c = findClass(name); <span style="color: #7f8c8d;">// 在WEB-INF中找</span><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #3498db; font-weight: bold;">if</span> (c != null) <span style="color: #3498db; font-weight: bold;">return</span> c; <span style="color: #7f8c8d;">// 找到了!</span><br/>
+                    &nbsp;&nbsp;}<br/>
+                    <br/>
+                    &nbsp;&nbsp;<span style="color: #7f8c8d;">// 3. 自己找不到，交给父加载器</span><br/>
+                    &nbsp;&nbsp;<span style="color: #3498db; font-weight: bold;">return</span> super.loadClass(name);<br/>
+                    }
+                </div>
+                <div class="emphasis">
+                    🎯 "先子后父" 就体现在第2步！
+                </div>
+            </div>
+        </div>
+
+        <!-- 第11页：满分回答框架 -->
+        <div class="slide">
+            <div class="content">
+                <div class="center-wrapper">
+                    <h2>🏆 满分回答框架</h2>
+                </div>
+                <div class="steps">
+                    <div class="step">
+                        <span class="highlight">问题本质</span><br/>
+                        考察JVM类加载器隔离机制
+                    </div>
+                    <div class="step">
+                        <span class="highlight">冲突根源</span><br/>
+                        单个加载器 + 同名类 = 必然冲突
+                    </div>
+                    <div class="step">
+                        <span class="highlight">Tomcat方案</span><br/>
+                        为每个应用创建独立的WebAppClassLoader
+                    </div>
+                    <div class="step">
+                        <span class="highlight">隔离原理</span><br/>
+                        不同加载器实例 + 同名类 = 不同的Class对象
+                    </div>
+                    <div class="step">
+                        <span class="highlight">架构设计</span><br/>
+                        层次化加载器：Bootstrap → System → Common → WebApp
+                    </div>
+                    <div class="step">
+                        <span class="highlight">关键创新</span><br/>
+                        "先子后父" 打破标准双亲委派，确保应用依赖优先
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第12页：总结 -->
+        <div class="slide">
+            <div class="content" style="justify-content: center;">
+                <div class="center-wrapper">
+                    <h2>✨ 核心要点总结</h2>
+                </div>
+                <div class="box" style="font-size: 1.5em; padding: 50px; margin: 40px 0; border-width: 4px;">
+                    <p style="margin-bottom: 30px; font-weight: 600;">
+                        🎯 <span class="highlight">隔离机制</span>：不同加载器 = 不同类
+                    </p>
+                    <p style="margin-bottom: 30px; font-weight: 600;">
+                        🏗️ <span class="highlight">架构分层</span>：Common共享 + WebApp隔离
+                    </p>
+                    <p style="margin-bottom: 30px; font-weight: 600;">
+                        🔄 <span class="highlight">反向委派</span>：先子后父，优先应用
+                    </p>
+                    <p style="font-weight: 600;">
+                        💡 <span class="highlight">设计精髓</span>：独立沙箱 + 依赖自主
+                    </p>
+                </div>
+                <div class="emphasis" style="font-size: 1.8em; margin-top: 50px; padding: 35px;">
+                    这就是Tomcat成为<br/>
+                    业界最流行Web容器的<br/>
+                    <span class="highlight">核心原因之一</span>！
+                </div>
+            </div>
+        </div>
+
+        <!-- 导航栏 -->
+        <div class="navigation">
+            <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">◀ 上一页</button>
+            <div class="page-indicator">
+                <span id="currentPage">1</span> / <span id="totalPages">12</span>
+            </div>
+            <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">下一页 ▶</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalPages = slides.length;
+        
+        document.getElementById('totalPages').textContent = totalPages;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalPages) % totalPages;
+            slides[currentSlide].classList.add('active');
+            
+            document.getElementById('currentPage').textContent = currentSlide + 1;
+            
+            // 更新按钮状态
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalPages - 1;
+        }
+
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+
+        // 键盘导航
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowLeft') {
+                changeSlide(-1);
+            } else if (event.key === 'ArrowRight') {
+                changeSlide(1);
+            }
+        });
+
+        // 初始化
+        showSlide(0);
+    </script>
+</body>
+</html>

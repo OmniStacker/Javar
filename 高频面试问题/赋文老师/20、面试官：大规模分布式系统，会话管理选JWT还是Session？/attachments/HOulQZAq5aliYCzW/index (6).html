@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分布式会话选型：JWT vs Session PPT</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei", sans-serif; background: #f3f4f6; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding-bottom: 80px; }
+        /* 页面容器：所有slide隐藏，仅当前页显示 */
+        .slide-container { width: 1280px; height: 720px; position: relative; margin-top: 30px; }
+        .slide { 
+            width: 100%; height: 100%; 
+            background: #ffffff; 
+            border: 1px solid #bfdbfe; 
+            border-radius: 8px; 
+            padding: 30px; 
+            position: absolute; 
+            top: 0; left: 0; 
+            display: none; 
+            align-items: center;
+            justify-content: center;
+        }
+        .slide.active { display: flex; } /* 当前页显示，启用flex居中 */
+        /* 内容框架：上下左右居中，统一样式 */
+        .content-frame { 
+            width: 95%; height: 95%; 
+            border: 1px solid #e0e7ff; 
+            border-radius: 6px; 
+            padding: 20px; 
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        /* 标题样式 */
+        .header { font-size: 28px; font-weight: bold; color: #1e40af; margin-bottom: 15px; border-left: 4px solid #3b82f6; padding-left: 15px; align-self: flex-start; }
+        /* 卡片样式 */
+        .card { border: 1px solid #bfdbfe; background: #ffffff; border-radius: 6px; padding: 10px; text-align: center; }
+        /* 代码块样式：左对齐+精简高度 */
+        .code { 
+            background: #f3f4f6; 
+            color: #374151; 
+            border-radius: 6px; 
+            padding: 8px 10px; 
+            font-size: 13px; 
+            line-height: 1.4; 
+            font-family: "Consolas", monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            width: 100%;
+            text-align: left !important; 
+        }
+        /* 底部固定导航 */
+        .nav-bar { 
+            position: fixed; 
+            bottom: 0; left: 0; 
+            width: 100%; 
+            background: #ffffff; 
+            border-top: 1px solid #e5e7eb; 
+            padding: 15px 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 25px; 
+            z-index: 999;
+        }
+        .nav-btn { 
+            background: #3b82f6; 
+            color: white; 
+            border: none; 
+            padding: 10px 24px; 
+            border-radius: 6px; 
+            font-size: 18px; 
+            cursor: pointer; 
+            transition: background 0.3s;
+        }
+        .nav-btn:disabled { 
+            background: #93c5fd; 
+            cursor: not-allowed; 
+        }
+        .nav-btn:hover:not(:disabled) { 
+            background: #2563eb; 
+        }
+        .page-info { 
+            color: #6b7280; 
+            font-size: 18px; 
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- PPT页面容器 -->
+    <div class="slide-container">
+        <!-- 第 1 页：封面页 -->
+        <div class="slide active" data-page="1">
+            <div class="content-frame">
+                <div>
+                    <div style="font-size: 48px; font-weight: bold; color: #1e40af; margin-bottom: 15px;">分布式会话选型：JWT vs Session</div>
+                    <div style="font-size: 21px; color: #6b7280; margin-bottom: 20px;">面试必问 · 场景匹配能力拆解</div>
+                    <div style="font-size: 16px; color: #3b82f6;">白板讲解 + 伪代码落地 + 选型逻辑</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 2 页：面试官核心考核点 -->
+        <div class="slide" data-page="2">
+            <div class="content-frame">
+                <div class="header">面试官真正想考什么？</div>
+                <div style="display: flex; justify-content: space-around; gap: 20px; width: 100%; margin-bottom: 10px;">
+                    <div class="card" style="flex: 1; display: flex; flex-direction: column; justify-content: center; height: 150px;">
+                        <div style="font-size: 19px; font-weight: bold; color: #1e40af; margin-bottom: 6px;">基础认知</div>
+                        <div style="font-size: 14px; color: #374151; line-height: 1.2;">JWT依赖「签名+过期时间」，与用户状态无关</div>
+                    </div>
+                    <div class="card" style="flex: 1; display: flex; flex-direction: column; justify-content: center; height: 150px;">
+                        <div style="font-size: 19px; font-weight: bold; color: #1e40af; margin-bottom: 6px;">场景思维</div>
+                        <div style="font-size: 14px; color: #374151; line-height: 1.2;">根据并发量、架构选方案</div>
+                    </div>
+                    <div class="card" style="flex: 1; display: flex; flex-direction: column; justify-content: center; height: 150px;">
+                        <div style="font-size: 19px; font-weight: bold; color: #1e40af; margin-bottom: 6px;">工程能力</div>
+                        <div style="font-size: 14px; color: #374151; line-height: 1.2;">考虑性能、安全性（如黑名单）</div>
+                    </div>
+                </div>
+                <div style="font-size: 16px; color: #3b82f6; font-weight: 500;">
+                    关键：不是背方案，是「场景匹配能力」！
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 3 页：Session分布式痛点 -->
+        <div class="slide" data-page="3">
+            <div class="content-frame">
+                <div class="header" style="align-self: center; text-align: center; border: none; padding: 0; margin-bottom: 12px;">
+                    冲突1：Session为什么会「踢用户下线」？
+                </div>
+                <div style="font-size: 18px; color: #6b7280; margin-bottom: 12px;">单体 → 分布式部署后，Session一致性问题爆发！</div>
+                <div style="display: flex; align-items: center; justify-content: space-around; width: 100%; margin-bottom: 8px;">
+                    <div class="card" style="width: 140px; height: 85px; display: flex; align-items: center; justify-content: center; font-size: 15px;">用户<br/>Cookie(JSESSIONID)</div>
+                    <div style="font-size: 30px; color: #6b7280;">→</div>
+                    <div class="card" style="width: 140px; height: 85px; display: flex; align-items: center; justify-content: center; font-size: 15px;">负载均衡</div>
+                    <div style="font-size: 30px; color: #6b7280;">→</div>
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <div class="card" style="width: 140px; height: 65px; font-size: 13px;">Tomcat1<br/>(存Session)</div>
+                        <div class="card" style="width: 140px; height: 65px; font-size: 13px;">Tomcat2<br/>(无此Session)</div>
+                        <div class="card" style="width: 140px; height: 65px; font-size: 13px;">Tomcat3<br/>(无此Session)</div>
+                    </div>
+                    <div style="font-size: 30px; color: #6b7280;">→</div>
+                    <div class="card" style="width: 140px; height: 85px; background: #fee2e2; border-color: #fca5a5; color: #b91c1c; font-size: 15px; font-weight: 500;">登录失效</div>
+                </div>
+                <div style="font-size: 16px; color: #b91c1c; font-weight: 500;">
+                    核心痛点：Session存在单机内存，跨节点无法共享
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 4 页：Session解决方案 -->
+        <div class="slide" data-page="4">
+            <div class="content-frame">
+                <div class="header">解决方案：Spring Session + Redis</div>
+                <div style="font-size: 18px; color: #6b7280; margin-bottom: 8px; align-self: flex-start;">核心：Session迁移到分布式共享存储</div>
+                <div style="display: flex; width: 100%; gap: 12px; align-items: center;">
+                    <div style="width: 50%;">
+                        <div class="code">
+// 1. 核心依赖
+引入 spring-session + redis-starter
+
+// 2. 简化配置
+@配置 @开启Redis会话(过期=30分钟)
+public 会话配置 {
+  定义 Cookie序列化器() {
+    设置Cookie名=SESSION_ID;
+    支持子域名共享;
+    返回 序列化器;
+  }
+}
+
+// 3. 核心效果
+任意Tomcat从Redis读写Session，无缝共享
+                        </div>
+                    </div>
+                    <div style="width: 50%; display: flex; align-items: center; justify-content: center;">
+                        <div style="text-align: center;">
+                            <div class="card" style="width: 160px; height: 70px; margin-bottom: 10px; font-size: 15px;">用户<br/>Cookie(SESSION_ID)</div>
+                            <div style="font-size: 26px; color: #6b7280;">→</div>
+                            <div style="display: flex; gap: 10px; margin: 10px 0;">
+                                <div class="card" style="width: 85px; height: 50px; font-size: 13px;">Tomcat1</div>
+                                <div class="card" style="width: 85px; height: 50px; font-size: 13px;">Tomcat2</div>
+                                <div class="card" style="width: 85px; height: 50px; font-size: 13px;">Tomcat3</div>
+                            </div>
+                            <div style="font-size: 26px; color: #6b7280;">↔</div>
+                            <div class="card" style="width: 160px; height: 70px; margin-top: 10px; background: #dcfce7; border-color: #bbf7d0; color: #166534; font-size: 15px;">Redis<br/>(共享Session)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 5 页：JWT原理与实现 -->
+        <div class="slide" data-page="5">
+            <div class="content-frame">
+                <div class="header">冲突2：JWT无状态很香，为什么大厂还在用Session？</div>
+                <div style="font-size: 18px; color: #6b7280; margin-bottom: 8px; align-self: flex-start;">JWT核心：加密Token存客户端，服务端无状态验证</div>
+                <div style="display: flex; width: 100%; gap: 12px; align-items: center;">
+                    <div style="width: 50%;">
+                        <div class="code">
+// JWT工具类（核心逻辑）
+public class Jwt工具 {
+  密钥=32位密钥; 过期=2小时;
+
+  // 生成Token
+  生成Token(用户) {
+    明文={用户ID:用户.ID, 过期:当前+过期};
+    签名=HMAC-SHA256(明文,密钥);
+    返回 Base64(明文)+"."+Base64(签名);
+  }
+
+  // 验证Token
+  验证Token(Token) {
+    [明文B64,签名B64] = Token.split(".");
+    明文=解密B64(明文B64);
+    if(明文.过期 < 当前) 抛 过期异常;
+    验签=HMAC-SHA256(明文,密钥);
+    if(Base64(验签)!=签名B64) 抛 签名异常;
+    返回 明文.用户ID;
+  }
+}
+
+// 核心流程：登录→生成→携带→验证→放行
+                        </div>
+                    </div>
+                    <div style="width: 50%; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="card" style="width: 120px; height: 50px; font-size: 13px;">用户登录</div>
+                            <div style="font-size: 26px; color: #6b7280;">→</div>
+                            <div class="card" style="width: 120px; height: 50px; font-size: 13px;">生成JWT</div>
+                            <div style="font-size: 26px; color: #6b7280;">→</div>
+                            <div class="card" style="width: 120px; height: 50px; font-size: 13px;">客户端存储</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="card" style="width: 120px; height: 50px; font-size: 13px;">请求带JWT</div>
+                            <div style="font-size: 26px; color: #6b7280;">→</div>
+                            <div class="card" style="width: 120px; height: 50px; font-size: 13px;">解密验证</div>
+                            <div style="font-size: 26px; color: #6b7280;">→</div>
+                            <div class="card" style="width: 120px; height: 50px; font-size: 13px;">返回结果</div>
+                        </div>
+                        <div style="font-size: 15px; color: #6b7280; margin-top: 5px;">
+                            JWT结构：Header(算法) + Payload(数据) + Signature(签名)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 6 页：JWT致命坑点 -->
+        <div class="slide" data-page="6">
+            <div class="content-frame">
+                <div class="header">JWT的4个致命坑点（大厂慎选的原因）</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px; width: 100%;">
+                    <div class="card" style="background: #fee2e2; border-color: #fca5a5; display: flex; flex-direction: column; justify-content: center; height: 130px;">
+                        <div style="font-size: 18px; font-weight: bold; color: #b91c1c; margin-bottom: 5px;">❌ 无法主动失效</div>
+                        <div style="font-size: 13px; color: #374151; line-height: 1.1;">登出/冻结后，未过期Token仍可用</div>
+                    </div>
+                    <div class="card" style="background: #fee2e2; border-color: #fca5a5; display: flex; flex-direction: column; justify-content: center; height: 130px;">
+                        <div style="font-size: 18px; font-weight: bold; color: #b91c1c; margin-bottom: 5px;">⚠️ Payload不加密</div>
+                        <div style="font-size: 13px; color: #374151; line-height: 1.1;">仅Base64编码，不可存敏感信息</div>
+                    </div>
+                    <div class="card" style="background: #fee2e2; border-color: #fca5a5; display: flex; flex-direction: column; justify-content: center; height: 130px;">
+                        <div style="font-size: 18px; font-weight: bold; color: #b91c1c; margin-bottom: 5px;">🔑 密钥泄露风险</div>
+                        <div style="font-size: 13px; color: #374151; line-height: 1.1;">密钥泄露=伪造Token；更换=旧Token失效</div>
+                    </div>
+                    <div class="card" style="background: #fee2e2; border-color: #fca5a5; display: flex; flex-direction: column; justify-content: center; height: 130px;">
+                        <div style="font-size: 18px; font-weight: bold; color: #b91c1c; margin-bottom: 5px;">⏳ 过期时间固定</div>
+                        <div style="font-size: 13px; color: #374151; line-height: 1.1;">生成后无法修改，需重新登录</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 7 页：选型决策树 -->
+        <div class="slide" data-page="7">
+            <div class="content-frame">
+                <div class="header">核心选型逻辑：场景决定方案</div>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%;">
+                    <div class="card" style="width: 380px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 500;">分布式会话选型</div>
+                    <div style="font-size: 28px; color: #6b7280;">↓</div>
+                    <div style="display: flex; width: 100%; justify-content: space-around; gap: 10px;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                            <div class="card" style="width: 210px; height: 70px; font-size: 13px; padding: 8px; display: flex; align-items: center; justify-content: center;">安全性优先+主动失效<br/>（支付/后台）</div>
+                            <div style="font-size: 28px; color: #6b7280;">→</div>
+                            <div class="card" style="width: 210px; height: 50px; background: #dcfce7; border-color: #bbf7d0; color: #166534; font-weight: 500; display: flex; align-items: center; justify-content: center; font-size: 15px;">Spring Session + Redis</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                            <div class="card" style="width: 210px; height: 70px; font-size: 13px; padding: 8px; display: flex; align-items: center; justify-content: center;">高并发+跨域/跨服务<br/>（APP/API网关）</div>
+                            <div style="font-size: 28px; color: #6b7280;">→</div>
+                            <div class="card" style="width: 210px; height: 50px; background: #dcfce7; border-color: #bbf7d0; color: #166534; font-weight: 500; display: flex; align-items: center; justify-content: center; font-size: 15px;">JWT</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                            <div class="card" style="width: 210px; height: 70px; font-size: 13px; padding: 8px; display: flex; align-items: center; justify-content: center;">无状态+主动失效<br/>（混合场景）</div>
+                            <div style="font-size: 28px; color: #6b7280;">→</div>
+                            <div class="card" style="width: 210px; height: 50px; background: #dcfce7; border-color: #bbf7d0; color: #166534; font-weight: 500; display: flex; align-items: center; justify-content: center; font-size: 15px;">JWT + Redis黑名单</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 8 页：中间方案+面试话术 -->
+        <div class="slide" data-page="8">
+            <div class="content-frame">
+                <div class="header">中间方案 + 面试加分话术</div>
+                <div style="display: flex; width: 100%; gap: 12px; align-items: center;">
+                    <div style="width: 50%;">
+                        <div style="font-size: 17px; font-weight: 500; color: #1e40af; margin-bottom: 6px; text-align: left;">JWT + Redis黑名单（兼顾无状态+安全性）</div>
+                        <div class="code">
+// 黑名单工具（核心逻辑）
+public class Jwt黑名单 {
+  注入 Redis模板;
+
+  // 登出/冻结时加入黑名单
+  加入黑名单(Token) {
+    剩余时间=Jwt工具.获取剩余过期(Token);
+    Redis.set("jwt:black:"+Token, "1", 剩余时间, 秒);
+  }
+
+  // 验证时查黑名单
+  是否失效(Token) {
+    return Redis.exists("jwt:black:"+Token);
+  }
+}
+
+// 完整验证流程
+public 验证结果 验证流程(Token) {
+  if(黑名单.是否失效(Token)) return 401;
+  try {
+    Jwt工具.验证Token(Token);
+    return 200;
+  } catch { return 401; }
+}
+                        </div>
+                    </div>
+                    <div style="width: 50%;">
+                        <div style="font-size: 17px; font-weight: 500; color: #1e40af; margin-bottom: 6px; text-align: left;">面试标准应答</div>
+                        <div class="card" style="height: 100%; text-align: left; padding: 15px; font-size: 13px; line-height: 1.6; display: flex; flex-direction: column; justify-content: center;">
+1. 选型核心看场景：分布式会话是「一致性、安全性、扩展性」的平衡；<br/><br/>
+2. 安全优先选 Session+Redis：支持主动失效，适合支付、后台；<br/><br/>
+3. 高并发跨域选 JWT：无状态、性能高，适合APP、API网关；<br/><br/>
+4. 混合场景选 JWT+黑名单：兼顾无状态和主动失效。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部固定导航栏 -->
+    <div class="nav-bar">
+        <button class="nav-btn" id="prevBtn" disabled>← 上一页</button>
+        <span class="page-info" id="pageInfo">1 / 8</span>
+        <button class="nav-btn" id="nextBtn">下一页 →</button>
+    </div>
+
+    <!-- 翻页逻辑JavaScript -->
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const pageInfo = document.getElementById('pageInfo');
+        let currentPage = 1;
+        const totalPages = slides.length;
+
+        // 更新导航状态
+        function updateNav() {
+            pageInfo.textContent = `${currentPage} / ${totalPages}`;
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+        }
+
+        // 切换页面
+        function showPage(pageNum) {
+            slides.forEach(slide => {
+                slide.classList.remove('active');
+                if (parseInt(slide.dataset.page) === pageNum) {
+                    slide.classList.add('active');
+                }
+            });
+            currentPage = pageNum;
+            updateNav();
+        }
+
+        // 绑定按钮事件
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                showPage(currentPage - 1);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                showPage(currentPage + 1);
+            }
+        });
+
+        // 初始化
+        updateNav();
+    </script>

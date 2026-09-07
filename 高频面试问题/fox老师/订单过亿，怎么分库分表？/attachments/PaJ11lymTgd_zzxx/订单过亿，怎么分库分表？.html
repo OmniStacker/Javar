@@ -1,0 +1,158 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>十亿级订单优化-满分答案看板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .slide {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+<div class="w-full bg-white">
+
+    <!-- Slide 1: The Problem -->
+    <section class="slide bg-white">
+        <div class="text-center">
+            <p class="text-3xl md:text-4xl text-red-600 font-semibold">终极面试题</p>
+            <h1 class="text-5xl md:text-7xl font-extrabold mt-4 tracking-tight text-slate-900">50亿级订单表，如何毫秒级查询？</h1>
+            <div class="mt-8 w-full max-w-4xl bg-slate-800 text-white font-mono p-6 rounded-lg text-xl shadow-lg">
+                <p class="text-gray-400">-- 用户查询"待收货"订单, 响应 > 3秒</p>
+                <p class="mt-4"><span class="text-pink-400">SELECT</span> * <span class="text-pink-400">FROM</span> orders</p>
+                <p><span class="text-pink-400">WHERE</span> user_id = <span class="text-amber-300">10086</span></p>
+                <p><span class="text-gray-400">AND</span> status = <span class="text-green-300">'shipped'</span></p>
+                <p><span class="text-pink-400">ORDER BY</span> create_time <span class="text-pink-400">DESC</span></p>
+                <p><span class="text-pink-400">LIMIT</span> <span class="text-amber-300">10</span>;</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Index Optimization -->
+    <section class="slide">
+        <div class="w-full max-w-5xl">
+            <h2 class="text-6xl md:text-7xl font-extrabold text-center mb-8 text-slate-700">Level 1: 精准索引 (优化)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-rose-50 p-6 rounded-lg border-4 border-rose-200">
+                    <p class="text-3xl font-bold mb-4 text-center text-rose-700">❌ 错误索引</p>
+                     <p class="text-xl font-medium text-center text-rose-800">`KEY(user_id)`</p>
+                    <ul class="mt-4 space-y-3 text-lg text-rose-900">
+                        <li>1. 根据`user_id`索引找到几万条订单</li>
+                        <li>2. <span class="font-bold">在内存中对这几万条数据进行排序 (filesort)</span></li>
+                        <li>3. 返回前10条，<span class="font-bold text-red-600">性能极差</span></li>
+                    </ul>
+                </div>
+                <div class="bg-emerald-50 p-6 rounded-lg border-4 border-emerald-200">
+                    <p class="text-3xl font-bold mb-4 text-center text-emerald-700">✅ 黄金索引</p>
+                    <p class="text-xl font-medium text-center text-emerald-800">`KEY(user_id, status, create_time)`</p>
+                    <ul class="mt-4 space-y-3 text-lg text-emerald-900">
+                        <li>1. 索引本身已按`create_time`排好序</li>
+                        <li>2. 直接在索引树上定位到满足条件的前10条</li>
+                        <li>3. <span class="font-bold">无需排序，无需回表 (覆盖索引)</span></li>
+                        <li>4. <span class="font-bold text-green-600">性能暴涨</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Slide 3: Cold/Hot Separation -->
+    <section class="slide">
+        <div class="w-full max-w-5xl text-center">
+            <h2 class="text-6xl md:text-7xl font-extrabold mb-10 text-slate-700">Level 2: 冷热分离 (降维打击)</h2>
+            <p class="text-2xl text-slate-600 mb-8">50亿订单中，99%都是“已完成/已取消”的冷数据！</p>
+            <div class="flex flex-col items-center">
+                <div class="bg-blue-200 text-blue-800 p-8 rounded-xl shadow-lg w-full max-w-2xl">
+                    <p class="text-4xl font-bold">`orders` 主表 (50亿)</p>
+                    <p class="text-xl">包含所有状态的订单</p>
+                </div>
+                <div class="text-5xl font-bold my-6 text-slate-500">⬇</div>
+                 <div class="flex flex-col md:flex-row gap-6 w-full max-w-4xl">
+                    <div class="flex-1 bg-green-200 text-green-800 p-8 rounded-xl shadow-lg">
+                        <p class="text-3xl font-bold">`orders_hot` (热表)</p>
+                        <p class="text-lg mt-2">仅含“待付款”、“待收货”等</p>
+                        <p class="text-4xl font-black mt-4">~1亿</p>
+                    </div>
+                    <div class="flex-1 bg-slate-200 text-slate-800 p-8 rounded-xl shadow-lg">
+                        <p class="text-3xl font-bold">`orders_archive` (冷表)</p>
+                        <p class="text-lg mt-2">仅含“已完成”、“已取消”等</p>
+                        <p class="text-4xl font-black mt-4">~49亿</p>
+                    </div>
+                </div>
+                <p class="mt-8 text-3xl font-bold text-green-700">查询目标从50亿瘦身到1亿，速度天壤之别！</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: Sharding -->
+    <section class="slide">
+        <div class="w-full max-w-5xl text-center">
+            <h2 class="text-6xl md:text-7xl font-extrabold mb-10 text-slate-700">Level 3: 分库分表 (终极武器)</h2>
+            <p class="text-2xl text-slate-600 mb-8">按 `user_id` 水平拆分，将1亿热数据分散到1024个库中</p>
+            <div class="space-y-6 w-full max-w-md">
+                <div class="p-4 bg-blue-100 border-2 border-blue-300 rounded-lg text-xl font-bold">请求: `user_id = 10086`</div>
+                <div class="text-3xl font-bold self-center">⬇</div>
+                <div class="p-4 bg-orange-100 border-2 border-orange-300 rounded-lg text-xl font-bold">路由层: `hash(10086) % 1024 = 512`</div>
+                <div class="text-3xl font-bold self-center">⬇</div>
+                <div class="flex justify-around items-center text-lg font-semibold">
+                    <div class="p-3 bg-slate-200 rounded-lg">DB_1</div>
+                    <div class="p-3 bg-slate-200 rounded-lg">...</div>
+                    <div class="p-6 bg-teal-200 border-4 border-teal-400 rounded-lg shadow-xl animate-pulse">DB_512</div>
+                    <div class="p-3 bg-slate-200 rounded-lg">...</div>
+                    <div class="p-3 bg-slate-200 rounded-lg">DB_1024</div>
+                </div>
+            </div>
+            <p class="mt-8 text-3xl font-bold text-teal-700">海量查询，最终只落在一个数据量极小的库上，实现毫秒级！</p>
+        </div>
+    </section>
+
+    <!-- Slide 5: Summary -->
+    <section class="slide bg-white" style="border-bottom:none;">
+        <div class="w-full max-w-5xl">
+            <h2 class="text-6xl md:text-7xl font-extrabold text-center mb-12 text-slate-900">满分回答模板</h2>
+            <div class="space-y-6">
+                <div class="bg-slate-100 p-6 rounded-lg border-2 border-slate-200"><p class="text-3xl md:text-4xl font-semibold text-slate-800">一、<span class="font-bold text-sky-600">索引层:</span> 设计 `(user_id, status, create_time)` 覆盖索引。</p></div>
+                <div class="bg-slate-100 p-6 rounded-lg border-2 border-slate-200"><p class="text-3xl md:text-4xl font-semibold text-slate-800">二、<span class="font-bold text-sky-600">数据层:</span> 进行冷热数据分离，大幅缩小查询目标数据集。</p></div>
+                <div class="bg-slate-100 p-6 rounded-lg border-2 border-slate-200"><p class="text-3xl md:text-4xl font-semibold text-slate-800">三、<span class="font-bold text-sky-600">架构层:</span> 按 `user_id` 水平分库分表，化整为零，一锤定音。</p></div>
+            </div>
+        </div>
+    </section>
+
+</div>
+<script>window.parent.postMessage({ action: "ready" }, "*"); 
+ 
+window.console = new Proxy(console, {
+  get(target, prop) {
+    if (['log', 'warn', 'error'].includes(prop)) {
+      return new Proxy(target[prop], {
+        apply(fn, thisArg, args) {
+          fn.apply(thisArg, args);
+          window.parent.postMessage({ action: 'console', 
+            type: prop, 
+            args: args.map((arg) => {
+              try {
+                return JSON.stringify(arg).replace(/^["']|["']$/g, '');
+              } catch (e) {
+                return arg;
+              }
+            }) 
+          }, '*');
+        }
+      });
+    }
+    return target[prop];
+  }
+});
+</script></body>
+</html>

@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分布式ID生成架构演进 - 演示看板</title>
+    <style>
+        :root {
+            --bg-color: #020617;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-purple: #a855f7;
+            --accent-orange: #f59e0b;
+            --accent-cyan: #06b6d4;
+            --glass-bg: rgba(15, 23, 42, 0.85);
+            --border-color: rgba(148, 163, 184, 0.15);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* 背景网格特效 */
+        .grid-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* 幻灯片容器 */
+        .slide {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            transform: scale(1.05);
+            padding: 2rem 4rem;
+        }
+
+        .slide.active {
+            opacity: 1;
+            pointer-events: all;
+            transform: scale(1);
+        }
+
+        /* 动画元素控制 */
+        .step-element {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .step-element.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 通用标题 */
+        h2 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 3rem;
+            text-shadow: 0 0 20px rgba(0,0,0,0.5);
+            letter-spacing: 2px;
+        }
+
+        /* --- Slide 1: Intro (开场) --- */
+        .intro-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+            position: relative;
+        }
+        
+        .main-title {
+            font-size: 8rem;
+            font-weight: 900;
+            line-height: 1;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .sub-title {
+            font-size: 4rem;
+            font-weight: 800;
+            color: var(--accent-red);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            margin-bottom: 4rem;
+            text-shadow: 4px 4px 0px rgba(239, 68, 68, 0.2);
+            z-index: 2;
+            position: relative;
+        }
+
+        .sub-title::after {
+            content: "MILLION CONCURRENCY";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            color: rgba(239,68,68,0.5);
+            transform: translate(4px, 4px);
+            z-index: -1;
+            filter: blur(2px);
+        }
+
+        .log-window {
+            width: 100%;
+            max-width: 1400px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--accent-red);
+            border-radius: 12px;
+            padding: 2rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 1.2rem;
+            box-shadow: 0 0 50px rgba(239, 68, 68, 0.1);
+            backdrop-filter: blur(5px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .log-item { margin-bottom: 0.8rem; display: flex; align-items: center; gap: 1rem; }
+        .blink { animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* --- Slide 2: Pillars (两大基石) --- */
+        .pillars-wrapper {
+            display: flex;
+            width: 100%;
+            height: 80%;
+            gap: 3rem;
+        }
+        .pillar-card {
+            flex: 1;
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+        .pillar-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid rgba(255,255,255,0.05);
+            padding-bottom: 1.5rem;
+        }
+        .pillar-icon { width: 80px; height: 80px; }
+        .pillar-title { font-size: 2.5rem; font-weight: bold; }
+        
+        /* 表格样式 */
+        .db-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Fira Code', monospace;
+            font-size: 1.2rem;
+            margin-top: 1rem;
+        }
+        .db-table th {
+            text-align: left;
+            color: var(--text-secondary);
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .db-table td {
+            padding: 1.2rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: white;
+        }
+        .val-highlight { color: var(--accent-green); font-weight: bold; }
+        
+        /* 横向雪花图 */
+        .snowflake-bar {
+            display: flex;
+            width: 100%;
+            height: 80px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 3rem;
+            font-family: monospace;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .sf-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.1rem;
+            flex-direction: column;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+        .sf-section:hover { filter: brightness(1.2); }
+        .sf-label { font-size: 0.8rem; opacity: 0.8; font-weight: normal; }
+
+        .pain-point {
+            margin-top: auto;
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid var(--accent-red);
+            color: var(--accent-red);
+            padding: 1.5rem;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red { 0%, 100% { box-shadow: 0 0 0 rgba(239,68,68,0); } 50% { box-shadow: 0 0 20px rgba(239,68,68,0.3); } }
+
+        /* --- Slide 3: Segment Evolution --- */
+        .evo-container {
+            width: 100%;
+            max-width: 1400px;
+            display: flex;
+            flex-direction: column;
+            gap: 3rem;
+        }
+        .evo-row {
+            display: flex;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.6);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+        }
+        .evo-label {
+            width: 200px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--text-secondary);
+            text-align: right;
+            margin-right: 3rem;
+        }
+        .evo-visual { flex: 1; height: 80px; position: relative; display: flex; gap: 1rem; }
+        .evo-desc { width: 250px; text-align: center; font-size: 1.4rem; font-weight: bold; margin-left: 2rem; }
+        
+        .chain-item {
+            flex: 1;
+            background: linear-gradient(90deg, var(--accent-blue), #1d4ed8);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .chain-item::after {
+            content: "";
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shine 2s infinite;
+        }
+        @keyframes shine { 100% { left: 100%; } }
+
+        /* --- Slide 4: Snowflake Mountains --- */
+        .mountains-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2.5rem;
+            width: 100%;
+            height: 70%;
+        }
+        .mt-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        .mt-card:hover { transform: translateY(-10px); }
+        .mt-icon-box {
+            width: 150px;
+            height: 150px;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        .mt-title { font-size: 2.2rem; font-weight: bold; margin-bottom: 1rem; }
+        .mt-desc { font-size: 1.4rem; color: var(--text-secondary); margin-bottom: 2rem; line-height: 1.4; }
+        .mt-sol {
+            margin-top: auto;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            width: 100%;
+        }
+        .spin-reverse { animation: spin-rev 10s linear infinite; transform-origin: center; }
+        @keyframes spin-rev { 100% { transform: rotate(-360deg); } }
+        .float-anim { animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        /* --- Slide 5: Machine ID --- */
+        .flow-wrapper {
+            display: flex;
+            gap: 2rem;
+            width: 100%;
+            height: 65%;
+            align-items: stretch;
+        }
+        .flow-card {
+            flex: 1;
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .flow-num {
+            position: absolute;
+            top: 1rem; right: 2rem;
+            font-size: 6rem;
+            font-weight: 900;
+            color: rgba(255,255,255,0.03);
+            line-height: 1;
+        }
+        .flow-icon { width: 100px; height: 100px; margin-bottom: 2rem; }
+        .flow-title { font-size: 2.2rem; font-weight: bold; margin-bottom: 1rem; }
+        .flow-text { font-size: 1.4rem; color: var(--text-secondary); margin-bottom: 2rem; flex: 1; }
+        .flow-action {
+            background: rgba(255,255,255,0.05);
+            padding: 1.5rem;
+            border-radius: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 1.1rem;
+            border-left: 5px solid;
+        }
+        .core-concept {
+            margin-top: 3rem;
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.2), transparent);
+            padding: 1rem 4rem;
+            border-radius: 50px;
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            text-align: center;
+        }
+
+        /* --- Slide 6: Storage --- */
+        .storage-stack {
+            width: 800px;
+            height: 600px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .stack-layer {
+            width: 100%;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .layer-algo {
+            height: 120px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            font-size: 2rem;
+            z-index: 3;
+        }
+        .layer-adapter {
+            height: 100px;
+            background: #334155;
+            border: 2px dashed var(--text-secondary);
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            z-index: 2;
+        }
+        .layer-db {
+            height: 180px;
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            z-index: 1;
+            display: flex;
+            gap: 2rem;
+            padding: 2rem;
+        }
+        .db-box {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            font-size: 1.2rem;
+            border: 1px solid transparent;
+            transition: all 0.3s;
+        }
+        .db-box.active { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.1); }
+
+        /* --- Slide 7: CosID --- */
+        .cosid-hero {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+        .cosid-logo {
+            font-size: 12rem;
+            font-weight: 900;
+            background: linear-gradient(to right, #818cf8, #c084fc, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -6px;
+            filter: drop-shadow(0 0 40px rgba(168, 85, 247, 0.5));
+            margin-bottom: 1rem;
+        }
+        .cosid-slogan {
+            font-size: 2.5rem;
+            letter-spacing: 0.5em;
+            color: var(--text-secondary);
+            margin-bottom: 5rem;
+        }
+        .metrics-row {
+            display: flex;
+            gap: 5rem;
+            justify-content: center;
+        }
+        .metric-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            padding: 3rem 5rem;
+            border-radius: 24px;
+            backdrop-filter: blur(10px);
+            min-width: 400px;
+        }
+        .metric-val {
+            font-size: 5rem;
+            font-weight: bold;
+            color: var(--accent-green);
+            font-family: 'Fira Code', monospace;
+            line-height: 1.2;
+        }
+        .metric-label { font-size: 1.5rem; color: var(--text-secondary); margin-top: 1rem; }
+
+        /* --- Slide 8: Outro (Refined) --- */
+        .life-arch-container {
+            display: flex;
+            gap: 3rem;
+            width: 100%;
+            max-width: 1600px;
+            margin-top: 2rem;
+        }
+        .life-card {
+            flex: 1;
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.3s;
+        }
+        .life-card:hover { transform: translateY(-10px); }
+        
+        .life-icon {
+            width: 100px; height: 100px;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+        }
+        
+        .life-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: white;
+        }
+        
+        .life-desc {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        .final-punchline {
+            margin-top: 5rem;
+            font-size: 4rem;
+            font-weight: 900;
+            background: linear-gradient(to right, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<!-- Slide 1: Intro -->
+<div class="slide active" data-steps="1">
+    <div class="intro-container">
+        <div class="main-title">分布式 ID 生成</div>
+        <div class="sub-title">百万并发下的架构演进</div>
+        
+        <div class="log-window step-element visible">
+            <div class="log-item" style="color: var(--accent-red);">
+                <span>✖</span> [ERROR] 10:00:01 DuplicateKeyException: Duplicate entry '109238' for key 'PRIMARY'
+            </div>
+            <div class="log-item" style="color: var(--accent-orange);">
+                <span>⚠</span> [WARN]  10:00:02 ConnectionPool: Waiting for connection (2000ms)...
+            </div>
+            <div class="log-item" style="color: var(--accent-red);">
+                <span>✖</span> [FATAL] 10:00:05 DataSkewAlert: Shard_01 usage 99%, Shard_02 usage 0%
+            </div>
+            <div class="log-item blink" style="color: var(--accent-blue);">
+                <span>ℹ</span> [INFO]  System attempting restart...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 2: Pillars -->
+<div class="slide" data-steps="3">
+    <h2 class="step-element visible">分布式ID的两大基石</h2>
+    <div class="pillars-wrapper">
+        
+        <!-- Segment -->
+        <div class="pillar-card step-element" data-step="1">
+            <div class="pillar-header">
+                <svg class="pillar-icon" style="color: var(--accent-blue);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                </svg>
+                <div class="pillar-title">Segment 号段模式</div>
+            </div>
+            
+            <table class="db-table">
+                <thead>
+                    <tr>
+                        <th>字段名</th>
+                        <th>类型</th>
+                        <th>描述</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>biz_tag</td>
+                        <td>String</td>
+                        <td>业务标识 (如 'order')</td>
+                    </tr>
+                    <tr>
+                        <td>max_id</td>
+                        <td>BigInt</td>
+                        <td class="val-highlight">当前最大ID (2000)</td>
+                    </tr>
+                    <tr>
+                        <td>step</td>
+                        <td>Int</td>
+                        <td style="color: var(--accent-blue);">步长 (1000)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="margin-top: 2rem; font-size: 1.5rem; text-align: center;">
+                利用数据库<span style="color: var(--accent-blue); font-weight: bold;">强一致性</span>换取<span style="color: var(--accent-blue); font-weight: bold;">批量性能</span>
+            </div>
+
+            <div class="pain-point step-element" data-step="3">
+                <svg style="width: 32px; height: 32px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                痛点：TP999 网络毛刺
+            </div>
+        </div>
+
+        <!-- Snowflake -->
+        <div class="pillar-card step-element" data-step="2">
+            <div class="pillar-header">
+                <svg class="pillar-icon" style="color: var(--accent-cyan);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                <div class="pillar-title">Snowflake 雪花算法</div>
+            </div>
+
+            <!-- 横向排列的雪花图 -->
+            <div class="snowflake-bar">
+                <div class="sf-section" style="flex: 1; background: #dc2626;">
+                    <span>1</span>
+                </div>
+                <div class="sf-section" style="flex: 41; background: #2563eb;">
+                    <span>41 bit</span>
+                    <span class="sf-label">时间戳</span>
+                </div>
+                <div class="sf-section" style="flex: 10; background: #d97706;">
+                    <span>10 bit</span>
+                    <span class="sf-label">机器ID</span>
+                </div>
+                <div class="sf-section" style="flex: 12; background: #059669;">
+                    <span>12 bit</span>
+                    <span class="sf-label">序列号</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; font-size: 1.5rem; text-align: center;">
+                <span style="color: var(--accent-cyan); font-weight: bold;">本地生成</span>，不依赖网络，极致性能
+            </div>
+
+            <div class="pain-point step-element" data-step="3">
+                <svg style="width: 32px; height: 32px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                痛点：机器ID分配难题
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 3: Segment Evolution -->
+<div class="slide" data-steps="4">
+    <h2 class="step-element visible">Segment 模式进化之路</h2>
+    <div class="evo-container">
+        
+        <!-- Stage 1 -->
+        <div class="evo-row step-element" data-step="1">
+            <div class="evo-label">常规模式</div>
+            <div class="evo-visual">
+                <div style="width: 100%; background: #334155; border-radius: 8px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                    <div style="position: absolute; left: 0; top: 0; width: 5%; height: 100%; background: var(--accent-red); animation: blink 0.5s infinite;"></div>
+                    <span>阻塞加载...</span>
+                </div>
+            </div>
+            <div class="evo-desc" style="color: var(--accent-red);">TP999 毛刺</div>
+        </div>
+
+        <!-- Stage 2 -->
+        <div class="evo-row step-element" data-step="2">
+            <div class="evo-label">双 Buffer</div>
+            <div class="evo-visual">
+                <div style="flex: 1; background: rgba(16, 185, 129, 0.2); border: 1px solid var(--accent-green); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                    Buffer A (使用中)
+                </div>
+                <div style="flex: 1; background: rgba(245, 158, 11, 0.2); border: 1px solid var(--accent-orange); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                    Buffer B (就绪)
+                </div>
+            </div>
+            <div class="evo-desc" style="color: var(--accent-orange);">抗微小抖动</div>
+        </div>
+
+        <!-- Stage 3 -->
+        <div class="evo-row step-element" data-step="3" style="border: 2px solid var(--accent-blue); box-shadow: 0 0 30px rgba(59, 130, 246, 0.2); transform: scale(1.02);">
+            <div class="evo-label" style="color: var(--accent-blue);">Chain 模式</div>
+            <div class="evo-visual">
+                <div class="chain-item">ID</div>
+                <div class="chain-item">ID</div>
+                <div class="chain-item">ID</div>
+                <div class="chain-item" style="opacity: 0.6">...</div>
+                <div class="chain-item" style="opacity: 0.3">...</div>
+            </div>
+            <div class="evo-desc" style="color: var(--accent-blue);">动态伸缩</div>
+        </div>
+
+        <div class="step-element" data-step="4" style="text-align: center; margin-top: 2rem;">
+            <span style="font-size: 2rem; color: var(--accent-green); font-weight: bold; background: rgba(16, 185, 129, 0.1); padding: 1rem 3rem; border-radius: 50px; border: 1px solid var(--accent-green);">
+                ✅ 数据库宕机也能抗 5 分钟
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 4: Snowflake Mountains -->
+<div class="slide" data-steps="3">
+    <h2 class="step-element visible">Snowflake 的 <span style="color: var(--accent-red);">三座大山</span></h2>
+    <div class="mountains-container">
+        
+        <!-- Clock -->
+        <div class="mt-card step-element" data-step="1">
+            <div class="mt-icon-box">
+                <svg class="spin-reverse" style="color: var(--accent-orange);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+            </div>
+            <div class="mt-title">时钟回拨</div>
+            <div class="mt-desc">NTP 同步导致时间倒流<br>生成重复ID</div>
+            <div class="mt-sol">解法：抛异常重新生成</div>
+        </div>
+
+        <!-- Skew -->
+        <div class="mt-card step-element" data-step="2">
+            <div class="mt-icon-box">
+                <svg style="color: var(--accent-purple);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="10" width="4" height="10" fill="currentColor" fill-opacity="0.2"/>
+                    <rect x="8" y="14" width="4" height="6" fill="currentColor" fill-opacity="0.2"/>
+                    <rect x="14" y="4" width="4" height="16" fill="currentColor"/>
+                    <rect x="20" y="16" width="4" height="4" fill="currentColor" fill-opacity="0.2"/>
+                </svg>
+            </div>
+            <div class="mt-title">分片倾斜</div>
+            <div class="mt-desc">低并发下序列号总是 0<br>数据集中在单表</div>
+            <div class="mt-sol">解法：序列号震荡</div>
+        </div>
+
+        <!-- Worker ID -->
+        <div class="mt-card step-element" data-step="3" style="border-color: var(--accent-red); box-shadow: 0 0 30px rgba(239, 68, 68, 0.15);">
+            <div class="mt-icon-box float-anim">
+                <svg style="color: var(--accent-red);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                </svg>
+            </div>
+            <div class="mt-title">机器ID分配</div>
+            <div class="mt-desc">K8s 容器漂移不定<br>谁来分发唯一工号？</div>
+            <div class="mt-sol" style="background: var(--accent-red); color: white;">BOSS 级难题</div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 5: Machine ID Strategy -->
+<div class="slide" data-steps="4">
+    <h2 class="step-element visible">机器ID分配：<span style="color: var(--accent-cyan);">三步走策略</span></h2>
+    <div class="flow-wrapper">
+        
+        <!-- Step 1 -->
+        <div class="flow-card step-element" data-step="2">
+            <div class="flow-num">01</div>
+            <svg class="flow-icon" style="color: var(--accent-blue);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <div class="flow-title">本地认领</div>
+            <div class="flow-text">应用启动，优先读取本地缓存文件。</div>
+            <div class="flow-action" style="border-color: var(--accent-green); color: var(--accent-green);">
+                Found "ID:88"<br>Action: 续签
+            </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="flow-card step-element" data-step="3">
+            <div class="flow-num">02</div>
+            <svg class="flow-icon" style="color: var(--accent-orange);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <div class="flow-title">捡漏回收</div>
+            <div class="flow-text">若无缓存，查找已下线的"尸体"。</div>
+            <div class="flow-action" style="border-color: var(--accent-orange); color: var(--accent-orange);">
+                Found "ID:66"<br>Action: 复用
+            </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="flow-card step-element" data-step="4">
+            <div class="flow-num">03</div>
+            <svg class="flow-icon" style="color: var(--accent-purple);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            <div class="flow-title">扩容申请</div>
+            <div class="flow-text">无旧号可用，申请全新ID。</div>
+            <div class="flow-action" style="border-color: var(--accent-purple); color: var(--accent-purple);">
+                MAX(id) + 1<br>Action: 新增
+            </div>
+        </div>
+    </div>
+    
+    <div class="core-concept step-element" data-step="1">
+        核心思想：用有状态(DB) 治理 无状态(Snowflake)
+    </div>
+</div>
+
+<!-- Slide 6: Storage Abstraction -->
+<div class="slide" data-steps="2">
+    <h2 class="step-element visible">ID Provider 存储抽象层</h2>
+    <div class="storage-stack">
+        
+        <!-- Top -->
+        <div class="stack-layer layer-algo step-element" data-step="1">
+            算法层 (Algorithm)
+        </div>
+
+        <!-- Arrow -->
+        <div class="step-element" data-step="1" style="text-align: center; color: var(--text-secondary); margin: 1rem 0;">
+            <svg style="width: 40px; height: 40px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+        </div>
+
+        <!-- Adapter -->
+        <div class="stack-layer layer-adapter step-element" data-step="1">
+            适配层 (Adapter)
+        </div>
+
+        <!-- Arrow -->
+        <div class="step-element" data-step="2" style="text-align: center; color: var(--text-secondary); margin: 1rem 0;">
+            <svg style="width: 40px; height: 40px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+        </div>
+
+        <!-- DB -->
+        <div class="stack-layer layer-db step-element" data-step="2">
+            <div class="db-box active">
+                <svg style="width: 40px; height: 40px; color: var(--accent-blue);" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                MySQL
+            </div>
+            <div class="db-box">
+                <svg style="width: 40px; height: 40px; color: var(--accent-red);" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                Redis
+            </div>
+            <div class="db-box">
+                <svg style="width: 40px; height: 40px; color: var(--accent-green);" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                MongoDB
+            </div>
+            <div class="db-box">
+                <svg style="width: 40px; height: 40px; color: var(--accent-orange);" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Zookeeper
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 7: CosID Reveal -->
+<div class="slide" data-steps="2">
+    <div class="cosid-hero step-element visible">
+        <div class="cosid-logo">CosID</div>
+        <div class="cosid-slogan">Apache ShardingSphere</div>
+    </div>
+
+    <div class="metrics-row step-element" data-step="1">
+        <div class="metric-card">
+            <div class="metric-label">Segment TPS</div>
+            <div class="metric-val">1.2亿+</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Snowflake TPS</div>
+            <div style="font-size: 3rem; font-weight: bold; color: white; margin-top: 1rem;">409w/s</div>
+        </div>
+    </div>
+
+    <div class="step-element" data-step="2" style="margin-top: 5rem; display: flex; gap: 2rem;">
+        <span style="font-size: 1.5rem; padding: 1rem 2rem; border-radius: 50px; border: 1px solid var(--accent-blue); color: var(--accent-blue); background: rgba(59, 130, 246, 0.1);">高性能</span>
+        <span style="font-size: 1.5rem; padding: 1rem 2rem; border-radius: 50px; border: 1px solid var(--accent-purple); color: var(--accent-purple); background: rgba(168, 85, 247, 0.1);">高可用</span>
+        <span style="font-size: 1.5rem; padding: 1rem 2rem; border-radius: 50px; border: 1px solid var(--accent-green); color: var(--accent-green); background: rgba(16, 185, 129, 0.1);">容器原生</span>
+    </div>
+</div>
+
+<!-- Slide 8: Outro (Refined) -->
+<div class="slide" data-steps="3">
+    <h2 class="step-element visible">人生亦如高并发</h2>
+    
+    <div class="life-arch-container">
+        <!-- Buffer -->
+        <div class="life-card step-element" data-step="1">
+            <div class="life-icon" style="color: var(--accent-green);">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            </div>
+            <div class="life-title">储备 Buffer</div>
+            <div class="life-desc">多准备几项技能<br>从容应对压力</div>
+        </div>
+
+        <!-- ID -->
+        <div class="life-card step-element" data-step="2">
+            <div class="life-icon" style="color: var(--accent-blue);">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
+            </div>
+            <div class="life-title">明确 ID</div>
+            <div class="life-desc">管理核心竞争力<br>保持唯一标识</div>
+        </div>
+
+        <!-- Clock Backwards -->
+        <div class="life-card step-element" data-step="3">
+            <div class="life-icon spin-reverse" style="color: var(--accent-orange);">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div class="life-title">直面回拨</div>
+            <div class="life-desc">哪怕身处逆境<br>也能重启向前</div>
+        </div>
+    </div>
+
+    <div class="final-punchline step-element" data-step="3">
+        "换个身份，继续向前"
+    </div>
+</div>
+
+<script>
+    const state = { currentSlide: 0, currentStep: 0, slides: [] };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.slide').forEach(el => {
+            state.slides.push({
+                element: el,
+                totalSteps: parseInt(el.dataset.steps || 0),
+                stepElements: el.querySelectorAll('.step-element')
+            });
+        });
+        updateView();
+        document.addEventListener('keydown', handleInput);
+    });
+
+    function updateView() {
+        state.slides.forEach((slide, index) => {
+            if (index === state.currentSlide) {
+                slide.element.classList.add('active');
+                slide.stepElements.forEach(el => {
+                    const stepNum = parseInt(el.dataset.step || 0);
+                    if (stepNum <= state.currentStep) el.classList.add('visible');
+                    else el.classList.remove('visible');
+                });
+            } else {
+                slide.element.classList.remove('active');
+            }
+        });
+    }
+
+    function handleInput(e) {
+        const currentSlideObj = state.slides[state.currentSlide];
+        if (['ArrowDown', 'ArrowRight', ' '].includes(e.key)) {
+            if (state.currentStep < currentSlideObj.totalSteps) {
+                state.currentStep++;
+                updateView();
+            } else if (state.currentSlide < state.slides.length - 1) {
+                state.currentSlide++;
+                state.currentStep = 0;
+                updateView();
+            }
+        } else if (['ArrowUp', 'ArrowLeft'].includes(e.key)) {
+            if (state.currentStep > 0) {
+                state.currentStep--;
+                updateView();
+            } else if (state.currentSlide > 0) {
+                state.currentSlide--;
+                state.currentStep = state.slides[state.currentSlide].totalSteps;
+                updateView();
+            }
+        }
+    }
+</script>
+</body>
+</html>

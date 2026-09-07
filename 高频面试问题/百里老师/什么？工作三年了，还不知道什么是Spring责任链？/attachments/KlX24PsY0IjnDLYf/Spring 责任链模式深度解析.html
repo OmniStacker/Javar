@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring 责任链模式深度解析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 全局字体与重置 */
+        .reveal { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
+        
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none !important; letter-spacing: -0.02em; }
+        
+        /* 强制每页 Slide 占满高度 */
+        .reveal .slides > section {
+            height: 100% !important;
+            top: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 玻璃拟态核心类 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .glass-panel:hover {
+            transform: translateY(-5px) scale(1.02);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* 布局辅助 */
+        .slide-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 4rem 2rem 2rem 2rem; 
+            box-sizing: border-box;
+        }
+
+        .slide-container.cover-layout {
+            justify-content: center !important;
+            padding: 0 !important;
+        }
+
+        .slide-content-wrapper {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .slide-title {
+            font-size: 3rem !important;
+            font-weight: 800 !important;
+            margin: 0 !important;
+            padding-bottom: 2rem !important;
+            flex-shrink: 0;
+            line-height: 1.1 !important;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            text-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Start Hint Overlay */
+        #start-hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 99px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        /* 主题色变量 */
+        .slide-cover { --gradient-start: #a5b4fc; --gradient-end: #6366f1; }
+        .slide-problem { --gradient-start: #fca5a5; --gradient-end: #ef4444; }
+        .slide-concept { --gradient-start: #67e8f9; --gradient-end: #06b6d4; }
+        .slide-spring { --gradient-start: #fcd34d; --gradient-end: #f59e0b; }
+        .slide-security { --gradient-start: #cbd5e1; --gradient-end: #64748b; }
+        .slide-biz { --gradient-start: #6ee7b7; --gradient-end: #10b981; }
+        .slide-summary { --gradient-start: #d8b4fe; --gradient-end: #a855f7; }
+
+    </style>
+</head>
+<body>
+    <div id="start-hint">PRESS ANY KEY TO START</div>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: Cover (Final Polish) -->
+<section class="slide-cover" data-background-gradient="radial-gradient(circle at 20% 50%, #1e1b4b 0%, #0f172a 100%)">
+    <div class="slide-container cover-layout relative overflow-hidden">
+        
+        <!-- 1. 背景层：深邃极光 + 矩阵代码 -->
+        <div class="absolute top-[-50%] left-[-20%] w-[1000px] h-[1000px] bg-indigo-600/20 rounded-full blur-[150px] pointer-events-none animate-pulse"></div>
+        <div class="absolute bottom-[-30%] right-[-10%] w-[800px] h-[800px] bg-cyan-900/10 rounded-full blur-[120px] pointer-events-none"></div>
+        
+        <!-- 装饰代码：更有序、更低调 -->
+        <div class="absolute inset-0 pointer-events-none opacity-5 font-mono text-sm text-indigo-300 select-none">
+            <div class="absolute top-20 left-10">@Order(Ordered.HIGHEST_PRECEDENCE)</div>
+            <div class="absolute top-40 left-20">public class SecurityFilterChain { ... }</div>
+            <div class="absolute bottom-32 right-20">chain.doFilter(request, response);</div>
+            <div class="absolute top-1/2 right-40 rotate-90 origin-bottom-right">List&lt;Handler&gt; executionChain;</div>
+        </div>
+
+        <div class="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 items-center z-10 px-8 h-full">
+            
+            <!-- 2. 左侧：视觉重锤 -->
+            <div class="text-left flex flex-col justify-center h-full pt-12">
+                <!-- 标签 -->
+                <div class="mb-8 fragment fade-down">
+                    <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-indigo-400/30 bg-indigo-950/50 backdrop-blur-md shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                        <span class="flex h-3 w-3 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                        </span>
+                        <span class="text-indigo-200 font-mono text-xs font-bold tracking-widest">JAVA ARCHITECT SERIES</span>
+                    </div>
+                </div>
+                
+                <!-- 主标题 -->
+                <h1 class="text-8xl xl:text-9xl font-black text-white leading-[0.85] tracking-tighter mb-10 drop-shadow-2xl relative">
+                    <span class="block text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400">SPRING</span>
+                    <span class="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-400 relative z-10">CHAIN</span>
+                    <!-- 装饰性文字 -->
+                    <span class="absolute -bottom-4 left-2 text-6xl text-white/5 -z-10 select-none">RESPONSIBILITY</span>
+                </h1>
+
+                <!-- 痛点文案 -->
+                <div class="relative pl-8 border-l-4 border-indigo-500/50 fragment fade-up bg-gradient-to-r from-indigo-900/20 to-transparent py-4 rounded-r-xl">
+                    <h2 class="text-3xl font-bold text-gray-200 leading-normal">
+                        工作三年了，<br>
+                        还只会写 
+                        <span class="relative inline-block mx-2">
+                            <span class="relative z-10 font-mono text-red-300">if-else</span>
+                            <!-- 手写圈注效果 -->
+                            <svg class="absolute -top-2 -left-2 w-[120%] h-[140%] pointer-events-none z-0 opacity-80" viewBox="0 0 100 50" preserveAspectRatio="none">
+                                <path d="M5,25 Q20,5 50,10 T95,25 T50,45 T5,25" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-dasharray="300" stroke-dashoffset="300" class="animate-[draw_1.5s_ease-out_forwards_1s]"></path>
+                            </svg>
+                        </span> 
+                        面条代码？
+                    </h2>
+                    <p class="mt-6 text-indigo-200/60 text-sm font-mono flex items-center gap-2">
+                        <i class="fa-solid fa-terminal"></i>
+                        <span>Target: High Cohesion, Low Coupling</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- 3. 右侧：3D 能量管道 (优化对齐与质感) -->
+            <div class="relative h-[600px] w-full flex items-center justify-center perspective-1000 fragment zoom-in">
+                
+                <!-- 核心光柱 (贯穿背景) -->
+                <div class="absolute left-1/2 top-0 bottom-0 w-[2px] bg-indigo-500/30 -translate-x-1/2 z-0"></div>
+                <div class="absolute left-1/2 top-0 bottom-0 w-[1px] bg-indigo-400 -translate-x-1/2 z-0 shadow-[0_0_15px_#818cf8]"></div>
+                
+                <!-- 能量脉冲 (向下流动) -->
+                <div class="absolute left-1/2 top-0 w-[4px] h-[100px] bg-gradient-to-b from-transparent via-white to-transparent -translate-x-1/2 z-10 animate-[flowDown_3s_linear_infinite]"></div>
+
+                <!-- 节点容器 -->
+                <div class="relative w-full h-full flex flex-col justify-center items-center gap-12 preserve-3d">
+                    
+                    <!-- Node 1 -->
+                    <div class="relative group transform transition-all duration-500 hover:scale-105 hover:translate-z-10">
+                        <!-- 连接点 -->
+                        <div class="absolute left-1/2 -top-6 w-[2px] h-6 bg-indigo-400 -translate-x-1/2"></div>
+                        
+                        <div class="glass-panel w-80 p-5 border-l-4 border-blue-400 bg-slate-900/80 flex items-center gap-5 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.4)] relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-shield-halved text-6xl"></i></div>
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-400/30 shrink-0 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                                <i class="fa-solid fa-shield-halved text-xl text-blue-400"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-base text-white font-bold tracking-wide">AuthFilter</div>
+                                <div class="text-xs text-blue-300/70 font-mono mt-1 truncate">Security Context Check</div>
+                            </div>
+                            <div class="text-2xl font-black text-white/10 font-mono">01</div>
+                        </div>
+                        
+                        <!-- 连接点 -->
+                        <div class="absolute left-1/2 -bottom-6 w-[2px] h-6 bg-indigo-400 -translate-x-1/2"></div>
+                    </div>
+
+                    <!-- Node 2 -->
+                    <div class="relative group transform transition-all duration-500 hover:scale-105 hover:translate-z-10">
+                        <div class="glass-panel w-80 p-5 border-l-4 border-purple-400 bg-slate-900/80 flex items-center gap-5 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.4)] relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-bolt text-6xl"></i></div>
+                            <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center border border-purple-400/30 shrink-0 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                                <i class="fa-solid fa-bolt text-xl text-purple-400"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-base text-white font-bold tracking-wide">RateLimitFilter</div>
+                                <div class="text-xs text-purple-300/70 font-mono mt-1 truncate">Token Bucket Algo</div>
+                            </div>
+                            <div class="text-2xl font-black text-white/10 font-mono">02</div>
+                        </div>
+                        <div class="absolute left-1/2 -bottom-6 w-[2px] h-6 bg-indigo-400 -translate-x-1/2"></div>
+                    </div>
+
+                    <!-- Node 3 -->
+                    <div class="relative group transform transition-all duration-500 hover:scale-105 hover:translate-z-10">
+                        <div class="glass-panel w-80 p-5 border-l-4 border-emerald-400 bg-slate-900/80 flex items-center gap-5 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.4)] relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-code text-6xl"></i></div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center border border-emerald-400/30 shrink-0 shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+                                <i class="fa-solid fa-code-branch text-xl text-emerald-400"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-base text-white font-bold tracking-wide">BizHandler</div>
+                                <div class="text-xs text-emerald-300/70 font-mono mt-1 truncate">Order Processing</div>
+                            </div>
+                            <div class="text-2xl font-black text-white/10 font-mono">03</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <style>
+        .perspective-1000 { perspective: 1000px; }
+        .preserve-3d { transform-style: preserve-3d; }
+        
+        @keyframes draw { to { stroke-dashoffset: 0; } }
+        @keyframes flowDown {
+            0% { top: -20%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { top: 120%; opacity: 0; }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 2: The Transformation (Chaos to Order) - Refined Code Blocks -->
+<section class="slide-problem" data-background-gradient="linear-gradient(90deg, #2a0a0a 0%, #0f172a 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">🍝 告别“面条代码”</h2>
+        <div class="slide-content-wrapper w-full">
+            <div class="relative w-full max-w-7xl h-[600px] flex items-center justify-center">
+                
+                <!-- 背景分割线 -->
+                <div class="absolute inset-0 flex pointer-events-none">
+                    <div class="w-1/2 h-full border-r border-white/5 bg-red-950/5"></div>
+                    <div class="w-1/2 h-full bg-emerald-950/5"></div>
+                </div>
+
+                <!-- 左侧：混乱之源 (Spaghetti) -->
+                <div class="w-[45%] h-full flex flex-col items-center justify-center relative z-10 fragment fade-right">
+                    <div class="absolute top-10 left-10 text-red-500/10 font-black text-8xl select-none rotate-12">CHAOS</div>
+                    
+                    <!-- 混乱的代码块堆叠 -->
+                    <div class="relative w-full h-[400px]">
+                        <!-- 乱线 SVG (背景层) -->
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none opacity-30" style="z-index: 0;">
+                            <path d="M50,50 Q150,150 50,250 T50,350" stroke="#ef4444" stroke-width="2" fill="none" stroke-dasharray="5,5" class="animate-pulse"/>
+                            <path d="M250,50 Q100,150 250,250 T200,350" stroke="#ef4444" stroke-width="2" fill="none" stroke-dasharray="5,5"/>
+                            <path d="M100,100 L300,300" stroke="#7f1d1d" stroke-width="1" fill="none"/>
+                            <path d="M300,50 L50,300" stroke="#7f1d1d" stroke-width="1" fill="none"/>
+                            <circle cx="150" cy="150" r="5" fill="#ef4444" />
+                            <circle cx="250" cy="250" r="5" fill="#ef4444" />
+                        </svg>
+
+                        <!-- 代码块 1: 传统的意大利面条 -->
+                        <div class="absolute top-4 left-8 w-72 bg-[#1e1e1e] border border-red-500/30 rounded-lg shadow-xl transform -rotate-6 hover:scale-105 transition-transform z-10 overflow-hidden text-left">
+                            <!-- Window Header -->
+                            <div class="bg-[#2d2d2d] px-3 py-1.5 flex items-center gap-1.5 border-b border-white/5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-500/50"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/50"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-500/50"></div>
+                                <span class="ml-2 text-[10px] text-gray-500 font-mono">LegacyService.java</span>
+                            </div>
+                            <!-- Code -->
+                            <div class="p-3 font-mono text-[10px] leading-relaxed text-gray-300">
+                                <span class="text-purple-400">if</span> (type == 1) {<br>
+                                &nbsp;&nbsp;<span class="text-blue-400">validate</span>();<br>
+                                &nbsp;&nbsp;<span class="text-yellow-400">processType1</span>();<br>
+                                } <span class="text-purple-400">else if</span> (type == 2) {<br>
+                                &nbsp;&nbsp;<span class="text-gray-500">// Magic number hell</span><br>
+                                &nbsp;&nbsp;<span class="text-blue-400">checkPermissions</span>();<br>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- 代码块 2: 紧急修复 (Visual Focus) -->
+                        <div class="absolute top-36 right-4 w-80 bg-[#1e1e1e] border-2 border-red-600 rounded-lg shadow-2xl transform rotate-3 z-20 animate-[glitch_3s_infinite] overflow-hidden text-left">
+                            <div class="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl">HOT FIX</div>
+                            <!-- Window Header -->
+                            <div class="bg-[#2d2d2d] px-3 py-1.5 flex items-center gap-1.5 border-b border-white/5">
+                                <span class="text-[10px] text-red-400 font-mono font-bold">⚠️ UrgentPatch.java</span>
+                            </div>
+                            <!-- Code -->
+                            <div class="p-4 font-mono text-xs leading-relaxed text-gray-300">
+                                <span class="text-purple-400">if</span> (user.<span class="text-blue-400">isVip</span>()) {<br>
+                                &nbsp;&nbsp;<span class="bg-red-900/80 text-red-200 px-1 rounded text-[10px]">// TODO: Refactor this mess</span><br>
+                                &nbsp;&nbsp;<span class="text-blue-400">nestedCheck</span>(<span class="text-orange-400">true</span>, <span class="text-orange-400">null</span>);<br>
+                                } <span class="text-purple-400">else</span> {<br>
+                                &nbsp;&nbsp;<span class="text-purple-400">throw</span> <span class="text-purple-400">new</span> <span class="text-yellow-200">RuntimeException</span>();<br>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- 代码块 3: 异常处理 -->
+                        <div class="absolute bottom-16 left-16 w-64 bg-[#1e1e1e] border border-red-500/30 rounded-lg shadow-xl transform -rotate-12 z-10 overflow-hidden text-left">
+                            <!-- Window Header -->
+                            <div class="bg-[#2d2d2d] px-3 py-1.5 flex items-center gap-1.5 border-b border-white/5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-gray-600"></div>
+                                <span class="ml-2 text-[10px] text-gray-500 font-mono">Utils.java</span>
+                            </div>
+                            <!-- Code -->
+                            <div class="p-3 font-mono text-[10px] leading-relaxed text-gray-300">
+                                <span class="text-purple-400">try</span> {<br>
+                                &nbsp;&nbsp;<span class="text-blue-400">doSomething</span>();<br>
+                                } <span class="text-purple-400">catch</span> (<span class="text-yellow-200">Exception</span> e) {<br>
+                                &nbsp;&nbsp;<span class="text-purple-400">return</span> <span class="text-orange-400">null</span>; <span class="text-gray-500">// Swallow error</span><br>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- 警告标志 -->
+                        <div class="absolute bottom-5 right-10 bg-red-600 text-white px-3 py-1.5 rounded font-bold animate-bounce shadow-lg z-30 flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-bug"></i>
+                            <span>Bug Prone</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 中间：转化核心 -->
+                <div class="w-[10%] h-full flex flex-col items-center justify-center relative z-20">
+                    <div class="w-14 h-14 rounded-full bg-gradient-to-r from-red-900 to-emerald-900 border border-white/20 flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.1)] backdrop-blur-xl fragment zoom-in">
+                        <i class="fa-solid fa-arrow-right text-xl text-white/50"></i>
+                    </div>
+                </div>
+
+                <!-- 右侧：秩序之美 (Chain) -->
+                <div class="w-[45%] h-full flex flex-col items-center justify-center relative z-10 fragment fade-left">
+                    <div class="absolute bottom-10 right-10 text-emerald-500/10 font-black text-8xl select-none -rotate-12">ORDER</div>
+
+                    <!-- 垂直链式结构 -->
+                    <div class="relative flex flex-col items-center gap-5 w-72">
+                        <!-- 贯穿线 -->
+                        <div class="absolute top-0 bottom-0 w-1 bg-emerald-900/50 -z-10 rounded-full"></div>
+                        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-32 bg-gradient-to-b from-transparent via-emerald-400 to-transparent -z-10 animate-[flowDown_3s_ease-in-out_infinite]"></div>
+
+                        <!-- 节点 1 -->
+                        <div class="group relative w-full p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl backdrop-blur-md hover:bg-emerald-900/60 transition-all duration-300 hover:scale-105 hover:border-emerald-400 cursor-default">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                                    <span class="font-mono font-bold text-xs">01</span>
+                                </div>
+                                <div>
+                                    <div class="text-emerald-100 font-bold text-sm">AuthHandler</div>
+                                    <div class="text-emerald-500/50 text-[10px] font-mono group-hover:text-emerald-400 transition-colors">@Order(1)</div>
+                                </div>
+                                <i class="fa-solid fa-circle-check text-emerald-400 ml-auto opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0 text-sm"></i>
+                            </div>
+                        </div>
+
+                        <!-- 节点 2 -->
+                        <div class="group relative w-full p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl backdrop-blur-md hover:bg-emerald-900/60 transition-all duration-300 hover:scale-105 hover:border-emerald-400 cursor-default">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                                    <span class="font-mono font-bold text-xs">02</span>
+                                </div>
+                                <div>
+                                    <div class="text-emerald-100 font-bold text-sm">ValidateHandler</div>
+                                    <div class="text-emerald-500/50 text-[10px] font-mono group-hover:text-emerald-400 transition-colors">@Order(2)</div>
+                                </div>
+                                <i class="fa-solid fa-circle-check text-emerald-400 ml-auto opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0 text-sm"></i>
+                            </div>
+                        </div>
+
+                        <!-- 节点 3 -->
+                        <div class="group relative w-full p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl backdrop-blur-md hover:bg-emerald-900/60 transition-all duration-300 hover:scale-105 hover:border-emerald-400 cursor-default">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                                    <span class="font-mono font-bold text-xs">03</span>
+                                </div>
+                                <div>
+                                    <div class="text-emerald-100 font-bold text-sm">BizLogicHandler</div>
+                                    <div class="text-emerald-500/50 text-[10px] font-mono group-hover:text-emerald-400 transition-colors">@Order(3)</div>
+                                </div>
+                                <i class="fa-solid fa-circle-check text-emerald-400 ml-auto opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0 text-sm"></i>
+                            </div>
+                        </div>
+
+                        <!-- 底部结果 -->
+                        <div class="mt-3 flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/50 text-emerald-300 text-[10px] font-mono shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            Clean Architecture
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <style>
+        @keyframes glitch {
+            0% { transform: translate(0) rotate(3deg); }
+            20% { transform: translate(-2px, 2px) rotate(3deg); }
+            40% { transform: translate(-2px, -2px) rotate(3deg); }
+            60% { transform: translate(2px, 2px) rotate(3deg); }
+            80% { transform: translate(2px, -2px) rotate(3deg); }
+            100% { transform: translate(0) rotate(3deg); }
+        }
+        @keyframes flowDown {
+            0% { top: 0; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+    </style>
+</section>
+
+
+
+<!-- Slide 3: Concept Topology (Line Center Fix) -->
+<section class="slide-concept" data-background-gradient="radial-gradient(circle at 50% 100%, #155e75 0%, #083344 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">⛓️ 模式本质：击鼓传花</h2>
+        
+        <div class="slide-content-wrapper w-full flex flex-col items-center">
+            
+            <!-- 状态栏 -->
+            <div class="mb-6 flex justify-center w-full">
+                <div class="px-5 py-1.5 rounded-full bg-black/40 border border-cyan-500/30 font-mono text-xs text-cyan-500 flex items-center gap-4 shadow-lg backdrop-blur-sm min-w-[300px] justify-center">
+                    <div class="flex gap-1.5">
+                        <div class="w-2 h-2 rounded-full bg-gray-600 transition-all duration-500 fragment custom-step" data-fragment-index="1"></div>
+                        <div class="w-2 h-2 rounded-full bg-gray-600 transition-all duration-500 fragment custom-step" data-fragment-index="2"></div>
+                        <div class="w-2 h-2 rounded-full bg-gray-600 transition-all duration-500 fragment custom-step" data-fragment-index="3"></div>
+                    </div>
+                    <div class="h-3 w-px bg-cyan-500/30"></div>
+                    <div class="grid grid-cols-1 grid-rows-1 w-[140px] items-center">
+                        <div class="col-start-1 row-start-1 text-left fragment fade-out" data-fragment-index="4" style="transition: opacity 0.5s;">ASSEMBLING...</div>
+                        <div class="col-start-1 row-start-1 text-left text-emerald-400 font-bold fragment fade-in" data-fragment-index="4" style="transition: opacity 0.5s;">SYSTEM ONLINE</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 核心演示区域 -->
+            <div class="relative w-full max-w-6xl h-[400px] flex flex-col justify-center items-center">
+                
+                <!-- 轨道系统 (向上调整到 top-[45%]) -->
+                <svg class="absolute top-[45%] left-0 w-full h-32 -translate-y-1/2 overflow-visible pointer-events-none" style="z-index: 0;">
+                    <path d="M100,64 L1050,64" stroke="#0e7490" stroke-width="4" stroke-opacity="0.2" stroke-linecap="round" fill="none"/>
+                    <g class="fragment fade-in" data-fragment-index="4">
+                        <path d="M100,64 L1050,64" stroke="#22d3ee" stroke-width="2" stroke-dasharray="10,10" fill="none" class="animate-[dashFlow_1s_linear_infinite]"/>
+                        <circle cx="250" cy="64" r="5" fill="#083344" stroke="#22d3ee" stroke-width="2" class="animate-pulse"/>
+                        <circle cx="575" cy="64" r="5" fill="#083344" stroke="#22d3ee" stroke-width="2" class="animate-pulse"/>
+                        <circle cx="900" cy="64" r="5" fill="#083344" stroke="#22d3ee" stroke-width="2" class="animate-pulse"/>
+                    </g>
+                </svg>
+
+                <!-- 移动的请求 (同步调整到 top-[45%]，并放大) -->
+                <div class="fragment fade-in absolute top-[45%] left-[100px] -translate-y-1/2 z-20 animate-[requestTravel_6s_ease-in-out_infinite]" data-fragment-index="4">
+                    <div class="flex items-center gap-2.5 px-4 py-2 bg-white rounded-full shadow-[0_0_25px_rgba(255,255,255,0.8)] border-2 border-cyan-200 relative z-10">
+                        <i class="fa-solid fa-cube text-cyan-600 animate-spin-slow text-base"></i>
+                        <span class="font-mono text-sm font-bold text-cyan-900">REQ</span>
+                    </div>
+                    <div class="absolute right-0 top-1/2 w-28 h-full -translate-y-1/2 bg-gradient-to-r from-transparent to-cyan-400/50 blur-md -z-10 transform translate-x-1/2"></div>
+                </div>
+
+                <!-- 处理器节点 -->
+                <div class="relative w-full flex justify-between px-[150px] z-10 h-full items-center">
+                    
+                    <!-- Handler A -->
+                    <div class="flex flex-col items-center gap-3 fragment zoom-in group h-full justify-center" data-fragment-index="1">
+                        <div class="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-[9px] text-slate-400 font-mono group-hover:text-yellow-300 transition-colors">
+                            <i class="fa-regular fa-circle mr-1"></i>SKIP
+                        </div>
+                        <div class="w-24 h-24 rounded-full glass-panel bg-cyan-950/80 border-cyan-700/50 flex items-center justify-center relative backdrop-blur-md shadow-lg group-hover:border-yellow-400 transition-colors duration-300">
+                            <i class="fa-solid fa-user-shield text-3xl text-cyan-600 group-hover:text-yellow-400 transition-colors"></i>
+                        </div>
+                        <div class="text-center flex flex-col items-center gap-1.5">
+                            <div class="text-white font-bold text-base">AuthHandler</div>
+                            <div class="p-2.5 bg-slate-950/80 rounded border border-cyan-500/20 text-left w-40 shadow-inner">
+                                <div class="font-mono text-[9px] text-gray-500">if (!supports)</div>
+                                <div class="font-mono text-xs text-yellow-400 font-bold">return next;</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Handler B -->
+                    <div class="flex flex-col items-center gap-3 fragment zoom-in group h-full justify-center" data-fragment-index="2">
+                        <div class="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-[9px] text-slate-400 font-mono group-hover:text-yellow-300 transition-colors">
+                            <i class="fa-regular fa-circle mr-1"></i>SKIP
+                        </div>
+                        <div class="w-24 h-24 rounded-full glass-panel bg-cyan-950/80 border-cyan-700/50 flex items-center justify-center relative backdrop-blur-md shadow-lg group-hover:border-yellow-400 transition-colors duration-300">
+                            <i class="fa-solid fa-filter text-3xl text-cyan-600 group-hover:text-yellow-400 transition-colors"></i>
+                        </div>
+                        <div class="text-center flex flex-col items-center gap-1.5">
+                            <div class="text-white font-bold text-base">LogHandler</div>
+                            <div class="p-2.5 bg-slate-950/80 rounded border border-cyan-500/20 text-left w-40 shadow-inner">
+                                <div class="font-mono text-[9px] text-gray-500">if (!supports)</div>
+                                <div class="font-mono text-xs text-yellow-400 font-bold">return next;</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Handler C -->
+                    <div class="flex flex-col items-center gap-3 fragment zoom-in group h-full justify-center" data-fragment-index="3">
+                        <div class="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-[9px] text-slate-400 font-mono group-hover:text-emerald-300 transition-colors">
+                            <i class="fa-solid fa-circle mr-1"></i>HANDLED
+                        </div>
+                        <div class="w-24 h-24 rounded-full glass-panel bg-cyan-950/80 border-cyan-700/50 flex items-center justify-center relative backdrop-blur-md shadow-lg group-hover:border-emerald-400 transition-colors duration-300">
+                            <i class="fa-solid fa-check-double text-3xl text-cyan-600 group-hover:text-emerald-400 transition-colors"></i>
+                        </div>
+                        <div class="text-center flex flex-col items-center gap-1.5">
+                            <div class="text-white font-bold text-base">BizHandler</div>
+                            <div class="p-2.5 bg-slate-950/80 rounded border border-cyan-500/20 text-left w-40 shadow-inner">
+                                <div class="font-mono text-[9px] text-gray-500">if (supports)</div>
+                                <div class="font-mono text-xs text-emerald-400 font-bold">doHandle();</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            
+            <!-- 底部说明 -->
+            <div class="mt-3 flex justify-center">
+                <div class="glass-panel px-5 py-2.5 border-cyan-500/30 bg-cyan-950/30 max-w-2xl relative">
+                    <i class="fa-solid fa-quote-left text-lg text-cyan-700/50 absolute -top-2 -left-2"></i>
+                    <p class="text-cyan-100 text-sm font-light leading-relaxed text-center">
+                        解耦的艺术：每个节点只关注<span class="text-cyan-400 font-bold mx-1">自己是否负责</span>，否则<span class="text-yellow-400 font-bold mx-1">无情传递</span>。
+                    </p>
+                    <i class="fa-solid fa-quote-right text-lg text-cyan-700/50 absolute -bottom-2 -right-2"></i>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <style>
+        @keyframes dashFlow { 0% { stroke-dashoffset: 20; } 100% { stroke-dashoffset: 0; } }
+        @keyframes requestTravel {
+            0% { left: 50px; opacity: 0; transform: translateY(-50%) scale(0.5); }
+            5% { opacity: 1; transform: translateY(-50%) scale(1); }
+            20% { left: 250px; transform: translateY(-50%) scale(1); } 
+            25% { left: 250px; transform: translateY(-50%) scale(0.9); }
+            40% { left: 575px; transform: translateY(-50%) scale(1); }
+            45% { left: 575px; transform: translateY(-50%) scale(0.9); }
+            60% { left: 900px; transform: translateY(-50%) scale(1); }
+            70% { left: 900px; transform: translateY(-50%) scale(1.1); box-shadow: 0 0 40px #22d3ee; }
+            90% { left: 1000px; opacity: 0; transform: translateY(-50%) scale(0.5); }
+            100% { left: 1000px; opacity: 0; }
+        }
+        .animate-spin-slow { animation: spin 3s linear infinite; }
+        .custom-step.visible { background-color: #22d3ee; box-shadow: 0 0 8px #22d3ee; }
+    </style>
+</section>
+
+
+            <!-- Slide 4: Spring Implementation (Layout Fix) -->
+<section class="slide-spring" data-background-gradient="radial-gradient(circle at 50% 0%, #451a03 0%, #1a0b02 100%)">
+    <div class="slide-container">
+        
+        <!-- 1. 标题：恢复标准结构，确保高度一致 -->
+        <h2 class="slide-title">
+            <i class="fa-solid fa-wand-magic-sparkles mr-3 text-amber-400 text-4xl"></i>Spring 的魔法注入
+        </h2>
+        
+        <div class="slide-content-wrapper w-full flex flex-col items-center relative">
+            
+            <!-- 副标题 (紧贴标题下方) -->
+            <p class="text-amber-200/50 text-xs font-mono mb-6 -mt-2">IOC CONTAINER & AUTO DISCOVERY</p>
+
+            <!-- 背景连接线 (SVG Layer) -->
+            <!-- 调整 viewBox 以适应新的紧凑布局 -->
+            <svg class="absolute top-0 left-0 w-full h-full pointer-events-none z-0" style="overflow: visible;">
+                <defs>
+                    <linearGradient id="beamGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.6"/>
+                        <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
+                    </linearGradient>
+                </defs>
+                <g class="fragment fade-in" data-fragment-index="2">
+                    <!-- 坐标微调：起点 y=100 (Context底部), 终点 y=180 (Bean顶部) -->
+                    <!-- Left Beam -->
+                    <path d="M575,100 C575,140 250,140 250,180" fill="none" stroke="url(#beamGradient)" stroke-width="2" stroke-dasharray="6,6" class="animate-[flowBeam_1.5s_linear_infinite]"/>
+                    <!-- Center Beam -->
+                    <path d="M575,100 L575,180" fill="none" stroke="url(#beamGradient)" stroke-width="2" stroke-dasharray="6,6" class="animate-[flowBeam_1.5s_linear_infinite]"/>
+                    <!-- Right Beam -->
+                    <path d="M575,100 C575,140 900,140 900,180" fill="none" stroke="url(#beamGradient)" stroke-width="2" stroke-dasharray="6,6" class="animate-[flowBeam_1.5s_linear_infinite]"/>
+                </g>
+            </svg>
+
+            <!-- 2. Spring 容器 (顶层) -->
+            <div class="relative z-10 mb-8 fragment fade-down" data-fragment-index="1">
+                <div class="glass-panel px-8 py-3 bg-amber-950/40 border-amber-500/50 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.2)] flex items-center gap-4 backdrop-blur-md">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center shadow-lg animate-pulse-slow">
+                        <i class="fa-brands fa-envira text-2xl text-white"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-xl font-bold text-white tracking-wide">Spring Context</div>
+                        <div class="text-[10px] text-amber-300/80 font-mono">Scanning for @Components...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 组件层 (中间层) - 稍微缩小尺寸 -->
+            <div class="grid grid-cols-3 gap-12 w-full max-w-5xl relative z-10 mb-8">
+                <!-- Bean A -->
+                <div class="flex flex-col items-center gap-2 fragment fade-up" data-fragment-index="3">
+                    <div class="px-2 py-0.5 bg-purple-900/50 border border-purple-500/30 rounded text-[9px] text-purple-300 font-mono shadow-sm">
+                        @Order(1)
+                    </div>
+                    <!-- 尺寸缩小 w-28 h-28 -->
+                    <div class="w-28 h-28 glass-panel bg-amber-950/30 border-amber-500/30 flex flex-col items-center justify-center gap-2 shadow-lg hover:border-amber-400 transition-colors duration-300">
+                        <i class="fa-solid fa-cube text-2xl text-amber-500"></i>
+                        <span class="text-white font-bold text-xs">AuthHandler</span>
+                    </div>
+                    <div class="text-[9px] text-amber-500/60 font-mono">@Component</div>
+                </div>
+
+                <!-- Bean B -->
+                <div class="flex flex-col items-center gap-2 fragment fade-up" data-fragment-index="4">
+                    <div class="px-2 py-0.5 bg-purple-900/50 border border-purple-500/30 rounded text-[9px] text-purple-300 font-mono shadow-sm">
+                        @Order(2)
+                    </div>
+                    <div class="w-28 h-28 glass-panel bg-amber-950/30 border-amber-500/30 flex flex-col items-center justify-center gap-2 shadow-lg hover:border-amber-400 transition-colors duration-300">
+                        <i class="fa-solid fa-filter text-2xl text-amber-500"></i>
+                        <span class="text-white font-bold text-xs">LogHandler</span>
+                    </div>
+                    <div class="text-[9px] text-amber-500/60 font-mono">@Component</div>
+                </div>
+
+                <!-- Bean C -->
+                <div class="flex flex-col items-center gap-2 fragment fade-up" data-fragment-index="5">
+                    <div class="px-2 py-0.5 bg-purple-900/50 border border-purple-500/30 rounded text-[9px] text-purple-300 font-mono shadow-sm">
+                        @Order(3)
+                    </div>
+                    <div class="w-28 h-28 glass-panel bg-amber-950/30 border-amber-500/30 flex flex-col items-center justify-center gap-2 shadow-lg hover:border-amber-400 transition-colors duration-300">
+                        <i class="fa-solid fa-business-time text-2xl text-amber-500"></i>
+                        <span class="text-white font-bold text-xs">BizHandler</span>
+                    </div>
+                    <div class="text-[9px] text-amber-500/60 font-mono">@Component</div>
+                </div>
+            </div>
+
+            <!-- 4. 汇聚代码块 (底层) - 确保完整显示 -->
+            <div class="w-full max-w-3xl fragment zoom-in relative z-10" data-fragment-index="6">
+                <!-- 箭头指引 -->
+                <div class="absolute -top-6 left-1/2 -translate-x-1/2 text-amber-500/50 animate-bounce">
+                    <i class="fa-solid fa-chevron-down text-lg"></i>
+                </div>
+
+                <div class="glass-panel p-0 bg-[#1e1e1e] border-amber-500/40 overflow-hidden shadow-2xl text-left">
+                    <!-- IDE Header -->
+                    <div class="bg-[#2d2d2d] px-3 py-1.5 flex items-center gap-2 border-b border-white/5">
+                        <div class="flex gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+                        </div>
+                        <span class="ml-2 text-[10px] text-gray-400 font-mono">ChainManager.java</span>
+                    </div>
+                    
+                    <!-- Code Content -->
+                    <div class="p-4 font-mono text-xs leading-relaxed relative">
+                        <!-- 高亮光效 -->
+                        <div class="absolute top-[55%] left-0 w-full h-7 bg-amber-500/10 -translate-y-1/2 pointer-events-none border-l-2 border-amber-500"></div>
+                        
+                        <div class="text-gray-400">@Service</div>
+                        <div class="text-blue-400">public class <span class="text-yellow-200">ChainManager</span> {</div>
+                        <div class="pl-4 mt-1">
+                            <div class="text-gray-500 text-[10px] mb-0.5">// Spring 自动收集所有实现类并按 Order 排序</div>
+                            <span class="text-purple-400">@Autowired</span>
+                            <br>
+                            <span class="text-purple-400">private</span> 
+                            <span class="text-white font-bold mx-1 border-b border-dashed border-amber-500">List&lt;Handler&gt;</span> 
+                            <span class="text-white">handlers;</span>
+                        </div>
+                        <div class="text-blue-400 mt-1">}</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <style>
+        .animate-pulse-slow { animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes flowBeam {
+            0% { stroke-dashoffset: 12; }
+            100% { stroke-dashoffset: 0; }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 5: Spring Security Example (Corrected Animation Order) -->
+<section class="slide-security" data-background-gradient="radial-gradient(circle at 50% 50%, #1e293b 0%, #0f172a 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">🛡️ 源码实战：Security Filter Chain</h2>
+        
+        <div class="slide-content-wrapper w-full flex flex-col items-center justify-center h-full">
+            <div class="flex gap-8 items-center w-full max-w-6xl h-[500px] relative">
+                
+                <!-- 1. Request Source (Left) - Index 1 -->
+                <div class="flex flex-col items-center gap-4 fragment fade-right z-20 w-32" data-fragment-index="1">
+                    <div class="relative group">
+                        <div class="absolute inset-0 bg-blue-500/30 rounded-full blur-xl group-hover:bg-blue-400/50 transition-all duration-500"></div>
+                        <div class="w-20 h-20 rounded-full bg-slate-900 border-2 border-blue-400/50 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)] relative z-10">
+                            <i class="fa-solid fa-globe text-4xl text-blue-400 animate-pulse-slow"></i>
+                        </div>
+                        <!-- Data Packet Animation (Only active after request appears) -->
+                        <div class="absolute top-1/2 -right-12 w-3 h-3 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa] animate-[packetTravel_2s_linear_infinite]" style="opacity: 0;"></div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-blue-200 font-bold text-lg">HTTP Req</div>
+                        <div class="text-blue-500/50 font-mono text-xs">GET /api/admin</div>
+                    </div>
+                </div>
+
+                <!-- 2. The Chain (Center - Server Rack) - Container Visible Initially -->
+                <div class="flex-1 flex flex-col relative z-10 mx-4">
+                    <!-- Rack Frame -->
+                    <div class="absolute inset-0 border-x-2 border-slate-700 bg-slate-900/40 backdrop-blur-sm rounded-lg -z-10">
+                        <!-- Rack Holes -->
+                        <div class="absolute left-1 top-2 bottom-2 w-1 flex flex-col justify-between opacity-30">
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                        </div>
+                        <div class="absolute right-1 top-2 bottom-2 w-1 flex flex-col justify-between opacity-30">
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                            <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
+                        </div>
+                    </div>
+
+                    <!-- Header -->
+                    <div class="flex justify-between items-center px-4 py-2 border-b border-slate-700/50 bg-slate-800/50 rounded-t-lg mb-4">
+                        <span class="text-slate-400 font-mono text-xs"><i class="fa-solid fa-server mr-2"></i>FilterChainProxy</span>
+                        <div class="flex gap-1">
+                            <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                            <div class="w-2 h-2 rounded-full bg-slate-600"></div>
+                        </div>
+                    </div>
+
+                    <!-- Filters Stack -->
+                    <div class="flex flex-col gap-3 px-6 pb-6 relative">
+                        <!-- Connecting Line -->
+                        <div class="absolute left-[3.25rem] top-0 bottom-6 w-0.5 bg-slate-700 -z-10"></div>
+
+                        <!-- Filter 1: Auth - Index 2 -->
+                        <div class="group relative flex items-center gap-4 fragment fade-up" data-fragment-index="2">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center z-10 shadow-lg group-hover:border-green-500 transition-colors">
+                                <span class="font-mono text-slate-500 text-xs group-hover:text-green-400">01</span>
+                            </div>
+                            <div class="flex-1 glass-panel p-3 flex items-center justify-between border-l-2 border-green-500/50 hover:border-green-400 transition-all">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-key text-green-500/70"></i>
+                                    <div>
+                                        <div class="text-slate-200 font-mono text-sm font-bold">UsernamePasswordAuthFilter</div>
+                                        <div class="text-slate-500 text-[10px]">Extracts username/password</div>
+                                    </div>
+                                </div>
+                                <div class="px-2 py-1 bg-slate-950 rounded border border-slate-700 text-[9px] text-green-400 font-mono">chain.doFilter()</div>
+                            </div>
+                        </div>
+
+                        <!-- Filter 2: Basic Auth - Index 3 -->
+                        <div class="group relative flex items-center gap-4 fragment fade-up" data-fragment-index="3">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center z-10 shadow-lg group-hover:border-green-500 transition-colors">
+                                <span class="font-mono text-slate-500 text-xs group-hover:text-green-400">02</span>
+                            </div>
+                            <div class="flex-1 glass-panel p-3 flex items-center justify-between border-l-2 border-green-500/50 hover:border-green-400 transition-all">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-passport text-green-500/70"></i>
+                                    <div>
+                                        <div class="text-slate-200 font-mono text-sm font-bold">BasicAuthenticationFilter</div>
+                                        <div class="text-slate-500 text-[10px]">Processes HTTP Basic header</div>
+                                    </div>
+                                </div>
+                                <div class="px-2 py-1 bg-slate-950 rounded border border-slate-700 text-[9px] text-green-400 font-mono">chain.doFilter()</div>
+                            </div>
+                        </div>
+
+                        <!-- Filter 3: Security Interceptor - Index 4 -->
+                        <div class="group relative flex items-center gap-4 fragment fade-up" data-fragment-index="4">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 border border-red-500/50 flex items-center justify-center z-10 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse">
+                                <span class="font-mono text-red-400 text-xs">03</span>
+                            </div>
+                            <div class="flex-1 glass-panel p-3 flex items-center justify-between border-l-2 border-red-500 bg-red-950/10">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-hand-paper text-red-500"></i>
+                                    <div>
+                                        <div class="text-red-200 font-mono text-sm font-bold">FilterSecurityInterceptor</div>
+                                        <div class="text-red-400/50 text-[10px]">Final access decision</div>
+                                    </div>
+                                </div>
+                                <div class="px-2 py-1 bg-red-950/50 rounded border border-red-500/30 text-[9px] text-red-400 font-mono font-bold">
+                                    <i class="fa-solid fa-xmark mr-1"></i>AccessDeniedEx
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Controller (Right - Blocked State) - Index 5 -->
+                <div class="flex flex-col items-center gap-4 fragment fade-in w-32" data-fragment-index="5">
+                    <div class="relative">
+                        <!-- Lock Overlay -->
+                        <div class="absolute -top-2 -right-2 w-8 h-8 bg-red-600 rounded-full flex items-center justify-center shadow-lg z-20 animate-bounce">
+                            <i class="fa-solid fa-lock text-white text-sm"></i>
+                        </div>
+                        
+                        <div class="w-24 h-24 rounded-xl border-2 border-dashed border-slate-600 bg-slate-800/30 flex flex-col items-center justify-center gap-2 grayscale opacity-50">
+                            <i class="fa-solid fa-code text-3xl text-slate-500"></i>
+                            <span class="text-slate-500 font-mono text-xs">Controller</span>
+                        </div>
+                    </div>
+                    
+                    <div class="px-3 py-1.5 bg-red-950/80 border border-red-500/50 rounded text-red-400 text-xs font-mono flex items-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                        <i class="fa-solid fa-ban"></i>
+                        <span>403 Forbidden</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <style>
+        .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes packetTravel {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            20% { transform: translate(60px, 0) scale(1); opacity: 1; }
+            40% { transform: translate(60px, 0) scale(0); opacity: 0; }
+            100% { transform: translate(60px, 0) scale(0); opacity: 0; }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 6: Business Scenario (Layout Fix) -->
+<section class="slide-biz" data-background-gradient="radial-gradient(circle at 50% 100%, #064e3b 0%, #022c22 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">🛒 实战：电商下单全链路</h2>
+        
+        <div class="slide-content-wrapper w-full flex flex-col items-center justify-center h-full">
+            <!-- 调整 gap-16 -> gap-6，大幅节省垂直空间 -->
+            <div class="w-full max-w-6xl flex flex-col gap-6">
+                
+                <!-- 1. Context Object (The Payload) -->
+                <div class="flex justify-center fragment fade-down z-20" data-fragment-index="1">
+                    <!-- 减小 padding: py-3 -> py-2 -->
+                    <div class="glass-panel px-6 py-2 flex items-center gap-3 border-emerald-400/50 bg-emerald-900/60 shadow-[0_0_30px_rgba(16,185,129,0.2)] rounded-full backdrop-blur-md">
+                        <div class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg animate-bounce-slow">
+                            <i class="fa-solid fa-box-open text-white text-sm"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="text-emerald-100 font-mono font-bold text-xs">OrderContext</div>
+                            <div class="text-[10px] text-emerald-400/80">包含：User, SKU, Coupon...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. The Pipeline (Conveyor Belt) -->
+                <!-- 调整高度 h-40 -> h-32 -->
+                <div class="relative w-full h-32 flex items-center justify-between px-12">
+                    
+                    <!-- Conveyor Belt Background -->
+                    <div class="absolute top-1/2 left-0 w-full h-2 bg-emerald-950 rounded-full -translate-y-1/2 border border-emerald-800/50 overflow-hidden">
+                        <div class="absolute inset-0 w-full h-full bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#059669_10px,#059669_20px)] opacity-20 animate-[conveyorMove_1s_linear_infinite]"></div>
+                    </div>
+
+                    <!-- Moving Package -->
+                    <div class="absolute top-1/2 left-0 -translate-y-1/2 z-10 animate-[packageTravel_6s_linear_infinite]">
+                        <div class="w-6 h-6 bg-white rounded shadow-[0_0_15px_white] flex items-center justify-center">
+                            <i class="fa-solid fa-cube text-emerald-600 text-[10px]"></i>
+                        </div>
+                    </div>
+
+                    <!-- Node 1: Risk Check -->
+                    <div class="relative flex flex-col items-center gap-2 group fragment zoom-in" data-fragment-index="2">
+                        <div class="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-emerald-900/90 text-emerald-200 text-[9px] px-2 py-0.5 rounded border border-emerald-500/30">
+                            Check Blacklist
+                        </div>
+                        <!-- 缩小尺寸 w-24 -> w-20 -->
+                        <div class="w-20 h-20 rounded-xl glass-panel bg-emerald-950/80 border-emerald-600/50 flex flex-col items-center justify-center gap-1 shadow-lg z-20 group-hover:-translate-y-1 transition-transform duration-300">
+                            <i class="fa-solid fa-shield-halved text-2xl text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]"></i>
+                            <div class="w-full px-2">
+                                <div class="h-1 w-full bg-emerald-900 rounded-full overflow-hidden">
+                                    <div class="h-full bg-red-400 w-2/3"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-emerald-100 font-bold text-xs">风控校验</div>
+                            <div class="text-[9px] text-emerald-500/60 font-mono">RiskFilter</div>
+                        </div>
+                    </div>
+
+                    <!-- Node 2: Inventory -->
+                    <div class="relative flex flex-col items-center gap-2 group fragment zoom-in" data-fragment-index="3">
+                        <div class="w-20 h-20 rounded-xl glass-panel bg-emerald-950/80 border-emerald-600/50 flex flex-col items-center justify-center gap-1 shadow-lg z-20 group-hover:-translate-y-1 transition-transform duration-300">
+                            <i class="fa-solid fa-boxes-stacked text-2xl text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]"></i>
+                            <div class="w-full px-2">
+                                <div class="h-1 w-full bg-emerald-900 rounded-full overflow-hidden">
+                                    <div class="h-full bg-blue-400 w-1/2"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-emerald-100 font-bold text-xs">库存扣减</div>
+                            <div class="text-[9px] text-emerald-500/60 font-mono">StockFilter</div>
+                        </div>
+                    </div>
+
+                    <!-- Node 3: Discount -->
+                    <div class="relative flex flex-col items-center gap-2 group fragment zoom-in" data-fragment-index="4">
+                        <div class="w-20 h-20 rounded-xl glass-panel bg-emerald-950/80 border-emerald-600/50 flex flex-col items-center justify-center gap-1 shadow-lg z-20 group-hover:-translate-y-1 transition-transform duration-300">
+                            <i class="fa-solid fa-tags text-2xl text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]"></i>
+                            <div class="w-full px-2">
+                                <div class="h-1 w-full bg-emerald-900 rounded-full overflow-hidden">
+                                    <div class="h-full bg-yellow-400 w-3/4"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-emerald-100 font-bold text-xs">优惠计算</div>
+                            <div class="text-[9px] text-emerald-500/60 font-mono">DiscountFilter</div>
+                        </div>
+                    </div>
+
+                    <!-- Node 4: Success -->
+                    <div class="relative flex flex-col items-center gap-2 group fragment zoom-in" data-fragment-index="5">
+                        <div class="w-20 h-20 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 border border-emerald-400 flex flex-col items-center justify-center gap-1 shadow-[0_0_30px_rgba(16,185,129,0.5)] z-20 animate-pulse">
+                            <i class="fa-solid fa-circle-check text-3xl text-white"></i>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-white font-bold text-xs">下单成功</div>
+                            <div class="text-[9px] text-emerald-300/60 font-mono">Order Created</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 3. Code Snippet (Bottom) -->
+                <div class="w-full max-w-3xl mx-auto fragment fade-up" data-fragment-index="6">
+                    <div class="glass-panel p-0 bg-[#1e1e1e] border-emerald-500/30 overflow-hidden shadow-2xl text-left">
+                        <!-- IDE Header -->
+                        <div class="bg-[#2d2d2d] px-3 py-1.5 flex items-center gap-2 border-b border-white/5">
+                            <div class="flex gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+                            </div>
+                            <span class="ml-2 text-[10px] text-gray-400 font-mono">OrderService.java</span>
+                        </div>
+                        
+                        <!-- Code Content -->
+                        <!-- 调整 padding: p-6 -> p-4, text-sm -> text-xs -->
+                        <div class="p-4 font-mono text-xs leading-relaxed relative">
+                            <!-- 光效装饰 -->
+                            <div class="absolute top-[60%] left-0 w-full h-6 bg-emerald-500/10 -translate-y-1/2 pointer-events-none border-l-2 border-emerald-500"></div>
+
+                            <div class="text-gray-400">@Transactional</div>
+                            <div class="text-purple-400">public <span class="text-blue-400">OrderResult</span> <span class="text-yellow-200">createOrder</span>(CreateOrderReq req) {</div>
+                            <div class="pl-4 mt-1">
+                                <div class="text-gray-500 text-[10px] mb-0.5">// 1. 构建上下文</div>
+                                <span class="text-yellow-200">OrderContext</span> ctx = <span class="text-purple-400">new</span> <span class="text-yellow-200">OrderContext</span>(req);
+                                <br><br>
+                                <div class="text-gray-500 text-[10px] mb-0.5">// 2. 执行责任链 (一行代码搞定所有逻辑)</div>
+                                <div class="relative inline-block">
+                                    <span class="text-blue-400 relative z-10">orderFilterChain</span>.<span class="text-yellow-200 relative z-10">process</span>(ctx);
+                                </div>
+                                <br><br>
+                                <span class="text-purple-400">return</span> ctx.getResult();
+                            </div>
+                            <div class="text-purple-400 mt-1">}</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <style>
+        .animate-bounce-slow { animation: bounce 3s infinite; }
+        @keyframes conveyorMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 20px 0; }
+        }
+        @keyframes packageTravel {
+            0% { left: 0; opacity: 0; transform: translateY(-50%) scale(0.5); }
+            10% { opacity: 1; transform: translateY(-50%) scale(1); }
+            90% { left: 90%; opacity: 1; transform: translateY(-50%) scale(1); }
+            100% { left: 100%; opacity: 0; transform: translateY(-50%) scale(0.5); }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 7: Summary (Crystal Cards) -->
+<section class="slide-summary" data-background-gradient="radial-gradient(circle at 50% 0%, #4c1d95 0%, #2e1065 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">💎 核心价值总结</h2>
+        
+        <div class="slide-content-wrapper w-full flex flex-col items-center justify-center h-full relative">
+            
+            <!-- Ambient Particles (Background) -->
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                <div class="absolute top-1/4 left-1/4 w-2 h-2 bg-purple-400 rounded-full opacity-50 animate-[floatParticle_5s_ease-in-out_infinite]"></div>
+                <div class="absolute top-3/4 right-1/4 w-3 h-3 bg-pink-400 rounded-full opacity-30 animate-[floatParticle_7s_ease-in-out_infinite_reverse]"></div>
+                <div class="absolute bottom-1/4 left-1/2 w-1 h-1 bg-indigo-400 rounded-full opacity-60 animate-[floatParticle_4s_ease-in-out_infinite]"></div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-10 w-full max-w-6xl z-10">
+                
+                <!-- Card 1: Decoupling -->
+                <div class="group relative h-96 fragment fade-up" data-fragment-index="1">
+                    <div class="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="relative h-full glass-panel p-8 flex flex-col items-center justify-center text-center border border-purple-500/30 bg-purple-900/20 backdrop-blur-xl rounded-3xl hover:border-purple-400/60 transition-all duration-300 hover:-translate-y-2 shadow-2xl">
+                        <div class="w-28 h-28 rounded-full bg-gradient-to-br from-purple-500/20 to-transparent border border-purple-500/30 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_40px_rgba(168,85,247,0.2)]">
+                            <i class="fa-solid fa-scissors text-5xl text-purple-300 group-hover:rotate-12 transition-transform duration-500"></i>
+                        </div>
+                        <h3 class="text-3xl font-bold text-white mb-1 tracking-wide">解耦</h3>
+                        <div class="text-xs font-mono text-purple-300/70 uppercase tracking-widest mb-6 border-b border-purple-500/30 pb-2 w-1/2">Decoupling</div>
+                        <p class="text-purple-100/80 text-sm leading-relaxed">
+                            发送者与接收者彻底分离<br>
+                            <span class="text-purple-400">各司其职，互不干扰</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Card 2: Cohesion -->
+                <div class="group relative h-96 fragment fade-up" data-fragment-index="2">
+                    <div class="absolute inset-0 bg-gradient-to-b from-pink-500/10 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="relative h-full glass-panel p-8 flex flex-col items-center justify-center text-center border border-pink-500/30 bg-pink-900/20 backdrop-blur-xl rounded-3xl hover:border-pink-400/60 transition-all duration-300 hover:-translate-y-2 shadow-2xl">
+                        <div class="w-28 h-28 rounded-full bg-gradient-to-br from-pink-500/20 to-transparent border border-pink-500/30 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_40px_rgba(236,72,153,0.2)]">
+                            <i class="fa-solid fa-bullseye text-5xl text-pink-300 group-hover:scale-110 transition-transform duration-500"></i>
+                        </div>
+                        <h3 class="text-3xl font-bold text-white mb-1 tracking-wide">高内聚</h3>
+                        <div class="text-xs font-mono text-pink-300/70 uppercase tracking-widest mb-6 border-b border-pink-500/30 pb-2 w-1/2">Cohesion</div>
+                        <p class="text-pink-100/80 text-sm leading-relaxed">
+                            遵循单一职责原则 (SRP)<br>
+                            <span class="text-pink-400">逻辑清晰，易于维护</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Card 3: Extensibility -->
+                <div class="group relative h-96 fragment fade-up" data-fragment-index="3">
+                    <div class="absolute inset-0 bg-gradient-to-b from-indigo-500/10 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="relative h-full glass-panel p-8 flex flex-col items-center justify-center text-center border border-indigo-500/30 bg-indigo-900/20 backdrop-blur-xl rounded-3xl hover:border-indigo-400/60 transition-all duration-300 hover:-translate-y-2 shadow-2xl">
+                        <div class="w-28 h-28 rounded-full bg-gradient-to-br from-indigo-500/20 to-transparent border border-indigo-500/30 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_40px_rgba(99,102,241,0.2)]">
+                            <i class="fa-solid fa-puzzle-piece text-5xl text-indigo-300 group-hover:rotate-12 transition-transform duration-500"></i>
+                        </div>
+                        <h3 class="text-3xl font-bold text-white mb-1 tracking-wide">易扩展</h3>
+                        <div class="text-xs font-mono text-indigo-300/70 uppercase tracking-widest mb-6 border-b border-indigo-500/30 pb-2 w-1/2">Extensibility</div>
+                        <p class="text-indigo-100/80 text-sm leading-relaxed">
+                            符合开闭原则 (OCP)<br>
+                            <span class="text-indigo-400">新增逻辑无需修改原有代码</span>
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- Slogan -->
+            <div class="mt-20 fragment fade-in z-10" data-fragment-index="4">
+                <div class="relative px-8 py-4">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent blur-lg"></div>
+                    <h3 class="relative text-3xl text-gray-300 font-light tracking-[0.2em] uppercase text-center">
+                        Make Code <span class="font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-indigo-300 animate-gradient-x">Elegant</span> Again
+                    </h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <style>
+        @keyframes floatParticle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes gradient-x {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        .animate-gradient-x {
+            background-size: 200% 200%;
+            animation: gradient-x 3s ease infinite;
+        }
+    </style>
+</section>
+
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: false,
+            progress: false,
+            center: false,
+            hash: true,
+            transition: 'convex',
+            backgroundTransition: 'zoom',
+            fragments: true,
+            transitionSpeed: 'fast',
+        });
+
+        /* Attract Mode Logic */
+        (function() {
+            let autoPlayInterval;
+            const autoPlaySpeed = 200; // 6 seconds per slide
+            let isAttractMode = true;
+
+            function startAttractMode() {
+                if (!isAttractMode) return;
+                Reveal.configure({ loop: true });
+                autoPlayInterval = setInterval(() => {
+                    Reveal.next();
+                }, autoPlaySpeed);
+            }
+
+            function stopAttractMode() {
+                if (!isAttractMode) return;
+                isAttractMode = false;
+                clearInterval(autoPlayInterval);
+                Reveal.slide(0);
+                Reveal.configure({ loop: false });
+                
+                const hint = document.getElementById('start-hint');
+                if(hint) {
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.remove(), 500);
+                }
+            }
+
+            window.addEventListener('keydown', stopAttractMode);
+            window.addEventListener('click', stopAttractMode);
+            
+            // Start automatically
+            startAttractMode();
+        })();
+    </script>
+</body>
+</html>

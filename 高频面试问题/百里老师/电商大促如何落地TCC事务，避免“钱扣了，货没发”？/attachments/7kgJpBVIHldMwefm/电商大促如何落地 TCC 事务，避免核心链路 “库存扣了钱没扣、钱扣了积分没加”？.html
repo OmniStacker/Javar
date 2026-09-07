@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电商大促如何落地 TCC 事务，避免核心链路 “库存扣了钱没扣、钱扣了积分没加”？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 50% { box-shadow: 0 0 25px 12px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(239, 68, 68, 0); } }
+        @keyframes subtle-pulse-amber { 0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(245, 158, 11, 0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        @keyframes stress { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .diagram-node { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 1.5rem; border-radius: 1rem; font-weight: 600; text-align: center; border: 1px solid; transition: all 0.3s ease; min-width: 140px; }
+        .diagram-node:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(148, 163, 184, 0.2); }
+        .diagram-arrow { font-size: 2rem; color: #94a3b8; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 1rem; flex-shrink: 0; }
+        .diagram-node-bad { animation: subtle-pulse-red 2.5s infinite ease-in-out; }
+        .diagram-node-good { animation: subtle-pulse-green 2.5s infinite ease-in-out; }
+        .diagram-node-warn { animation: subtle-pulse-amber 2.5s infinite ease-in-out; }
+        
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .annotation { position: absolute; background-color: rgba(239, 68, 68, 0.8); color: white; padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: bold; white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场英雄图 -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">电商大促如何落地 TCC 事务？</h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">避免“钱扣了，货没发”的核心秘诀</h2>
+            <div class="content-panel mt-10 p-6 md:p-8 border-sky-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-around gap-4 text-white">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-hand-holding-dollar text-5xl text-sky-300"></i><h4 class="font-bold text-xl mt-2">Try</h4><p class="text-sm text-slate-400">预留资源</p></div>
+                    <div class="diagram-arrow text-sky-400 rotate-90 md:rotate-0"><i class="fa-solid fa-arrow-right-long fa-2x"></i><span class="text-lg font-mono mt-2">Success</span></div>
+                    <div class="diagram-node diagram-node-good border-teal-500/80 bg-teal-900/40 p-6"><i class="fa-solid fa-circle-check text-5xl text-teal-300"></i><h4 class="font-bold text-xl mt-2">Confirm</h4><p class="text-sm text-slate-400">确认执行</p></div>
+                    <div class="diagram-arrow text-rose-400 rotate-90 md:rotate-0"><i class="fa-solid fa-arrow-right-long fa-2x"></i><span class="text-lg font-mono mt-2 text-rose-400">Failed</span></div>
+                    <div class="diagram-node diagram-node-bad border-rose-500/80 bg-rose-900/50 p-6"><i class="fa-solid fa-circle-xmark text-5xl text-rose-300"></i><h4 class="font-bold text-xl mt-2">Cancel</h4><p class="text-sm text-slate-400">取消补偿</p></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 痛点：数据不一致 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-red-500 to-orange-400">痛点：微服务下的数据鸿沟</h2>
+            <p class="mt-4 text-xl text-slate-400">一次下单，多个服务，一步失败，全盘错乱。</p>
+            <div class="content-panel mt-8 p-8 border-red-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-receipt text-5xl text-sky-300"></i><h4 class="font-bold mt-2 text-lg">订单服务</h4></div>
+                    <div class="diagram-arrow text-green-400"><i class="fa-solid fa-right-long"></i><span class="text-base font-mono mt-1">扣库存 <i class="fa-solid fa-check"></i></span></div>
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-boxes-stacked text-5xl text-sky-300"></i><h4 class="font-bold mt-2 text-lg">库存服务</h4></div>
+                    <div class="diagram-arrow text-red-400"><i class="fa-solid fa-right-long"></i><span class="text-base font-mono mt-1">加积分 <i class="fa-solid fa-xmark"></i></span></div>
+                    <div class="diagram-node bg-red-900/40 border-red-500 p-6" style="animation: stress 1.5s infinite ease-in-out;"><i class="fa-solid fa-gift text-5xl text-red-300"></i><h4 class="font-bold mt-2 text-lg">积分服务<br>(异常)</h4></div>
+                </div>
+                <div class="mt-8 text-center">
+                    <div class="inline-flex items-center gap-4 bg-red-900/50 border border-red-500/50 rounded-lg p-4" style="animation: shake 8s infinite ease-in-out;">
+                        <i class="fa-solid fa-triangle-exclamation text-4xl text-red-400"></i>
+                        <h5 class="font-bold text-2xl text-red-300">数据不一致！库存扣了，积分没加！</h5>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    <!-- Slide 3: TCC 标准流程 (统一尺寸优化) -->
+<section id="slide3" class="slide">
+    <div class="text-center w-full max-w-6xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-teal-400 to-emerald-400">解决方案：TCC 标准工作流</h2>
+        <p class="mt-4 text-xl text-slate-400">引入事务协调器，统一指挥，确保最终一致。</p>
+        <div class="content-panel mt-8 p-8 border-teal-500/30 space-y-8">
+            <!-- Try Flow -->
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                <div class="diagram-node bg-violet-900/40 border-violet-500 p-4 h-32 w-40"><i class="fa-solid fa-sitemap text-4xl text-violet-300"></i><h4 class="font-bold">协调器</h4></div>
+                <div class="diagram-arrow text-teal-400"><i class="fa-solid fa-right-long"></i><p class="text-sm font-mono">Try()</p></div>
+                <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 h-32 w-40"><i class="fa-solid fa-boxes-stacked text-4xl text-sky-300"></i><h4 class="font-bold">库存服务</h4></div>
+                <div class="diagram-arrow text-teal-400"><i class="fa-solid fa-right-long"></i><p class="text-sm font-mono">Try()</p></div>
+                <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 h-32 w-40"><i class="fa-solid fa-gift text-4xl text-sky-300"></i><h4 class="font-bold">积分服务</h4></div>
+            </div>
+            <!-- Confirm Flow -->
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                <div class="diagram-node diagram-node-good bg-green-900/40 border-green-500 p-4 h-32 w-40"><i class="fa-solid fa-sitemap text-4xl text-green-300"></i><h4 class="font-bold">协调器<br>(全部成功)</h4></div>
+                <div class="diagram-arrow text-green-400"><i class="fa-solid fa-right-long"></i><p class="text-sm font-mono">Confirm()</p></div>
+                <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 h-32 w-40"><i class="fa-solid fa-check-double text-4xl text-green-300"></i><h4 class="font-bold">库存服务</h4></div>
+                <div class="diagram-arrow text-green-400"><i class="fa-solid fa-right-long"></i><p class="text-sm font-mono">Confirm()</p></div>
+                <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 h-32 w-40"><i class="fa-solid fa-check-double text-4xl text-green-300"></i><h4 class="font-bold">积分服务</h4></div>
+            </div>
+            <!-- Cancel Flow -->
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                <div class="diagram-node diagram-node-bad bg-red-900/40 border-red-500 p-4 h-32 w-40"><i class="fa-solid fa-sitemap text-4xl text-red-300"></i><h4 class="font-bold">协调器<br>(任一失败)</h4></div>
+                <div class="diagram-arrow text-red-400"><i class="fa-solid fa-right-long"></i><p class="text-sm font-mono">Cancel()</p></div>
+                <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 h-32 w-40"><i class="fa-solid fa-rotate-left text-4xl text-red-300"></i><h4 class="font-bold">库存服务</h4></div>
+                <div class="diagram-arrow text-red-400"><i class="fa-solid fa-right-long"></i><p class="text-sm font-mono">Cancel()</p></div>
+                <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 h-32 w-40"><i class="fa-solid fa-rotate-left text-4xl text-red-300"></i><h4 class="font-bold">积分服务</h4></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <!-- Slide 4: 挑战一：幂等性 (Refactored) -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-5xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-500 to-yellow-400">挑战一：幂等性 (Idempotency)</h2>
+            <p class="mt-4 text-xl text-slate-400">网络重试不可怕，可怕的是你的接口没有“记忆”。</p>
+            <div class="content-panel mt-8 p-8 border-amber-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-sitemap text-5xl text-violet-300"></i><h4 class="font-bold text-lg">协调器</h4><p class="text-sm text-slate-400">因网络抖动重试</p></div>
+                    <div class="diagram-arrow" style="animation: shake 4s infinite ease-in-out;">
+                        <div class="flex items-center gap-2 text-green-400"><span class="text-base font-mono">Confirm(tx_id:123)</span><i class="fa-solid fa-right-long"></i></div>
+                        <div class="flex items-center gap-2 text-red-400 mt-4"><span class="text-base font-mono">Confirm(tx_id:123)</span><i class="fa-solid fa-right-long"></i></div>
+                    </div>
+                    <div class="relative diagram-node diagram-node-warn bg-amber-900/40 border-amber-500 p-6"><i class="fa-solid fa-server text-5xl text-amber-300"></i><h4 class="font-bold text-lg">账户服务</h4><div class="annotation -top-4 -right-4 bg-amber-600">重复请求!</div></div>
+                </div>
+                <div class="mt-12 pt-8 border-t border-slate-700 text-center">
+                    <div class="flex items-center justify-center gap-6">
+                        <i class="fa-solid fa-shield-halved text-5xl text-green-400"></i>
+                        <div>
+                            <h5 class="font-bold text-2xl text-green-300">解决方案：引入状态机与锁</h5>
+                            <p class="text-slate-300 mt-2">通过事务状态表（或分布式锁）检查请求是否已执行，确保所有操作都能安全重试。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    <!-- Slide 5: 挑战二：空回滚 (Refactored) -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-5xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-500 to-yellow-400">挑战二：空回滚 (Empty Rollback)</h2>
+            <p class="mt-4 text-xl text-slate-400">Cancel 比 Try 先到？没“预留”就不能“取消”。</p>
+            <div class="content-panel mt-8 p-8 border-amber-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-sitemap text-5xl text-violet-300"></i><h4 class="font-bold text-lg">协调器</h4><p class="text-sm text-slate-400">Try请求超时</p></div>
+                    <div class="diagram-arrow text-red-400" style="animation: shake 5s infinite ease-in-out;">
+                        <i class="fa-solid fa-right-long"></i><span class="text-base font-mono mt-1">Cancel(tx_id:456)</span>
+                    </div>
+                    <div class="relative diagram-node diagram-node-warn bg-amber-900/40 border-amber-500 p-6"><i class="fa-solid fa-server text-5xl text-amber-300"></i><h4 class="font-bold text-lg">库存服务</h4><div class="annotation -top-4 -right-4 bg-amber-600">Try还没到!</div></div>
+                </div>
+                <div class="mt-12 pt-8 border-t border-slate-700 text-center">
+                    <div class="flex items-center justify-center gap-6">
+                        <i class="fa-solid fa-shield-halved text-5xl text-green-400"></i>
+                        <div>
+                            <h5 class="font-bold text-2xl text-green-300">解决方案：建立Try阶段事务日志</h5>
+                            <p class="text-slate-300 mt-2">执行Cancel前，必须检查到对应的Try阶段日志。若日志不存在，则识别为空回滚并直接拒绝。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: 挑战三：悬挂 (Contrast Fix) -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-500 to-pink-500">挑战三：悬挂 (Hanging)</h2>
+            <p class="mt-4 text-xl text-slate-300">Cancel都执行完了，迟到的Try才来，资源被永久锁定。</p>
+            <div class="content-panel mt-12 p-8 border-rose-500/30">
+                <!-- Problem Diagram -->
+                <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-x-6 gap-y-10 text-center">
+                    <!-- Labels -->
+                    <h4 class="font-bold text-2xl text-violet-300">协调器</h4>
+                    <div class="text-sm font-mono text-slate-300">交互</div>
+                    <h4 class="font-bold text-2xl text-sky-300">业务服务</h4>
+
+                    <!-- T1: Try is delayed -->
+                    <div class="diagram-node bg-violet-900/40 border-violet-500 p-4">
+                        <p class="font-mono text-lg text-slate-100">Try()</p>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <p class="font-mono text-xs text-slate-400">T1: 请求发送</p>
+                        <i class="fa-solid fa-cloud text-4xl text-slate-500"></i>
+                        <p class="font-bold text-slate-300">网络拥堵</p>
+                        <i class="fa-solid fa-arrow-down-long text-2xl text-slate-500 animate-pulse"></i>
+                    </div>
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 opacity-50">
+                        <p class="font-mono text-lg text-slate-300">等待请求...</p>
+                    </div>
+
+                    <!-- T2: Coordinator times out and cancels -->
+                    <div class="diagram-node bg-red-900/40 border-red-500 p-4">
+                        <p class="font-mono text-lg text-red-200">Timeout! <br> Cancel()</p>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <p class="font-mono text-xs text-slate-400">T2: 超时回滚</p>
+                        <i class="fa-solid fa-right-long text-3xl text-red-400"></i>
+                    </div>
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-4">
+                        <i class="fa-solid fa-rotate-left text-2xl text-red-300"></i>
+                        <p class="font-mono text-lg text-slate-100">已回滚</p>
+                    </div>
+
+                    <!-- T3: Late Try arrives -->
+                    <div class="diagram-node bg-violet-900/40 border-violet-500 p-4 opacity-50">
+                        <p class="font-mono text-lg text-slate-300">...</p>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 text-rose-300" style="animation: shake 2.5s infinite ease-in-out;">
+                        <p class="font-mono text-xs">T3: 拥堵结束</p>
+                        <i class="fa-solid fa-right-long text-3xl"></i>
+                        <p class="font-bold">迟到的Try到达!</p>
+                    </div>
+                    <div class="diagram-node bg-rose-900/40 border-rose-500 p-4 relative">
+                        <i class="fa-solid fa-bomb text-4xl text-rose-300"></i>
+                        <p class="font-mono text-lg font-bold text-rose-200">悬挂！</p>
+                    </div>
+                </div>
+
+                <!-- Solution -->
+                <div class="mt-16 pt-8 border-t border-slate-700 text-center">
+                    <div class="flex items-center justify-center gap-6">
+                        <i class="fa-solid fa-shield-halved text-5xl text-green-400"></i>
+                        <div>
+                            <h5 class="font-bold text-2xl text-green-300">解决方案：增加防悬挂逻辑</h5>
+                            <p class="text-slate-300 mt-2">服务执行Try前，检查全局事务状态。若已取消，则拒绝执行，防止资源被错误占用。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: 最终总结 (Highlighted) -->
+    <section id="slide7" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">最终总结：TCC落地核心要点</h2>
+            <p class="mt-4 text-xl text-slate-300">掌握三大挑战应对之策，构筑金融级高可用服务。</p>
+            <div class="content-panel mt-12 p-8 border-sky-500/30">
+                <!-- Core Principles -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+                    <!-- Principle 1: Anti-Null-Rollback -->
+                    <div class="summary-card">
+                        <div class="flex items-center gap-4">
+                            <i class="fa-solid fa-ghost text-3xl text-red-400"></i>
+                            <h4 class="font-bold text-2xl text-slate-100">防空回滚</h4>
+                        </div>
+                        <p class="mt-3 text-slate-300">
+                            <strong>核心：</strong> <strong class="text-amber-300">阻止没有<code>Try</code>的<code>Cancel</code></strong>。
+                            <br>
+                            <strong>措施：</strong> 在执行<code>Cancel</code>前，必须<strong class="text-amber-300">检查对应<code>Try</code>的事务日志</strong>，确保<code>Try</code>阶段已成功执行。
+                        </p>
+                    </div>
+                    <!-- Principle 2: Idempotency -->
+                    <div class="summary-card">
+                        <div class="flex items-center gap-4">
+                            <i class="fa-solid fa-layer-group text-3xl text-orange-400"></i>
+                            <h4 class="font-bold text-2xl text-slate-100">保幂等</h4>
+                        </div>
+                        <p class="mt-3 text-slate-300">
+                            <strong>核心：</strong> 所有阶段操作都能<strong class="text-amber-300">安全重试</strong>。
+                            <br>
+                            <strong>措施：</strong> 为所有阶段<strong class="text-amber-300">设计状态机</strong>。利用事务状态来<strong class="text-amber-300">防止重复执行</strong>。
+                        </p>
+                    </div>
+                    <!-- Principle 3: Anti-Hanging -->
+                    <div class="summary-card">
+                        <div class="flex items-center gap-4">
+                            <i class="fa-solid fa-shield-halved text-3xl text-green-400"></i>
+                            <h4 class="font-bold text-2xl text-slate-100">防悬挂</h4>
+                        </div>
+                        <p class="mt-3 text-slate-300">
+                            <strong>核心：</strong> <strong class="text-amber-300">拒绝迟到的<code>Try</code>请求</strong>。
+                            <br>
+                            <strong>措施：</strong> <code>Try</code>执行前，<strong class="text-amber-300">检查事务是否已取消</strong>。若是，则直接拒绝，避免资源被错误预留。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Golden Rule -->
+                <div class="mt-12 pt-8 border-t border-slate-700">
+                    <h3 class="text-2xl font-bold text-amber-300">
+                        <i class="fa-solid fa-gem mr-2"></i>黄金法则：<span class="text-cyan-300">拥抱框架</span>，但<span class="text-cyan-300">精通原理</span>
+                    </h3>
+                    <p class="mt-4 text-lg text-slate-300 max-w-4xl mx-auto">
+                        在生产环境中，强烈推荐使用Seata等成熟的分布式事务框架。它们封装了上述复杂性，但深刻理解这些核心原理，才是您<strong class="text-amber-300">排查问题、进行架构设计的底气</strong>所在。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+  <!-- 页脚 -->
+  <footer class="text-center py-8 text-slate-500">
+      电商大促如何落地 TCC 事务，避免核心链路 “库存扣了钱没扣、钱扣了积分没加”？
+  </footer>
+
+  <script>
+      document.addEventListener('DOMContentLoaded', () => {
+          const slides = document.querySelectorAll('.slide');
+          const navContainer = document.getElementById('nav-dots');
+          if (slides.length === 0) return;
+          slides.forEach(slide => {
+              const dot = document.createElement('a');
+              dot.href = `#${slide.id}`; 
+              navContainer.appendChild(dot);
+          });
+          const navDots = navContainer.querySelectorAll('a');
+          const observer = new IntersectionObserver((entries) => {
+              entries.forEach(entry => {
+                  if (entry.isIntersecting) {
+                      const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                      navDots.forEach(dot => dot.classList.remove('active'));
+                      if (activeDot) { activeDot.classList.add('active'); }
+                  }
+              });
+          }, { root: null, threshold: 0.5 });
+          slides.forEach(slide => { observer.observe(slide); });
+      });
+  </script>
+</body> 
+</html>

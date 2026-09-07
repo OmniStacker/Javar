@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高频面试：MyBatis是如何进行分页的</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-good { 0%, 100% { box-shadow: 0 0 0 0 rgba(5, 255, 161, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(5, 255, 161, 0); } }
+        @keyframes subtle-pulse-bad { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 5, 149, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(255, 5, 149, 0); } }
+        @keyframes stress { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes flow-down { from { top: -10%; opacity: 0; } to { top: 90%; opacity: 1; } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        
+        .diagram-node {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .diagram-node:hover { transform: translateY(-5px) scale(1.03); }
+        .diagram-node-good { animation: subtle-pulse-good 2.5s infinite; }
+        .diagram-node-bad { animation: subtle-pulse-bad 2s infinite; }
+
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .slide:last-of-type { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场 -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-200">
+                <span class="gradient-text bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500">超·高频面试</span>：MyBatis是如何进行分页的？
+            </h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">从“暴力拉取”到“精准查询”的性能进化之路</h2>
+            <div class="content-panel mt-12 p-8 md:p-12 border-orange-500/30">
+                <div class="flex flex-col items-center justify-center gap-6 text-white">
+                    <div class="flex items-center gap-4">
+                        <i class="fa-solid fa-computer text-4xl text-sky-300"></i>
+                        <i class="fa-solid fa-arrow-right-long text-2xl text-slate-500"></i>
+                        <div class="diagram-node w-32"><i class="fa-brands fa-java text-3xl text-orange-400"></i><p class="font-bold mt-1">MyBatis</p></div>
+                        <i class="fa-solid fa-arrow-right-long text-2xl text-slate-500"></i>
+                        <i class="fa-solid fa-database text-4xl text-slate-400"></i>
+                    </div>
+                    <p class="text-slate-400 mt-2">核心问题：如何高效地从海量数据中只取一页？</p>
+                    <div class="flex flex-col md:flex-row items-stretch justify-around gap-8 mt-4 w-full">
+                        <div class="diagram-node md:w-5/12 border-fuchsia-500/50 diagram-node-bad">
+                            <h4 class="font-bold text-xl text-fuchsia-400">逻辑分页</h4>
+                            <p class="text-sm text-slate-400 mt-2">一次性全量加载，内存中分页，<br>数据量大时 <b class="text-fuchsia-400">100% OOM</b></p>
+                        </div>
+                        <div class="diagram-node md:w-5/12 border-cyan-500/50 diagram-node-good">
+                            <h4 class="font-bold text-xl text-cyan-400">物理分页</h4>
+                            <p class="text-sm text-slate-400 mt-2">利用数据库原生分页查询，<br>性能卓越，<b class="text-cyan-400">生产必备</b></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 逻辑 vs 物理 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-pink-400 via-purple-500 to-indigo-500">分页的核心思想：逻辑 vs 物理</h2>
+            <p class="mt-4 text-xl text-slate-400">一个天上，一个地下。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-purple-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <!-- 逻辑分页 -->
+                    <div class="bg-fuchsia-900/20 p-6 rounded-lg border border-fuchsia-500/30 h-full flex flex-col justify-center items-center">
+                        <h4 class="font-bold text-2xl text-fuchsia-400 mb-4">逻辑分页 (内存分页)</h4>
+                        <div class="flex flex-col items-center gap-4 w-full">
+                            <i class="fa-solid fa-database text-5xl text-slate-400"></i>
+                            <div class="text-center">
+                                <i class="fa-solid fa-arrow-down-long text-4xl text-fuchsia-400"></i>
+                                <p class="text-sm font-mono text-fuchsia-400">返回【全部】1,000,000条数据</p>
+                            </div>
+                            <div class="diagram-node diagram-node-bad border-fuchsia-500/80 w-48">
+                                <i class="fa-solid fa-memory text-5xl text-fuchsia-400"></i>
+                                <h4 class="font-bold mt-2 text-base">应用内存</h4>
+                                <p class="text-xs text-fuchsia-300">筛选第1页的10条</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 物理分页 -->
+                    <div class="bg-cyan-900/20 p-6 rounded-lg border border-cyan-500/30 h-full flex flex-col justify-center items-center">
+                        <h4 class="font-bold text-2xl text-cyan-400 mb-4">物理分页 (SQL分页)</h4>
+                        <div class="flex flex-col items-center gap-4 w-full">
+                            <div class="diagram-node border-cyan-500/80 w-48">
+                                <i class="fa-solid fa-file-code text-5xl text-cyan-400"></i>
+                                <h4 class="font-bold mt-2 text-base">`... LIMIT 0, 10`</h4>
+                            </div>
+                            <div class="text-center">
+                                <i class="fa-solid fa-arrow-down-long text-4xl text-cyan-400"></i>
+                                <p class="text-sm font-mono text-cyan-400">发送分页SQL</p>
+                            </div>
+                            <div class="diagram-node diagram-node-good border-cyan-500/80 w-48">
+                                <i class="fa-solid fa-database text-5xl text-cyan-400"></i>
+                                <h4 class="font-bold mt-2 text-base">数据库</h4>
+                                <p class="text-xs text-cyan-300">仅返回【10条】数据</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: XML手写 -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-teal-400 to-cyan-500">方式一：XML中的“硬核手写”</h2>
+            <p class="mt-4 text-xl text-slate-400">最直接的方式：在Mapper.xml中手动拼接物理分页SQL。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-teal-500/30">
+                <pre class="bg-slate-900/70 p-4 rounded-lg text-sm font-mono whitespace-pre-wrap text-left"><code class="language-xml"><span class="text-slate-500">&lt;select id="selectUsers" resultType="User"&gt;</span>
+  SELECT * FROM user
+  <span class="text-teal-300 font-bold">LIMIT #{offset}, #{limit}</span>
+<span class="text-slate-500">&lt;/select&gt;</span></code></pre>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 text-left">
+                    <div class="bg-lime-900/20 p-6 rounded-xl border border-lime-500/30">
+                        <h4 class="font-bold text-lg text-lime-300 mb-3 flex items-center"><i class="fa-solid fa-circle-check mr-3"></i>优点</h4>
+                        <ul class="space-y-2 text-slate-300">
+                            <li class="flex items-start"><i class="fa-solid fa-bolt-lightning mr-3 mt-1 text-lime-400/70"></i><span><b>简单直观：</b>所见即所得，易于理解。</span></li>
+                            <li class="flex items-start"><i class="fa-solid fa-puzzle-piece mr-3 mt-1 text-lime-400/70"></i><span><b>无依赖：</b>无需任何额外配置。</span></li>
+                        </ul>
+                    </div>
+                    <div class="bg-pink-900/20 p-6 rounded-xl border border-pink-500/30">
+                        <h4 class="font-bold text-lg text-pink-400 mb-3 flex items-center"><i class="fa-solid fa-circle-exclamation mr-3"></i>缺点</h4>
+                        <ul class="space-y-2 text-slate-300">
+                            <li class="flex items-start"><i class="fa-solid fa-database mr-3 mt-1 text-pink-400/70"></i><span><b>数据库耦合：</b>SQL与特定数据库强绑定。</span></li>
+                             <li class="flex items-start"><i class="fa-solid fa-code-fork mr-3 mt-1 text-pink-400/70"></i><span><b>代码重复：</b>每个分页查询都需重复编写。</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Slide 4: RowBounds的陷阱 -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-fuchsia-500 to-yellow-400">方式二：RowBounds的“内存陷阱”</h2>
+            <p class="mt-4 text-xl text-slate-400">看似优雅的背后，是逻辑分页的本质，是性能的噩梦。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-fuchsia-500/30">
+                <div class="flex flex-col items-center justify-center space-y-6">
+                    <div class="diagram-node w-72">
+                        <code class="text-sky-300">mapper.selectAll(new RowBounds(0, 10));</code>
+                        <p class="text-xs text-slate-400 mt-2">开发者以为：只查10条数据</p>
+                    </div>
+                    <i class="fa-solid fa-arrow-down-long text-4xl text-fuchsia-400 my-2"></i>
+                    <div class="diagram-node w-72 bg-fuchsia-900/30 border-fuchsia-500/50">
+                        <p class="font-bold text-fuchsia-300">MyBatis实际执行：</p>
+                        <code class="text-slate-300">SELECT * FROM user;</code>
+                        <p class="text-xs text-slate-400 mt-2">背后真相：查询了全部数据！</p>
+                    </div>
+                    <i class="fa-solid fa-arrow-down-long text-4xl text-fuchsia-400 my-2"></i>
+                    <div class="relative w-full max-w-md h-32 bg-slate-800 rounded-lg flex items-center justify-center diagram-node-bad">
+                        <i class="fa-solid fa-memory text-6xl text-fuchsia-400"></i>
+                        <p class="ml-4 font-bold text-2xl text-fuchsia-300">应用内存 OOM!</p>
+                        <div class="absolute -top-4 -right-4 text-center">
+                            <i class="fa-solid fa-fire-flame-curved text-5xl text-orange-400 fa-beat" style="--fa-animation-duration: 0.5s;"></i>
+                            <p class="text-orange-400 font-bold">BOOM!</p>
+                        </div>
+                        <p class="absolute bottom-2 text-sm text-slate-500">在内存中对百万数据进行截取，导致崩溃</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: Interceptor的魔法 -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-400 to-pink-400">方式三：Interceptor的“偷天换日”</h2>
+            <p class="mt-4 text-xl text-slate-400">通过拦截器在SQL执行前动态改写，实现真正的物理分页。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-violet-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-around gap-8">
+                    <!-- 原始请求 -->
+                    <div class="flex flex-col items-center gap-4">
+                        <p class="font-bold text-lg text-slate-300">1. 原始调用</p>
+                        <div class="diagram-node w-64">
+                            <i class="fa-solid fa-code text-3xl text-sky-300"></i>
+                            <p class="font-mono text-sm mt-2">SELECT * FROM user</p>
+                        </div>
+                    </div>
+
+                    <i class="fa-solid fa-arrow-right-long text-4xl text-violet-400 hidden md:block"></i>
+                    <i class="fa-solid fa-arrow-down-long text-4xl text-violet-400 md:hidden"></i>
+
+                    <!-- Interceptor处理 -->
+                    <div class="flex flex-col items-center gap-4 relative">
+                        <p class="font-bold text-lg text-violet-300">2. Interceptor 魔法</p>
+                        <div class="diagram-node w-64 border-violet-500/80 bg-violet-900/30">
+                            <i class="fa-solid fa-wand-magic-sparkles text-4xl text-violet-300 fa-beat"></i>
+                            <p class="font-bold mt-2">动态拼接SQL</p>
+                            <p class="text-xs text-slate-400">`原始SQL` + `LIMIT ?, ?`</p>
+                        </div>
+                    </div>
+                    
+                    <i class="fa-solid fa-arrow-right-long text-4xl text-lime-400 hidden md:block"></i>
+                    <i class="fa-solid fa-arrow-down-long text-4xl text-lime-400 md:hidden"></i>
+
+                    <!-- 最终执行 -->
+                    <div class="flex flex-col items-center gap-4">
+                        <p class="font-bold text-lg text-lime-300">3. 最终执行的SQL</p>
+                        <div class="diagram-node w-64 border-lime-500/80">
+                            <i class="fa-solid fa-paper-plane text-3xl text-lime-300"></i>
+                            <p class="font-mono text-sm mt-2">SELECT * FROM user LIMIT 0, 10</p>
+                        </div>
+                    </div>
+                </div>
+                 <p class="text-center mt-8 text-orange-400"><i class="fa-solid fa-triangle-exclamation mr-2"></i>优点：性能好，逻辑统一。缺点：手写复杂，门槛高。</p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Slide 6: PageHelper的优雅 -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-cyan-400 to-lime-400">方式四：分页插件的“一键化”革命</h2>
+            <p class="mt-4 text-xl text-slate-400">将复杂的拦截器逻辑封装为黑盒，开发者只需享受成果。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-lime-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                    <!-- 开发者 -->
+                    <div class="flex flex-col items-center text-center gap-4">
+                        <i class="fa-solid fa-user-astronaut text-6xl text-sky-300"></i>
+                        <h3 class="font-bold text-xl">开发者</h3>
+                        <div class="diagram-node w-full">
+                            <p class="font-mono text-sm text-lime-300">PageHelper.startPage(1, 10);</p>
+                        </div>
+                        <p class="text-slate-400">只需一行代码，开启分页</p>
+                    </div>
+
+                    <!-- PageHelper黑盒 -->
+                    <div class="flex flex-col items-center text-center gap-4">
+                        <div class="diagram-node diagram-node-good w-full p-8 border-lime-500/80 bg-lime-900/30">
+                            <i class="fa-solid fa-box-open text-6xl text-lime-300"></i>
+                            <h3 class="font-bold text-xl mt-4">PageHelper 插件</h3>
+                            <ul class="text-sm text-slate-300 list-disc list-inside mt-2 text-left">
+                                <li>基于ThreadLocal传递参数</li>
+                                <li>内置强大Interceptor</li>
+                                <li>自动拼接物理分页SQL</li>
+                                <li>自动执行Count查询</li>
+                                <li>自动封装PageInfo结果</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 结果 -->
+                    <div class="flex flex-col items-center text-center gap-4">
+                        <i class="fa-solid fa-gift text-6xl text-yellow-300"></i>
+                        <h3 class="font-bold text-xl">收获成果</h3>
+                        <div class="diagram-node w-full text-left p-4">
+                            <p class="font-mono text-sm text-yellow-300">PageInfo&lt;User&gt;</p>
+                            <ul class="text-xs text-slate-400 list-disc list-inside mt-2">
+                                <li>.getList() // 当前页数据</li>
+                                <li>.getTotal() // 总记录数</li>
+                                <li>.getPages() // 总页数</li>
+                                <li>...</li>
+                            </ul>
+                        </div>
+                        <p class="text-slate-400">得到包含一切分页信息的对象</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: 决策矩阵 -->
+    <section id="slide7" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-yellow-300 via-pink-500 to-fuchsia-500">最终对决：分页方案决策矩阵</h2>
+            <p class="mt-4 text-xl text-slate-400">一张图帮你建立决策框架，面试稳操胜券。</p>
+            <div class="content-panel mt-8 p-0 md:p-4 border-pink-500/30 overflow-x-auto">
+                <table class="w-full text-left text-sm md:text-base border-collapse min-w-[1000px]">
+                    <thead>
+                        <tr class="border-b-2 border-slate-700">
+                            <th class="p-4 w-1/5 text-slate-400 font-semibold uppercase">方案</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">性能开销</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">开发效率</th>
+                            <th class="p-4 w-1/3 text-slate-400 font-semibold uppercase">核心评价</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">推荐指数</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        <tr class="hover:bg-slate-800/40">
+                            <td class="p-4 font-bold text-lg text-slate-300"><i class="fa-solid fa-code mr-3 text-teal-400"></i>直接写SQL</td>
+                            <td class="p-4"><span class="font-semibold text-lime-400">✅ 低</span></td>
+                            <td class="p-4"><span class="font-semibold text-pink-500">❌ 低</span></td>
+                            <td class="p-4 text-slate-400">原始但有效，维护性差，不推荐在项目中使用。</td>
+                            <td class="p-4 text-lg font-bold text-orange-400">★★☆☆☆</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/40">
+                            <td class="p-4 font-bold text-lg text-slate-300"><i class="fa-solid fa-memory mr-3 text-fuchsia-500"></i>RowBounds</td>
+                            <td class="p-4"><span class="font-semibold text-fuchsia-500">❌ 极高 (OOM)</span></td>
+                            <td class="p-4"><span class="font-semibold text-orange-500">⚠️ 中等</span></td>
+                            <td class="p-4 text-slate-400">逻辑分页的陷阱，是性能杀手，应在所有项目中禁用。</td>
+                            <td class="p-4 text-lg font-bold text-fuchsia-500">★☆☆☆☆ (避坑)</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/40">
+                            <td class="p-4 font-bold text-lg text-slate-300"><i class="fa-solid fa-wand-magic-sparkles mr-3 text-violet-400"></i>手写Interceptor</td>
+                            <td class="p-4"><span class="font-semibold text-lime-400">✅ 低</span></td>
+                            <td class="p-4"><span class="font-semibold text-pink-500">❌ 极低</span></td>
+                            <td class="p-4 text-slate-400">屠龙之技，原理强大，但重复造轮子，非特殊定制不考虑。</td>
+                            <td class="p-4 text-lg font-bold text-orange-400">★★★☆☆</td>
+                        </tr>
+                        <tr class="bg-lime-900/20 hover:bg-lime-900/40 border-t-2 border-lime-500/30">
+                            <td class="p-4 font-bold text-lg text-slate-100"><i class="fa-solid fa-rocket mr-3 text-lime-400"></i>分页插件</td>
+                            <td class="p-4"><span class="font-bold text-lime-300">✅ 极低</span></td>
+                            <td class="p-4"><span class="font-bold text-lime-300">✅ 极高</span></td>
+                            <td class="p-4 text-slate-300">集性能与效率于一身，是现代MyBatis项目的行业标准。</td>
+                            <td class="p-4 text-lg font-bold text-lime-300">★★★★★ (首选)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-6 text-center text-slate-400">
+                <p><strong>面试官追问：</strong> “那插件的原理是什么？” -> <strong>标准答案：</strong> “核心是利用MyBatis的Interceptor拦截器机制，在SQL执行前动态改写SQL语句，添加物理分页参数，从而避免了全量数据加载。”</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center py-8 text-slate-500">
+        [高频面试]：MyBatis是如何进行分页的
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            const navDots = navContainer.querySelectorAll('a');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            slides.forEach(slide => { observer.observe(slide); });
+        });
+    </script>
+</body>
+</html>

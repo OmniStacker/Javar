@@ -1,0 +1,613 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>白板讲稿：10万并发商品列表页怎么扛？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+        :root {
+            --bg-color: #0d1117;
+            --primary-color: #58a6ff;
+            --secondary-color: #1f6feb;
+            --text-color: #c9d1d9;
+            --header-color: #f0f6fc;
+            --green-color: #3fb950;
+            --red-color: #f85149;
+            --yellow-color: #d29922;
+            --purple-color: #a371f7;
+            --glow-color: rgba(88, 166, 255, 0.6);
+            --border-color: #30363d;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans SC', 'Montserrat', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100%;
+            overflow: hidden; /* Prevent default scrollbar */
+        }
+
+        .slides-wrapper {
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth; /* Enables smooth scrolling for programmatic scrolls */
+        }
+
+        .slide-container {
+            width: 100%;
+            height: 100vh;
+            scroll-snap-align: start;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 2rem;
+            box-sizing: border-box;
+            background-image: radial-gradient(circle at 1px 1px, rgba(201, 209, 217, 0.1) 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+        
+        .slide-number {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            font-size: 1.5rem;
+            color: var(--border-color);
+            font-weight: 700;
+        }
+        
+        .content-box {
+            width: 90%;
+            max-width: 1200px;
+            height: 90%;
+            background: rgba(13, 17, 23, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        h1, h2, h3 {
+            color: var(--header-color);
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 10px var(--glow-color);
+        }
+        
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 10px;
+        }
+
+        h3 {
+             font-size: 1.8rem;
+             color: var(--primary-color);
+             margin-top: 2rem;
+             margin-bottom: 1.5rem;
+        }
+
+        .flex-row {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            align-items: center;
+            flex-grow: 1;
+        }
+        
+        .flex-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 1rem;
+        }
+        
+        .icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .text-primary { color: var(--primary-color); }
+        .text-green { color: var(--green-color); }
+        .text-red { color: var(--red-color); }
+        .text-yellow { color: var(--yellow-color); }
+        .text-purple { color: var(--purple-color); }
+
+        .card {
+            background: rgba(30, 36, 45, 0.5);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            width: 30%;
+            height: 80%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--header-color);
+            margin-bottom: 1rem;
+        }
+        
+        .card-text {
+            font-size: 1.1rem;
+        }
+        
+        .highlight {
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background-color: var(--secondary-color);
+            color: var(--header-color);
+        }
+        
+        .diagram-container {
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .arrow {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin: 0 2rem;
+        }
+        
+        .strikethrough {
+            text-decoration: line-through;
+            color: var(--red-color);
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            width: 100%;
+        }
+        li {
+            font-size: 1.2rem;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+        }
+        li i {
+            margin-right: 15px;
+            font-size: 1.5rem;
+            width: 30px;
+        }
+        
+        .final-cta {
+             font-size: 1.8rem;
+             margin-top: 1rem;
+             display: flex;
+             align-items: center;
+             gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+<div class="slides-wrapper">
+    <!-- Slide 1: 开场 & 核心框架 -->
+    <div class="slide-container">
+        <div class="content-box">
+            <h1>10万并发商品列表页怎么扛？</h1>
+            <div class="flex-row">
+                <div class="flex-col">
+                    <i class="fas fa-shield-alt icon text-primary" style="font-size: 8rem;"></i>
+                    <h2 style="border: none; margin:0; font-size: 2rem;">四层防线组合拳</h2>
+                </div>
+                <div class="arrow"><i class="fas fa-equals"></i></div>
+                <div class="flex-row" style="gap: 2rem;">
+                    <div class="flex-col">
+                        <i class="fas fa-cloud icon text-green"></i>
+                        <h3>边缘加速</h3>
+                    </div>
+                    <div class="flex-col">
+                        <i class="fas fa-search icon text-yellow"></i>
+                        <h3>检索内核</h3>
+                    </div>
+                    <div class="flex-col">
+                        <i class="fas fa-cubes icon text-purple"></i>
+                        <h3>动态拼装</h3>
+                    </div>
+                    <div class="flex-col">
+                        <i class="fas fa-life-ring icon text-red"></i>
+                        <h3>稳定性</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">01</div>
+    </div>
+
+    <!-- Slide 2: 面试官意图 -->
+    <div class="slide-container">
+        <div class="content-box">
+            <h2>面试官想听什么？</h2>
+            <div class="flex-row">
+                <div class="card">
+                    <i class="fas fa-tachometer-alt icon text-primary"></i>
+                    <div class="card-title">指标意识</div>
+                    <p class="card-text">能否先把 <span class="highlight">p95</span> 延迟、<span class="highlight">命中率</span>、<span class="highlight">数据新鲜度</span> 这些“尺子”定出来。</p>
+                </div>
+                <div class="card">
+                    <i class="fas fa-layer-group icon text-green"></i>
+                    <div class="card-title">分层思维</div>
+                    <p class="card-text">各层能否各司其职，职责清晰，并且具备完善的 <span class="highlight">降级</span> 策略。</p>
+                </div>
+                <div class="card">
+                    <i class="fas fa-balance-scale icon text-yellow"></i>
+                    <div class="card-title">取舍能力</div>
+                    <p class="card-text">压力来了，如何在 <span class="highlight">一致性</span>、<span class="highlight">成本</span> 和 <span class="highlight">体验</span> 之间做出正确取舍。</p>
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">02</div>
+    </div>
+    
+    <!-- Slide 3: 指标与预算 -->
+    <div class="slide-container">
+        <div class="content-box">
+             <h2>先立“尺子”：指标与预算</h2>
+             <div class="diagram-container" style="align-items: flex-start; gap: 2rem;">
+                 <div style="width: 45%;">
+                     <h3><i class="fas fa-bullseye"></i> 核心指标</h3>
+                     <ul>
+                         <li><i class="fas fa-server text-green"></i>可用性: <span class="highlight" style="font-size:1.5rem;">≥ 99.95%</span></li>
+                         <li><i class="fas fa-stopwatch text-primary"></i>TTI (p95): <span class="highlight" style="font-size:1.5rem;">≤ 1.0s</span></li>
+                         <li><i class="fas fa-sync-alt text-yellow"></i>数据新鲜度:
+                            <ul style="margin-left: 45px; margin-top: 10px;">
+                                <li>库存: <span class="highlight">≤ 3s</span></li>
+                                <li>价格: <span class="highlight">≤ 10s</span></li>
+                            </ul>
+                         </li>
+                     </ul>
+                 </div>
+                 <div style="width: 45%;">
+                     <h3><i class="fas fa-chart-pie"></i> 流量模型</h3>
+                     <div style="font-size: 5rem; text-align: center; margin-top: 2rem;">
+                         <span class="text-primary" style="font-weight: 700;">80%</span>
+                     </div>
+                     <p style="text-align: center; font-size: 1.5rem;">的请求集中在<br>“<span class="highlight">首页/第一页/默认排序</span>”</p>
+                 </div>
+             </div>
+        </div>
+        <div class="slide-number">03</div>
+    </div>
+    
+    <!-- Slide 4: 第一层 -->
+    <div class="slide-container">
+        <div class="content-box">
+             <h2>第一层：边缘加速 (挡住 90% 请求)</h2>
+             <div class="diagram-container">
+                 <!-- Diagram: User -> CDN -> Origin -->
+                 <i class="fas fa-user icon" style="font-size: 5rem;"></i>
+                 <div style="font-size: 5rem; color: var(--green-color); margin: 0 1rem; font-weight: 700;">→</div>
+                 <div class="flex-col">
+                     <i class="fas fa-cloud icon" style="font-size: 8rem; color: var(--green-color)"></i>
+                     <div class="highlight" style="font-size: 1.5rem;">CDN / Edge</div>
+                     <div style="position: absolute; top: 20%; left: 45%; font-size: 2rem;" class="text-green">
+                         <i class="fas fa-check-circle"></i> 命中 ≥ 98%
+                     </div>
+                 </div>
+                 <div style="font-size: 3rem; color: var(--red-color); margin: 0 1rem; display: flex; flex-direction: column; align-items: center;">
+                    <div style="writing-mode: vertical-rl;">→</div>
+                    <span style="font-size: 1rem; margin-top: 10px;">回源 ≤ 2%</span>
+                 </div>
+                 <div class="flex-col">
+                     <i class="fas fa-server icon" style="font-size: 5rem; opacity: 0.5;"></i>
+                     <div style="opacity: 0.5;">源站</div>
+                 </div>
+             </div>
+             <div style="position: absolute; bottom: 50px; text-align:center; font-size: 1.2rem;">
+                <span class="highlight">骨架 SSG/ISR</span> + <span class="highlight">片段缓存</span> + <span class="highlight">版本号滚动</span>
+             </div>
+        </div>
+        <div class="slide-number">04</div>
+    </div>
+
+    <!-- Slide 5: 第二层 -->
+    <div class="slide-container">
+        <div class="content-box">
+             <h2>第二层：检索内核 (Elasticsearch)</h2>
+             <div class="flex-row">
+                 <div class="flex-col" style="width: 50%;">
+                     <h3>核心打法: 漏斗模型</h3>
+                     <div style="font-size: 2rem; display:flex; flex-direction:column; align-items:center; gap: 0.5rem; font-weight:700;">
+                         <div style="border: 2px solid var(--primary-color); padding: 10px 40px;">Filter</div>
+                         <i class="fas fa-arrow-down"></i>
+                         <div style="border: 2px solid var(--primary-color); padding: 10px 30px;">Sort</div>
+                         <i class="fas fa-arrow-down"></i>
+                         <div style="border: 2px solid var(--primary-color); padding: 10px 20px;">Score</div>
+                     </div>
+                 </div>
+                 <div class="flex-col" style="width: 50%; align-items: flex-start; gap: 2rem;">
+                    <h3>关键优化点</h3>
+                    <p style="font-size: 1.5rem;"><i class="fas fa-check-circle text-green"></i> 深分页: <span class="highlight">search_after</span></p>
+                    <p style="font-size: 1.5rem;" class="strikethrough"><i class="fas fa-times-circle"></i> from + size</p>
+                    <p style="font-size: 1.5rem;"><i class="fas fa-check-circle text-green"></i> 优化: <span class="highlight">同义词</span> + <span class="highlight">冷热分层</span></p>
+                    <p style="font-size: 1.5rem;"><i class="fas fa-tachometer-alt text-primary"></i> 验收: <span class="highlight">查询 p95 ≤ 80ms</span></p>
+                 </div>
+             </div>
+        </div>
+        <div class="slide-number">05</div>
+    </div>
+
+    <!-- Slide 6: 第三层 -->
+    <div class="slide-container">
+        <div class="content-box">
+             <h2>第三层：动态数据拼装 (快 & 稳)</h2>
+             <div class="diagram-container" style="flex-direction: column; gap: 1rem;">
+                <div class="highlight" style="font-size: 1.8rem; padding: 10px 20px;">BFF (聚合层)</div>
+                <i class="fas fa-arrow-down" style="font-size: 2rem;"></i>
+                <div class="flex-row" style="width: 80%;">
+                    <i class="fas fa-search"></i> ES
+                    <i class="fas fa-plus"></i>
+                    <i class="fas fa-dollar-sign"></i> 价格服务
+                    <i class="fas fa-plus"></i>
+                    <i class="fas fa-box"></i> 库存服务
+                </div>
+                <div style="width: 80%; border-top: 1px dashed var(--border-color); margin-top: 1rem;"></div>
+                <h3 style="margin-top: 1rem;">核心策略</h3>
+                <div class="flex-row" style="font-size: 1.2rem; width: 100%; gap: 1rem;">
+                    <p><i class="fas fa-bolt text-yellow"></i> 价格: 结果缓存 + <span class="highlight">主动失效</span></p>
+                    <p><i class="fas fa-boxes text-purple"></i> 库存: 读Redis + <span class="highlight">预扣+MQ落库</span></p>
+                    <p><i class="fas fa-random text-red"></i> BFF: 并发扇出 + <span class="highlight">字段级降级</span></p>
+                </div>
+             </div>
+        </div>
+        <div class="slide-number">06</div>
+    </div>
+    
+    <!-- Slide 7: 第四层 -->
+    <div class="slide-container">
+        <div class="content-box">
+             <h2>第四层：稳定性安全网 (永不雪崩)</h2>
+             <div class="diagram-container">
+                 <i class="fas fa-life-ring icon" style="font-size: 15rem; color: var(--red-color); opacity: 0.1; position:absolute;"></i>
+                 <div class="flex-row" style="align-items: flex-start; gap: 2rem;">
+                     <div class="flex-col">
+                         <h3>防异常流量</h3>
+                         <i class="fas fa-traffic-light icon text-yellow"></i>
+                         <p class="highlight">限流 (令牌桶)</p>
+                     </div>
+                     <div class="flex-col">
+                         <h3>防依赖抖动</h3>
+                         <i class="fas fa-unlink icon text-red"></i>
+                         <p class="highlight">熔断 & 隔离</p>
+                         <p class="highlight">降级矩阵</p>
+                     </div>
+                     <div class="flex-col">
+                         <h3>防缓存问题</h3>
+                         <i class="fas fa-database icon text-primary"></i>
+                         <p>穿透 → <span class="highlight">布隆过滤器</span></p>
+                         <p>击穿 → <span class="highlight">互斥锁</span></p>
+                         <p>雪崩 → <span class="highlight">随机TTL</span></p>
+                     </div>
+                 </div>
+             </div>
+        </div>
+        <div class="slide-number">07</div>
+    </div>
+    
+    <!-- Slide 8: 一致性 -->
+    <div class="slide-container">
+        <div class="content-box">
+             <h2>一致性：把“准”落到数字</h2>
+             <div class="diagram-container" style="flex-direction: column; justify-content: space-around;">
+                <div>
+                    <h3><i class="fas fa-play"></i> 主动失效 (事件驱动)</h3>
+                    <div style="display: flex; align-items: center; font-size: 1.5rem; gap: 1rem; margin-top: 1rem;">
+                        <span class="highlight">发布事件</span> <i class="fas fa-arrow-right"></i> Kafka <i class="fas fa-arrow-right"></i> <span class="highlight">同步清理 (ES, Redis)</span>
+                    </div>
+                </div>
+                <div>
+                    <h3><i class="fas fa-undo"></i> 被动兜底 (定时校准)</h3>
+                     <div style="display: flex; align-items: center; font-size: 1.5rem; gap: 1rem; margin-top: 1rem;">
+                        <i class="far fa-clock"></i> <span class="highlight">每5分钟</span> <i class="fas fa-arrow-right"></i> <span class="highlight">校准 Redis vs DB</span>
+                    </div>
+                </div>
+                <div>
+                     <h3><i class="fas fa-code-branch"></i> 平滑发布</h3>
+                     <p style="font-size: 1.5rem;">缓存 Key: `...:ver=42` → `<span class="highlight">...:ver=43</span>`</p>
+                </div>
+             </div>
+             <p style="font-size: 1.5rem; position: absolute; bottom: 50px;"><i class="fas fa-tachometer-alt text-primary"></i> 验收: <span class="highlight">关键变更 5s 内生效 ≥ 99%</span></p>
+        </div>
+        <div class="slide-number">08</div>
+    </div>
+    
+     <!-- Slide 9: 容量与成本 -->
+    <div class="slide-container">
+        <div class="content-box">
+             <h2>容量与成本：用数字说话</h2>
+             <div class="diagram-container" style="flex-direction: column; gap: 0.5rem; font-weight:700;">
+                 <div style="text-align:center; font-size: 1.5rem;">客户端: <span class="highlight">~30k QPS</span></div>
+                 <i class="fas fa-arrow-down text-primary"></i>
+                 <div style="text-align:center; font-size: 1.5rem;">边缘层 (命中≥98%): <span class="highlight">~600 QPS</span></div>
+                 <i class="fas fa-arrow-down text-green"></i>
+                 <div style="text-align:center; font-size: 1.5rem;">API网关 (命中50%): <span class="highlight">~15k QPS (动态API)</span></div>
+                 <i class="fas fa-arrow-down text-yellow"></i>
+                 <div style="text-align:center; font-size: 1.5rem;">BFF批量后 (下游总和):</div>
+                 <div class="flex-row" style="width: 60%; font-size: 1.2rem; margin-top: 1rem;">
+                     <span>ES: ~8k QPS</span>
+                     <span>价格: ~6k QPS</span>
+                     <span>库存: ~6k QPS</span>
+                 </div>
+                 <div style="position: absolute; bottom: 50px; font-size: 1.2rem;">
+                     规模粗估: <span class="highlight">ES(8-12台)</span> | <span class="highlight">Price/Stock(6-8台)</span> | <span class="highlight">BFF(8-12台)</span>
+                 </div>
+             </div>
+        </div>
+        <div class="slide-number">09</div>
+    </div>
+
+    <!-- Slide 10: 总结 & CTA -->
+    <div class="slide-container">
+        <div class="content-box">
+             <h2>一句话总结</h2>
+             <div class="flex-row" style="font-size: 1.8rem; font-weight: 700;">
+                 <span class="text-primary">指标预算</span>
+                 <i class="fas fa-arrow-right"></i>
+                 <span class="text-green">边缘[挡]</span>
+                 <i class="fas fa-arrow-right"></i>
+                 <span class="text-yellow">ES[搜]</span>
+                 <i class="fas fa-arrow-right"></i>
+                 <span class="text-purple">BFF[拼]</span>
+                 <i class="fas fa-arrow-right"></i>
+                 <span class="text-red">安全网[稳]</span>
+             </div>
+             <h3 style="border-bottom: 2px solid var(--border-color); padding-bottom:10px;">用 <span class="text-primary">数据闭环</span> 证明方案：快、稳、成本可控</h3>
+             <div class="final-cta">
+                <i class="fas fa-file-download"></i>
+                <span>获取完整讲稿与配套资料</span>
+             </div>
+             <p style="font-size: 1.2rem; margin-top: 1rem;">请私聊我</p>
+        </div>
+        <div class="slide-number">10</div>
+    </div>
+</div>
+    
+    <!-- Pagination Controls -->
+    <div class="fixed bottom-0 left-0 right-0 bg-[#161722] text-gray-400 flex items-center justify-center p-4 border-t border-gray-800 z-50">
+        <div class="flex items-center space-x-6">
+            <button id="prev-button" class="bg-[#2C2E3A] hover:bg-[#393B4A] text-white py-2 px-4 rounded-md transition-colors disabled:opacity-50">
+              上一页
+            </button>
+            <div id="pagination-dots" class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 bg-blue-500 rounded-full cursor-pointer"></span>
+                <span class="w-2.5 h-2.5 bg-gray-600 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></span>
+                <span class="w-2.5 h-2.5 bg-gray-600 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></span>
+                <span class="w-2.5 h-2.5 bg-gray-600 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></span>
+                <span class="w-2.5 h-2.5 bg-gray-600 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></span>
+                <span class="w-2.5 h-2.5 bg-gray-600 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></span>
+                <span class="w-2.5 h-2.5 bg-gray-600 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></span>
+                <span class="w-2.5 h-2.5 bg-gray-600 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></span>
+                <span class="w-2.5 h-2.5 bg-gray-600 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></span>
+                <span class="w-2.5 h-2.5 bg-gray-600 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></span>
+            </div>
+            <button id="next-button" class="bg-[#2C2E3A] hover:bg-[#393B4A] text-white py-2 px-4 rounded-md transition-colors disabled:opacity-50">
+              下一页
+            </button>
+            <div class="flex items-center space-x-2 text-gray-400">
+              <span>键盘:</span>
+              <button class="bg-[#2C2E3A] hover:bg-[#393B4A] text-white py-1 px-3 rounded-md transition-colors">
+                &leftarrow;
+              </button>
+              <button class="bg-[#2C2E3A] hover:bg-[#393B4A] text-white py-1 px-3 rounded-md transition-colors">
+                &rightarrow;
+              </button>
+            </div>
+            <span id="page-display" class="text-gray-400">第 1 / 10 页</span>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slidesWrapper = document.querySelector('.slides-wrapper');
+            const slides = document.querySelectorAll('.slide-container');
+            const prevButton = document.getElementById('prev-button');
+            const nextButton = document.getElementById('next-button');
+            const dotsContainer = document.getElementById('pagination-dots');
+            const dots = dotsContainer.children;
+            const pageDisplay = document.getElementById('page-display');
+            const totalSlides = slides.length;
+            let currentIndex = 0;
+
+            function updatePagination() {
+                // Update page number display
+                pageDisplay.textContent = `第 ${currentIndex + 1} / ${totalSlides} 页`;
+
+                // Update dots
+                Array.from(dots).forEach((dot, index) => {
+                    dot.classList.toggle('bg-blue-500', index === currentIndex);
+                    dot.classList.toggle('bg-gray-600', index !== currentIndex);
+                });
+
+                // Update button states
+                prevButton.disabled = currentIndex === 0;
+                nextButton.disabled = currentIndex === totalSlides - 1;
+            }
+
+            function goToSlide(index) {
+                if (index >= 0 && index < totalSlides) {
+                    const slideHeight = slidesWrapper.clientHeight;
+                    slidesWrapper.scrollTop = index * slideHeight;
+                    // The scroll event listener will handle updating currentIndex and pagination
+                }
+            }
+            
+            // --- Event Listeners ---
+
+            prevButton.addEventListener('click', () => {
+                goToSlide(currentIndex - 1);
+            });
+
+            nextButton.addEventListener('click', () => {
+                goToSlide(currentIndex + 1);
+            });
+
+            // Make dots clickable
+            Array.from(dots).forEach((dot, index) => {
+                dot.addEventListener('click', () => {
+                    goToSlide(index);
+                });
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                    goToSlide(currentIndex + 1);
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    goToSlide(currentIndex - 1);
+                }
+            });
+
+            // Update index based on scroll position
+            let scrollTimeout;
+            slidesWrapper.addEventListener('scroll', () => {
+                // Clear timeout to avoid running this too often
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    const slideHeight = slidesWrapper.clientHeight;
+                    const newIndex = Math.round(slidesWrapper.scrollTop / slideHeight);
+                    if (newIndex !== currentIndex) {
+                        currentIndex = newIndex;
+                        updatePagination();
+                    }
+                }, 50); // Adjust delay as needed
+            });
+            
+            // Initial setup
+            updatePagination();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>让你设计一个迷你滴滴，你会怎么设计？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 全局字体与重置 */
+        .reveal { font-family: 'Noto Sans SC', system-ui, sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace !important; }
+        
+        /* 强制每页 Slide 布局 */
+        .reveal .slides > section {
+            height: 100% !important;
+            top: 0 !important;
+            padding: 0 !important;
+            /* 确保内容不会溢出 */
+            overflow: hidden !important; 
+        }
+
+        /* 统一布局容器：对齐标题高度 */
+        .slide-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* 顶部对齐 */
+            align-items: center;
+            padding: 20px 40px; /* 减小内边距，给内容更多空间 */
+            box-sizing: border-box;
+        }
+
+        /* 内容区域自适应填充 */
+        .slide-content {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* 内容垂直居中 */
+            align-items: center;
+            position: relative;
+            /* 限制内容区域最大高度，防止溢出 */
+            max-height: calc(100vh - 120px); 
+        }
+
+        /* 封面特殊布局 */
+        .slide-container.cover-layout {
+            justify-content: center !important;
+            padding: 0 !important;
+        }
+
+        /* 统一标题样式 - 稍微减小高度 */
+        .slide-title {
+            font-size: 3rem !important; 
+            font-weight: 900 !important;
+            margin: 0 0 1.5rem 0 !important; /* 减小底部间距 */
+            padding-bottom: 0.5rem !important;
+            line-height: 1.1 !important;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            text-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            flex-shrink: 0;
+            width: 100%;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* 玻璃拟态组件 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .glass-panel:hover {
+            transform: translateY(-5px) scale(1.01);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        /* 动画定义 */
+        @keyframes flowLine {
+            0% { stroke-dashoffset: 1000; }
+            100% { stroke-dashoffset: 0; }
+        }
+        
+        @keyframes scan-radar {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* 主题色变量 */
+        .theme-intro { --gradient-start: #fbbf24; --gradient-end: #d97706; } /* Amber */
+        .theme-domain { --gradient-start: #60a5fa; --gradient-end: #2563eb; } /* Blue */
+        .theme-arch { --gradient-start: #2dd4bf; --gradient-end: #0d9488; } /* Teal */
+        .theme-lbs { --gradient-start: #34d399; --gradient-end: #059669; } /* Emerald */
+        .theme-lock { --gradient-start: #f87171; --gradient-end: #dc2626; } /* Red */
+        .theme-push { --gradient-start: #a78bfa; --gradient-end: #7c3aed; } /* Violet */
+        .theme-data { --gradient-start: #f472b6; --gradient-end: #db2777; } /* Pink */
+        .theme-summary { --gradient-start: #94a3b8; --gradient-end: #475569; } /* Slate */
+
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: Minimalist Cover (Fixed Font Size) -->
+<section class="theme-intro" data-background-gradient="linear-gradient(135deg, #0f172a 0%, #1e293b 100%)">
+    <div class="slide-container cover-layout relative overflow-hidden">
+        
+        <!-- 背景装饰：简单的网格 -->
+        <div class="absolute inset-0 z-0 opacity-5" 
+             style="background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+             linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+             background-size: 50px 50px;">
+        </div>
+
+        <!-- 主内容 -->
+        <div class="z-10 w-full h-full flex flex-col items-center justify-center relative px-16">
+            
+            <!-- 顶部标签 -->
+            <div class="mb-10 fragment fade-down">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-slate-600 text-slate-300 text-sm backdrop-blur-sm">
+                    <i class="fa-solid fa-code text-blue-400"></i>
+                    <span>系统设计面试</span>
+                </div>
+            </div>
+
+            <!-- 核心标题 (两行展示，强制字号) -->
+            <div class="text-center mb-12 fragment fade-up">
+                <h1 style="font-size: 5rem !important; font-weight: 900 !important; line-height: 1.2 !important; margin-bottom: 1rem !important;" class="text-white tracking-tight">
+                    让你设计一个<span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">迷你滴滴</span>
+                </h1>
+                <h1 style="font-size: 5rem !important; font-weight: 900 !important; line-height: 1.2 !important;" class="text-white tracking-tight">
+                    你会怎么设计？
+                </h1>
+            </div>
+
+            <!-- 底部技术关键词 -->
+            <div class="flex items-center gap-6 text-slate-400 text-base fragment fade-up" style="transition-delay: 0.2s">
+                <span class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    LBS 定位
+                </span>
+                <span class="text-slate-600">|</span>
+                <span class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-violet-500"></div>
+                    实时推送
+                </span>
+                <span class="text-slate-600">|</span>
+                <span class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-red-500"></div>
+                    高并发
+                </span>
+                <span class="text-slate-600">|</span>
+                <span class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                    海量数据
+                </span>
+            </div>
+
+        </div>
+
+        <!-- 底部装饰线 -->
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-slate-600 to-transparent opacity-30"></div>
+    </div>
+</section>
+
+
+
+
+            <!-- Slide 2: Domain Model (Hexagon Hive Style) -->
+<section class="theme-domain" data-background-gradient="linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)">
+    <div class="slide-container">
+        <!-- 标题区域 -->
+        <h2 class="slide-title mb-12">
+            <span class="inline-block p-3 rounded-xl bg-blue-500/20 border border-blue-400/30 mr-3">
+                <i class="fa-solid fa-cubes text-blue-400"></i>
+            </span>
+            核心业务领域
+        </h2>
+        
+        <div class="slide-content w-full h-full flex items-center justify-center relative">
+            
+            <!-- 背景装饰网格 -->
+            <div class="absolute inset-0 opacity-10 pointer-events-none" 
+                 style="background-image: radial-gradient(#60a5fa 1px, transparent 1px); background-size: 30px 30px;">
+            </div>
+
+            <!-- 主布局容器 -->
+            <div class="relative w-[800px] h-[500px] flex items-center justify-center">
+
+                <!-- 1. 中心核心节点 (调度大脑) -->
+                <div class="absolute z-30 w-48 h-48 flex items-center justify-center group cursor-pointer">
+                    <!-- 脉冲光环 -->
+                    <div class="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse group-hover:bg-blue-400/30 transition-all"></div>
+                    <div class="absolute inset-0 border-2 border-blue-400/50 rounded-full border-dashed animate-[spin_20s_linear_infinite]"></div>
+                    
+                    <!-- 核心实体 -->
+                    <div class="relative w-40 h-40 glass-panel bg-slate-900/80 border-2 border-blue-400 flex flex-col items-center justify-center rounded-full shadow-[0_0_50px_rgba(59,130,246,0.4)] group-hover:scale-105 transition-transform duration-300">
+                        <i class="fa-solid fa-brain text-5xl text-blue-400 mb-2 group-hover:text-white transition-colors"></i>
+                        <span class="text-xl font-black text-white tracking-widest">调度大脑</span>
+                        <span class="text-[10px] text-blue-300 font-mono mt-1 bg-blue-900/50 px-2 rounded">DISPATCH</span>
+                    </div>
+                </div>
+
+                <!-- 2. 动态连接线 (SVG) -->
+                <!-- 使用 SVG 绘制从中心发射出的能量线 -->
+                <svg class="absolute inset-0 w-full h-full z-10 pointer-events-none overflow-visible">
+                    <defs>
+                        <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0" />
+                            <stop offset="50%" style="stop-color:#60a5fa;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0" />
+                        </linearGradient>
+                        <marker id="dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4">
+                            <circle cx="5" cy="5" r="5" fill="#60a5fa" />
+                        </marker>
+                    </defs>
+                    
+                    <!-- 左侧连接线 -->
+                    <path d="M 320 250 L 150 120" stroke="url(#lineGrad)" stroke-width="2" stroke-dasharray="5 5" class="opacity-50"></path>
+                    <path d="M 320 250 L 80 250" stroke="url(#lineGrad)" stroke-width="2" stroke-dasharray="5 5" class="opacity-50"></path>
+                    <path d="M 320 250 L 150 380" stroke="url(#lineGrad)" stroke-width="2" stroke-dasharray="5 5" class="opacity-50"></path>
+                    
+                    <!-- 右侧连接线 -->
+                    <path d="M 480 250 L 650 120" stroke="url(#lineGrad)" stroke-width="2" stroke-dasharray="5 5" class="opacity-50"></path>
+                    <path d="M 480 250 L 720 250" stroke="url(#lineGrad)" stroke-width="2" stroke-dasharray="5 5" class="opacity-50"></path>
+                    <path d="M 480 250 L 650 380" stroke="url(#lineGrad)" stroke-width="2" stroke-dasharray="5 5" class="opacity-50"></path>
+
+                    <!-- 动态粒子 (模拟数据流) -->
+                    <circle r="3" fill="#fff" class="animate-[flowOut_2s_infinite]">
+                        <animateMotion path="M 400 250 L 150 120" dur="2s" repeatCount="indefinite" />
+                    </circle>
+                    <circle r="3" fill="#fff" class="animate-[flowOut_2s_infinite]" style="animation-delay: 0.5s">
+                        <animateMotion path="M 400 250 L 650 380" dur="2.5s" repeatCount="indefinite" />
+                    </circle>
+                    <circle r="3" fill="#fff" class="animate-[flowOut_2s_infinite]" style="animation-delay: 1s">
+                        <animateMotion path="M 400 250 L 80 250" dur="3s" repeatCount="indefinite" />
+                    </circle>
+                </svg>
+
+                <!-- 3. 周边六大领域节点 (左右对称布局) -->
+                
+                <!-- 左上: 用户 -->
+                <div class="absolute top-[80px] left-[100px] z-20 hover:z-30 transition-all duration-300 hover:scale-110 group">
+                    <div class="glass-panel w-36 h-24 flex flex-col items-center justify-center border-l-4 border-cyan-400 bg-slate-800/80">
+                        <div class="absolute -top-4 w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center shadow-lg border-2 border-slate-800">
+                            <i class="fa-solid fa-user text-white text-xs"></i>
+                        </div>
+                        <span class="text-lg font-bold text-white mt-2">用户中心</span>
+                        <span class="text-[10px] text-gray-400">User Service</span>
+                    </div>
+                </div>
+
+                <!-- 左中: 订单 -->
+                <div class="absolute top-[210px] left-[20px] z-20 hover:z-30 transition-all duration-300 hover:scale-110 group">
+                    <div class="glass-panel w-36 h-24 flex flex-col items-center justify-center border-l-4 border-amber-400 bg-slate-800/80">
+                        <div class="absolute -top-4 w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center shadow-lg border-2 border-slate-800">
+                            <i class="fa-solid fa-file-invoice text-white text-xs"></i>
+                        </div>
+                        <span class="text-lg font-bold text-white mt-2">订单中心</span>
+                        <span class="text-[10px] text-gray-400">Order Service</span>
+                    </div>
+                </div>
+
+                <!-- 左下: 支付 -->
+                <div class="absolute bottom-[80px] left-[100px] z-20 hover:z-30 transition-all duration-300 hover:scale-110 group">
+                    <div class="glass-panel w-36 h-24 flex flex-col items-center justify-center border-l-4 border-emerald-400 bg-slate-800/80">
+                        <div class="absolute -top-4 w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg border-2 border-slate-800">
+                            <i class="fa-solid fa-wallet text-white text-xs"></i>
+                        </div>
+                        <span class="text-lg font-bold text-white mt-2">支付中心</span>
+                        <span class="text-[10px] text-gray-400">Pay Service</span>
+                    </div>
+                </div>
+
+                <!-- 右上: 消息 -->
+                <div class="absolute top-[80px] right-[100px] z-20 hover:z-30 transition-all duration-300 hover:scale-110 group">
+                    <div class="glass-panel w-36 h-24 flex flex-col items-center justify-center border-r-4 border-violet-400 bg-slate-800/80">
+                        <div class="absolute -top-4 w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center shadow-lg border-2 border-slate-800">
+                            <i class="fa-solid fa-bell text-white text-xs"></i>
+                        </div>
+                        <span class="text-lg font-bold text-white mt-2">消息推送</span>
+                        <span class="text-[10px] text-gray-400">Push Service</span>
+                    </div>
+                </div>
+
+                <!-- 右中: LBS -->
+                <div class="absolute top-[210px] right-[20px] z-20 hover:z-30 transition-all duration-300 hover:scale-110 group">
+                    <div class="glass-panel w-36 h-24 flex flex-col items-center justify-center border-r-4 border-indigo-400 bg-slate-800/80">
+                        <div class="absolute -top-4 w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shadow-lg border-2 border-slate-800">
+                            <i class="fa-solid fa-map-location-dot text-white text-xs"></i>
+                        </div>
+                        <span class="text-lg font-bold text-white mt-2">LBS 引擎</span>
+                        <span class="text-[10px] text-gray-400">Location Service</span>
+                    </div>
+                </div>
+
+                <!-- 右下: 司机 -->
+                <div class="absolute bottom-[80px] right-[100px] z-20 hover:z-30 transition-all duration-300 hover:scale-110 group">
+                    <div class="glass-panel w-36 h-24 flex flex-col items-center justify-center border-r-4 border-rose-400 bg-slate-800/80">
+                        <div class="absolute -top-4 w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center shadow-lg border-2 border-slate-800">
+                            <i class="fa-solid fa-car text-white text-xs"></i>
+                        </div>
+                        <span class="text-lg font-bold text-white mt-2">司机管理</span>
+                        <span class="text-[10px] text-gray-400">Driver Service</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <style>
+        @keyframes flowOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 3: Overall Architecture (Optimized Layer 2) -->
+<section class="theme-arch" data-background-gradient="linear-gradient(135deg, #022c22 0%, #0f766e 100%)">
+    <div class="slide-container">
+        <!-- 标题 -->
+        <h2 class="slide-title mb-10">
+            <span class="inline-block p-2 rounded-lg bg-teal-500/20 border border-teal-400/30 mr-3">
+                <i class="fa-solid fa-layer-group text-teal-300"></i>
+            </span>
+            分层架构设计
+        </h2>
+        
+        <div class="slide-content w-full h-full flex items-center justify-center perspective-container">
+            <!-- 3D 容器 -->
+            <div class="relative w-[900px] h-[520px] transform-style-3d rotate-x-20">
+                
+                <!-- 1. 接入层 (Top) -->
+                <div class="absolute top-0 left-0 right-0 h-[80px] glass-panel bg-teal-900/60 border-teal-400/50 transform translate-z-100 flex items-center justify-between px-10 fragment fade-down z-40 shadow-xl backdrop-blur-md">
+                    <div class="flex items-center gap-5">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white shadow-lg">
+                            <i class="fa-solid fa-door-open text-xl"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-2xl font-bold text-white tracking-wide">接入层</span>
+                            <span class="text-xs text-teal-200 uppercase tracking-wider font-mono">Gateway Layer</span>
+                        </div>
+                    </div>
+                    <div class="px-5 py-2 bg-black/40 rounded-lg border border-teal-500/30 text-teal-100 font-mono text-base flex items-center gap-3 shadow-inner">
+                        <i class="fa-solid fa-filter text-teal-400"></i> 
+                        <span>Spring Cloud Gateway</span>
+                    </div>
+                </div>
+
+                <!-- 连接线 1-2 -->
+                <div class="absolute top-[80px] left-1/2 w-0.5 h-[60px] bg-gradient-to-b from-teal-400/50 to-transparent z-0">
+                    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-teal-200 rounded-full animate-[drop_2s_infinite] shadow-[0_0_10px_#2dd4bf]"></div>
+                </div>
+
+                <!-- 2. 业务层 (Middle - Redesigned) -->
+                <div class="absolute top-[140px] left-[-20px] right-[-20px] h-[140px] glass-panel bg-teal-800/70 border-teal-300 transform translate-z-50 flex items-center px-8 fragment fade-right z-30 shadow-2xl border-[1.5px] backdrop-blur-md">
+                    <!-- 左侧标签 -->
+                    <div class="flex items-center gap-5 w-48 border-r border-teal-500/30 mr-6 h-full shrink-0">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-300 to-teal-500 flex items-center justify-center text-white shadow-lg">
+                            <i class="fa-solid fa-microchip text-xl"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-2xl font-bold text-white tracking-wide">业务层</span>
+                            <span class="text-xs text-teal-100 uppercase tracking-wider font-mono">Service Layer</span>
+                        </div>
+                    </div>
+
+                    <!-- 右侧卡片组 (Grid) -->
+                    <div class="flex-1 grid grid-cols-4 gap-4 h-full py-3">
+                        
+                        <!-- 订单服务 -->
+                        <div class="flex flex-col items-center justify-center gap-1 rounded-lg bg-teal-950/30 border border-teal-500/20 hover:bg-teal-900/50 transition-all group cursor-pointer">
+                            <i class="fa-solid fa-file-invoice text-teal-400 text-xl group-hover:scale-110 transition-transform mb-1"></i>
+                            <span class="text-teal-100 font-bold text-base">订单服务</span>
+                        </div>
+
+                        <!-- 调度服务 (Core Highlight) -->
+                        <div class="relative flex flex-col items-center justify-center gap-1 rounded-lg bg-gradient-to-b from-teal-500/20 to-transparent border border-teal-300 shadow-[0_0_20px_rgba(20,184,166,0.2)] group cursor-pointer overflow-hidden transform scale-105">
+                            <!-- Core Badge -->
+                            <div class="absolute top-0 right-0 px-1.5 py-0.5 bg-teal-400 text-[10px] font-black text-teal-950 rounded-bl shadow-sm">CORE</div>
+                            <!-- Icon & Text -->
+                            <i class="fa-solid fa-brain text-white text-2xl mb-1 animate-pulse drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
+                            <span class="text-white font-black text-lg tracking-wide drop-shadow-md">调度服务</span>
+                        </div>
+
+                        <!-- 支付服务 -->
+                        <div class="flex flex-col items-center justify-center gap-1 rounded-lg bg-teal-950/30 border border-teal-500/20 hover:bg-teal-900/50 transition-all group cursor-pointer">
+                            <i class="fa-solid fa-wallet text-teal-400 text-xl group-hover:scale-110 transition-transform mb-1"></i>
+                            <span class="text-teal-100 font-bold text-base">支付服务</span>
+                        </div>
+
+                        <!-- 用户服务 -->
+                        <div class="flex flex-col items-center justify-center gap-1 rounded-lg bg-teal-950/30 border border-teal-500/20 hover:bg-teal-900/50 transition-all group cursor-pointer">
+                            <i class="fa-solid fa-user text-teal-400 text-xl group-hover:scale-110 transition-transform mb-1"></i>
+                            <span class="text-teal-100 font-bold text-base">用户服务</span>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 连接线 2-3 -->
+                <div class="absolute top-[280px] left-1/2 w-0.5 h-[60px] bg-gradient-to-b from-teal-400/50 to-transparent z-0">
+                     <div class="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-teal-200 rounded-full animate-[drop_2s_infinite]" style="animation-delay: 0.5s"></div>
+                </div>
+
+                <!-- 3. 基础层 (Bottom Middle) -->
+                <div class="absolute top-[340px] left-[20px] right-[20px] h-[90px] glass-panel bg-slate-800/80 border-slate-500/40 transform translate-z-0 flex items-center justify-between px-10 fragment fade-right z-20 backdrop-blur-md">
+                    <div class="flex items-center gap-5">
+                        <div class="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center text-gray-300 border border-slate-600 shadow-lg">
+                            <i class="fa-solid fa-cube text-xl"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-2xl font-bold text-slate-200 tracking-wide">基础层</span>
+                            <span class="text-xs text-slate-400 uppercase tracking-wider font-mono">Infra Layer</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-6">
+                        <div class="px-5 py-2.5 bg-slate-900/50 rounded-lg border border-slate-600 text-slate-300 text-base flex items-center gap-3 hover:border-teal-500/50 transition-colors">
+                            <i class="fa-solid fa-map-pin text-teal-400"></i> LBS 引擎
+                        </div>
+                        <div class="px-5 py-2.5 bg-slate-900/50 rounded-lg border border-slate-600 text-slate-300 text-base flex items-center gap-3 hover:border-teal-500/50 transition-colors">
+                            <i class="fa-solid fa-bolt text-teal-400"></i> Netty 推送
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 连接线 3-4 -->
+                <div class="absolute top-[430px] left-1/2 w-0.5 h-[60px] bg-gradient-to-b from-teal-400/50 to-transparent z-0">
+                     <div class="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-teal-200 rounded-full animate-[drop_2s_infinite]" style="animation-delay: 1s"></div>
+                </div>
+
+                <!-- 4. 数据层 (Bottom Base) -->
+                <div class="absolute top-[490px] left-[40px] right-[40px] h-[110px] glass-panel bg-black/80 border-slate-700 transform translate-z--50 flex items-center px-10 fragment fade-up z-10 shadow-inner backdrop-blur-md">
+                    <div class="flex items-center gap-5 w-40 border-r border-gray-700 mr-8 h-full">
+                        <div class="w-12 h-12 rounded-xl bg-gray-900 flex items-center justify-center text-gray-500 border border-gray-800 shadow-lg">
+                            <i class="fa-solid fa-database text-xl"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-2xl font-bold text-gray-400 tracking-wide">数据层</span>
+                            <span class="text-xs text-gray-600 uppercase tracking-wider font-mono">Data Layer</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 grid grid-cols-3 gap-8">
+                        <div class="flex items-center gap-4 group cursor-pointer">
+                            <div class="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center border border-blue-500/30 group-hover:border-blue-400 transition-colors">
+                                <i class="fa-solid fa-server text-blue-400 text-lg"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-gray-200 text-lg font-bold group-hover:text-blue-300 transition-colors">MySQL</span>
+                                <span class="text-xs text-gray-500 font-mono">Sharding</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 group cursor-pointer">
+                            <div class="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center border border-red-500/30 group-hover:border-red-400 transition-colors">
+                                <i class="fa-solid fa-memory text-red-400 text-lg"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-gray-200 text-lg font-bold group-hover:text-red-300 transition-colors">Redis</span>
+                                <span class="text-xs text-gray-500 font-mono">Cluster</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 group cursor-pointer">
+                            <div class="w-10 h-10 rounded-full bg-green-900/30 flex items-center justify-center border border-green-500/30 group-hover:border-green-400 transition-colors">
+                                <i class="fa-solid fa-leaf text-green-400 text-lg"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-gray-200 text-lg font-bold group-hover:text-green-300 transition-colors">NoSQL</span>
+                                <span class="text-xs text-gray-500 font-mono">Mongo/HBase</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <style>
+        .perspective-container { perspective: 1200px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .rotate-x-20 { transform: rotateX(20deg) translateY(-60px); }
+        .translate-z-100 { transform: translateZ(60px); }
+        .translate-z-50 { transform: translateZ(30px); }
+        .translate-z-0 { transform: translateZ(0px); }
+        .translate-z--50 { transform: translateZ(-30px); }
+        
+        @keyframes drop {
+            0% { top: 0; opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 4: LBS (Holographic Tactical Map Style) -->
+<section class="theme-lbs" data-background-gradient="linear-gradient(135deg, #022c22 0%, #064e3b 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title mb-8">
+            <span class="inline-block p-2 rounded-lg bg-emerald-500/20 border border-emerald-400/30 mr-3">
+                <i class="fa-solid fa-location-crosshairs text-emerald-400"></i>
+            </span>
+            LBS 核心引擎
+        </h2>
+        
+        <div class="slide-content flex flex-row gap-12 w-full max-w-7xl items-center justify-center h-full">
+            
+            <!-- Left: Holographic Radar -->
+            <div class="relative w-[500px] h-[500px] flex items-center justify-center fragment zoom-in">
+                
+                <!-- 外部装饰圈 -->
+                <div class="absolute inset-0 border border-emerald-500/30 rounded-full"></div>
+                <div class="absolute inset-4 border border-emerald-500/10 rounded-full border-dashed animate-[spin_60s_linear_infinite]"></div>
+                
+                <!-- 刻度盘 -->
+                <div class="absolute inset-0 rounded-full" 
+                     style="background: repeating-conic-gradient(from 0deg, transparent 0deg 8deg, rgba(16, 185, 129, 0.2) 9deg 10deg);">
+                </div>
+
+                <!-- 主雷达屏 -->
+                <div class="relative w-[400px] h-[400px] bg-emerald-900/20 rounded-full border-2 border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.2)] overflow-hidden backdrop-blur-sm">
+                    
+                    <!-- 网格线 -->
+                    <div class="absolute inset-0 opacity-30" 
+                         style="background-image: radial-gradient(#34d399 1px, transparent 1px), linear-gradient(0deg, transparent 49%, #34d399 50%, transparent 51%), linear-gradient(90deg, transparent 49%, #34d399 50%, transparent 51%); background-size: 40px 40px, 100% 100%, 100% 100%;">
+                    </div>
+
+                    <!-- 扫描线 -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent w-[50%] h-[50%] top-0 left-0 origin-bottom-right animate-[scan-radar_4s_linear_infinite] border-r-2 border-emerald-400 rounded-tl-full z-10"></div>
+
+                    <!-- 中心用户点 -->
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-[0_0_20px_white] z-20 animate-pulse">
+                        <div class="absolute inset-0 rounded-full border-2 border-white animate-ping"></div>
+                    </div>
+
+                    <!-- 搜索范围圈 -->
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border border-emerald-400/60 rounded-full bg-emerald-400/5 z-0 flex items-center justify-center">
+                        <span class="absolute -top-3 bg-emerald-900/80 text-[10px] text-emerald-300 px-1 font-mono border border-emerald-500/30">RADIUS: 5KM</span>
+                    </div>
+
+                    <!-- 动态目标点 (司机) -->
+                    <!-- Driver A -->
+                    <div class="absolute top-[30%] left-[60%] w-3 h-3 bg-emerald-400 rounded-full shadow-[0_0_10px_#34d399] animate-pulse z-10 group cursor-pointer">
+                        <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] text-emerald-300 px-2 py-1 rounded border border-emerald-500/30 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            ID: 9527<br>Dist: 1.2km
+                        </div>
+                    </div>
+                    <!-- Driver B -->
+                    <div class="absolute bottom-[35%] left-[35%] w-3 h-3 bg-emerald-400 rounded-full shadow-[0_0_10px_#34d399] animate-pulse z-10 group cursor-pointer" style="animation-delay: 1s">
+                         <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] text-emerald-300 px-2 py-1 rounded border border-emerald-500/30 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            ID: 8848<br>Dist: 3.5km
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Terminal Code Blocks -->
+            <div class="flex flex-col gap-6 flex-1 h-full justify-center max-w-xl">
+                
+                <!-- Block 1: Upload -->
+                <div class="group relative fragment fade-left">
+                    <div class="absolute -left-3 top-1/2 -translate-y-1/2 w-1 h-12 bg-emerald-500 rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="glass-panel border-0 bg-[#1e1e1e] rounded-lg overflow-hidden shadow-2xl font-mono text-sm border border-white/10">
+                        <!-- Terminal Header -->
+                        <div class="bg-[#2d2d2d] px-4 py-2 flex items-center justify-between border-b border-white/5">
+                            <span class="text-gray-400 text-xs flex items-center gap-2"><i class="fa-solid fa-terminal"></i> driver-client — bash</span>
+                            <div class="flex gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+                            </div>
+                        </div>
+                        <!-- Content -->
+                        <div class="p-5 text-gray-300 leading-relaxed">
+                            <div class="text-gray-500 mb-2"># 司机每3秒上传一次经纬度</div>
+                            <div class="flex">
+                                <span class="text-emerald-400 font-bold mr-2">➜</span>
+                                <div>
+                                    <span class="text-yellow-300">GEOADD</span> 
+                                    <span class="text-purple-400">driver_locations</span> 
+                                    <span class="text-blue-300">116.40</span> 
+                                    <span class="text-blue-300">39.90</span> 
+                                    <span class="text-white">"driver_1024"</span>
+                                </div>
+                            </div>
+                            <div class="text-gray-500 mt-1 text-xs italic">// Result: (integer) 1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arrow Down -->
+                <div class="flex justify-center opacity-30"><i class="fa-solid fa-arrow-down text-emerald-400 animate-bounce"></i></div>
+
+                <!-- Block 2: Search -->
+                <div class="group relative fragment fade-left">
+                    <div class="absolute -left-3 top-1/2 -translate-y-1/2 w-1 h-12 bg-blue-500 rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="glass-panel border-0 bg-[#1e1e1e] rounded-lg overflow-hidden shadow-2xl font-mono text-sm border border-white/10">
+                        <!-- Terminal Header -->
+                        <div class="bg-[#2d2d2d] px-4 py-2 flex items-center justify-between border-b border-white/5">
+                            <span class="text-gray-400 text-xs flex items-center gap-2"><i class="fa-solid fa-terminal"></i> dispatch-service — bash</span>
+                            <div class="flex gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+                            </div>
+                        </div>
+                        <!-- Content -->
+                        <div class="p-5 text-gray-300 leading-relaxed">
+                            <div class="text-gray-500 mb-2"># 查找乘客附近 5km 的司机</div>
+                            <div class="flex">
+                                <span class="text-blue-400 font-bold mr-2">➜</span>
+                                <div>
+                                    <span class="text-yellow-300">GEORADIUS</span> 
+                                    <span class="text-purple-400">driver_locations</span> 
+                                    <span class="text-blue-300">116.41</span> 
+                                    <span class="text-blue-300">39.91</span> 
+                                    <span class="text-red-400 font-bold border-b border-red-400/50">5 km</span> 
+                                    <span class="text-gray-400">WITHDIST ASC</span>
+                                </div>
+                            </div>
+                            <div class="mt-2 pl-4 border-l-2 border-gray-700 text-xs text-gray-400">
+                                1) "driver_1024" "1.2011"<br>
+                                2) "driver_8848" "3.4522"
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+
+            <!-- Slide 5: Distributed Lock (Energy Core Style) -->
+<section class="theme-lock" data-background-gradient="linear-gradient(135deg, #2a0a0a 0%, #450a0a 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title mb-12">
+            <span class="inline-block p-2 rounded-lg bg-red-500/20 border border-red-400/30 mr-3">
+                <i class="fa-solid fa-gavel text-red-400"></i>
+            </span>
+            并发抢单机制
+        </h2>
+        
+        <div class="slide-content w-full max-w-7xl flex flex-col items-center justify-center h-full">
+            
+            <!-- 核心竞争区域 -->
+            <div class="relative w-full h-[400px] flex items-center justify-center">
+                
+                <!-- 1. 中心锁核心 (The Lock) -->
+                <div class="absolute z-20 flex flex-col items-center justify-center">
+                    <!-- 旋转光环 -->
+                    <div class="absolute inset-[-40px] border-2 border-red-500/30 rounded-full border-dashed animate-[spin_10s_linear_infinite]"></div>
+                    <div class="absolute inset-[-20px] border border-red-500/50 rounded-full animate-[spin_5s_linear_infinite_reverse]"></div>
+                    
+                    <!-- 核心实体 -->
+                    <div class="w-32 h-32 glass-panel bg-red-900/80 border-2 border-red-400 rounded-full flex flex-col items-center justify-center shadow-[0_0_80px_rgba(239,68,68,0.6)] z-30 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-red-500/20 to-transparent animate-pulse"></div>
+                        <i class="fa-solid fa-lock text-5xl text-red-100 drop-shadow-lg mb-1"></i>
+                        <span class="text-[10px] font-mono text-red-300 bg-black/50 px-2 rounded border border-red-500/30">KEY: ORDER_888</span>
+                    </div>
+
+                    <!-- 锁状态标签 -->
+                    <div class="absolute -bottom-16 bg-black/60 backdrop-blur px-4 py-1 rounded-full border border-red-500/50 text-red-400 font-mono text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-database"></i> REDIS SETNX
+                    </div>
+                </div>
+
+                <!-- 2. 左侧：司机 A (Winner) -->
+                <div class="absolute left-[10%] top-1/2 -translate-y-1/2 flex flex-col items-center gap-4 z-10 fragment fade-right" data-fragment-index="1">
+                    <!-- 头像 -->
+                    <div class="w-24 h-24 rounded-full bg-blue-900/50 border-4 border-blue-400 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.5)] relative">
+                        <i class="fa-solid fa-car text-3xl text-blue-100"></i>
+                        <div class="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg animate-bounce">
+                            <i class="fa-solid fa-check text-white text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="text-blue-200 font-bold text-lg bg-blue-900/30 px-4 py-1 rounded-full border border-blue-500/30">司机 A</div>
+                </div>
+
+                <!-- 3. 右侧：司机 B (Loser) -->
+                <div class="absolute right-[10%] top-1/2 -translate-y-1/2 flex flex-col items-center gap-4 z-10 fragment fade-left" data-fragment-index="1">
+                    <!-- 头像 -->
+                    <div class="w-24 h-24 rounded-full bg-yellow-900/50 border-4 border-yellow-400 flex items-center justify-center shadow-[0_0_30px_rgba(234,179,8,0.5)] relative">
+                        <i class="fa-solid fa-car text-3xl text-yellow-100"></i>
+                        <div class="absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg animate-pulse">
+                            <i class="fa-solid fa-xmark text-white text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="text-yellow-200 font-bold text-lg bg-yellow-900/30 px-4 py-1 rounded-full border border-yellow-500/30">司机 B</div>
+                </div>
+
+                <!-- 4. 激光束连接 (SVG Animation) -->
+                <svg class="absolute inset-0 w-full h-full pointer-events-none z-0 fragment fade-in" data-fragment-index="2">
+                    <defs>
+                        <linearGradient id="beamA" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.2" />
+                            <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
+                        </linearGradient>
+                        <linearGradient id="beamB" x1="100%" y1="0%" x2="0%" y2="0%">
+                            <stop offset="0%" style="stop-color:#eab308;stop-opacity:0.2" />
+                            <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+                        </linearGradient>
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- Beam A (Success) -->
+                    <path d="M 180 200 L 400 200" stroke="url(#beamA)" stroke-width="6" fill="none" filter="url(#glow)" class="animate-[dash_1s_linear_infinite]" stroke-dasharray="20 10"></path>
+                    
+                    <!-- Beam B (Blocked) -->
+                    <path d="M 920 200 L 700 200" stroke="url(#beamB)" stroke-width="4" fill="none" filter="url(#glow)" class="animate-[dash_0.5s_linear_infinite]" stroke-dasharray="10 5"></path>
+                    <!-- 碰撞火花 -->
+                    <circle cx="680" cy="200" r="10" fill="#ef4444" class="animate-ping opacity-75"></circle>
+                </svg>
+
+            </div>
+
+            <!-- 底部结果面板 (HUD Style) -->
+            <div class="w-full max-w-4xl glass-panel p-0 flex overflow-hidden fragment fade-up mt-8 border border-white/10 rounded-xl">
+                <!-- A 结果 -->
+                <div class="flex-1 bg-gradient-to-r from-green-900/40 to-transparent p-6 flex items-center gap-4 border-r border-white/10">
+                    <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 border border-green-500/50">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-green-300 font-bold text-lg">抢锁成功</span>
+                        <span class="text-gray-400 text-xs font-mono">TTL: 30s | Value: UUID_A</span>
+                    </div>
+                </div>
+
+                <!-- B 结果 -->
+                <div class="flex-1 bg-gradient-to-l from-red-900/40 to-transparent p-6 flex items-center justify-end gap-4">
+                    <div class="flex flex-col items-end">
+                        <span class="text-red-300 font-bold text-lg">抢锁失败</span>
+                        <span class="text-gray-400 text-xs font-mono">Return: 0 | Retry: False</span>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 border border-red-500/50">
+                        <i class="fa-solid fa-ban"></i>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <style>
+        @keyframes dash {
+            to { stroke-dashoffset: -100; }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 6: Push Service (Refined Layout) -->
+<section class="theme-push" data-background-gradient="linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)">
+    <div class="slide-container">
+        <!-- 标题 -->
+        <h2 class="slide-title mb-10">
+            <span class="inline-block p-2 rounded-lg bg-violet-500/20 border border-violet-400/30 mr-3">
+                <i class="fa-solid fa-tower-broadcast text-violet-400"></i>
+            </span>
+            实时触达系统
+        </h2>
+        
+        <div class="slide-content w-full max-w-7xl flex items-center justify-center h-full relative">
+            
+            <!-- 背景连线 (SVG) - 调整坐标确保对齐 -->
+            <svg class="absolute inset-0 w-full h-full pointer-events-none z-0">
+                <defs>
+                    <linearGradient id="signalGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#a78bfa;stop-opacity:0.1" />
+                        <stop offset="50%" style="stop-color:#a78bfa;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:0.1" />
+                    </linearGradient>
+                    <filter id="glowViolet">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                <!-- 连接线：从手机右侧(350)到Netty左侧(750) -->
+                <path d="M 350 280 L 750 280" stroke="url(#signalGradient)" stroke-width="2" fill="none" stroke-dasharray="6 4" class="opacity-40"></path>
+                
+                <!-- 传输的数据包：调整动画路径与线条重合 -->
+                <circle r="4" fill="#fff" filter="url(#glowViolet)">
+                    <animateMotion path="M 750 280 L 350 280" dur="2s" repeatCount="indefinite" />
+                </circle>
+                
+                <!-- 手机端的接收波纹 -->
+                <circle cx="350" cy="280" r="10" stroke="#8b5cf6" stroke-width="2" fill="none" class="animate-ping opacity-60"></circle>
+            </svg>
+
+            <div class="flex justify-between items-center w-full px-16 z-10">
+                
+                <!-- 1. 左侧：客户端 (Client) -->
+                <div class="flex flex-col items-center gap-6 fragment fade-right">
+                    <!-- 手机模型 -->
+                    <div class="relative w-52 h-[340px] bg-gray-900 rounded-[2.5rem] border-4 border-gray-700 shadow-2xl overflow-hidden ring-4 ring-violet-500/20">
+                        <!-- 顶部刘海 -->
+                        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-b-xl z-20"></div>
+                        
+                        <!-- 屏幕内容 -->
+                        <div class="w-full h-full bg-slate-800 flex flex-col relative overflow-hidden">
+                            <!-- 模拟地图背景 -->
+                            <div class="absolute inset-0 opacity-30">
+                                <div class="w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gray-600/50 to-transparent" style="background-size: 20px 20px; background-image: radial-gradient(#4b5563 1px, transparent 1px);"></div>
+                                <!-- 模拟路线 -->
+                                <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 200" preserveAspectRatio="none">
+                                    <path d="M 50 180 Q 20 100 80 50" stroke="#4b5563" stroke-width="2" fill="none" stroke-dasharray="4 4"></path>
+                                </svg>
+                            </div>
+                            
+                            <!-- 弹窗通知 (居中显示) -->
+                            <div class="absolute top-1/3 left-1/2 -translate-x-1/2 w-40 bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 shadow-lg animate-[bounce_3s_infinite]">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm">
+                                        <i class="fa-solid fa-check text-white text-[10px]"></i>
+                                    </div>
+                                    <span class="text-white text-sm font-bold">抢单成功</span>
+                                </div>
+                                <div class="h-1.5 w-full bg-gray-600/50 rounded-full overflow-hidden">
+                                    <div class="h-full bg-green-400 w-3/4 rounded-full"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 底部连接状态 -->
+                        <div class="absolute bottom-6 left-0 right-0 flex justify-center z-20">
+                            <span class="text-[10px] text-green-300 bg-green-950/80 px-3 py-1 rounded-full border border-green-500/30 flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
+                                <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Connected
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 中间：技术标签 (位置微调) -->
+                <div class="flex flex-col items-center gap-3 -mt-8"> <!-- 稍微上移，避开连线 -->
+                    <div class="bg-violet-950/90 backdrop-blur-md px-5 py-2.5 rounded-xl border border-violet-500/50 text-violet-100 font-mono text-base shadow-[0_0_25px_rgba(139,92,246,0.3)] flex items-center gap-2 transform hover:scale-105 transition-transform">
+                        <i class="fa-solid fa-bolt text-yellow-400 animate-pulse"></i> WebSocket
+                    </div>
+                    <span class="text-xs text-violet-300/70 font-mono tracking-wide bg-black/20 px-2 py-0.5 rounded">Protobuf Protocol</span>
+                </div>
+
+                <!-- 2. 右侧：Netty 反应堆 (Server) -->
+                <div class="flex items-center gap-4 fragment fade-left"> <!-- 减小 gap -->
+                    
+                    <!-- Netty Core -->
+                    <div class="relative w-72 h-72 flex items-center justify-center"> <!-- 放大一点 -->
+                        <!-- 外圈轨道 -->
+                        <div class="absolute inset-0 border border-violet-500/20 rounded-full animate-[spin_12s_linear_infinite]"></div>
+                        <div class="absolute inset-6 border border-dashed border-violet-400/30 rounded-full animate-[spin_18s_linear_infinite_reverse]"></div>
+                        
+                        <!-- 核心 Reactor -->
+                        <div class="w-36 h-36 bg-gradient-to-br from-violet-900 to-violet-950 rounded-full border-2 border-violet-400/60 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(139,92,246,0.4)] z-10 relative overflow-hidden">
+                            <i class="fa-solid fa-network-wired text-5xl text-violet-200 drop-shadow-md mb-2"></i>
+                            <span class="font-black text-white text-xl tracking-tight">Netty</span>
+                            <span class="text-[10px] text-violet-300 font-mono mt-1">NIO Cluster</span>
+                        </div>
+
+                        <!-- 卫星节点 (Worker Threads) -->
+                        <div class="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-10 bg-violet-800/80 rounded-lg border border-violet-400/50 flex items-center justify-center shadow-lg backdrop-blur-sm animate-bounce">
+                            <i class="fa-solid fa-microchip text-violet-300 text-xs"></i>
+                        </div>
+                        <div class="absolute bottom-2 left-1/2 -translate-x-1/2 w-10 h-10 bg-violet-800/80 rounded-lg border border-violet-400/50 flex items-center justify-center shadow-lg backdrop-blur-sm animate-bounce" style="animation-delay: 0.5s">
+                            <i class="fa-solid fa-microchip text-violet-300 text-xs"></i>
+                        </div>
+                    </div>
+
+                    <!-- Redis 路由模块 (更紧凑的连接) -->
+                    <div class="relative flex items-center">
+                        <!-- 连接线 -->
+                        <div class="w-12 h-0.5 bg-gradient-to-r from-violet-500/50 to-red-500/50"></div> <!-- 显式连接线 -->
+                        
+                        <div class="w-44 bg-gray-900/90 border border-red-500/30 rounded-xl p-4 flex flex-col gap-3 shadow-xl hover:bg-gray-800 transition-colors backdrop-blur-sm">
+                            <div class="flex items-center gap-2 border-b border-red-500/20 pb-2">
+                                <div class="w-8 h-8 rounded bg-red-500/20 flex items-center justify-center border border-red-500/30">
+                                    <i class="fa-solid fa-database text-red-400 text-sm"></i>
+                                </div>
+                                <span class="text-red-100 font-bold text-sm">路由映射表</span>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between items-center text-[10px] text-gray-300 font-mono bg-black/40 px-2 py-1.5 rounded border border-white/5">
+                                    <span class="opacity-70">UID:1001</span>
+                                    <i class="fa-solid fa-arrow-right text-gray-600 text-[8px]"></i>
+                                    <span class="text-green-400 font-bold">192.168.1.5</span>
+                                </div>
+                                <div class="flex justify-between items-center text-[10px] text-gray-300 font-mono bg-black/40 px-2 py-1.5 rounded border border-white/5 opacity-50">
+                                    <span class="opacity-70">UID:1002</span>
+                                    <i class="fa-solid fa-arrow-right text-gray-600 text-[8px]"></i>
+                                    <span class="text-green-400 font-bold">192.168.1.8</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+            
+            <!-- 底部特性栏 -->
+            <div class="absolute bottom-10 flex gap-12 opacity-70">
+                <div class="flex items-center gap-2 text-violet-200 text-sm font-mono bg-violet-900/30 px-3 py-1 rounded-full border border-violet-500/20">
+                    <i class="fa-regular fa-circle-check text-green-400"></i> Epoll 模型
+                </div>
+                <div class="flex items-center gap-2 text-violet-200 text-sm font-mono bg-violet-900/30 px-3 py-1 rounded-full border border-violet-500/20">
+                    <i class="fa-regular fa-circle-check text-green-400"></i> Zero-Copy
+                </div>
+                <div class="flex items-center gap-2 text-violet-200 text-sm font-mono bg-violet-900/30 px-3 py-1 rounded-full border border-violet-500/20">
+                    <i class="fa-regular fa-circle-check text-green-400"></i> IdleState 检测
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+
+            <!-- Slide 7: Data Governance (Final Polished) -->
+<section class="theme-data" data-background-gradient="linear-gradient(135deg, #4a044e 0%, #701a75 100%)">
+    <div class="slide-container">
+        <!-- 标题 -->
+        <h2 class="slide-title mb-10">
+            <span class="inline-block p-2 rounded-lg bg-pink-500/20 border border-pink-400/30 mr-3">
+                <i class="fa-solid fa-server text-pink-400"></i>
+            </span>
+            数据治理策略
+        </h2>
+        
+        <div class="slide-content w-full max-w-7xl flex flex-col items-center justify-center h-full relative">
+            
+            <!-- 背景连接管道 (SVG) -->
+            <svg class="absolute inset-0 w-full h-full pointer-events-none z-0">
+                <defs>
+                    <linearGradient id="pipeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#db2777;stop-opacity:0.5" />
+                        <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.5" />
+                    </linearGradient>
+                </defs>
+                <path d="M 280 250 L 580 250" stroke="url(#pipeGradient)" stroke-width="12" fill="none" class="opacity-30 rounded-full"></path>
+                <circle r="4" fill="#fff" class="animate-[flowRight_3s_linear_infinite]">
+                    <animateMotion path="M 280 250 L 580 250" dur="3s" repeatCount="indefinite" />
+                </circle>
+            </svg>
+
+            <!-- 卡片容器 -->
+            <div class="flex gap-6 w-full items-stretch justify-center z-10 px-4 h-[420px]"> <!-- 固定高度确保对齐 -->
+                
+                <!-- 1. Hot Data -->
+                <div class="flex-1 glass-panel border-pink-500/50 bg-gradient-to-b from-pink-900/60 to-pink-950/60 flex flex-col p-0 overflow-hidden fragment fade-up hover:-translate-y-2 transition-transform duration-300 shadow-[0_0_40px_rgba(219,39,119,0.15)]">
+                    <!-- Header -->
+                    <div class="bg-pink-900/40 p-5 border-b border-pink-500/30 flex justify-between items-center shrink-0">
+                        <h3 class="text-2xl font-bold text-pink-100 flex items-center gap-3 whitespace-nowrap">
+                            <i class="fa-solid fa-fire text-pink-500 animate-pulse"></i> 热数据
+                        </h3>
+                        <span class="text-xs bg-pink-500 text-white px-2 py-1 rounded font-bold tracking-wider shadow-sm">HOT</span>
+                    </div>
+                    <!-- Body -->
+                    <div class="p-6 flex flex-col items-center justify-between flex-1 relative"> <!-- 使用 justify-between 上下撑开 -->
+                        <div class="absolute inset-0 bg-pink-500/5 animate-pulse pointer-events-none"></div>
+                        
+                        <!-- Icon & Title Group -->
+                        <div class="flex flex-col items-center gap-4 mt-2">
+                            <div class="w-20 h-20 rounded-full bg-pink-500/20 flex items-center justify-center border-2 border-pink-400 shadow-[0_0_25px_#db2777]">
+                                <i class="fa-solid fa-database text-4xl text-pink-200"></i>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-3xl font-black text-white mb-2 tracking-wide drop-shadow-md">MySQL</div>
+                                <div class="text-xs text-pink-200 font-mono bg-pink-500/20 px-3 py-1 rounded-full border border-pink-500/30 inline-block">Sharding-Sphere</div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Box -->
+                        <div class="w-full bg-pink-950/40 rounded-xl p-4 text-center border border-pink-500/20 backdrop-blur-sm mt-4">
+                            <span class="block text-pink-300 font-bold mb-1 text-lg">最近3个月订单</span>
+                            <span class="text-xs text-pink-100/70">高频读写 / 事务支持</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Cold Data -->
+                <div class="flex-1 glass-panel border-blue-500/50 bg-gradient-to-b from-blue-900/60 to-blue-950/60 flex flex-col p-0 overflow-hidden fragment fade-up hover:-translate-y-2 transition-transform duration-300 shadow-[0_0_40px_rgba(59,130,246,0.15)]" style="transition-delay: 0.1s">
+                    <!-- Header -->
+                    <div class="bg-blue-900/40 p-5 border-b border-blue-500/30 flex justify-between items-center shrink-0">
+                        <h3 class="text-2xl font-bold text-blue-100 flex items-center gap-3 whitespace-nowrap">
+                            <i class="fa-solid fa-snowflake text-blue-400"></i> 冷数据
+                        </h3>
+                        <span class="text-xs bg-blue-500 text-white px-2 py-1 rounded font-bold tracking-wider shadow-sm">COLD</span>
+                    </div>
+                    <!-- Body -->
+                    <div class="p-6 flex flex-col items-center justify-between flex-1 relative">
+                        <div class="flex flex-col items-center gap-4 mt-2">
+                            <div class="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center border-2 border-blue-400 shadow-[0_0_25px_#3b82f6]">
+                                <i class="fa-solid fa-cube text-4xl text-blue-200"></i>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-3xl font-black text-white mb-2 tracking-wide drop-shadow-md">HBase</div>
+                                <div class="text-xs text-blue-200 font-mono bg-blue-500/20 px-3 py-1 rounded-full border border-blue-500/30 inline-block">TiDB / Doris</div>
+                            </div>
+                        </div>
+
+                        <div class="w-full bg-blue-950/40 rounded-xl p-4 text-center border border-blue-500/20 backdrop-blur-sm mt-4">
+                            <span class="block text-blue-300 font-bold mb-1 text-lg">历史订单归档</span>
+                            <span class="text-xs text-blue-100/70">低成本 / 批量分析</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Track Data -->
+                <div class="flex-1 glass-panel border-green-500/50 bg-gradient-to-b from-green-900/60 to-green-950/60 flex flex-col p-0 overflow-hidden fragment fade-up hover:-translate-y-2 transition-transform duration-300 shadow-[0_0_40px_rgba(34,197,94,0.15)]" style="transition-delay: 0.2s">
+                    <!-- Header -->
+                    <div class="bg-green-900/40 p-5 border-b border-green-500/30 flex justify-between items-center shrink-0">
+                        <h3 class="text-2xl font-bold text-green-100 flex items-center gap-3 whitespace-nowrap">
+                            <i class="fa-solid fa-route text-green-400"></i> 海量轨迹
+                        </h3>
+                        <span class="text-xs bg-green-600 text-white px-2 py-1 rounded font-bold tracking-wider shadow-sm">GEO</span>
+                    </div>
+                    <!-- Body -->
+                    <div class="p-6 flex flex-col items-center justify-between flex-1 relative">
+                        <div class="flex flex-col items-center gap-4 mt-2">
+                            <div class="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center border-2 border-green-400 shadow-[0_0_25px_#22c55e]">
+                                <i class="fa-solid fa-leaf text-4xl text-green-200"></i>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-3xl font-black text-white mb-2 tracking-wide drop-shadow-md">MongoDB</div>
+                                <div class="text-xs text-green-200 font-mono bg-green-500/20 px-3 py-1 rounded-full border border-green-500/30 inline-block">Sharded Cluster</div>
+                            </div>
+                        </div>
+
+                        <div class="w-full bg-green-950/40 rounded-xl p-4 text-center border border-green-500/20 backdrop-blur-sm mt-4">
+                            <span class="block text-green-300 font-bold mb-1 text-lg">每单数百坐标点</span>
+                            <span class="text-xs text-green-100/70">高吞吐写入 / 地理查询</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- 底部说明标签 (增强亮度) -->
+            <div class="mt-8 flex gap-12">
+                <div class="flex items-center gap-3 text-sm text-pink-100 bg-pink-900/30 px-5 py-2 rounded-full border border-pink-500/30 shadow-lg backdrop-blur-sm">
+                    <i class="fa-solid fa-rotate text-pink-400 animate-spin-slow"></i> 
+                    <span>定时迁移任务 <span class="font-mono text-pink-300 opacity-80">(DataX)</span></span>
+                </div>
+                <div class="flex items-center gap-3 text-sm text-blue-100 bg-blue-900/30 px-5 py-2 rounded-full border border-blue-500/30 shadow-lg backdrop-blur-sm">
+                    <i class="fa-solid fa-compress text-blue-400"></i> 
+                    <span>数据压缩存储</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <style>
+        @keyframes flowRight {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 8: Summary (Clean Version) -->
+<section class="theme-summary" data-background-gradient="linear-gradient(135deg, #0f172a 0%, #1e293b 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title mb-12"> <!-- 增加一点标题下边距 -->
+            <span class="inline-block p-2 rounded-lg bg-slate-700/50 border border-slate-600 mr-3">
+                <i class="fa-solid fa-clipboard-check text-slate-300"></i>
+            </span>
+            架构设计总结
+        </h2>
+        
+        <!-- 改为 justify-center 让内容垂直居中，去掉 justify-between -->
+        <div class="slide-content w-full max-w-6xl flex flex-col justify-center h-full">
+            
+            <div class="grid grid-cols-2 gap-8 w-full"> <!-- 增加 gap 间距 -->
+                
+                <!-- 1. LBS Engine -->
+                <div class="relative glass-panel p-10 flex items-center gap-6 fragment fade-up hover:-translate-y-1 transition-transform duration-300 overflow-hidden group border-t-4 border-emerald-500">
+                    <div class="absolute -right-4 -bottom-10 text-9xl font-black text-emerald-500/5 group-hover:text-emerald-500/10 transition-colors select-none z-0">01</div>
+                    
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shrink-0 shadow-lg z-10 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-map-location-dot text-3xl text-white"></i>
+                    </div>
+                    
+                    <div class="z-10">
+                        <h3 class="text-2xl font-bold text-white mb-2 group-hover:text-emerald-300 transition-colors">Redis GEO</h3>
+                        <p class="text-base text-gray-400 leading-relaxed font-light">
+                            解决千万级司机<strong class="text-emerald-400 font-bold">实时空间搜索</strong>与距离计算难题。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 2. Push System -->
+                <div class="relative glass-panel p-10 flex items-center gap-6 fragment fade-up hover:-translate-y-1 transition-transform duration-300 overflow-hidden group border-t-4 border-violet-500" style="transition-delay: 0.1s">
+                    <div class="absolute -right-4 -bottom-10 text-9xl font-black text-violet-500/5 group-hover:text-violet-500/10 transition-colors select-none z-0">02</div>
+                    
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shrink-0 shadow-lg z-10 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-bolt text-3xl text-white"></i>
+                    </div>
+                    
+                    <div class="z-10">
+                        <h3 class="text-2xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors">Netty WebSocket</h3>
+                        <p class="text-base text-gray-400 leading-relaxed font-light">
+                            实现服务端到客户端的<strong class="text-violet-400 font-bold">低延迟</strong>实时消息推送通道。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 3. Concurrency -->
+                <div class="relative glass-panel p-10 flex items-center gap-6 fragment fade-up hover:-translate-y-1 transition-transform duration-300 overflow-hidden group border-t-4 border-rose-500" style="transition-delay: 0.2s">
+                    <div class="absolute -right-4 -bottom-10 text-9xl font-black text-rose-500/5 group-hover:text-rose-500/10 transition-colors select-none z-0">03</div>
+                    
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 flex items-center justify-center shrink-0 shadow-lg z-10 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-shield-halved text-3xl text-white"></i>
+                    </div>
+                    
+                    <div class="z-10">
+                        <h3 class="text-2xl font-bold text-white mb-2 group-hover:text-rose-300 transition-colors">分布式锁</h3>
+                        <p class="text-base text-gray-400 leading-relaxed font-light">
+                            保障高并发抢单场景下的<strong class="text-rose-400 font-bold">数据一致性</strong>，防止超卖。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 4. Data Storage -->
+                <div class="relative glass-panel p-10 flex items-center gap-6 fragment fade-up hover:-translate-y-1 transition-transform duration-300 overflow-hidden group border-t-4 border-blue-500" style="transition-delay: 0.3s">
+                    <div class="absolute -right-4 -bottom-10 text-9xl font-black text-blue-500/5 group-hover:text-blue-500/10 transition-colors select-none z-0">04</div>
+                    
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0 shadow-lg z-10 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-database text-3xl text-white"></i>
+                    </div>
+                    
+                    <div class="z-10">
+                        <h3 class="text-2xl font-bold text-white mb-2 group-hover:text-blue-300 transition-colors">冷热分离</h3>
+                        <p class="text-base text-gray-400 leading-relaxed font-light">
+                            通过分库分表与 NoSQL 组合，解决<strong class="text-blue-400 font-bold">海量数据</strong>存储瓶颈。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: false, 
+            progress: false, 
+            center: false,   
+            hash: true,
+            transition: 'convex',
+            backgroundTransition: 'zoom',
+            autoPlayMedia: true
+        });
+    </script>
+</body>
+</html>

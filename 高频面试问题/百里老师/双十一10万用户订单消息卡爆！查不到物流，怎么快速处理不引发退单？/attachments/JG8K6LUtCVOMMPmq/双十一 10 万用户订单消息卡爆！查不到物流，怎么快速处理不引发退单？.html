@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双十一 10 万用户订单消息卡爆！查不到物流，怎么快速处理不引发退单？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); } 50% { box-shadow: 0 0 20px 10px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); } 50% { box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        @keyframes arrow-flow { 0% { opacity: 0; transform: translateX(-20px); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateX(20px); } }
+        @keyframes stress { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .diagram-node { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 1.5rem; border-radius: 1rem; font-weight: 600; text-align: center; border: 1px solid; transition: all 0.3s ease; }
+        .diagram-node:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(148, 163, 184, 0.2); }
+        .diagram-arrow { font-size: 2.5rem; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 1rem; position: relative; }
+        .diagram-node-bad { animation: subtle-pulse-red 2.5s infinite ease-in-out, shake 3s infinite ease-in-out; }
+        .diagram-node-good { animation: subtle-pulse-green 2.5s infinite ease-in-out; }
+        
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .annotation { position: absolute; background-color: rgba(239, 68, 68, 0.8); color: white; padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: bold; white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场：消息堆积概念 -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight gradient-text bg-gradient-to-r from-amber-400 to-rose-500">双十一10万订单卡爆！消息队列堆积告急！</h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">物流刷不出？积分不到账？一图看懂“系统血栓”如何形成</h2>
+            <div class="content-panel mt-10 p-6 md:p-8 border-rose-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-around gap-6 text-white">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-users text-6xl text-sky-300"></i><h4 class="font-bold mt-2 text-lg">海量用户下单</h4></div>
+                    <div class="diagram-arrow text-4xl md:text-6xl text-sky-400 flex flex-col gap-2"><i class="fa-solid fa-right-long" style="animation: arrow-flow 2s infinite;"></i><span class="text-lg font-mono">Messages</span></div>
+                    <div class="relative diagram-node diagram-node-bad border-red-600/50 bg-red-900/30 p-6" style="animation-duration: 2s, 4s;">
+                        <i class="fa-solid fa-layer-group text-6xl text-red-300"></i><h4 class="font-bold mt-2 text-lg">消息队列 MQ</h4>
+                        <div class="annotation -top-4 -right-4" style="animation: shake 5s infinite ease-in-out;">消息堆积!</div>
+                    </div>
+                    <div class="diagram-arrow text-4xl md:text-6xl text-red-400 flex flex-col gap-2"><i class="fa-solid fa-right-long" style="text-decoration: line-through; text-decoration-color: #ef4444;"></i><span class="text-lg font-mono">Process</span></div>
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6">
+                        <i class="fa-solid fa-person-digging text-6xl text-amber-300"></i><h4 class="font-bold mt-2 text-lg">下游消费者</h4>
+                        <p class="text-xs text-slate-400">物流、积分系统</p>
+                    </div>
+                </div>
+                 <div class="mt-8 text-center text-rose-300 font-bold text-xl">
+                    用户侧感知：<span class="mx-2 p-2 bg-rose-900/50 rounded-lg">物流?</span><span class="p-2 bg-rose-900/50 rounded-lg">我的积分呢?</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 三大元凶 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-red-500 to-orange-400">症结所在：探究堵塞的“三大元凶”</h2>
+            <p class="mt-4 text-xl text-slate-400">生产过剩、消费躺平，还是半路杀出程咬金？</p>
+            <div class="content-panel mt-8 p-8 border-red-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-white">
+                    
+                    <!-- 1. 消费能力不足 -->
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6">
+                        <div class="relative w-full flex justify-center items-center h-24">
+                            <i class="fa-solid fa-filter text-8xl text-amber-400"></i>
+                            <i class="fa-solid fa-arrow-down text-4xl text-red-400 absolute fa-bounce"></i>
+                        </div>
+                        <h4 class="font-bold mt-4 text-lg">消费能力不足</h4>
+                        <p class="text-sm text-slate-400">处理速度跟不上生产速度</p>
+                    </div>
+
+                    <!-- 2. 消费者“罢工” -->
+                    <div class="diagram-node diagram-node-bad border-red-500/80 bg-red-900/40 p-6" style="animation-duration: 2s, 3s;">
+                        <div class="relative w-full flex justify-center items-center h-24">
+                            <!-- [优化] 图标大小从 6xl 调整为 8xl -->
+                            <i class="fa-solid fa-server text-8xl text-red-400"></i>
+                            <i class="fa-solid fa-bug text-4xl text-amber-300 absolute fa-spin" style="animation-duration: 3s;"></i>
+                        </div>
+                        <h4 class="font-bold mt-4 text-lg">消费者“罢工”</h4>
+                        <p class="text-sm text-slate-400">代码BUG或下游故障</p>
+                    </div>
+
+                    <!-- 3. 资源耗尽 -->
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6" style="animation: stress 1.5s infinite ease-in-out;">
+                        <div class="relative w-full flex justify-center items-center h-24">
+                            <!-- [优化] 图标大小从 6xl 调整为 8xl -->
+                            <i class="fa-solid fa-memory text-8xl text-rose-400"></i>
+                            <div class="absolute w-full h-full bg-rose-500/30 animate-ping"></div>
+                        </div>
+                        <h4 class="font-bold mt-4 text-lg">资源耗尽</h4>
+                        <p class="text-sm text-slate-400">CPU、内存、IO达到瓶颈</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+
+    
+    <!-- Slide 3: 治标：紧急扩容 -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-emerald-400 to-green-400">治标之策：紧急扩容 (Scale-Out)</h2>
+            <p class="mt-4 text-xl text-slate-400">最简单粗暴，也最立竿见影的“救火”方案。</p>
+            <div class="content-panel mt-8 p-8 border-green-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <!-- Before -->
+                    <div class="flex flex-col items-center gap-4">
+                        <h3 class="text-2xl font-bold text-red-400">扩容前</h3>
+                        <div class="diagram-node bg-red-900/30 border-red-600/50 p-4 w-full">
+                            <i class="fa-solid fa-layer-group text-4xl text-red-300 mb-2"></i>
+                            <div class="w-full h-4 bg-red-500 rounded-full"></div>
+                            <p class="text-xs mt-2">堆积如山</p>
+                        </div>
+                        <i class="fa-solid fa-arrow-down text-3xl text-slate-400"></i>
+                        <div class="diagram-node diagram-node-bad border-red-500/80 bg-red-900/40 p-4" style="animation-duration: 2s, 3s;">
+                            <i class="fa-solid fa-person-digging text-4xl text-amber-300"></i>
+                            <p class="text-sm">独木难支</p>
+                        </div>
+                    </div>
+                    <!-- After -->
+                    <div class="flex flex-col items-center gap-4">
+                        <h3 class="text-2xl font-bold text-green-400">扩容后</h3>
+                        <div class="diagram-node bg-green-900/30 border-green-600/50 p-4 w-full">
+                            <i class="fa-solid fa-layer-group text-4xl text-green-300 mb-2"></i>
+                            <div class="w-full h-4 bg-slate-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-500 w-1/4" style="animation: subtle-pulse-green 2s infinite;"></div>
+                            </div>
+                            <p class="text-xs mt-2">快速消化</p>
+                        </div>
+                        <i class="fa-solid fa-arrow-down text-3xl text-slate-400"></i>
+                        <div class="flex justify-around w-full">
+                            <div class="diagram-node diagram-node-good border-green-500/80 bg-green-900/40 p-3">
+                                <i class="fa-solid fa-robot text-3xl text-teal-300 fa-beat"></i>
+                            </div>
+                            <div class="diagram-node diagram-node-good border-green-500/80 bg-green-900/40 p-3">
+                                <i class="fa-solid fa-robot text-3xl text-teal-300 fa-beat" style="animation-delay: 0.5s;"></i>
+                            </div>
+                            <div class="diagram-node diagram-node-good border-green-500/80 bg-green-900/40 p-3">
+                                <i class="fa-solid fa-robot text-3xl text-teal-300 fa-beat" style="animation-delay: 1s;"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm mt-2 font-bold">人海战术</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+  <!-- Slide 4: 治本：消费逻辑优化 -->
+  <section id="slide4" class="slide">
+      <div class="text-center w-full max-w-6xl mx-auto">
+          <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">治本之策：优化消费者性能</h2>
+          <p class="mt-4 text-xl text-slate-400">从“一根筋”到“多面手”，榨干每一份资源。</p>
+          <div class="content-panel mt-8 p-8 border-sky-500/30">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+                  <!-- Before -->
+                  <div class="flex flex-col items-center gap-4">
+                      <h3 class="text-2xl font-bold text-red-400">优化前：串行处理</h3>
+                      <div class="w-full space-y-3 p-4 bg-slate-800/50 rounded-lg">
+                          <div class="diagram-node bg-slate-700 border-slate-600 p-3 w-full text-sm">取消息</div>
+                          <i class="fa-solid fa-arrow-down text-xl text-red-400"></i>
+                          <div class="diagram-node bg-slate-700 border-slate-600 p-3 w-full text-sm">写DB</div>
+                          <i class="fa-solid fa-arrow-down text-xl text-red-400"></i>
+                          <div class="diagram-node bg-slate-700 border-slate-600 p-3 w-full text-sm">调接口</div>
+                          <i class="fa-solid fa-arrow-down text-xl text-red-400"></i>
+                          <div class="diagram-node bg-slate-700 border-slate-600 p-3 w-full text-sm">ACK</div>
+                      </div>
+                  </div>
+                  <!-- After -->
+                  <div class="flex flex-col items-center gap-4">
+                      <h3 class="text-2xl font-bold text-green-400">优化后：批量 & 异步</h3>
+                      <div class="w-full space-y-3 p-4 bg-green-900/30 rounded-lg">
+                          <div class="diagram-node diagram-node-good border-green-500/50 bg-green-900/40 p-3 w-full text-sm"><i class="fa-solid fa-bars-staggered mr-2"></i>批量取消息</div>
+                          <i class="fa-solid fa-arrow-down text-xl text-green-400"></i>
+                          <div class="diagram-node diagram-node-good border-green-500/50 bg-green-900/40 p-3 w-full text-sm"><i class="fa-solid fa-database mr-2"></i>批量写DB</div>
+                          <i class="fa-solid fa-arrow-down text-xl text-green-400"></i>
+                          <div class="relative diagram-node diagram-node-good border-green-500/50 bg-green-900/40 p-3 w-full text-sm">
+                              <i class="fa-solid fa-paper-plane mr-2"></i>(异步)调接口
+                              <span class="absolute -right-4 top-1/2 -translate-y-1/2 text-xs text-sky-300 font-mono">[非阻塞]</span>
+                          </div>
+                          <i class="fa-solid fa-arrow-down text-xl text-green-400"></i>
+                           <div class="diagram-node diagram-node-good border-green-500/50 bg-green-900/40 p-3 w-full text-sm"><i class="fa-solid fa-check-double mr-2"></i>批量ACK</div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </section>
+
+  <!-- Slide 5: 治本：队列分片 -->
+  <section id="slide5" class="slide">
+      <div class="text-center w-full max-w-6xl mx-auto">
+          <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-400 to-purple-400">架构级优化：队列分片 (Sharding)</h2>
+          <p class="mt-4 text-xl text-slate-400">当单车道不够用时，就把它扩建成高速公路。</p>
+          <div class="content-panel mt-8 p-8 border-violet-500/30">
+              <div class="flex flex-col items-center justify-center gap-8">
+                  <!-- Before -->
+                  <div class="flex flex-col items-center gap-2">
+                       <h3 class="text-2xl font-bold text-amber-400 mb-2">分片前：单点瓶颈</h3>
+                       <div class="diagram-node bg-amber-900/30 border-amber-600/50 p-4 w-96">
+                          <h4 class="font-bold text-lg">订单Topic</h4>
+                          <div class="w-full h-4 mt-2 bg-amber-500 rounded-full"></div>
+                       </div>
+                  </div>
+                  
+                  <i class="fa-solid fa-object-ungroup text-5xl text-violet-300 rotate-90 md:rotate-0"></i>
+
+                  <!-- After -->
+                  <div class="flex flex-col items-center gap-2 w-full">
+                      <h3 class="text-2xl font-bold text-violet-300 mb-2">分片后：并行处理</h3>
+                      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                          <div class="diagram-node bg-purple-900/40 border-purple-500/80 p-3"><h4 class="font-bold">Partition 01</h4><div class="w-full h-3 mt-1 bg-purple-400 rounded-full"></div><i class="fa-solid fa-robot text-2xl text-teal-300 mt-2"></i></div>
+                          <div class="diagram-node bg-purple-900/40 border-purple-500/80 p-3"><h4 class="font-bold">Partition 02</h4><div class="w-full h-3 mt-1 bg-purple-400 rounded-full"></div><i class="fa-solid fa-robot text-2xl text-teal-300 mt-2"></i></div>
+                          <div class="diagram-node bg-purple-900/40 border-purple-500/80 p-3"><h4 class="font-bold">Partition ...N</h4><div class="w-full h-3 mt-1 bg-purple-400 rounded-full"></div><i class="fa-solid fa-robot text-2xl text-teal-300 mt-2"></i></div>
+                      </div>
+                       <p class="mt-4 text-lg text-slate-300">总吞吐能力 = N x 单个Partition吞吐能力</p>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </section>
+
+  <!-- Slide 6: 最终总结 -->
+  <section id="slide6" class="slide">
+      <div class="text-center w-full max-w-6xl mx-auto">
+          <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">最终总结：抢修决策框架</h2>
+          <p class="mt-4 text-xl text-slate-400">从救火到防火，一套组合拳稳操胜券。</p>
+          <div class="content-panel mt-8 p-6 md:p-8 border-sky-500/30 overflow-x-auto">
+              <table class="w-full text-left text-base md:text-lg border-collapse">
+                  <thead>
+                      <tr class="border-b border-slate-600">
+                          <th class="p-4">方案</th>
+                          <th class="p-4">优点</th>
+                          <th class="p-4">缺点</th>
+                          <th class="p-4">适用场景</th>
+                          <th class="p-4">复杂度</th>
+                      </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-700">
+                      <tr class="hover:bg-green-900/30 transition-colors">
+                          <td class="p-4 font-bold">紧急扩容</td>
+                          <td class="p-4 text-green-300">见效快</td>
+                          <td class="p-4 text-amber-400">成本高</td>
+                          <td class="p-4">紧急救火</td>
+                          <td class="p-4 font-bold text-green-400">低</td>
+                      </tr>
+                      <tr class="hover:bg-sky-900/30 transition-colors">
+                          <td class="p-4 font-bold">消费优化</td>
+                          <td class="p-4 text-green-300">治本、效费比高</td>
+                          <td class="p-4 text-amber-400">需代码改造</td>
+                          <td class="p-4">消费者性能差</td>
+                          <td class="p-4 font-bold text-sky-400">中</td>
+                      </tr>
+                      <tr class="hover:bg-violet-900/30 transition-colors">
+                          <td class="p-4 font-bold">队列分片</td>
+                          <td class="p-4 text-green-300">彻底解决瓶颈</td>
+                          <td class="p-4 text-amber-400">架构改造复杂</td>
+                          <td class="p-4">持续性大流量</td>
+                          <td class="p-4 font-bold text-violet-400">高</td>
+                      </tr>
+                      <tr class="hover:bg-teal-900/30 transition-colors">
+                          <td class="p-4 font-bold">监控与弹性伸缩</td>
+                          <td class="p-4 text-green-300">自动化、预防性</td>
+                          <td class="p-4 text-amber-400">建设成本</td>
+                          <td class="p-4">成熟关键业务</td>
+                          <td class="p-4 font-bold text-teal-400">高</td>
+                      </tr>
+                  </tbody>
+              </table>
+          </div>
+      </div>
+  </section>
+
+  <!-- 页脚 -->
+  <footer class="text-center py-8 text-slate-500">
+      双十一 10 万用户订单消息卡爆！查不到物流，怎么快速处理不引发退单？
+  </footer>
+
+  <script>
+      document.addEventListener('DOMContentLoaded', () => {
+          const slides = document.querySelectorAll('.slide');
+          const navContainer = document.getElementById('nav-dots');
+          if (slides.length === 0) return;
+          slides.forEach(slide => {
+              const dot = document.createElement('a');
+              dot.href = `#${slide.id}`; 
+              navContainer.appendChild(dot);
+          });
+          const navDots = navContainer.querySelectorAll('a');
+          const observer = new IntersectionObserver((entries) => {
+              entries.forEach(entry => {
+                  if (entry.isIntersecting) {
+                      const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                      navDots.forEach(dot => dot.classList.remove('active'));
+                      if (activeDot) { activeDot.classList.add('active'); }
+                  }
+              });
+          }, { root: null, threshold: 0.5 });
+          slides.forEach(slide => { observer.observe(slide); });
+      });
+  </script>
+</body> </html>

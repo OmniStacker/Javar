@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpringBoot 防重复提交 - 4大方案对决</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --primary-color: #0f3460;
+            --accent-color: #e94560;
+            --text-color: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: #4a4a6a;
+            --success-color: #4caf50;
+            --error-color: #f44336;
+            --warning-color: #ff9800;
+            --info-color: #2196f3;
+        }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            background: linear-gradient(135deg, var(--primary-color), var(--card-bg));
+            padding: 20px 40px;
+            z-index: 1000;
+            border-bottom: 3px solid var(--accent-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+        .main-title {
+            font-size: 42px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0;
+            text-shadow: 0 0 15px rgba(233, 69, 96, 0.7);
+        }
+        .subtitle {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin: 8px 0 0;
+        }
+        .container {
+            padding: 40px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .solution-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+        .solution-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .solution-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 12px 40px rgba(233, 69, 96, 0.3);
+        }
+        .card-header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .card-title .icon {
+            width: 32px;
+            height: 32px;
+        }
+        .card-tag {
+            font-size: 14px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-left: auto;
+        }
+        .tag-single { background-color: var(--info-color); }
+        .tag-distributed { background-color: var(--warning-color); }
+        
+        .card-body h4 {
+            font-size: 20px;
+            color: var(--accent-color);
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .components, .principle {
+            margin-bottom: 20px;
+        }
+        .component-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background-color: var(--primary-color);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .component-item .icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .principle-flow {
+            font-family: 'Courier New', monospace;
+            background-color: #0d1117;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            white-space: pre-wrap;
+            border: 1px solid var(--border-color);
+        }
+        .pros-cons {
+            margin-top: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .pros-cons div {
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .pros-cons h5 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pros { background-color: rgba(76, 175, 80, 0.1); border-left: 3px solid var(--success-color); }
+        .cons { background-color: rgba(244, 67, 54, 0.1); border-left: 3px solid var(--error-color); }
+        .pros-cons ul {
+            margin: 0;
+            padding-left: 20px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        .icon { stroke: var(--text-color); }
+    </style>
+</head>
+<body>
+
+    <header class="sticky-header">
+</br>
+        <h1 class="main-title">SpringBoot 防重复提交：4大核心方案对决</h1>
+        <p class="subtitle">从单体到分布式架构，彻底告别重复订单</p>
+    </header>
+
+    <div class="container">
+        <div class="solution-grid">
+
+            <!-- 方案一：本地锁 -->
+            <div class="solution-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        方案一：本地锁
+                        <span class="card-tag tag-single">单体应用</span>
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="components">
+                        <h4>核心组件</h4>
+                        <div class="component-item">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                            <span>AOP + 自定义注解</span>
+                        </div>
+                        <div class="component-item">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><path d="M3.27 6.96 12 12.01l8.73-5.05"></path><path d="M12 22.08V12"></path></svg>
+                            <span>ConcurrentHashMap (本地缓存)</span>
+                        </div>
+                    </div>
+                    <div class="principle">
+                        <h4>核心原理</h4>
+                        <div class="principle-flow">请求 → AOP拦截 → 生成Key → 检查本地缓存 → [ 存在? 拦截 : 放行并存入 ]</div>
+                    </div>
+                </div>
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h5><svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>优点</h5>
+                        <ul>
+                            <li>实现简单，无外部依赖</li>
+                            <li>性能高，内存操作</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h5><svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>缺点</h5>
+                        <ul>
+                            <li>仅限单体应用</li>
+                            <li>服务重启后失效</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 方案二：分布式锁 -->
+            <div class="solution-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        方案二：分布式锁
+                        <span class="card-tag tag-distributed">分布式</span>
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="components">
+                        <h4>核心组件</h4>
+                        <div class="component-item">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 12H16c-.7 2-2 3-4 3s-3.3-1-4-3H2.5"></path><path d="M5.5 5.1L2 12v6c0 1.1.9 2 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"></path></svg>
+                            <span>Redis / Zookeeper</span>
+                        </div>
+                        <div class="component-item">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                            <span>Lua 脚本 (保证原子性)</span>
+                        </div>
+                    </div>
+                     <div class="principle">
+                        <h4>核心原理</h4>
+                        <div class="principle-flow">请求 → Redis SETNX(key, val, EX) → [ 失败? 拦截 : 成功? 执行业务 ]</div>
+                    </div>
+                </div>
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h5><svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>优点</h5>
+                        <ul>
+                            <li>通用性强，适用分布式</li>
+                            <li>高性能，官方推荐方案</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h5><svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>缺点</h5>
+                        <ul>
+                            <li>引入外部依赖 (Redis)</li>
+                            <li>需处理锁失效、续期等问题</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 方案三：数据库唯一约束 -->
+            <div class="solution-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                        方案三：数据库约束
+                        <span class="card-tag tag-distributed">分布式</span>
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="components">
+                        <h4>核心组件</h4>
+                        <div class="component-item">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <span>业务幂等表</span>
+                        </div>
+                        <div class="component-item">
+                             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2.6L5 11l4.5 4.5 8.4-8.4A2.12 2.12 0 0 0 14.5 2a2.12 2.12 0 0 0-1.1.6z"></path><path d="M2 22l4-4"></path><path d="M13.5 6.5l4 4"></path></svg>
+                            <span>唯一索引 (Unique Index)</span>
+                        </div>
+                    </div>
+                     <div class="principle">
+                        <h4>核心原理</h4>
+                        <div class="principle-flow">请求 → 组装唯一业务ID → INSERT幂等表 → [ 唯一键冲突? 拦截 : 成功? 执行业务 ]</div>
+                    </div>
+                </div>
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h5><svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>优点</h5>
+                        <ul>
+                            <li>实现简单，无需额外中间件</li>
+                            <li>可靠性高，最终防线</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h5><svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>缺点</h5>
+                        <ul>
+                            <li>对数据库有性能压力</li>
+                            <li>业务侵入性较强</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 方案四：令牌机制 -->
+            <div class="solution-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+                        方案四：令牌机制
+                        <span class="card-tag tag-distributed">分布式</span>
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="components">
+                        <h4>核心组件</h4>
+                        <div class="component-item">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z"></path><path d="M21 4h-3a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h3a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><path d="M12 12l-4-4"></path><path d="M16 16l-4-4"></path><path d="M4 12l4-4"></path><path d="M20 12l-4 4"></path></svg>
+                            <span>服务端 Token 生成/校验</span>
+                        </div>
+                        <div class="component-item">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                            <span>前端请求携带 Token</span>
+                        </div>
+                    </div>
+                     <div class="principle">
+                        <h4>核心原理</h4>
+                        <div class="principle-flow">页面加载时获取Token → 提交时携带Token → 后端校验Token → [ 校验成功? 删除Token并执行 : 失败? 拦截 ]</div>
+                    </div>
+                </div>
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h5><svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>优点</h5>
+                        <ul>
+                            <li>控制粒度最细，最灵活</li>
+                            <li>可与业务逻辑解耦</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h5><svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>缺点</h5>
+                        <ul>
+                            <li>流程最复杂，需要前后端配合</li>
+                            <li>Token 的存储与管理是关键</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

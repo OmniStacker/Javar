@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扎心！线上服务宕机时，如何保证数据100%不丢失？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); } 50% { box-shadow: 0 0 20px 10px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); } 50% { box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        @keyframes arrow-flow { 0% { opacity: 0; transform: translateX(-20px); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateX(20px); } }
+        @keyframes stress { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes fade-out-smoke { 0% { opacity: 0.8; transform: translateY(10px) scale(1); } 100% { opacity: 0; transform: translateY(-40px) scale(0.5); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .diagram-node { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 1.5rem; border-radius: 1rem; font-weight: 600; text-align: center; border: 1px solid; transition: all 0.3s ease; }
+        .diagram-node:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(148, 163, 184, 0.2); }
+        .diagram-arrow { font-size: 2.5rem; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 1rem; position: relative; }
+        .diagram-node-bad { animation: subtle-pulse-red 2.5s infinite ease-in-out; }
+        .diagram-node-good { animation: subtle-pulse-green 2.5s infinite ease-in-out; }
+        .annotation { position: absolute; background-color: rgba(239, 68, 68, 0.8); color: white; padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: bold; white-space: nowrap; }
+        
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场：核心架构 -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-5xl mx-auto">
+            <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">扎心！线上服务宕机时，如何保证数据100%不丢失？</h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">RabbitMQ 高可靠性核心架构一览</h2>
+            <div class="content-panel mt-10 p-6 md:p-8 border-sky-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-around gap-4 text-white">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-server text-5xl text-sky-300"></i><h4 class="font-bold mt-2">生产者</h4></div>
+                    <div class="diagram-arrow"><i class="fa-solid fa-right-long" style="animation: arrow-flow 2s infinite;"></i></div>
+                    <div class="diagram-node bg-sky-900/40 border-sky-500/80 p-6"><i class="fa-solid fa-cubes text-6xl text-sky-200"></i><h4 class="font-bold mt-2">RabbitMQ</h4><p class="text-xs text-slate-400">交换机 -> 队列</p></div>
+                    <div class="diagram-arrow"><i class="fa-solid fa-right-long" style="animation: arrow-flow 2s infinite 1s;"></i></div>
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-robot text-5xl text-sky-300"></i><h4 class="font-bold mt-2">消费者</h4></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 问题剖析：三大黑洞 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-red-500 to-orange-400">问题剖析：消息丢失的三大“黑洞”</h2>
+            <p class="mt-4 text-xl text-slate-400">在消息的生命周期中，风险无处不在。</p>
+            <div class="content-panel mt-8 p-8 border-red-500/30 grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="diagram-node diagram-node-bad border-red-600/50 bg-red-900/30 p-6" style="animation-duration: 3s;"><i class="fa-solid fa-network-wired text-5xl text-red-300"></i><h4 class="font-bold mt-2">生产者 -> Broker</h4><p class="text-sm text-slate-400">网络问题，消息未到达</p></div>
+                <div class="diagram-node diagram-node-bad border-rose-500/80 bg-rose-900/50 p-6" style="animation-duration: 2s;"><i class="fa-solid fa-memory text-5xl text-rose-300"></i><h4 class="font-bold mt-2">Broker 内部</h4><p class="text-sm text-slate-400">服务宕机，内存消息丢失</p></div>
+                <div class="diagram-node diagram-node-bad border-red-600/50 bg-red-900/30 p-6" style="animation-duration: 4s;"><i class="fa-solid fa-power-off text-5xl text-red-300"></i><h4 class="font-bold mt-2">Broker -> 消费者</h4><p class="text-sm text-slate-400">处理前崩溃，消息被误删</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: 解法一：Publisher Confirms -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-teal-400 to-emerald-400">解法一：发布者确认 (Publisher Confirms)</h2>
+            <p class="mt-4 text-xl text-slate-400">为每一次投递，都加上“回执”保险，看清成功与失败的完整闭环。</p>
+            <div class="content-panel mt-8 p-8 border-teal-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-3 items-center justify-items-center gap-6 md:gap-4 text-white">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6 w-full h-full flex flex-col justify-center">
+                        <i class="fa-solid fa-server text-5xl text-sky-300"></i>
+                        <h4 class="font-bold mt-2 text-lg">1. 生产者</h4>
+                        <div class="mt-4 w-full bg-slate-900/70 p-3 rounded-lg">
+                            <h5 class="font-bold text-sm text-amber-300 mb-2">Unconfirmed Pool</h5>
+                            <div id="msg-in-pool" class="bg-sky-800/50 p-2 rounded-md text-center transition-all duration-500">
+                                <span class="font-mono text-sm">Msg #123</span>
+                                <i id="retry-icon" class="fa-solid fa-arrows-rotate text-red-400 ml-2 hidden fa-spin"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center justify-center gap-4 w-full">
+                        <div class="diagram-arrow text-3xl text-teal-300 flex-col w-full">
+                            <span class="text-lg font-mono mb-2">Send(Msg #123)</span>
+                            <i class="fa-solid fa-right-long fa-2x" style="animation: arrow-flow 2s infinite;"></i>
+                        </div>
+                        <div class="diagram-node bg-teal-900/40 border-teal-500/80 p-6">
+                            <i class="fa-solid fa-shield-halved text-6xl text-teal-200"></i>
+                            <h4 class="font-bold mt-2">RabbitMQ</h4>
+                        </div>
+                    </div>
+                    <div class="w-full h-full flex flex-col justify-around gap-6">
+                        <div class="flex items-center gap-4">
+                            <div class="diagram-arrow text-3xl text-green-400 flex-col">
+                                <i class="fa-solid fa-left-long fa-2x"></i>
+                            </div>
+                            <div class="diagram-node diagram-node-good border-green-500/80 bg-green-900/40 p-4 flex-1">
+                                <h4 class="font-bold text-lg text-green-300">✅ ACK</h4>
+                                <p class="text-xs text-slate-400">投递成功，消息出池</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="diagram-arrow text-3xl text-red-400 flex-col">
+                                <i class="fa-solid fa-left-long fa-2x"></i>
+                            </div>
+                            <div id="nack-node" class="diagram-node border-red-500/80 bg-red-900/40 p-4 flex-1">
+                                <h4 class="font-bold text-lg text-red-300">❌ NACK</h4>
+                                <p class="text-xs text-slate-400">投递失败，触发重试</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            const nackNode = document.getElementById('nack-node');
+            const msgInPool = document.getElementById('msg-in-pool');
+            const retryIcon = document.getElementById('retry-icon');
+            if (nackNode) {
+                nackNode.addEventListener('mouseenter', () => {
+                    msgInPool.classList.add('bg-red-800/50', 'animate-shake');
+                    retryIcon.classList.remove('hidden');
+                });
+                nackNode.addEventListener('mouseleave', () => {
+                    msgInPool.classList.remove('bg-red-800/50', 'animate-shake');
+                    retryIcon.classList.add('hidden');
+                });
+            }
+            if (!document.querySelector('style[innerHTML*=".animate-shake"]')) {
+                const style = document.createElement('style');
+                style.innerHTML = `.animate-shake { animation: shake 2s ease-in-out infinite; }`;
+                document.head.appendChild(style);
+            }
+        </script>
+    </section>
+
+    <!-- Slide 4: 解法二：Broker 持久化 & 集群高可用 -->
+<section id="slide4" class="slide">
+    <div class="text-center w-full max-w-7xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-green-400 to-lime-400">解法二：Broker 持久化 & 集群高可用</h2>
+        <p class="mt-4 text-xl text-slate-400">为数据建好“金库”，为服务配好“备胎”，无惧单点故障。</p>
+        <div id="disaster-trigger" class="content-panel mt-8 p-8 border-green-500/30 cursor-pointer transition-all duration-300 hover:border-amber-400/50">
+            <div class="relative flex flex-col md:flex-row items-center justify-center gap-8">
+                <div id="slave-1" class="diagram-node bg-slate-800/50 border-slate-600 p-6 transition-all duration-500 w-52 h-48 flex flex-col justify-between">
+                    <div>
+                        <i class="fa-solid fa-server text-4xl text-sky-300"></i>
+                        <h4 class="font-bold mt-2 text-lg">Slave Node</h4>
+                    </div>
+                    <i class="fa-solid fa-hard-drive text-3xl text-slate-400"></i>
+                    <div id="slave-1-crown" class="absolute -top-3 text-4xl text-violet-400 opacity-0 transition-all duration-500 scale-50">
+                        <i class="fa-solid fa-crown fa-beat"></i>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center justify-center text-3xl text-lime-400">
+                    <i class="fa-solid fa-left-long" style="animation: arrow-flow-reverse 2s infinite 0.5s;"></i>
+                </div>
+                <div id="master-node" class="diagram-node bg-green-900/30 border-green-500/80 p-6 transition-all duration-500 w-52 h-48 flex flex-col justify-between relative">
+                    <div>
+                        <i class="fa-solid fa-star text-4xl text-green-300"></i>
+                        <h4 class="font-bold mt-2 text-lg">Master Node</h4>
+                    </div>
+                    <i class="fa-solid fa-hard-drive text-3xl text-green-300"></i>
+                    <div id="master-skull" class="absolute inset-0 flex items-center justify-center text-6xl text-red-500 opacity-0 transition-all duration-500 scale-50">
+                        <i class="fa-solid fa-skull-crossbones"></i>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center justify-center text-3xl text-lime-400">
+                    <i class="fa-solid fa-right-long" style="animation: arrow-flow 2s infinite 1s;"></i>
+                </div>
+                <div id="slave-2" class="diagram-node bg-slate-800/50 border-slate-600 p-6 transition-all duration-500 w-52 h-48 flex flex-col justify-between">
+                     <div>
+                        <i class="fa-solid fa-server text-4xl text-sky-300"></i>
+                        <h4 class="font-bold mt-2 text-lg">Slave Node</h4>
+                    </div>
+                    <i class="fa-solid fa-hard-drive text-3xl text-slate-400"></i>
+                </div>
+                <div id="annotation-fail" class="annotation -bottom-5 bg-red-600/90 opacity-0 transition-opacity duration-500">Master 宕机! 数据丢失?</div>
+                <div id="annotation-promo" class="annotation -top-5 bg-violet-600/90 opacity-0 transition-opacity duration-500">Slave 自动晋升为新 Master!</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const trigger = document.getElementById('disaster-trigger');
+        const master = document.getElementById('master-node');
+        const masterSkull = document.getElementById('master-skull');
+        const slave1 = document.getElementById('slave-1');
+        const slave1Crown = document.getElementById('slave-1-crown');
+        const failAnnotation = document.getElementById('annotation-fail');
+        const promoAnnotation = document.getElementById('annotation-promo');
+        let timeoutId;
+        trigger.addEventListener('mouseenter', () => {
+            master.classList.add('border-red-500/80', 'bg-red-900/40', 'animate-shake');
+            master.classList.remove('bg-green-900/30', 'border-green-500/80');
+            masterSkull.style.opacity = '1';
+            masterSkull.style.transform = 'scale(1)';
+            failAnnotation.style.opacity = '1';
+            timeoutId = setTimeout(() => {
+                failAnnotation.style.opacity = '0';
+                promoAnnotation.style.opacity = '1';
+                slave1.classList.add('border-violet-500/80', 'bg-violet-900/40', 'diagram-node-good');
+                slave1.classList.remove('bg-slate-800/50', 'border-slate-600');
+                slave1.querySelector('h4').textContent = 'New Master';
+                slave1Crown.style.opacity = '1';
+                slave1Crown.style.transform = 'scale(1)';
+            }, 1500);
+        });
+        trigger.addEventListener('mouseleave', () => {
+            clearTimeout(timeoutId);
+            master.classList.remove('border-red-500/80', 'bg-red-900/40', 'animate-shake');
+            master.classList.add('bg-green-900/30', 'border-green-500/80');
+            masterSkull.style.opacity = '0';
+            masterSkull.style.transform = 'scale(0.5)';
+            
+            slave1.classList.remove('border-violet-500/80', 'bg-violet-900/40', 'diagram-node-good');
+            slave1.classList.add('bg-slate-800/50', 'border-slate-600');
+            slave1.querySelector('h4').textContent = 'Slave Node';
+            slave1Crown.style.opacity = '0';
+            slave1Crown.style.transform = 'scale(0.5)';
+
+            failAnnotation.style.opacity = '0';
+            promoAnnotation.style.opacity = '0';
+        });
+        
+        const styleId = 'slide4-animations';
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.innerHTML = `
+                .animate-shake { animation: shake 0.8s cubic-bezier(.36,.07,.19,.97) both; }
+                @keyframes arrow-flow-reverse {
+                    0% { transform: translateX(0); opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { transform: translateX(-15px); opacity: 0; }
+                }
+                @keyframes arrow-flow {
+                    0% { transform: translateX(0); opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { transform: translateX(15px); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    </script>
+</section>
+
+      <!-- Slide 5: 手动确认的交互式模拟 -->
+      <section id="slide5" class="slide">
+          <div class="text-center w-full max-w-7xl mx-auto">
+              <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-400 to-purple-400">解法三：消费者手动确认 (Manual Ack)</h2>
+              <p class="mt-4 text-xl text-slate-400">守好数据传递的“最后一公里”，我们来亲手做个实验。</p>
+              
+              <div id="ack-demo-panel" class="content-panel mt-8 p-8 border-violet-500/30 transition-all duration-300">
+                  <div class="flex items-center justify-center gap-4 mb-10">
+                      <span class="font-bold text-red-400">自动ACK (危险)</span>
+                      <label class="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" id="ack-mode-toggle" class="sr-only peer">
+                          <div class="w-14 h-7 bg-red-600/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-600/50"></div>
+                      </label>
+                      <span class="font-bold text-slate-500 transition-colors duration-300" id="manual-ack-label">手动ACK (安全)</span>
+                  </div>
+
+                  <div class="relative flex items-center justify-center gap-24 h-72">
+                      <div id="broker-box" class="flex flex-col items-center gap-3">
+                          <h4 class="text-xl font-semibold text-sky-300">Broker</h4>
+                          <div class="relative w-32 h-40 bg-slate-800/60 border border-slate-600 rounded flex flex-col items-center p-3">
+                               <i class="fa-solid fa-warehouse text-3xl text-sky-400"></i>
+                               <span class="text-sm mt-1">消息队列</span>
+                               <div id="message" class="absolute top-20 w-24 h-10 bg-amber-400 rounded flex items-center justify-center gap-2 transition-all duration-500 ease-in-out">
+                                   <i class="fa-solid fa-file-invoice text-slate-800"></i>
+                                   <span class="text-xs font-bold text-slate-800">消息</span>
+                               </div>
+                          </div>
+                      </div>
+
+                      <div id="consumer-box" class="flex flex-col items-center gap-3 cursor-pointer" title="点击模拟处理消息">
+                          <h4 class="text-xl font-semibold text-lime-300">消费者</h4>
+                          <div id="consumer-node" class="relative w-32 h-40 bg-slate-800/60 border border-slate-600 rounded flex flex-col justify-center items-center p-3 transition-all duration-300">
+                              <i id="consumer-icon" class="fa-solid fa-robot text-6xl text-lime-400 transition-all duration-300"></i>
+                              <div id="consumer-status" class="absolute bottom-3 text-sm font-bold">等待中...</div>
+                          </div>
+                      </div>
+                      
+                      <div class="absolute right-0 top-1/2 -translate-y-1/2 w-64 h-full flex flex-col justify-center items-center">
+                          <div id="status-lost" class="text-center opacity-0 transition-all duration-500 transform scale-90">
+                              <i class="fa-solid fa-circle-xmark text-5xl text-red-500"></i>
+                              <p class="mt-2 text-xl font-bold text-red-400">消息丢失! 😱</p>
+                          </div>
+                          <div id="status-safe" class="text-center opacity-0 transition-all duration-500 transform scale-90 absolute">
+                               <i class="fa-solid fa-circle-check text-5xl text-green-400"></i>
+                               <p class="mt-2 text-xl font-bold text-green-400">消息已安全返回! ✅</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <script>
+              const toggle = document.getElementById('ack-mode-toggle');
+              const manualAckLabel = document.getElementById('manual-ack-label');
+              const consumerBox = document.getElementById('consumer-box');
+              const message = document.getElementById('message');
+              const consumerNode = document.getElementById('consumer-node');
+              const consumerIcon = document.getElementById('consumer-icon');
+              const consumerStatus = document.getElementById('consumer-status');
+              const statusLost = document.getElementById('status-lost');
+              const statusSafe = document.getElementById('status-safe');
+              let isAnimating = false;
+
+              const updateColors = () => {
+                  manualAckLabel.classList.toggle('text-green-400', toggle.checked);
+                  manualAckLabel.classList.toggle('text-slate-500', !toggle.checked);
+              };
+              
+              toggle.addEventListener('change', updateColors);
+
+              const resetState = () => {
+                  isAnimating = false;
+                  message.style.transition = 'none';
+                  message.style.transform = 'translate(0, 0) scale(1)';
+                  message.style.opacity = '1';
+                  consumerNode.classList.remove('border-red-500', 'bg-red-900/40', 'animate-shake');
+                  consumerIcon.className = 'fa-solid fa-robot text-6xl text-lime-400 transition-all duration-300';
+                  consumerStatus.textContent = '等待中...';
+                  statusLost.style.opacity = '0';
+                  statusLost.style.transform = 'scale(0.9)';
+                  statusSafe.style.opacity = '0';
+                  statusSafe.style.transform = 'scale(0.9)';
+              };
+
+              consumerBox.addEventListener('click', () => {
+                  if (isAnimating) return;
+                  isAnimating = true;
+                  resetState();
+                  
+                  setTimeout(() => {
+                      message.style.transition = 'transform 0.6s ease-in-out, opacity 0.6s ease-in-out';
+                      const consumerRect = consumerNode.getBoundingClientRect();
+                      const messageRect = message.getBoundingClientRect();
+                      const dx = (consumerRect.left + consumerRect.width / 2) - (messageRect.left + messageRect.width / 2);
+                      const dy = (consumerRect.top + consumerRect.height / 2) - (messageRect.top + messageRect.height / 2);
+                      message.style.transform = `translate(${dx}px, ${dy}px) scale(0.5)`;
+                      message.style.opacity = '0.5';
+                      consumerStatus.textContent = '处理中...';
+
+                      setTimeout(() => {
+                          consumerNode.classList.add('border-red-500', 'bg-red-900/40', 'animate-shake');
+                          consumerIcon.className = 'fa-solid fa-skull-crossbones text-6xl text-red-400 transition-all duration-300';
+                          consumerStatus.textContent = '崩溃!';
+                          message.style.opacity = '0';
+                          
+                          const showResult = (element) => {
+                              element.style.opacity = '1';
+                              element.style.transform = 'scale(1)';
+                          };
+
+                          if (toggle.checked) {
+                              setTimeout(() => {
+                                  message.style.transition = 'transform 0.5s ease-in-out, opacity 0.5s ease-in-out';
+                                  message.style.transform = 'translate(0, 0) scale(1)';
+                                  message.style.opacity = '1';
+                                  showResult(statusSafe);
+                              }, 800);
+                          } else {
+                              setTimeout(() => {
+                                  showResult(statusLost);
+                              }, 800);
+                          }
+                          
+                          setTimeout(resetState, 4000);
+                      }, 800);
+                  }, 10);
+              });
+              
+              updateColors();
+              if (!document.getElementById('slide-animations')) {
+                  const style = document.createElement('style');
+                  style.id = 'slide-animations';
+                  style.innerHTML = `.animate-shake { animation: shake 0.8s cubic-bezier(.36,.07,.19,.97) both; } @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }`;
+                  document.head.appendChild(style);
+              }
+          </script>
+      </section>
+
+      <!-- Slide 6: 最终总结 -->
+<section id="slide6" class="slide">
+    <div class="text-center w-full max-w-6xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">最终总结：高可靠方案选型</h2>
+        <p class="mt-4 text-xl text-slate-400">构建生产级数据管道的决策矩阵。</p>
+        <div class="content-panel mt-8 p-6 md:p-8 border-sky-500/30 overflow-x-auto">
+            <table class="w-full text-left text-base md:text-lg border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-600">
+                        <th class="p-4">保险机制</th>
+                        <th class="p-4">核心作用</th>
+                        <th class="p-4">可靠性</th>
+                        <th class="p-4">性能影响</th>
+                        <th class="p-4">复杂度</th>
+                        <th class="p-4">结论</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700">
+                    <tr class="hover:bg-slate-800/20 transition-colors">
+                        <td class="p-4 font-bold">发布者确认</td>
+                        <td class="p-4">保证消息到Broker</td>
+                        <td class="p-4 text-green-300 font-bold">高</td>
+                        <td class="p-4 text-amber-400">轻微</td>
+                        <td class="p-4">中</td>
+                        <td class="p-4 font-bold text-green-400"><i class="fa-solid fa-check"></i> 必选</td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/20 transition-colors">
+                        <td class="p-4 font-bold">持久化</td>
+                        <td class="p-4">防Broker宕机</td>
+                        <td class="p-4 text-green-300 font-bold">高</td>
+                        <td class="p-4 text-red-400">较高 (磁盘IO)</td>
+                        <td class="p-4">低</td>
+                        <td class="p-4 font-bold text-green-400"><i class="fa-solid fa-check"></i> 必选</td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/20 transition-colors">
+                        <td class="p-4 font-bold">集群高可用</td>
+                        <td class="p-4">防单点故障</td>
+                        <td class="p-4 text-violet-300 font-bold">极高</td>
+                        <td class="p-4 text-amber-400">中 (网络)</td>
+                        <td class="p-4 text-red-400">高</td>
+                        <td class="p-4 font-bold text-violet-400"><i class="fa-solid fa-crown"></i> 核心业务推荐</td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/20 transition-colors">
+                        <td class="p-4 font-bold">手动ACK</td>
+                        <td class="p-4">保消费者处理</td>
+                        <td class="p-4 text-green-300 font-bold">高</td>
+                        <td class="p-4 text-amber-400">轻微</td>
+                        <td class="p-4">中</td>
+                        <td class="p-4 font-bold text-green-400"><i class="fa-solid fa-check"></i> 必选</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+      <!-- 页脚 -->
+      <footer class="text-center py-8 text-slate-500">
+          扎心！线上服务宕机时，如何保证数据100%不丢失？
+      </footer>
+
+      <script>
+          document.addEventListener('DOMContentLoaded', () => {
+              const slides = document.querySelectorAll('.slide');
+              const navContainer = document.getElementById('nav-dots');
+              if (slides.length === 0) return;
+              slides.forEach(slide => {
+                  const dot = document.createElement('a');
+                  dot.href = `#${slide.id}`; 
+                  navContainer.appendChild(dot);
+              });
+              const navDots = navContainer.querySelectorAll('a');
+              const observer = new IntersectionObserver((entries) => {
+                  entries.forEach(entry => {
+                      if (entry.isIntersecting) {
+                          const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                          navDots.forEach(dot => dot.classList.remove('active'));
+                          if (activeDot) { activeDot.classList.add('active'); }
+                      }
+                  });
+              }, { root: null, threshold: 0.5 });
+              slides.forEach(slide => { observer.observe(slide); });
+          });
+      </script>
+  </body> 
+  </html>

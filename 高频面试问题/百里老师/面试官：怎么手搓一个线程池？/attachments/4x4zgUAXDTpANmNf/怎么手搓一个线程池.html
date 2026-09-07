@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>怎么手搓一个线程池</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(239, 68, 68, 0); } }
+        @keyframes subtle-pulse-amber { 0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(245, 158, 11, 0); } }
+        @keyframes process { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.1); filter: brightness(1.5); } 100% { transform: scale(1); filter: brightness(1); } }
+        @keyframes wait { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        
+        .diagram-node {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 1.25rem;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .diagram-node:hover {
+            transform: translateY(-5px) scale(1.03);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .diagram-node-good { animation: subtle-pulse-green 2.5s infinite; }
+        .diagram-node-bad { animation: subtle-pulse-red 2s infinite; }
+        .diagram-node-warn { animation: subtle-pulse-amber 2.5s infinite; }
+
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .slide:last-of-type { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场，点明问题 -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-200">
+                怎么<span class="gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">手搓</span>一个<span class="gradient-text bg-gradient-to-r from-emerald-400 to-green-400">线程池</span>？
+            </h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">从“任务执行器”到“系统资源管家”的架构演进</h2>
+            <div class="content-panel mt-12 p-8 md:p-12 border-sky-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4 text-white w-full">
+                    <!-- Tasks -->
+                    <div class="flex flex-col items-center">
+                        <div class="flex gap-2">
+                           <i class="fa-solid fa-file-code text-4xl text-amber-300 fa-fade" style="--fa-animation-duration: 2s;"></i>
+                           <i class="fa-solid fa-file-code text-4xl text-amber-300 fa-fade" style="--fa-animation-duration: 2s; --fa-animation-delay: 0.5s;"></i>
+                           <i class="fa-solid fa-file-code text-4xl text-amber-300 fa-fade" style="--fa-animation-duration: 2s; --fa-animation-delay: 1s;"></i>
+                        </div>
+                        <h4 class="font-bold text-xl mt-2">任务</h4>
+                    </div>
+                    <!-- Arrow -->
+                    <i class="fa-solid fa-arrow-right-long text-5xl text-slate-500 mx-8 my-4 md:my-0"></i>
+                    <!-- Thread Pool -->
+                    <div class="diagram-node p-6 border-sky-400/50">
+                        <i class="fa-solid fa-box-archive text-5xl text-sky-400"></i>
+                        <h4 class="font-bold text-2xl mt-2">线程池</h4>
+                        <p class="text-sm text-slate-400">管理 & 复用</p>
+                        <div class="flex justify-center items-center gap-4 mt-3">
+                           <div class="text-center"><i class="fa-solid fa-layer-group text-2xl text-slate-400"></i><p class="text-xs">任务队列</p></div>
+                           <div class="text-center"><i class="fa-solid fa-person-digging text-2xl text-slate-400"></i><p class="text-xs">工人线程</p></div>
+                        </div>
+                    </div>
+                    <!-- Arrow -->
+                    <i class="fa-solid fa-arrow-right-long text-5xl text-slate-500 mx-8 my-4 md:my-0"></i>
+                     <!-- Results -->
+                    <div class="flex flex-col items-center">
+                        <i class="fa-solid fa-circle-check text-5xl text-green-400"></i>
+                        <h4 class="font-bold text-xl mt-2">完成</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 核心实现 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-teal-400 to-cyan-400">核心实现：工作者线程的执行循环</h2>
+            <p class="mt-4 text-xl text-slate-400">线程池的心脏：从任务队列中获取并执行任务的无限循环。</p>
+            <div class="content-panel mt-8 p-8 md:p-12 border-teal-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-around gap-8 w-full">
+                    <!-- Worker Thread -->
+                    <div class="diagram-node p-8">
+                        <i class="fa-solid fa-person-digging text-6xl text-teal-300"></i>
+                        <h4 class="font-bold text-2xl mt-3">工作者线程</h4>
+                    </div>
+                    <!-- Loop -->
+                    <div class="relative flex items-center justify-center">
+                        <i class="fa-solid fa-arrows-rotate text-9xl text-slate-600"></i>
+                        <div class="absolute text-center">
+                            <h4 class="font-bold text-2xl text-slate-300">WHILE(true)</h4>
+                            <p class="text-sm text-slate-400">执行循环</p>
+                        </div>
+                    </div>
+                    <!-- Steps -->
+                    <div class="flex flex-col gap-8">
+                        <!-- Step 1: Take Task -->
+                        <div class="diagram-node flex items-center gap-4 p-4 border-amber-400/50">
+                            <i class="fa-solid fa-hourglass-half text-4xl text-amber-300 fa-spin" style="--fa-animation-duration: 3s;"></i>
+                            <div>
+                                <h4 class="font-bold text-xl text-left">1. task = queue.take()</h4>
+                                <p class="text-sm text-slate-400 text-left">阻塞式获取任务</p>
+                            </div>
+                        </div>
+                        <!-- Step 2: Run Task -->
+                        <div class="diagram-node flex items-center gap-4 p-4 border-green-400/50">
+                            <i class="fa-solid fa-bolt text-4xl text-green-400" style="animation: process 1.5s infinite;"></i>
+                            <div>
+                                <h4 class="font-bold text-xl text-left">2. task.run()</h4>
+                                <p class="text-sm text-slate-400 text-left">执行任务逻辑</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: 拒绝策略 -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-500 to-pink-500">过载保护机制：拒绝策略 (RejectedExecutionHandler)</h2>
+            <p class="mt-4 text-xl text-slate-400">定义当任务队列与线程池均饱和时的行为模式。</p>
+            <div class="content-panel mt-8 p-8 border-rose-500/30">
+                <div class="flex flex-col items-center gap-4 font-mono">
+                    <!-- Entry -->
+                    <div class="diagram-node p-4"><i class="fa-solid fa-file-code text-2xl text-amber-300 mr-3"></i>新任务提交</div>
+                    <i class="fa-solid fa-arrow-down-long text-3xl text-slate-500"></i>
+                    <!-- Decision -->
+                    <div class="diagram-node p-6 border-rose-400/50 relative">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-400 text-2xl absolute -top-3 -left-3 fa-beat"></i>
+                        <h4 class="font-bold text-xl">线程池/队列饱和?</h4>
+                    </div>
+                    <i class="fa-solid fa-arrow-down-long text-3xl text-rose-400"></i>
+                    <!-- Policies -->
+                    <div class="diagram-node p-6 border-rose-500/50 diagram-node-warn">
+                         <h4 class="font-bold text-xl text-rose-300">触发拒绝策略</h4>
+                    </div>
+                    <!-- Outcomes -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-2 w-full text-center">
+                        <div class="flex flex-col items-center">
+                            <i class="fa-solid fa-arrow-down-long text-2xl text-slate-500 mb-2"></i>
+                            <div class="diagram-node diagram-node-bad p-4 w-full h-full">
+                                <i class="fa-solid fa-bomb text-4xl text-red-500"></i>
+                                <h5 class="font-bold mt-2">Abort (中止)</h5>
+                                <p class="text-xs text-slate-400">抛出异常</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <i class="fa-solid fa-arrow-down-long text-2xl text-slate-500 mb-2"></i>
+                            <div class="diagram-node p-4 w-full h-full">
+                                <i class="fa-solid fa-trash-can text-4xl text-slate-500"></i>
+                                <h5 class="font-bold mt-2">Discard (丢弃)</h5>
+                                <p class="text-xs text-slate-400">默默扔掉</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                             <i class="fa-solid fa-arrow-down-long text-2xl text-slate-500 mb-2"></i>
+                            <div class="diagram-node p-4 w-full h-full border-amber-400/50">
+                                <i class="fa-solid fa-person-running text-4xl text-amber-300"></i>
+                                <h5 class="font-bold mt-2">CallerRuns</h5>
+                                <p class="text-xs text-slate-400">提交者线程执行</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 线程工厂 -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-500 to-purple-500">资源标准化：线程工厂 (ThreadFactory)</h2>
+            <p class="mt-4 text-xl text-slate-400">统一线程创建过程，实现命名、分组与异常处理的规范化。</p>
+            <div class="content-panel mt-8 p-8 border-violet-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <!-- Bad Practice -->
+                    <div class="bg-red-900/20 p-6 rounded-xl border border-red-500/30 text-center">
+                        <h3 class="font-bold text-xl text-red-400 mb-6">❌ 默认创建方式</h3>
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="diagram-node-bad p-3 w-4/5 flex justify-center items-center gap-3"><i class="fa-solid fa-question text-red-400"></i><span class="font-mono">Thread-3</span></div>
+                            <div class="diagram-node-bad p-3 w-4/5 flex justify-center items-center gap-3"><i class="fa-solid fa-question text-red-400"></i><span class="font-mono">Thread-7</span></div>
+                            <div class="diagram-node-bad p-3 w-4/5 flex justify-center items-center gap-3"><i class="fa-solid fa-question text-red-400"></i><span class="font-mono">Thread-1</span></div>
+                        </div>
+                        <p class="text-sm text-red-300 mt-6">匿名、属性默认、难以追溯</p>
+                    </div>
+                    <!-- Good Practice -->
+                    <div class="bg-green-900/20 p-6 rounded-xl border border-green-500/30 text-center">
+                        <h3 class="font-bold text-xl text-green-400 mb-6">✅ 使用 ThreadFactory</h3>
+                        <div class="flex flex-col items-center gap-4">
+                            <div class="diagram-node p-4 border-green-400/50"><i class="fa-solid fa-industry text-4xl text-green-300"></i><h4 class="font-bold mt-2">线程工厂</h4></div>
+                            <i class="fa-solid fa-arrow-down-long text-2xl text-slate-500"></i>
+                            <div class="flex flex-col items-center gap-3 w-full">
+                                <div class="diagram-node diagram-node-good p-3 w-4/5 flex justify-center items-center gap-3"><i class="fa-solid fa-tag text-green-400"></i><span class="font-mono">biz-pool-1</span></div>
+                                <div class="diagram-node diagram-node-good p-3 w-4/5 flex justify-center items-center gap-3"><i class="fa-solid fa-tag text-green-400"></i><span class="font-mono">biz-pool-2</span></div>
+                            </div>
+                        </div>
+                         <p class="text-sm text-green-300 mt-6">命名规范、属性可控、易于排障</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 动态伸缩 -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-400 to-orange-400">弹性伸缩机制：corePoolSize 与 maximumPoolSize</h2>
+            <p class="mt-4 text-xl text-slate-400">从“固定工”到“正式工+临时工”的智能调度模型，实现资源高效利用。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-amber-500/30">
+                <div class="flex flex-col items-center gap-4 text-sm font-mono w-full">
+                    <!-- Start -->
+                    <div class="diagram-node p-3 inline-block"><i class="fa-solid fa-file-code text-amber-300 mr-2"></i>新任务</div>
+                    <i class="fa-solid fa-arrow-down-long text-2xl text-slate-500"></i>
+                    
+                    <!-- First Decision -->
+                    <div class="diagram-node p-4 border-sky-400/50">核心线程 &lt; corePoolSize ?</div>
+
+                    <!-- Branching -->
+                    <div class="w-full mt-4 relative pt-12">
+                        <!-- Horizontal Line -->
+                        <div class="absolute top-4 left-1/4 w-1/2 h-px bg-slate-600"></div>
+                        <!-- Yes Branch Line -->
+                        <div class="absolute top-4 left-1/4 w-px h-8 bg-slate-600"></div>
+                        <!-- No Branch Line -->
+                        <div class="absolute top-4 right-1/4 w-px h-8 bg-slate-600"></div>
+
+                        <!-- Yes/No Labels -->
+                        <div class="absolute top-4 left-1/4 -translate-x-1/2 -translate-y-1/2 bg-slate-800 px-2 py-1 rounded-md text-green-400 text-xs font-bold border border-slate-600">Yes</div>
+                        <div class="absolute top-4 right-1/4 translate-x-1/2 -translate-y-1/2 bg-slate-800 px-2 py-1 rounded-md text-red-400 text-xs font-bold border border-slate-600">No</div>
+
+                        <div class="grid grid-cols-2 gap-8">
+                            <!-- YES Path -->
+                            <div class="text-center flex flex-col items-center gap-4">
+                                <div class="diagram-node diagram-node-good p-4 border-green-400/50 w-full h-full flex items-center justify-center"><i class="fa-solid fa-user-plus mr-2"></i>创建核心线程</div>
+                            </div>
+
+                            <!-- NO Path -->
+                            <div class="text-center flex flex-col items-center gap-4">
+                                <!-- Second Decision -->
+                                <div class="diagram-node p-4 border-amber-400/50 w-full">任务队列已满 ?</div>
+
+                                <!-- Branching 2 -->
+                                <div class="w-full mt-4 relative pt-12">
+                                    <div class="absolute top-4 left-1/4 w-1/2 h-px bg-slate-600"></div>
+                                    <div class="absolute top-4 left-1/4 w-px h-8 bg-slate-600"></div>
+                                    <div class="absolute top-4 right-1/4 w-px h-8 bg-slate-600"></div>
+
+                                    <!-- Yes/No Labels 2 -->
+                                    <div class="absolute top-4 left-1/4 -translate-x-1/2 -translate-y-1/2 bg-slate-800 px-2 py-1 rounded-md text-green-400 text-xs font-bold border border-slate-600">No</div>
+                                    <div class="absolute top-4 right-1/4 translate-x-1/2 -translate-y-1/2 bg-slate-800 px-2 py-1 rounded-md text-red-400 text-xs font-bold border border-slate-600">Yes</div>
+
+                                    <div class="grid grid-cols-2 gap-4">
+                                         <!-- NO Path 2 -->
+                                        <div class="text-center flex flex-col items-center gap-4">
+                                            <div class="diagram-node p-4 border-green-400/50 w-full h-full flex items-center justify-center"><i class="fa-solid fa-inbox mr-2"></i>任务入队</div>
+                                        </div>
+                                        <!-- YES Path 2 -->
+                                        <div class="text-center flex flex-col items-center gap-4">
+                                            <!-- Third Decision -->
+                                            <div class="diagram-node p-4 border-rose-400/50 w-full">线程数 &lt; maxPoolSize ?</div>
+
+                                            <!-- Final Branch -->
+                                            <div class="w-full mt-4 relative pt-12">
+                                                <div class="absolute top-4 left-1/4 w-1/2 h-px bg-slate-600"></div>
+                                                <div class="absolute top-4 left-1/4 w-px h-8 bg-slate-600"></div>
+                                                <div class="absolute top-4 right-1/4 w-px h-8 bg-slate-600"></div>
+
+                                                <!-- Yes/No Labels 3 -->
+                                                <div class="absolute top-4 left-1/4 -translate-x-1/2 -translate-y-1/2 bg-slate-800 px-2 py-1 rounded-md text-green-400 text-xs font-bold border border-slate-600">Yes</div>
+                                                <div class="absolute top-4 right-1/4 translate-x-1/2 -translate-y-1/2 bg-slate-800 px-2 py-1 rounded-md text-red-400 text-xs font-bold border border-slate-600">No</div>
+
+                                                <div class="grid grid-cols-2 gap-4">
+                                                    <div class="text-center flex flex-col items-center gap-4">
+                                                        <div class="diagram-node p-4 border-green-400/50 w-full"><i class="fa-solid fa-user-plus mr-2"></i>创建最大线程</div>
+                                                    </div>
+                                                    <div class="text-center flex flex-col items-center gap-4">
+                                                        <div class="diagram-node diagram-node-bad p-4 border-red-500/50 w-full"><i class="fa-solid fa-ban mr-2"></i>执行拒绝策略</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: 线程数设置 -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-green-400 to-emerald-500">性能基石：线程池容量规划</h2>
+            <p class="mt-4 text-xl text-slate-400">根据任务是CPU密集型还是I/O密集型，制定截然不同的线程数配置策略。</p>
+            <div class="content-panel mt-8 p-8 border-green-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+                    <!-- CPU-bound -->
+                    <div class="bg-rose-900/20 p-6 rounded-xl border border-rose-500/30 text-center flex flex-col">
+                        <h3 class="font-bold text-xl text-rose-400 mb-6">CPU密集型 (CPU-Bound)</h3>
+                        <div class="flex-grow flex flex-col items-center justify-center">
+                            <div class="relative w-32 h-32">
+                                <i class="fa-solid fa-microchip text-8xl text-rose-300"></i>
+                                <i class="fa-solid fa-person-digging text-4xl text-white absolute top-0 left-0 fa-beat" style="--fa-animation-duration: 1.5s;"></i>
+                                <i class="fa-solid fa-person-digging text-4xl text-white absolute bottom-0 right-0 fa-beat" style="--fa-animation-duration: 1.5s; --fa-animation-delay: 0.5s;"></i>
+                                <i class="fa-solid fa-person-digging text-4xl text-white absolute top-8 right-0 fa-beat" style="--fa-animation-duration: 1.5s; --fa-animation-delay: 1s;"></i>
+                            </div>
+                            <p class="text-rose-300 mt-6">线程数 ≈ CPU核心数 (N or N+1)<br>避免线程切换开销</p>
+                        </div>
+                    </div>
+                    <!-- I/O-bound -->
+                    <div class="bg-sky-900/20 p-6 rounded-xl border border-sky-500/30 text-center flex flex-col">
+                        <h3 class="font-bold text-xl text-sky-400 mb-6">I/O密集型 (I/O-Bound)</h3>
+                        <div class="flex-grow flex flex-col items-center justify-center">
+                            <div class="flex items-center justify-center gap-8">
+                                <div class="flex flex-col items-center">
+                                    <i class="fa-solid fa-person-digging text-5xl text-white" style="animation: wait 2s infinite;"></i>
+                                    <i class="fa-solid fa-arrow-down-long text-2xl text-slate-500 my-2"></i>
+                                    <i class="fa-solid fa-database text-5xl text-slate-400"></i>
+                                    <p class="text-sm mt-2 text-slate-400">线程A等待I/O</p>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <i class="fa-solid fa-person-digging text-5xl text-white" style="animation: process 1.5s infinite;"></i>
+                                    <i class="fa-solid fa-arrow-down-long text-2xl text-sky-400 my-2"></i>
+                                    <i class="fa-solid fa-microchip text-5xl text-sky-300"></i>
+                                    <p class="text-sm mt-2 text-sky-300">线程B利用CPU</p>
+                                </div>
+                            </div>
+                            <p class="text-sky-300 mt-6">线程数可 > CPU核心数 (e.g., 2N)<br>充分利用CPU等待间隙</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: 最终总结 -->
+    <section id="slide7" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-purple-400 to-indigo-400">技术选型与实践指南</h2>
+            <p class="mt-4 text-xl text-slate-400">综合评估不同实现方案，为特定场景选择最优解。</p>
+            <div class="content-panel mt-8 p-0 md:p-4 border-indigo-500/30 overflow-x-auto">
+                <table class="w-full text-left text-sm md:text-base border-collapse min-w-[1000px]">
+                    <thead>
+                        <tr class="border-b-2 border-slate-700">
+                            <th class="p-4 w-1/5 text-slate-400 font-semibold uppercase">方案对比</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">核心功能</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">高级特性</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">实现复杂度</th>
+                            <th class="p-4 w-1/4 text-slate-400 font-semibold uppercase">核心场景</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">推荐指数</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        <tr class="hover:bg-slate-800/40 transition-colors duration-200">
+                            <td class="p-4 font-bold text-lg text-slate-300"><i class="fa-solid fa-book-open mr-3 text-red-400"></i>教学级实现</td>
+                            <td class="p-4"><span class="flex items-center gap-2 font-semibold text-amber-400">✅ 基础</span></td>
+                            <td class="p-4"><span class="flex items-center gap-2 font-semibold text-red-400">❌ 缺失</span></td>
+                            <td class="p-4"><span class="flex items-center gap-2 font-semibold text-green-400">🟢 简单</span></td>
+                            <td class="p-4 text-slate-400">用于教学演示，理解核心原理。</td>
+                            <td class="p-4"><span class="inline-block px-3 py-1 text-sm font-bold text-red-200 bg-red-900/50 rounded-full">★☆☆☆☆ (学习)</span></td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/40 transition-colors duration-200">
+                            <td class="p-4 font-bold text-lg text-slate-300"><i class="fa-solid fa-screwdriver-wrench mr-3 text-amber-400"></i>定制化实现</td>
+                            <td class="p-4"><span class="flex items-center gap-2 font-semibold text-green-400">✅ 完整</span></td>
+                            <td class="p-4"><span class="flex items-center gap-2 font-semibold text-amber-400">🟡 部分</span></td>
+                            <td class="p-4"><span class="flex items-center gap-2 font-semibold text-red-400">🔴 复杂</span></td>
+                            <td class="p-4 text-slate-400">深入掌握并发细节，或有高度定制化需求。</td>
+                            <td class="p-4"><span class="inline-block px-3 py-1 text-sm font-bold text-amber-200 bg-amber-900/50 rounded-full">★★★☆☆ (深入)</span></td>
+                        </tr>
+                        <tr class="bg-green-900/20 hover:bg-green-900/40 transition-colors duration-200 border-t-2 border-green-500/30">
+                            <td class="p-4 font-bold text-lg text-slate-100"><i class="fa-brands fa-java mr-3 text-green-400"></i>JDK ThreadPoolExecutor</td>
+                            <td class="p-4"><span class="flex items-center gap-2 font-bold text-green-300">✅ 完整</span></td>
+                            <td class="p-4"><span class="flex items-center gap-2 font-bold text-green-300">🟢 全能</span></td>
+                            <td class="p-4"><span class="flex items-center gap-2 font-semibold text-green-400">🟢 API调用</span></td>
+                            <td class="p-4 text-slate-300">绝大多数需要并发执行任务的生产环境。</td>
+                            <td class="p-4"><span class="inline-block px-3 py-1 text-sm font-bold text-green-200 bg-green-600/50 rounded-full ring-1 ring-green-400">★★★★★ (首选)</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center py-8 text-slate-500">
+        线程池架构深度解析
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            const navDots = navContainer.querySelectorAll('a');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            slides.forEach(slide => { observer.observe(slide); });
+        });
+    </script>
+</body>
+</html>

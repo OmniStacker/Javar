@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快慢接口问题解决方案看板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Helvetica Neue', 'Arial', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        }
+        .card {
+            background-color: #1f2937; /* gray-800 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1.5rem; /* p-6 */
+            border: 1px solid #374151; /* gray-700 */
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 2px #38bdf8; /* cyan-400 */
+        }
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .arrow {
+            font-size: 2rem;
+            color: #f87171; /* red-400 */
+        }
+        .header-title {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 700; /* font-bold */
+            margin-bottom: 1rem; /* mb-4 */
+            color: #e5e7eb; /* gray-200 */
+            text-align: center;
+        }
+        .sub-header {
+            font-weight: 600;
+            color: #9ca3af; /* gray-400 */
+            margin-bottom: 1.5rem; /* mb-6 */
+            text-align: center;
+        }
+        .section-title {
+            font-size: 1.875rem; /* text-3xl */
+            font-weight: 800; /* font-extrabold */
+            text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #67e8f9, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .problem-box {
+            background-color: #4b5563;
+            border-left: 5px solid #ef4444;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-300 p-4 sm:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="section-title">快慢接口资源冲突解决方案看板</h1>
+            <p class="text-lg text-gray-400">A Visual Guide to Solving API Thread Pool Contention</p>
+        </div>
+
+        <!-- Problem Definition -->
+        <div class="problem-box">
+             <div class="flex justify-center items-center space-x-4">
+                <i class="fas fa-traffic-light icon text-red-500 fa-beat" style="--fa-animation-duration: 2s;"></i>
+                <div>
+                    <h2 class="text-xl font-bold text-white">问题场景：线程池“交通堵塞”</h2>
+                    <p class="text-gray-300">慢接口长期占用线程，导致快接口请求被阻塞，系统响应能力下降。</p>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+            <!-- Column 1: Core Solution -->
+            <div class="card">
+                <div class="text-center">
+                    <span class="text-sm font-semibold text-cyan-400">Phase 1</span>
+                    <h3 class="header-title">核心方案：资源隔离 (舱壁模式)</h3>
+                    <p class="sub-header">将快慢车道分开，互不影响</p>
+                </div>
+                
+                <!-- Visual Diagram -->
+                <div class="space-y-6">
+                    <!-- Before -->
+                    <div>
+                        <h4 class="font-bold text-center text-red-400 mb-2">隔离前：混合车道</h4>
+                        <div class="bg-gray-900 p-4 rounded-lg flex items-center justify-center space-x-2">
+                             <i class="fas fa-person-running text-green-400" title="快接口"></i>
+                             <i class="fas fa-person-walking text-yellow-400" title="慢接口"></i>
+                             <i class="fas fa-person-running text-green-400"></i>
+                             <i class="fas fa-person-walking text-yellow-400 fa-fade" style="--fa-animation-duration: 3s;"></i>
+                             <span class="arrow">&rarr;</span>
+                             <i class="fas fa-hourglass-half text-gray-500"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- After -->
+                    <div>
+                        <h4 class="font-bold text-center text-green-400 mb-2">隔离后：专用车道</h4>
+                        <div class="bg-gray-900 p-4 rounded-lg space-y-3">
+                            <!-- Fast Lane -->
+                            <div class="flex items-center space-x-2">
+                                <span class="font-semibold text-green-400 w-20">核心/快速:</span>
+                                <div class="flex-1 bg-gray-700 p-2 rounded flex justify-around">
+                                    <i class="fas fa-credit-card" title="支付"></i>
+                                    <i class="fas fa-cart-shopping" title="下单"></i>
+                                    <i class="fas fa-person-running"></i>
+                                </div>
+                            </div>
+                             <!-- Slow Lane -->
+                            <div class="flex items-center space-x-2">
+                                <span class="font-semibold text-yellow-400 w-20">普通/慢速:</span>
+                                <div class="flex-1 bg-gray-700 p-2 rounded flex justify-around">
+                                    <i class="fas fa-file-excel" title="报表"></i>
+                                    <i class="fas fa-chart-pie" title="统计"></i>
+                                    <i class="fas fa-person-walking"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 2: Advanced Solution -->
+            <div class="card">
+                <div class="text-center">
+                    <span class="text-sm font-semibold text-purple-400">Phase 2</span>
+                    <h3 class="header-title">进阶方案：动态与响应式</h3>
+                    <p class="sub-header">构建智能、高效的未来架构</p>
+                </div>
+                
+                <div class="space-y-8 mt-6">
+                    <!-- Dynamic Isolation -->
+                    <div>
+                        <h4 class="font-bold text-center text-purple-300 mb-2">动态自适应隔离</h4>
+                        <div class="text-center flex flex-col items-center">
+                            <i class="fas fa-tachometer-alt-fast icon text-purple-400"></i>
+                            <p class="mb-2">监控接口延迟</p>
+                            <i class="fas fa-arrow-down text-2xl"></i>
+                            <p class="my-2">自动切换线程池</p>
+                            <div class="flex justify-center space-x-8">
+                                <div class="text-center"><i class="fas fa-server text-green-400"></i><p>快速池</p></div>
+                                <i class="fas fa-exchange-alt text-4xl text-purple-400"></i>
+                                <div class="text-center"><i class="fas fa-server text-yellow-400"></i><p>慢速池</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reactive -->
+                    <div>
+                        <h4 class="font-bold text-center text-purple-300 mb-2">响应式编程</h4>
+                        <div class="text-center flex flex-col items-center">
+                            <i class="fas fa-sync-alt icon text-purple-400 fa-spin" style="--fa-animation-duration: 5s;"></i>
+                            <p>事件循环，非阻塞I/O</p>
+                            <p class="text-xs text-gray-400">少量线程处理大量并发</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 3: Governance -->
+            <div class="card">
+                <div class="text-center">
+                    <span class="text-sm font-semibold text-orange-400">Foundation</span>
+                    <h3 class="header-title">辅助与兜底：优化与治理</h3>
+                    <p class="sub-header">保证系统长期稳定健康</p>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mt-6 text-center">
+                    <div class="bg-gray-900 p-3 rounded-lg">
+                        <i class="fas fa-clock-rotate-left icon text-orange-400"></i>
+                        <h5 class="font-bold">超时控制</h5>
+                    </div>
+                    <div class="bg-gray-900 p-3 rounded-lg">
+                        <i class="fas fa-paper-plane icon text-orange-400"></i>
+                        <h5 class="font-bold">异步改造</h5>
+                    </div>
+                    <div class="bg-gray-900 p-3 rounded-lg">
+                        <i class="fas fa-filter-circle-xmark icon text-orange-400"></i>
+                        <h5 class="font-bold">限流降级</h5>
+                    </div>
+                    <div class="bg-gray-900 p-3 rounded-lg">
+                        <i class="fas fa-wrench icon text-orange-400"></i>
+                        <h5 class="font-bold">根源优化</h5>
+                    </div>
+                    <div class="bg-gray-900 p-3 rounded-lg col-span-2">
+                        <div class="flex justify-center items-center space-x-8">
+                            <div>
+                                <i class="fas fa-chart-line icon text-teal-400"></i>
+                                <h5 class="font-bold">监控大盘</h5>
+                            </div>
+                            <div>
+                                <i class="fas fa-bell icon text-teal-400 fa-shake"></i>
+                                <h5 class="font-bold">智能告警</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

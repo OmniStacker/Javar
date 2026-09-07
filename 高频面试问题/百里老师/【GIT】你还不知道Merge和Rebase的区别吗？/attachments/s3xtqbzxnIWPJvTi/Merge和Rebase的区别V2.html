@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【GIT】什么？你还不知道Merge和Rebase的区别吗？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(16, 185, 129, 0); } }
+        @keyframes pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.8); } 50% { box-shadow: 0 0 25px 15px rgba(220, 38, 38, 0); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2.5rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .diagram-node { transition: transform 0.3s ease; }
+        .diagram-node:hover { transform: scale(1.05); }
+        .diagram-node-good { animation: pulse-green 3s infinite; }
+        .diagram-node-bad { animation: pulse-red 2s infinite; }
+
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .slide:last-of-type { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场，点明问题 -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-200">
+                你还不知道<span class="gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">Merge</span>和<span class="gradient-text bg-gradient-to-r from-emerald-400 to-green-400">Rebase</span>的区别吗？
+            </h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">Git分支合并的艺术与科学</h2>
+            <div class="content-panel mt-12 p-8 md:p-12 border-amber-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-around gap-8 text-white">
+                    <div class="text-center md:w-5/12">
+                        <h4 class="font-bold text-2xl text-sky-300 mb-2">Git Merge</h4>
+                        <p class="text-base text-slate-400 mb-4">忠实记录，保留分叉历史</p>
+                        <div class="h-24 flex justify-center items-center">
+                            <svg class="w-full h-full max-w-sm" viewBox="0 0 200 100">
+                                <path d="M 10 50 Q 50 10, 100 50" stroke="#475569" stroke-width="4" fill="none" stroke-dasharray="8 4"/>
+                                <path d="M 10 50 Q 50 90, 100 50" stroke="#475569" stroke-width="4" fill="none" stroke-dasharray="8 4"/>
+                                <path d="M 100 50 H 190" stroke="#38bdf8" stroke-width="4" fill="none"/>
+                                <circle cx="100" cy="50" r="8" fill="#38bdf8" />
+                                <circle cx="10" cy="50" r="6" fill="#475569" />
+                                <circle cx="190" cy="50" r="6" fill="#38bdf8" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="font-black text-6xl md:text-7xl text-amber-400/80 py-4 md:py-0" style="text-shadow: 0 0 15px rgba(251, 191, 36, 0.5);">VS</div>
+                    <div class="text-center md:w-5/12">
+                        <h4 class="font-bold text-2xl text-emerald-300 mb-2">Git Rebase</h4>
+                        <p class="text-base text-slate-400 mb-4">清理历史，创造线性叙事</p>
+                        <div class="h-24 flex justify-center items-center">
+                            <svg class="w-full h-full max-w-sm" viewBox="0 0 200 100">
+                                <path d="M 10 50 H 190" stroke="#34d399" stroke-width="4" fill="none" />
+                                <circle cx="10" cy="50" r="6" fill="#475569" />
+                                <circle cx="70" cy="50" r="6" fill="#475569" />
+                                <circle cx="130" cy="50" r="6" fill="#34d399" />
+                                <circle cx="190"cy="50" r="6" fill="#34d399" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Git Merge 工作流 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-500 to-cyan-400">Git Merge: 忠实记录每一次"相遇"</h2>
+            <p class="mt-4 text-xl text-slate-400">通过创建一个新的"合并提交"来整合分支，保留完整的历史脉络。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-sky-500/30">
+                <div class="flex flex-col items-center justify-center space-y-6 font-mono text-sm">
+                    <!-- Initial Branches -->
+                    <div class="w-full max-w-4xl relative" style="height: 180px;">
+                        <svg class="absolute inset-0 w-full h-full" style="pointer-events: none;">
+                            <!-- release branch line -->
+                            <line x1="15%" y1="30%" x2="85%" y2="30%" stroke="#475569" stroke-width="3"/>
+                            <!-- feature branch fork line -->
+                            <line x1="30%" y1="30%" x2="30%" y2="70%" stroke="#64748b" stroke-width="2" stroke-dasharray="5,5"/>
+                            <!-- feature branch line -->
+                            <line x1="30%" y1="70%" x2="70%" y2="70%" stroke="#f59e0b" stroke-width="3"/>
+                        </svg>
+                        
+                        <!-- release branch nodes -->
+                        <div class="absolute flex items-center gap-12" style="top: 30%; left: 15%; transform: translateY(-50%);">
+                            <div class="flex flex-col items-center">
+                                <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">A</div>
+                                <span class="text-xs text-sky-300 mt-1">release</span>
+                            </div>
+                        </div>
+                        <div class="absolute flex items-center gap-12" style="top: 30%; left: 30%; transform: translateY(-50%);">
+                            <div class="flex flex-col items-center">
+                                <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">B</div>
+                            </div>
+                        </div>
+                        <div class="absolute flex items-center gap-12" style="top: 30%; left: 55%; transform: translateY(-50%);">
+                            <div class="flex flex-col items-center">
+                                <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">E</div>
+                            </div>
+                        </div>
+                        <div class="absolute flex items-center gap-12" style="top: 30%; left: 70%; transform: translateY(-50%);">
+                            <div class="flex flex-col items-center">
+                                <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">F</div>
+                            </div>
+                        </div>
+                        
+                        <!-- feature branch nodes -->
+                        <div class="absolute flex items-center gap-12" style="top: 70%; left: 45%; transform: translateY(-50%);">
+                            <div class="flex flex-col items-center">
+                                <div class="diagram-node w-10 h-10 rounded-full border-3 border-amber-400 bg-amber-900 flex items-center justify-center font-bold">C</div>
+                                <span class="text-xs text-amber-300 mt-1">feature</span>
+                            </div>
+                        </div>
+                        <div class="absolute flex items-center gap-12" style="top: 70%; left: 60%; transform: translateY(-50%);">
+                            <div class="flex flex-col items-center">
+                                <div class="diagram-node w-10 h-10 rounded-full border-3 border-amber-400 bg-amber-900 flex items-center justify-center font-bold">D</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Merge Action -->
+                    <div class="flex flex-col items-center gap-3">
+                        <i class="fa-solid fa-down-long text-3xl text-slate-500"></i>
+                        <div class="bg-slate-800/50 px-6 py-3 rounded-lg"><code class="text-sky-300 text-base">git merge feature</code></div>
+                        <i class="fa-solid fa-down-long text-3xl text-slate-500"></i>
+                    </div>
+                    
+                    <!-- Result -->
+                    <div class="w-full max-w-4xl relative" style="height: 180px;">
+                        <svg class="absolute inset-0 w-full h-full" style="pointer-events: none;">
+                            <!-- release branch main line -->
+                            <line x1="15%" y1="30%" x2="85%" y2="30%" stroke="#475569" stroke-width="3"/>
+                            <!-- feature branch fork -->
+                            <line x1="30%" y1="30%" x2="30%" y2="70%" stroke="#64748b" stroke-width="2" stroke-dasharray="5,5"/>
+                            <line x1="30%" y1="70%" x2="60%" y2="70%" stroke="#f59e0b" stroke-width="3"/>
+                            <!-- merge lines to M -->
+                            <line x1="70%" y1="30%" x2="80%" y2="30%" stroke="#38bdf8" stroke-width="3"/>
+                            <line x1="60%" y1="70%" x2="80%" y2="30%" stroke="#64748b" stroke-width="2" stroke-dasharray="5,5"/>
+                        </svg>
+                        
+                        <!-- nodes -->
+                        <div class="absolute" style="top: 30%; left: 15%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">A</div>
+                        </div>
+                        <div class="absolute" style="top: 30%; left: 30%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">B</div>
+                        </div>
+                        <div class="absolute" style="top: 30%; left: 55%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">E</div>
+                        </div>
+                        <div class="absolute" style="top: 30%; left: 70%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">F</div>
+                        </div>
+                        <div class="absolute" style="top: 70%; left: 45%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-amber-400 bg-amber-900 flex items-center justify-center font-bold">C</div>
+                        </div>
+                        <div class="absolute" style="top: 70%; left: 60%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-amber-400 bg-amber-900 flex items-center justify-center font-bold">D</div>
+                        </div>
+                        <div class="absolute" style="top: 30%; left: 80%; transform: translateY(-50%);">
+                            <div class="diagram-node diagram-node-good w-12 h-12 rounded-full border-3 border-sky-400 bg-sky-900 flex items-center justify-center font-bold text-lg">M</div>
+                        </div>
+                    </div>
+                    
+                    <p class="mt-4 text-slate-300 text-base">结果：`release` 分支新增一个合并提交 `M`，历史记录变得非线性。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: Git Rebase 工作流 -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-emerald-500 to-green-400">Git Rebase: 让历史"宛如新生"</h2>
+            <p class="mt-4 text-xl text-slate-400">将分支的提交"嫁接"到目标分支顶部，创造一条干净的线性历史。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-green-500/30">
+                <div class="flex flex-col items-center justify-center space-y-6 font-mono text-sm">
+                    <!-- Initial State -->
+                    <div class="w-full max-w-4xl relative" style="height: 180px;">
+                        <svg class="absolute inset-0 w-full h-full" style="pointer-events: none;">
+                            <line x1="15%" y1="30%" x2="70%" y2="30%" stroke="#475569" stroke-width="3"/>
+                            <line x1="30%" y1="30%" x2="30%" y2="70%" stroke="#64748b" stroke-width="2" stroke-dasharray="5,5"/>
+                            <line x1="30%" y1="70%" x2="60%" y2="70%" stroke="#f59e0b" stroke-width="3"/>
+                        </svg>
+                        
+                        <div class="absolute" style="top: 30%; left: 15%; transform: translateY(-50%);">
+                            <div class="flex flex-col items-center">
+                                <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">A</div>
+                                <span class="text-xs text-sky-300 mt-1">release</span>
+                            </div>
+                        </div>
+                        <div class="absolute" style="top: 30%; left: 30%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">B</div>
+                        </div>
+                        <div class="absolute" style="top: 30%; left: 50%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">E</div>
+                        </div>
+                        <div class="absolute" style="top: 30%; left: 65%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">F</div>
+                        </div>
+                        <div class="absolute" style="top: 70%; left: 40%; transform: translateY(-50%);">
+                            <div class="flex flex-col items-center">
+                                <div class="diagram-node w-10 h-10 rounded-full border-3 border-amber-400 bg-amber-900 flex items-center justify-center font-bold animate-pulse">C</div>
+                                <span class="text-xs text-amber-300 mt-1">feature</span>
+                            </div>
+                        </div>
+                        <div class="absolute" style="top: 70%; left: 55%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-amber-400 bg-amber-900 flex items-center justify-center font-bold animate-pulse">D</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rebase Action -->
+                    <div class="flex flex-col items-center gap-3">
+                        <i class="fa-solid fa-down-long text-3xl text-slate-500"></i>
+                        <div class="bg-slate-800/50 px-6 py-3 rounded-lg"><code class="text-green-300 text-base">git rebase release</code></div>
+                        <i class="fa-solid fa-down-long text-3xl text-slate-500"></i>
+                    </div>
+                    
+                    <!-- Result -->
+                    <div class="w-full max-w-4xl relative" style="height: 100px;">
+                        <svg class="absolute inset-0 w-full h-full" style="pointer-events: none;">
+                            <line x1="10%" y1="50%" x2="90%" y2="50%" stroke="#34d399" stroke-width="3"/>
+                        </svg>
+                        
+                        <div class="absolute flex items-center" style="top: 50%; left: 10%; transform: translateY(-50%);">
+                            <div class="flex flex-col items-center">
+                                <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">A</div>
+                                <span class="text-xs text-green-300 mt-1">feature</span>
+                            </div>
+                        </div>
+                        <div class="absolute" style="top: 50%; left: 23%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">B</div>
+                        </div>
+                        <div class="absolute" style="top: 50%; left: 36%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">E</div>
+                        </div>
+                        <div class="absolute" style="top: 50%; left: 49%; transform: translateY(-50%);">
+                            <div class="diagram-node w-10 h-10 rounded-full border-3 border-slate-400 bg-slate-700 flex items-center justify-center font-bold">F</div>
+                        </div>
+                        <div class="absolute" style="top: 50%; left: 65%; transform: translateY(-50%);">
+                            <div class="diagram-node diagram-node-good w-10 h-10 rounded-full border-3 border-green-400 bg-green-900 flex items-center justify-center font-bold">C'</div>
+                        </div>
+                        <div class="absolute" style="top: 50%; left: 78%; transform: translateY(-50%);">
+                            <div class="diagram-node diagram-node-good w-10 h-10 rounded-full border-3 border-green-400 bg-green-900 flex items-center justify-center font-bold">D'</div>
+                        </div>
+                    </div>
+                    
+                    <p class="mt-4 text-slate-300 text-base">结果：`feature` 分支的提交 `C` 和 `D` 被重新应用在 `F` 之后，历史呈完美线性。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: Rebase公共分支的灾难 -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-500 to-red-500">核心禁忌: Rebase公共分支的灾难</h2>
+            <p class="mt-4 text-xl text-slate-400">黄金法则：永远不要 rebase 一个团队共享的远程分支！</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-red-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start text-center">
+                    <!-- Developer A -->
+                    <div class="flex flex-col items-center space-y-3">
+                        <i class="fa-solid fa-user-secret text-6xl text-rose-400"></i>
+                        <h4 class="font-bold text-lg text-slate-200">开发者 A</h4>
+                        <p class="text-xs text-slate-400 px-2">"为了干净，我 rebase 了公共分支并强推！"</p>
+                        <div class="bg-red-900/30 px-3 py-2 rounded-lg">
+                            <code class="text-sm text-red-400">git push --force</code>
+                        </div>
+                    </div>
+                    
+                    <!-- Remote Repo -->
+                    <div class="flex flex-col items-center space-y-4">
+                        <div class="diagram-node diagram-node-bad p-6 rounded-xl border-2 border-red-500 bg-red-900/50 w-full">
+                            <i class="fa-solid fa-server text-6xl text-red-400"></i>
+                            <h4 class="font-bold text-lg mt-3 text-slate-200">远程仓库</h4>
+                            <p class="text-sm text-red-300 mt-2">历史已被篡改!</p>
+                        </div>
+                        <div class="w-full flex justify-between px-4">
+                            <i class="fa-solid fa-arrow-left-long text-3xl text-red-400"></i>
+                            <i class="fa-solid fa-arrow-right-long text-3xl text-slate-600"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Developer B -->
+                    <div class="flex flex-col items-center space-y-3">
+                        <i class="fa-solid fa-user-ninja text-6xl text-sky-300"></i>
+                        <h4 class="font-bold text-lg text-slate-200">开发者 B</h4>
+                        <p class="text-xs text-slate-400 px-2">"我准备推送我的代码...嗯？历史分叉了？！"</p>
+                        <div class="relative bg-slate-800/50 px-3 py-2 rounded-lg">
+                            <code class="text-sm text-slate-400">git push</code>
+                            <i class="fa-solid fa-ban text-4xl text-red-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-80"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-8 text-center text-red-300 bg-red-900/20 p-4 rounded-lg border border-red-500/30">
+                    <i class="fa-solid fa-skull-crossbones text-2xl mr-3"></i>
+                    <span class="font-bold">后果：</span>团队其他成员的本地仓库与远程仓库产生严重冲突，需要花费大量时间手动修复。
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 合并策略选择器 -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-400 to-purple-400">实战指南：合并策略选择器</h2>
+            <p class="mt-4 text-xl text-slate-400">根据不同场景，选择最合适的合并策略。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-violet-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Merge Card -->
+                    <div class="bg-slate-800/40 p-6 rounded-xl border border-sky-500/50 flex flex-col items-center text-center">
+                        <i class="fa-solid fa-people-group text-5xl text-sky-300 mb-4"></i>
+                        <h3 class="font-bold text-2xl text-sky-300 mb-4">优先使用 Git Merge</h3>
+                        <div class="space-y-4 text-left p-4 rounded-lg bg-slate-900/30 w-full">
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-shield-halved text-sky-400 text-xl mt-1 flex-shrink-0"></i>
+                                <div>
+                                    <h4 class="font-bold text-base">合入公共分支</h4>
+                                    <p class="text-sm text-slate-400 mt-1">如 `master`, `release`，确保历史稳定。</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-baby text-sky-400 text-xl mt-1 flex-shrink-0"></i>
+                                <div>
+                                    <h4 class="font-bold text-base">团队新人较多</h4>
+                                    <p class="text-sm text-slate-400 mt-1">操作简单，不易出错，降低协作门槛。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rebase Card -->
+                    <div class="bg-slate-800/40 p-6 rounded-xl border border-emerald-500/50 flex flex-col items-center text-center">
+                        <i class="fa-solid fa-user-astronaut text-5xl text-emerald-300 mb-4"></i>
+                        <h3 class="font-bold text-2xl text-emerald-300 mb-4">谨慎使用 Git Rebase</h3>
+                        <div class="space-y-4 text-left p-4 rounded-lg bg-slate-900/30 w-full">
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-broom text-emerald-400 text-xl mt-1 flex-shrink-0"></i>
+                                <div>
+                                    <h4 class="font-bold text-base">整理个人分支</h4>
+                                    <p class="text-sm text-slate-400 mt-1">合并前清理提交，保持历史线性、整洁。</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-star text-emerald-400 text-xl mt-1 flex-shrink-0"></i>
+                                <div>
+                                    <h4 class="font-bold text-base">追求极致历史</h4>
+                                    <p class="text-sm text-slate-400 mt-1">适合对代码历史有洁癖的资深开发者。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-8 bg-amber-900/30 border border-amber-500/50 text-amber-200 p-4 rounded-lg text-center font-bold">
+                    <i class="fa-solid fa-lightbulb mr-2"></i>最佳实践：用 `rebase` 整理过程，用 `merge` 记录结果。
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: 最终总结 -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-indigo-400 to-blue-400">最终总结：一张表看懂所有差异</h2>
+            <p class="mt-4 text-xl text-slate-400">掌握决策矩阵，自信应对任何合并场景。</p>
+            <div class="content-panel mt-8 p-4 md:p-6 border-indigo-500/30 overflow-x-auto">
+                <table class="w-full text-left text-sm md:text-base border-collapse min-w-[900px]">
+                    <thead>
+                        <tr class="border-b-2 border-slate-700">
+                            <th class="p-4 w-1/5 text-slate-400 font-semibold uppercase text-sm">对比维度</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase text-sm">Git Merge</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase text-sm">Git Rebase</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        <tr class="hover:bg-slate-800/40 transition-colors">
+                            <td class="p-4 font-bold text-slate-300">历史记录</td>
+                            <td class="p-4">
+                                <span class="flex items-center gap-2 font-semibold text-sky-400">
+                                    <i class="fa-solid fa-code-fork"></i>非线性，保留分叉
+                                </span>
+                            </td>
+                            <td class="p-4">
+                                <span class="flex items-center gap-2 font-semibold text-green-400">
+                                    <i class="fa-solid fa-ruler-horizontal"></i>线性，整洁干净
+                                </span>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/40 transition-colors">
+                            <td class="p-4 font-bold text-slate-300">可读性</td>
+                            <td class="p-4 text-slate-400">真实反映并发，但复杂</td>
+                            <td class="p-4 text-slate-300">清晰易追溯，像故事线</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/40 transition-colors">
+                            <td class="p-4 font-bold text-slate-300">安全性</td>
+                            <td class="p-4">
+                                <span class="flex items-center gap-2 font-bold text-green-400">
+                                    <i class="fa-solid fa-lock"></i>安全，不改历史
+                                </span>
+                            </td>
+                            <td class="p-4">
+                                <span class="flex items-center gap-2 font-bold text-red-400">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>危险，重写历史
+                                </span>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/40 transition-colors">
+                            <td class="p-4 font-bold text-slate-300">合并提交</td>
+                            <td class="p-4">
+                                <span class="flex items-center gap-2 text-slate-300">
+                                    <i class="fa-solid fa-plus"></i>会产生合并提交
+                                </span>
+                            </td>
+                            <td class="p-4">
+                                <span class="flex items-center gap-2 text-slate-400">
+                                    <i class="fa-solid fa-xmark"></i>不产生（快进时）
+                                </span>
+                            </td>
+                        </tr>
+                        <tr class="bg-slate-800/50 hover:bg-slate-800/70 transition-colors">
+                            <td class="p-4 font-bold text-slate-300">核心用途</td>
+                            <td class="p-4 text-sky-300 font-semibold">将功能安全地【合入】公共分支</td>
+                            <td class="p-4 text-green-300 font-semibold">在合并前【整理】个人分支</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center py-8 text-slate-500 text-sm">
+        【GIT】什么？你还不知道Merge和Rebase的区别吗？
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            const navDots = navContainer.querySelectorAll('a');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            slides.forEach(slide => { observer.observe(slide); });
+        });
+    </script>
+</body>
+</html>

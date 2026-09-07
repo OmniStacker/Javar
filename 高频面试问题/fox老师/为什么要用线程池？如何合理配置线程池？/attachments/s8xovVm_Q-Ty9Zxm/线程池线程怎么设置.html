@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>线程池配置讲解板</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f9;
+            --header-bg: #ffffff;
+            --card-bg: #ffffff;
+            --text-color: #3d5266;
+            --title-color: #2c3e50;
+            --primary-color: #3498db;
+            --accent-why: #e74c3c;
+            --accent-how: #27ae60;
+            --accent-loop: #f39c12;
+            --border-color: #e4eaf0;
+            --shadow: 0 5px 15px rgba(0, 0, 0, 0.07);
+            --light-blue-bg: #ecf5ff;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.7;
+        }
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background-color: var(--header-bg);
+            padding: 1.5rem 2.5rem;
+            box-shadow: var(--shadow);
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .main-title {
+            font-size: 2.8em;
+            font-weight: 800;
+            margin: 0;
+            color: var(--primary-color);
+        }
+        .subtitle-container {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-top: 1rem;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        .subtitle-item { display: flex; align-items: center; gap: 8px; }
+        .subtitle-item.why { color: var(--accent-why); }
+        .subtitle-item.how { color: var(--accent-how); }
+        .subtitle-item.loop { color: var(--accent-loop); }
+
+        .container { padding: 3rem; max-width: 1700px; margin: 0 auto; }
+        .section { margin-bottom: 4rem; }
+        .section-title {
+            font-size: 2.8em;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1rem;
+            position: relative;
+            color: var(--title-color);
+        }
+        .section-title::after {
+            content: ''; position: absolute; bottom: 0; left: 50%;
+            transform: translateX(-50%); width: 80px; height: 5px; border-radius: 3px;
+        }
+        .why-section .section-title::after { background-color: var(--accent-why); }
+        .how-section .section-title::after { background-color: var(--accent-how); }
+        .loop-section .section-title::after { background-color: var(--accent-loop); }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2.5rem;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            border-top: 6px solid;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover { transform: translateY(-6px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .why-section .card { border-color: var(--accent-why); }
+        .how-section .card { border-color: var(--accent-how); }
+        .loop-section .card { border-color: var(--accent-loop); }
+
+        .card-title {
+            font-size: 2em;
+            font-weight: 700;
+            margin: 0 0 1.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: var(--title-color);
+        }
+        .card-title .icon { font-size: 1.5em; }
+        .card-content { font-size: 1.2em; }
+        .card-content strong { color: var(--primary-color); font-weight: 600; }
+        .card-content code { background-color: #e9ecef; padding: 3px 6px; border-radius: 4px; font-size: 1em; }
+        
+        .how-to-flow { display: flex; flex-direction: column; align-items: center; gap: 2rem; }
+        .step-card {
+            width: 100%; background: var(--card-bg); border-radius: 12px; padding: 2.5rem;
+            box-shadow: var(--shadow); border-left: 8px solid var(--accent-how);
+            position: relative;
+        }
+         .step-number {
+            position: absolute; top: -20px; left: -30px; background-color: var(--accent-how);
+            color: white; width: 50px; height: 50px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8em; font-weight: 700; border: 5px solid var(--bg-color);
+        }
+        .flow-arrow { font-size: 3em; color: var(--accent-how); opacity: 0.6; }
+        .step-title { font-size: 2.2em; font-weight: 700; margin: 0 0 2rem 0; color: var(--title-color); }
+        .step-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; align-items: center; }
+        .diagram-box { text-align: center; padding: 1.5rem; background: var(--light-blue-bg); border-radius: 8px; }
+        .diagram-box h4 { font-size: 1.5em; margin: 0 0 1rem 0; color: var(--title-color); }
+        .formula-box {
+            font-family: 'Courier New', Courier, monospace; font-size: 1.3em;
+            font-weight: bold; color: var(--primary-color); padding: 1rem;
+            border: 2px dashed var(--primary-color); border-radius: 8px; margin-top: 1rem;
+        }
+        
+        .loop-diagram { display: flex; justify-content: center; align-items: center; text-align: center; margin: 3rem 0; gap: 2rem; }
+        .loop-item { font-size: 1.8em; font-weight: 700; color: var(--title-color); }
+        .loop-icon { font-size: 4em; color: var(--accent-loop); }
+        .loop-arrow { font-size: 3em; font-weight: bold; color: var(--accent-loop); align-self: center; }
+
+        .highlight { background: linear-gradient(to top, #fff799 50%, transparent 50%); font-weight: 600; }
+        ul { padding-left: 25px; margin: 0; }
+        li { margin-bottom: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <header class="sticky-header">
+        <h1 class="main-title">告别八股文：一图讲透线程池配置的“底层逻辑”与“落地实践”</h1>
+        <div class="subtitle-container">
+            <div class="subtitle-item why"><span>&#128738;</span> 核心痛点：为何必须用？</div>
+            <div class="subtitle-item how"><span>&#128200;</span> 四步落地法：如何科学配？</div>
+            <div class="subtitle-item loop"><span>&#128260;</span> 监控与调优：怎样形成闭环？</div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Section 1: Why -->
+        <section class="section why-section">
+            <h2 class="section-title">第一幕：告别 `new Thread()` 的三大痛点</h2>
+            <div class="card-grid">
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">&#128184;</span>降低资源开销</h3>
+                    <div class="card-content">
+                        <ul>
+                            <li><strong>痛点:</strong> 线程是<span class="highlight">重量级资源</span>，频繁创建和销毁，成本极高。</li>
+                            <li><strong>解决:</strong> 通过<span class="highlight">复用</span>已有线程，避免了内核态切换和资源消耗。</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">&#128679;</span>控制并发风险</h3>
+                    <div class="card-content">
+                        <ul>
+                            <li><strong>痛点:</strong> 无限制创建线程，会导致CPU<span class="highlight">上下文切换</span>和<span class="highlight">内存溢出(OOM)</span>。</li>
+                            <li><strong>解决:</strong> 限制并发线程数，像一个“阀门”保护系统不被冲垮。</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">&#128202;</span>提供管理能力</h3>
+                    <div class="card-content">
+                        <ul>
+                            <li><strong>痛点:</strong> 线程状态黑盒，难以监控和管理。</li>
+                            <li><strong>解决:</strong> 提供<span class="highlight">任务排队、拒绝策略、状态监控</span>等高级功能。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: How -->
+        <section class="section how-section">
+            <h2 class="section-title">第二幕：科学配置四步落地法</h2>
+            <div class="how-to-flow">
+                <!-- Step 1 -->
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title">分析任务类型：量化核心特征</h3>
+                    <div class="step-body">
+                        <div class="diagram-box">
+                            <h4>&#129504; CPU 密集型</h4>
+                            <p>大量计算，CPU繁忙。线程数不宜过多，避免切换开销。</p>
+                            <div class="formula-box">线程数 &asymp; CPU核心数</div>
+                        </div>
+                        <div class="diagram-box">
+                            <h4>&#127760; IO 密集型</h4>
+                            <p>大量等待，CPU空闲。可配置更多线程，提升吞吐。</p>
+                            <div class="formula-box">核心数 / (1 - IO等待占比)</div>
+                            <p style="margin-top: 1rem;"><span class="highlight">&#128270; 用 Arthas 等工具量化，拒绝拍脑袋！</span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flow-arrow">&darr;</div>
+                <!-- Step 2 & 3 -->
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title">确定目标并约束资源</h3>
+                    <div class="step-body">
+                         <div>
+                            <h4>&#128200; 结合业务目标反推</h4>
+                            <p>配置要服务于业务，从 <strong>QPS</strong> 和 <strong>响应时间(RT)</strong> 出发。</p>
+                            <div class="formula-box">理论线程数 = QPS × RT(秒)</div>
+                        </div>
+                        <div>
+                            <h4>&#128187; 考虑机器资源限制</h4>
+                            <p>理论值不能脱离实际，必须关注两大约束：</p>
+                            <ul>
+                                <li><strong>CPU约束:</strong> <span class="highlight">利用率建议 < 80%</span></li>
+                                <li><strong>内存约束:</strong> <span class="highlight">警惕队列和线程栈导致的OOM</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="flow-arrow">&darr;</div>
+                <!-- Step 4 -->
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h3 class="step-title">配置队列与拒绝策略：应对过载</h3>
+                    <div class="step-body">
+                        <div>
+                            <h4>&#128683; 阻塞队列</h4>
+                            <ul>
+                                <li><code>ArrayBlockingQueue</code> (有界): <strong style="color: var(--accent-how)">在线业务首选</strong>，防止OOM。</li>
+                                <li><code>LinkedBlockingQueue</code> (无界): <strong style="color: var(--accent-why)">慎用！</strong>易耗尽内存。</li>
+                                <li><code>SynchronousQueue</code>: 不存储任务，要求快速响应。</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4>&#128737;&#65039; 拒绝策略</h4>
+                            <ul>
+                                <li><code>AbortPolicy</code> (默认): 抛异常，<strong style="color: var(--accent-why)">核心业务</strong>感知失败。</li>
+                                <li><code>CallerRunsPolicy</code>: 调用者执行，<strong style="color: var(--accent-loop)">非核心业务</strong>防丢失。</li>
+                                <li><code>DiscardPolicy</code>: 直接丢弃，用于不重要数据。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Loop -->
+        <section class="section loop-section">
+            <h2 class="section-title">第三幕：监控与调优的持续闭环</h2>
+            <div class="loop-diagram">
+                <div class="loop-item"><div class="loop-icon">&#128270;</div><div>监控指标</div></div>
+                <div class="loop-arrow">&rarr;</div>
+                <div class="loop-item"><div class="loop-icon">&#129502;</div><div>分析问题</div></div>
+                <div class="loop-arrow">&rarr;</div>
+                <div class="loop-item"><div class="loop-icon">&#128295;</div><div>动态调优</div></div>
+            </div>
+            <div class="card-grid">
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">&#128302;</span>场景一：队列积压，响应变慢</h3>
+                    <div class="card-content">
+                        <ul>
+                            <li><strong>症状:</strong> 队列长度持续增长，但活跃线程数未达到最大值。</li>
+                            <li><strong>诊断:</strong> 线程处理能力不足，或队列设置不当。</li>
+                            <li><strong>药方:</strong> <span class="highlight">适当调大 <code>maximumPoolSize</code> 和队列容量</span>。</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">&#128293;</span>场景二：CPU利用率过高</h3>
+                    <div class="card-content">
+                        <ul>
+                            <li><strong>症状:</strong> CPU利用率持续高于80%，系统整体变慢。</li>
+                            <li><strong>诊断:</strong> 线程数过多，导致大量时间用于上下文切换。</li>
+                            <li><strong>药方:</strong> <span class="highlight">适当调小 <code>maximumPoolSize</code></span>。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

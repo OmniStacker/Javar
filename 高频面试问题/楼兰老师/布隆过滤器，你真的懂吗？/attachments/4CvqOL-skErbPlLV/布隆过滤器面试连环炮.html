@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>布隆过滤器深度解析</title>
+    <style>
+        :root {
+            --bg-color: #101010;
+            --card-bg: #1f1f1f;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+
+            --blue: #2563eb;    /* 核心蓝 */
+            --red: #dc2626;     /* 警示红 */
+            --green: #16a34a;   /* 方案绿 */
+            --yellow: #d97706;  /* 冲突黄 */
+            --purple: #9333ea;  /* 进阶紫 */
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            line-height: 1.5;
+        }
+
+        .bg-deco {
+            position: absolute;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle at 10% 20%, rgba(37,99,235,0.05) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 80%, rgba(147,51,234,0.05) 0%, transparent 40%);
+            z-index: -1;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            padding: 3rem 5rem;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        h1 { font-size: 4.5rem; font-weight: 800; letter-spacing: 2px; margin-bottom: 1rem; }
+        h2 { font-size: 3rem; margin-bottom: 3rem; border-left: 8px solid var(--blue); padding-left: 1.5rem; color: #fff; }
+        h3 { font-size: 1.5rem; color: var(--text-secondary); font-weight: 400; margin-bottom: 3rem; }
+
+        .hero-content {
+            text-align: center;
+            position: relative;
+        }
+        .hero-title {
+            font-size: 6rem;
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 2rem;
+        }
+        .hero-divider {
+            width: 100px; height: 6px; background: var(--blue); margin: 0 auto 3rem auto; border-radius: 3px;
+        }
+        .conflict-box {
+            display: flex; justify-content: center; align-items: center; margin-top: 1rem;
+            gap: 5rem;
+        }
+        .conflict-item {
+            background: var(--card-bg);
+            padding: 2rem 3rem;
+            border-radius: 16px;
+            border: 1px solid #333;
+            text-align: center;
+            min-width: 250px;
+        }
+        .conflict-num { font-size: 3.5rem; font-weight: bold; color: var(--blue); display: block; margin-bottom: 0.5rem; }
+        .conflict-label { font-size: 1.2rem; color: var(--text-secondary); }
+        .vs-badge { font-size: 2rem; font-weight: 900; color: #444; font-style: italic; }
+
+        .info-text {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-top: 2rem;
+            line-height: 1.6;
+        }
+
+        /* === 原理与方案 === */
+        .demo-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .data-row {
+            display: flex;
+            gap: 5rem;
+            margin-bottom: 2rem;
+        }
+
+        .data-card {
+            padding: 1rem 2.5rem; font-size: 1.8rem; font-weight: bold; border-radius: 8px; border: 2px solid transparent;
+            background: #333; color: #fff; transition: all 0.3s;
+            min-width: 200px;
+        }
+
+        .bitmap-track {
+            display: flex; gap: 4px; padding: 10px; background: #000; border-radius: 8px; border: 1px solid #333;
+        }
+
+        .bit-cell {
+            width: 55px; height: 90px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; transition: all 0.4s;
+        }
+
+        .bit-idx { font-size: 0.8rem; color: #555; position: absolute; top: 5px; }
+        .bit-val { font-size: 1.8rem; font-weight: bold; color: #444; }
+
+        .bit-cell.active-a { background: rgba(37,99,235,0.15); border-color: var(--blue); }
+        .bit-cell.active-a .bit-val { color: var(--blue); text-shadow: 0 0 10px var(--blue); }
+
+        .bit-cell.active-b { background: rgba(22,163,74,0.15); border-color: var(--green); }
+        .bit-cell.active-b .bit-val { color: var(--green); text-shadow: 0 0 10px var(--green); }
+
+        .bit-cell.conflict { 
+            background: rgba(217,119,6,0.15); border-color: var(--yellow); 
+            transform: scale(1.1); z-index: 2; box-shadow: 0 0 20px rgba(217,119,6,0.2);
+        }
+        .bit-cell.conflict .bit-val { color: var(--yellow); }
+
+        .bit-cell.deleted {
+            background: rgba(220,38,38,0.15); border-color: var(--red); animation: shake 0.4s;
+        }
+        .bit-cell.deleted .bit-val { color: var(--red); }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); }
+        }
+
+        /* === 工程方案 === */
+        .solution-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 2rem;
+            height: 100%;
+            align-items: stretch;
+        }
+        .solution-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border-top: 6px solid #444;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .sol-title { font-size: 1.6rem; font-weight: bold; margin-bottom: 1.5rem; color: #fff; }
+        .sol-diagram {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 1rem;
+        }
+        .sol-list { list-style: none; color: var(--text-secondary); font-size: 1.1rem; }
+        .sol-list li { margin-bottom: 0.8rem; display: flex; align-items: flex-start; }
+        .sol-list li::before { content: "•"; color: #fff; margin-right: 10px; font-weight: bold; }
+
+        /* 特定方案样式 */
+        .card-counting { border-color: var(--yellow); }
+        .card-counting .sol-title { color: var(--yellow); }
+        
+        .card-cuckoo { border-color: var(--purple); }
+        .card-cuckoo .sol-title { color: var(--purple); }
+
+        .card-rebuild { border-color: var(--green); }
+        .card-rebuild .sol-title { color: var(--green); }
+
+        /* === 总结页 === */
+        .summary-container { text-align: center; max-width: 1000px; margin: 0 auto; }
+        .quote-box {
+            margin-top: 4rem;
+            border-left: 6px solid var(--blue);
+            padding-left: 3rem;
+            text-align: left;
+            font-style: italic;
+        }
+        .quote-text { font-size: 2.5rem; line-height: 1.4; margin-bottom: 1.5rem; color: #fff; }
+        .quote-author { font-size: 1.5rem; color: var(--text-secondary); font-weight: bold; text-transform: uppercase; }
+
+        /* 底部进度 */
+        .progress-bar { position: fixed; bottom: 0; left: 0; height: 4px; background: var(--blue); width: 0%; transition: width 0.3s; }
+        .nav-hint { position: fixed; bottom: 20px; right: 20px; color: #444; font-size: 0.9rem; }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-deco"></div>
+
+    <!-- PAGE 1: 开场 -->
+    <div class="slide active" id="slide-1" data-steps="1">
+        <div class="hero-content">
+            <p class="step-item" style="color: var(--blue); font-size: 2rem; letter-spacing: 4px; margin-bottom: 1rem; font-weight: bold;">高级程序员面试必考</p>
+            <h1 class="hero-title step-item">布隆过滤器</h1>
+            <div class="hero-divider step-item"></div>
+            <h3 class="step-item" style="color: #ccc;">如何在极其有限的资源下，解决海量数据的去重与查询？</h3>
+            
+            <div class="conflict-box step-item">
+                <div class="conflict-item">
+                    <span class="conflict-num">10 亿</span>
+                    <span class="conflict-label">海量黑名单数据</span>
+                </div>
+                <div class="vs-badge">VS</div>
+                <div class="conflict-item">
+                    <span class="conflict-num">512 MB</span>
+                    <span class="conflict-label">严苛内存限制</span>
+                </div>
+            </div>
+            <div class="info-text">
+                布隆过滤器是一种空间效率极高的概率型数据结构，专门用来检查元素是否在一个集合中。<br />
+                它的优势在于极低的空间需求，能够快速判断数据是否存在。但也伴随着一定的误判可能性，极大地影响了数据查询的准确性。
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 2: 原理 -->
+<!-- PAGE 2: 原理 -->  
+<div class="slide" id="slide-2" data-steps="3">  
+    <h2>基础原理：映射与碰撞</h2>  
+    
+    <div class="demo-container">  
+        <div class="data-row">  
+            <div class="data-card step-item" id="data-a" style="border-color: var(--blue);">用户 A</div>  
+            <div class="data-card step-item" id="data-b" style="border-color: var(--green);">用户 B</div>  
+        </div>  
+
+        <div class="bitmap-track" id="bitmap-2">  
+            <!-- 用于动态生成位图 -->  
+        </div>  
+
+        <div class="step-item" style="text-align: center; margin-top: 1rem;">  
+            <p style="font-size: 2rem; color: #aaa;">  
+                哈希映射逻辑：<br>  
+                <span style="color: var(--blue);">用户 A ➔ [1, 4, 7]</span> &nbsp;&nbsp;|&nbsp;&nbsp;   
+                <span style="color: var(--green);">用户 B ➔ [4, 9, 10]</span>  
+            </p>  
+            <p class="step-item" style="font-size: 2rem; color: var(--yellow); margin-top: 1.5rem; font-weight: bold;">  
+                注意位置 4：发生哈希冲突！  
+            </p>  
+        </div>  
+    </div>  
+</div> 
+
+    <!-- PAGE 3: 优缺点 -->
+    <div class="slide" id="slide-3" data-steps="2">
+        <h2>权衡的艺术：优劣势分析</h2>
+        
+        <div style="display: flex; gap: 4rem; margin-top: 2rem;">
+            <!-- 优势 -->
+            <div class="step-item" style="flex: 1;">
+                <h3 style="color: var(--green); border-bottom: 1px solid #333; padding-bottom: 1rem; margin-bottom: 2rem;">
+                    🚀 核心优势
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 2rem;">
+                    <div style="background: var(--card-bg); padding: 1.5rem; border-left: 4px solid var(--green); border-radius: 0 8px 8px 0;">
+                        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">极致空间效率</div>
+                        <div style="color: #888; font-size: 1.5rem">不存原始数据，只存位(Bit)。10亿数据仅需几百兆内存。</div>
+                    </div>
+                    <div style="background: var(--card-bg); padding: 1.5rem; border-left: 4px solid var(--green); border-radius: 0 8px 8px 0;">
+                        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">极速查询 O(K)</div>
+                        <div style="color: #888; font-size: 1.5rem">查询速度与数据总量无关，只跟哈希函数个数有关。</div>
+                    </div>
+                    <div style="background: var(--card-bg); padding: 1.5rem; border-left: 4px solid var(--green); border-radius: 0 8px 8px 0;">
+                        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">数据安全</div>
+                        <div style="color: #888; font-size: 1.5rem">不存储明文，天然的数据脱敏特性。</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 劣势 -->
+            <div class="step-item" style="flex: 1;">
+                <h3 style="color: var(--red); border-bottom: 1px solid #333; padding-bottom: 1rem; margin-bottom: 2rem;">
+                    ⚠️ 致命缺陷
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 2rem;">
+                    <div style="background: var(--card-bg); padding: 1.5rem; border-left: 4px solid var(--red); border-radius: 0 8px 8px 0;">
+                        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">存在误判 (False Positive)</div>
+                        <div style="color: #888; font-size: 1.5rem">"判定存在"不一定真存在，但"判定不存在"一定不存在。</div>
+                    </div>
+                    <div style="background: var(--card-bg); padding: 1.5rem; border-left: 4px solid var(--red); border-radius: 0 8px 8px 0;">
+                        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">无法删除数据</div>
+                        <div style="color: #888; font-size: 1.5rem">这是最大的死穴。因为哈希位共用，删一个可能会误删别的。</div>
+                    </div>
+                    <div style="background: var(--card-bg); padding: 1.5rem; border-left: 4px solid var(--red); border-radius: 0 8px 8px 0;">
+                        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">容量难以扩展</div>
+                        <div style="color: #888; font-size: 1.5rem">初始化后长度固定，想扩容只能重建整个过滤器。</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- PAGE 4: 死穴演示 -->
+<div class="slide" id="slide-4" data-steps="3">
+    <h2 style="color: var(--red); border-color: var(--red);">死穴演示：为什么不能删？</h2>
+    
+    <div class="demo-container">
+        <div class="bitmap-track" id="bitmap-4" style="margin: 2rem 0;">
+            <!-- 用于动态生成位图 -->
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 3rem; align-items: center; width: 100%;">
+            <div class="step-item" style="background: #222; padding: 1rem 2rem; border-radius: 8px; font-size: 2rem;">
+                操作：试图删除 <span style="color: var(--blue); font-weight: bold;">用户 A</span>
+            </div>
+            
+            <div class="step-item" style="color: #555; font-size: 2rem;">➜</div>
+
+            <div class="step-item" style="background: #3f1010; border: 1px solid var(--red); padding: 1rem 2rem; border-radius: 8px; font-size: 2rem; color: #fff;">
+                系统将位置 [1, 4, 7] 置为 0
+            </div>
+        </div>
+
+        <div class="step-item" style="background: rgba(220,38,38,0.1); border: 1px solid var(--red); padding: 2rem; border-radius: 12px; width: 80%; text-align: center; margin-top: 2rem;">
+            <h3 style="color: var(--red); margin-bottom: 1rem; font-weight: bold;">灾难后果：漏判 (False Negative)</h3>
+            <p style="font-size: 2rem; color: #e5e5e5; line-height: 1.6;">
+                此时查询 <span style="color: var(--green); font-weight: bold;">用户 B [4, 9, 10]</span>。<br>
+                发现位置 <b>4</b> 变成了 0，系统会直接判定：<br>
+                <span style="font-size: 2rem; font-weight: 900;">"用户 B 不存在"</span>
+            </p>
+            <p style="color: #888; margin-top: 1rem; font-size: 3rem">结论：标准布隆过滤器，绝对禁止删除操作。</p>
+        </div>
+    </div>
+</div>
+
+    <!-- PAGE 5: 工程方案 -->
+    <div class="slide" id="slide-5" data-steps="3">
+        <h2>工程化解决方案</h2>
+        
+        <div class="solution-grid">
+            <!-- 方案 1 -->
+            <div class="solution-card card-counting step-item">
+                <div class="sol-title">1. 计数布隆过滤器</div>
+                <div class="sol-diagram">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="color: #888; font-size: 2rem; margin-bottom: 5px;">Bit</div>
+                            <div style="width: 80px; height: 80px; border: 1px solid #555; display: flex; align-items: center; justify-content: center; background: #222;">1</div>
+                        </div>
+                        <div style="color: var(--yellow); font-size: 3rem;">➜</div>
+                        <div style="text-align: center;">
+                            <div style="color: var(--yellow); font-size: 2rem; margin-bottom: 5px; font-weight: bold;">Counter</div>
+                            <div style="width: 80px; height: 80px; border: 2px solid var(--yellow); display: flex; align-items: center; justify-content: center; font-weight: bold; color: #fff; background: #4d3608;">3</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 1.8rem; color: #aaa; margin-top: 3rem;">原理：将位扩展为整数计数器</div>
+                </div>
+                <ul class="sol-list">
+                    <li><b>原理：</b>插入+1，删除-1。</li>
+                    <li><b>缺点：</b>空间消耗翻 4 倍以上。</li>
+                    <li><b>风险：</b>计数器可能溢出。</li>
+                    <li><b>场景：</b>小规模且必须删除的场景。</li>
+                </ul>
+            </div>
+
+            <!-- 方案 2 -->
+            <div class="solution-card card-cuckoo step-item">
+                <div class="sol-title">2. 布谷鸟过滤器</div>
+                <div class="sol-diagram">
+                    <div style="position: relative; width: 300px; height: 60px; display: flex; justify-content: space-between;">
+                        <div style="width: 80px; height: 80px; border: 2px solid var(--purple); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: var(--purple);">New</div>
+                        <div style="position: absolute; top: 15px; left: 35%; color: #fff; font-size: 3rem;">踢出</div>
+                        <div style="width: 80px; height: 80px; border: 1px dashed #666; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #666;">Old</div>
+                    </div>
+                    <div style="font-size: 1.8rem; color: #aaa; margin-top: 3rem;">原理：存指纹，鸠占鹊巢</div>
+                </div>
+                <ul class="sol-list">
+                    <li><b>原理：</b>存储指纹，冲突时踢走旧数据。</li>
+                    <li><b>优势：</b>支持删除，空间利用率极高。</li>
+                    <li><b>落地：</b>Redis 官方模块 <b>RedisBloom</b>。</li>
+                    <li><b>场景：</b>高性能、动态增删的生产环境。</li>
+                </ul>
+            </div>
+
+            <!-- 方案 3 -->
+            <div class="solution-card card-rebuild step-item">
+                <div class="sol-title">3. 定时重建 (推荐)</div>
+                <div class="sol-diagram">
+                    <div style="display: flex; flex-direction: column; gap: 10px; width: 80%;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="width: 40%; height: 80px; background: #333; border-radius: 4px; text-align: center; font-size: 1.8rem; line-height: 20px;"><br />过滤器 A</div>
+                            <div style="color: var(--green); font-size: 2rem;">切换</div>
+                            <div style="width: 40%; height: 80px; background: var(--green); border-radius: 4px; text-align: center; font-size: 1.8rem; line-height: 20px; color: #000; font-weight: bold;"><br />过滤器 B</div>
+                        </div>
+                        <div style="width: 100%; height: 2px; background: #444;"></div>
+                        <div style="text-align: center; font-size: 1.8rem; color: #888;">后台任务: 每30分钟重算</div>
+                    </div>
+                </div>
+                <ul class="sol-list">
+                    <li><b>原理：</b>双 Buffer，后台任务定时全量重算。</li>
+                    <li><b>优势：</b>代码最简单，Bug 最少，最稳。</li>
+                    <li><b>缺点：</b>有短时间的数据更新延迟。</li>
+                    <li><b>场景：</b>绝大多数容忍分钟级延迟的业务。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 6: 总结 -->
+    <div class="slide" id="slide-6" data-steps="1">
+        <div class="summary-container">
+            <h1 class="step-item" style="font-size: 4.5rem;">大道至简</h1>
+            
+            <div class="quote-box step-item">
+                <p class="quote-text;" style="font-size: 4rem">
+                    "在复杂的世界中寻找简单，<br>
+                    设计的核心是优雅和高效。"
+                </p>
+                <p class="quote-author">—— 献给每一位追求极致的工程师</p>
+            </div>
+
+            <div class="step-item" style="margin-top: 4rem; color: #666; font-size: 1.2rem;">
+                
+            </div>
+        </div>
+    </div>
+
+    <div class="progress-bar" id="progress"></div>
+    <div class="nav-hint">空格 / 方向键切换</div>
+
+    <script>
+        // 状态变量
+        let currentSlide = 0;
+        let currentStep = 0;
+        const slides = document.querySelectorAll('.slide');
+        const progressBar = document.getElementById('progress');
+
+        function updateView() {
+            // 切换页面
+            slides.forEach((slide, idx) => {
+                slide.classList.toggle('active', idx === currentSlide);
+            });
+
+            // 进度条
+            const percent = ((currentSlide + 1) / slides.length) * 100;
+            progressBar.style.width = percent + '%';
+        }
+
+        function next() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+            }
+            updateView();
+        }
+
+        function prev() {
+            if (currentSlide > 0) {
+                currentSlide--;
+            }
+            updateView();
+        }
+
+        // 监听键盘和点击事件
+        document.addEventListener('keydown', (e) => {
+            if (['ArrowRight', 'ArrowDown', ' ', 'Enter'].includes(e.key)) next();
+            if (['ArrowLeft', 'ArrowUp'].includes(e.key)) prev();
+        });
+
+        //document.addEventListener('click', next);
+
+        // 初始化
+        updateView();
+        
+        // 页面2的位图逻辑
+function renderBitmap(containerId, config) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    const size = 12;
+
+    const activeA = config.indicesA || [];
+    const activeB = config.indicesB || [];
+
+    for (let i = 0; i < size; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'bit-cell';
+
+        if (activeA.includes(i)) {
+            cell.classList.add('active-a');
+        }
+        if (activeB.includes(i)) {
+            cell.classList.add('active-b');
+        }
+
+        cell.innerHTML = `<span class="bit-idx">${i}</span><span class="bit-val">${activeA.includes(i) || activeB.includes(i) ? '1' : '0'}</span>`;
+        container.appendChild(cell);
+    }
+}
+
+// 处理死穴演示页面的位图逻辑
+function renderDeleteBitmap() {
+    renderBitmap('bitmap-4', {
+        indicesA: [1, 4, 7],
+        indicesB: [4, 9, 10]
+    });
+}
+
+// 在适当的时候调用该函数进行渲染
+renderBitmap('bitmap-2', {
+    indicesA: [1, 4, 7],
+    indicesB: [4, 9, 10]
+});
+renderDeleteBitmap();
+        
+    </script>
+</body>
+</html>

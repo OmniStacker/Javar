@@ -1,0 +1,227 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Async: Thread Pool vs. MQ (Final)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    background-color: #f3f4f6; /* Light gray background */
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  }
+  .slide {
+    display: none;
+    height: 100%;
+    padding: 2rem; /* Add padding within each slide */
+    box-sizing: border-box; /* Include padding in height calculation */
+  }
+  .slide.active {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .handwritten {
+    font-family: 'Comic Sans MS', 'Chalkduster', 'cursive';
+  }
+  .box {
+    border: 2px dashed #9ca3af;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: #f9fafb;
+  }
+  .highlight { color: #10b981; font-weight: bold; }
+  .highlight-red { color: #ef4444; font-weight: bold; }
+  .highlight-yellow { color: #f59e0b; font-weight: bold; }
+</style>
+</head>
+<body class="text-gray-800">
+
+<!-- Fully adaptive container -->
+<div class="w-full h-full bg-white relative flex flex-col">
+
+  <!-- Slides Container -->
+  <div id="slides-container" class="flex-grow h-full overflow-y-auto">
+
+    <!-- Slide 1: Title -->
+    <div class="slide active text-center">
+        <h1 class="text-5xl md:text-6xl font-bold handwritten mb-4 text-gray-900">面试官：线程池 vs MQ？</h1>
+        <p class="text-2xl md:text-3xl text-gray-500 mt-4">你想要的答案，其实是这个！</p>
+        <div class="mt-12 text-lg text-sky-600">（请使用下方按钮或键盘方向键翻页）</div>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide">
+        <h2 class="text-3xl font-bold mb-6 text-center handwritten text-yellow-500">问题：一个请求，为啥这么慢？🤔</h2>
+        <div class="box w-full max-w-3xl text-lg">
+            <p class="mb-4 text-center">用户下单，主流程就一个：<span class="highlight">创建订单 (50ms)</span></p>
+            <div class="my-4 border-t-2 border-dashed border-gray-300"></div>
+            <p class="mb-2 text-center text-red-500 font-semibold">但还要同步做一堆“附加动作”：</p>
+            <ul class="list-disc list-inside space-y-2 text-left mx-auto w-fit">
+                <li>通知库存中心 <span class="font-mono text-red-500">(100ms)</span></li>
+                <li>发短信通知 <span class="font-mono text-red-500">(200ms)</span></li>
+                <li>增加用户积分 <span class="font-mono text-red-500">(80ms)</span></li>
+                <li>记录操作日志 <span class="font-mono text-red-500">(20ms)</span></li>
+            </ul>
+            <div class="my-4 border-t-2 border-dashed border-gray-300"></div>
+            <p class="text-center text-2xl font-bold">同步总耗时: <span class="text-red-600 font-mono">450ms</span> = 用户感觉“卡顿” 😡</p>
+        </div>
+        <p class="mt-6 text-xl text-center text-sky-700">解法：<span class="font-bold">异步化</span>！把非核心操作丢出去！</p>
+    </div>
+
+    <!-- Slide 3: Solution 1 - Thread Pool -->
+    <div class="slide">
+        <h2 class="text-3xl font-bold mb-6 handwritten text-yellow-500">方案一：线程池 (进程内异步)</h2>
+        <div class="w-full text-center">
+            <div class="box inline-block p-4 text-xl">
+                <p>用户线程</p>
+                <p class="text-sm text-gray-600">(创建订单)</p>
+            </div>
+            <div class="inline-block mx-4 text-3xl text-yellow-500 font-bold transform -translate-y-4">→</div>
+            <div class="box inline-block p-4 bg-blue-50 border-blue-400">
+                <p class="text-xl">应用内线程池</p>
+                <p class="text-sm text-gray-600">(执行发短信、加积分...)</p>
+            </div>
+        </div>
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
+            <div class="box border-green-500 bg-green-50">
+                <h3 class="text-2xl font-bold text-green-600 mb-3 handwritten">优点 👍</h3>
+                <ul class="list-disc list-inside space-y-2">
+                    <li><span class="highlight">简单、快</span>: 同一进程</li>
+                    <li><span class="highlight">零延迟</span>: 瞬时执行</li>
+                </ul>
+            </div>
+            <div class="box border-red-500 bg-red-50">
+                <h3 class="text-2xl font-bold text-red-600 mb-3 handwritten">硬伤 👎</h3>
+                 <ul class="list-disc list-inside space-y-2">
+                    <li><span class="highlight-red">数据丢失</span>: 宕机=白给</li>
+                    <li><span class="highlight-red">强耦合</span>: 代码全耦合</li>
+                    <li><span class="highlight-red">无削峰</span>: 流量大就爆</li>
+                </ul>
+            </div>
+        </div>
+        <p class="mt-6 text-lg text-gray-500 italic">总结：一种<span class="highlight-yellow">“战术级”</span>的性能优化手段。</p>
+    </div>
+    
+    <!-- Slide 4: Solution 2 - MQ -->
+    <div class="slide">
+        <h2 class="text-2xl md:text-3xl font-bold mb-4 handwritten text-yellow-500">方案二：消息队列 (分布式异步)</h2>
+        <div class="flex justify-around items-center w-full max-w-4xl text-center text-base md:text-lg">
+            <div class="box p-2 md:p-4"><p>订单服务<br>(生产者)</p></div>
+            <div class="text-2xl md:text-3xl text-yellow-500 font-bold animate-pulse px-2">→</div>
+            <div class="box p-2 md:p-4 bg-purple-50 border-purple-400">
+                <p>MQ 中间件</p>
+                <p class="text-sm text-purple-600">消息持久化</p>
+            </div>
+            <div class="text-2xl md:text-3xl text-yellow-500 font-bold animate-pulse px-2">→</div>
+            <div class="box p-2 md:p-4"><p>下游服务<br>(消费者)</p></div>
+        </div>
+        <div class="mt-4 w-full max-w-3xl">
+            <h3 class="text-xl md:text-2xl font-bold text-green-600 mb-3 handwritten text-center">解决线程池三大硬伤！</h3>
+            <div class="space-y-3 text-left text-sm md:text-base">
+                <div class="box border-gray-300 p-3"><strong>1. 持久化 + ACK → <span class="highlight">数据不丢失</span></strong><br><span class="text-xs md:text-sm text-gray-500">挂了也能重试，保证任务执行。</span></div>
+                <div class="box border-gray-300 p-3"><strong>2. 发布/订阅 → <span class="highlight">系统解耦</span></strong><br><span class="text-xs md:text-sm text-gray-500">生产者和消费者互不影响，自由增减。</span></div>
+                <div class="box border-gray-300 p-3"><strong>3. 消息积压 → <span class="highlight">削峰填谷</span></strong><br><span class="text-xs md:text-sm text-gray-500">从容应对流量洪峰，保护下游系统。</span></div>
+            </div>
+        </div>
+        <p class="mt-4 text-base md:text-lg text-gray-500 italic">总结：一种<span class="highlight-yellow">“战略级”</span>的系统架构设计。</p>
+    </div>
+
+    <!-- Slide 5: The Ultimate Answer -->
+    <div class="slide">
+      <h2 class="text-4xl font-bold mb-6 text-center handwritten text-yellow-500">终极答案：如何选择？</h2>
+      <div class="box w-full max-w-4xl p-6">
+        <p class="text-center text-xl mb-6">“面试官您好，我会从这 4 个维度评估：”</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-base md:text-lg">
+          <div class="p-4 rounded-lg bg-gray-100">
+            <h3 class="font-bold text-sky-700 text-xl mb-2">1. 可靠性</h3>
+            <p>允许丢失? → <span class="font-bold text-gray-800">线程池</span></p>
+            <p>绝不能丢? → <span class="font-bold text-green-600">必须 MQ</span></p>
+          </div>
+          <div class="p-4 rounded-lg bg-gray-100">
+            <h3 class="font-bold text-sky-700 text-xl mb-2">2. 耦合度</h3>
+            <p>应用内消费? → <span class="font-bold text-gray-800">线程池</span></p>
+            <p>跨服务消费? → <span class="font-bold text-green-600">必须 MQ</span></p>
+          </div>
+          <div class="p-4 rounded-lg bg-gray-100">
+            <h3 class="font-bold text-sky-700 text-xl mb-2">3. 性能延迟</h3>
+            <p>要毫秒级? → <span class="font-bold text-gray-800">线程池</span></p>
+            <p>可容忍秒级? → <span class="font-bold text-green-600">MQ</span></p>
+          </div>
+          <div class="p-4 rounded-lg bg-gray-100">
+            <h3 class="font-bold text-sky-700 text-xl mb-2">4. 流量削峰</h3>
+            <p>流量平稳? → <span class="font-bold text-gray-800">线程池</span></p>
+            <p>有秒杀洪峰? → <span class="font-bold text-green-600">必须 MQ</span></p>
+          </div>
+        </div>
+      </div>
+      <p class="mt-6 text-xl md:text-2xl text-center font-bold text-gray-800">线程池是<span class="highlight-yellow">战术</span>，MQ是<span class="highlight-yellow">战略</span>。优先考虑可靠性与扩展性！</p>
+    </div>
+
+  </div>
+
+  <!-- Navigation -->
+  <div id="navigation" class="absolute bottom-0 left-0 right-0 p-4 flex justify-center items-center gap-4 bg-white/50 backdrop-blur-sm">
+    <button id="prev" class="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">‹ Prev</button>
+    <span id="page-indicator" class="font-medium">1 / 5</span>
+    <button id="next" class="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">Next ›</button>
+  </div>
+
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+  const pageIndicator = document.getElementById('page-indicator');
+  const slidesContainer = document.getElementById('slides-container');
+  let currentSlide = 0;
+
+  function showSlide(index) {
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('active', i === index);
+    });
+    if (slides[index]) {
+      slides[index].scrollTop = 0; // Scroll to top on slide change
+    }
+    currentSlide = index;
+    updateNav();
+  }
+
+  function updateNav() {
+    pageIndicator.textContent = `${currentSlide + 1} / ${slides.length}`;
+    prevBtn.disabled = currentSlide === 0;
+    nextBtn.disabled = currentSlide === slides.length - 1;
+  }
+
+  prevBtn.addEventListener('click', () => {
+    if (currentSlide > 0) { showSlide(currentSlide - 1); }
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (currentSlide < slides.length - 1) { showSlide(currentSlide + 1); }
+  });
+  
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') {
+      e.preventDefault();
+      nextBtn.click();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      prevBtn.click();
+    }
+  });
+
+  // The click listener for advancing the slide has been removed.
+
+  showSlide(0);
+</script>
+
+</body>
+</html>

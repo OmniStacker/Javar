@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>什么是SQL注入？怎么处理？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { 
+            from { opacity: 0; transform: translateY(50px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        @keyframes subtle-pulse-green { 
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 
+            50% { box-shadow: 0 0 25px 12px rgba(34, 197, 94, 0); } 
+        }
+        @keyframes subtle-pulse-red { 
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 
+            50% { box-shadow: 0 0 25px 12px rgba(239, 68, 68, 0); } 
+        }
+        @keyframes border-breach {
+            0%, 100% { border-color: rgba(34, 197, 94, 0.5); }
+            50% { border-color: rgba(239, 68, 68, 0.8); }
+        }
+        @keyframes data-pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 1; }
+        }
+        @keyframes arrow-pulse {
+            0%, 100% { transform: translateX(0); opacity: 0.6; }
+            50% { transform: translateX(8px); opacity: 1; }
+        }
+        @keyframes code-corrupt {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(-5deg) scale(1.05); }
+            75% { transform: rotate(5deg) scale(1.05); }
+        }
+
+        html { scroll-behavior: smooth; }
+        body { 
+            background-color: #0f172a; 
+            color: #e2e8f0; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+        }
+        .slide { 
+            min-height: 100vh; 
+            width: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 3rem 1.5rem; 
+            opacity: 0; 
+            animation: slide-in-up 0.8s ease-out forwards; 
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5); 
+        }
+        .content-panel { 
+            background-color: rgba(30, 41, 59, 0.4); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px); 
+            border: 1px solid rgba(71, 85, 105, 0.3); 
+            border-radius: 1.5rem; 
+            padding: 2rem; 
+            width: 100%; 
+        }
+        .gradient-text { 
+            background-clip: text; 
+            -webkit-background-clip: text; 
+            color: transparent; 
+        }
+        
+        .diagram-node {
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .diagram-node:hover {
+            transform: translateY(-5px);
+        }
+        .diagram-node-good {
+            border: 2px solid rgba(34, 197, 94, 0.5);
+            animation: subtle-pulse-green 3s infinite;
+        }
+        .diagram-node-bad {
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            animation: subtle-pulse-red 2s infinite;
+        }
+
+        #nav-dots { 
+            position: fixed; 
+            right: 20px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            z-index: 9999; 
+        }
+        #nav-dots a { 
+            width: 12px; 
+            height: 12px; 
+            background-color: rgba(148, 163, 184, 0.5); 
+            border-radius: 50%; 
+            transition: all 0.3s ease; 
+        }
+        #nav-dots a.active, #nav-dots a:hover { 
+            background-color: #f1f5f9; 
+            transform: scale(1.3); 
+        }
+        .slide:last-of-type { border-bottom: none; }
+
+        .code-block {
+            background-color: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+        .highlight-danger { color: #ef4444; font-weight: bold; }
+        .highlight-safe { color: #22c55e; font-weight: bold; }
+        .highlight-warning { color: #f59e0b; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场 - SQL注入概念与处理 -->
+    <section id="slide1" class="slide">
+        <div class="w-full max-w-7xl mx-auto">
+            <!-- 标题组容器，确保整体居中 -->
+            <div class="text-center">
+                <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-200">
+                    什么是<span class="gradient-text bg-gradient-to-r from-rose-500 to-red-400">SQL注入</span>？怎么处理？
+                </h1>
+                <!-- 副标题同步更新，以匹配主标题 -->
+                <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-400 max-w-4xl mx-auto">
+                    从根源剖析到最佳防御实践
+                </h2>
+            </div>
+            
+            <div class="content-panel mt-12 p-8 md:p-12 border-rose-500/30">
+                <div class="text-center mb-8">
+                    <p class="text-xl text-slate-300 leading-relaxed">
+                        SQL注入是通过在输入中注入<span class="text-rose-400 font-bold">恶意SQL代码</span>，<br>
+                        使数据库执行<span class="text-amber-400 font-bold">未授权操作</span>的攻击方式
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6 text-center">
+                        <i class="fa-solid fa-user-shield text-5xl text-sky-400 mb-4"></i>
+                        <h3 class="font-bold text-lg mb-2">正常用户</h3>
+                        <p class="text-sm text-slate-400">输入合法数据<br>执行预期查询</p>
+                    </div>
+
+                    <div class="diagram-node diagram-node-bad bg-slate-800/50 p-6 text-center">
+                        <i class="fa-solid fa-user-secret text-5xl text-rose-400 mb-4"></i>
+                        <h3 class="font-bold text-lg mb-2 text-rose-300">攻击者</h3>
+                        <p class="text-sm text-rose-300">注入恶意SQL<br>篡改查询逻辑</p>
+                    </div>
+
+                    <div class="diagram-node diagram-node-bad bg-slate-800/50 p-6 text-center">
+                        <i class="fa-solid fa-database text-5xl text-red-500 mb-4"></i>
+                        <h3 class="font-bold text-lg mb-2 text-red-300">数据库沦陷</h3>
+                        <p class="text-sm text-red-300">数据泄露/篡改<br>甚至完全控制</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Slide 2: 典型攻击场景对比 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-500 to-rose-500">典型攻击场景：从正常到危险</h2>
+            <p class="mt-4 text-xl text-slate-400">同一个登录接口，两种截然不同的命运</p>
+            
+            <div class="content-panel mt-8 p-6 md:p-8 border-amber-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 正常流程 -->
+                    <div class="bg-green-900/20 p-6 rounded-xl border border-green-500/30">
+                        <h3 class="font-bold text-2xl text-green-300 mb-6 flex items-center justify-center">
+                            <i class="fa-solid fa-circle-check mr-3"></i>正常查询流程
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <i class="fa-solid fa-user text-3xl text-sky-400"></i>
+                                    <i class="fa-solid fa-arrow-right text-2xl text-slate-500"></i>
+                                    <i class="fa-solid fa-keyboard text-3xl text-slate-400"></i>
+                                </div>
+                                <p class="text-sm text-slate-300">用户输入: <span class="highlight-safe">admin</span></p>
+                            </div>
+
+                            <div class="code-block text-left">
+                                <div class="text-slate-500 text-xs mb-2">// 拼接后的SQL</div>
+                                <code>
+                                    SELECT * FROM users<br>
+                                    WHERE username = '<span class="highlight-safe">admin</span>'
+                                </code>
+                            </div>
+
+                            <div class="diagram-node diagram-node-good bg-slate-800/50 p-4 text-center">
+                                <i class="fa-solid fa-circle-check text-4xl text-green-400 mb-2"></i>
+                                <p class="text-green-300 font-bold">✓ 正常返回用户数据</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 攻击流程 -->
+                    <div class="bg-red-900/20 p-6 rounded-xl border border-red-500/30">
+                        <h3 class="font-bold text-2xl text-red-300 mb-6 flex items-center justify-center">
+                            <i class="fa-solid fa-skull-crossbones mr-3"></i>SQL注入攻击
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div class="diagram-node diagram-node-bad bg-slate-800/50 p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <i class="fa-solid fa-user-secret text-3xl text-rose-400"></i>
+                                    <i class="fa-solid fa-arrow-right text-2xl text-rose-500"></i>
+                                    <i class="fa-solid fa-bomb text-3xl text-red-500"></i>
+                                </div>
+                                <p class="text-sm text-rose-300">恶意输入: <span class="highlight-danger">admin'; DROP TABLE users; --</span></p>
+                            </div>
+
+                            <div class="code-block text-left border-red-500/50">
+                                <div class="text-slate-500 text-xs mb-2">// 拼接后的SQL（被篡改！）</div>
+                                <code>
+                                    SELECT * FROM users<br>
+                                    WHERE username = '<span class="highlight-danger">admin';</span><br>
+                                    <span class="highlight-danger">DROP TABLE users;</span><br>
+                                    <span class="text-slate-600">-- '</span>
+                                </code>
+                            </div>
+
+                            <div class="diagram-node diagram-node-bad bg-slate-800/50 p-4 text-center">
+                                <i class="fa-solid fa-explosion text-4xl text-red-500 mb-2"></i>
+                                <p class="text-red-300 font-bold">✗ 用户表被删除！</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 bg-amber-900/20 p-6 rounded-xl border border-amber-500/30">
+                    <h4 class="font-bold text-lg text-amber-300 mb-3 flex items-center">
+                        <i class="fa-solid fa-lightbulb mr-3"></i>攻击原理解析
+                    </h4>
+                    <ul class="text-left space-y-2 text-slate-300">
+                        <li><i class="fa-solid fa-caret-right mr-2 text-amber-400"></i><span class="highlight-danger">'</span> 提前闭合了原SQL的字符串</li>
+                        <li><i class="fa-solid fa-caret-right mr-2 text-amber-400"></i><span class="highlight-danger">;</span> 结束当前语句，开始新的恶意语句</li>
+                        <li><i class="fa-solid fa-caret-right mr-2 text-amber-400"></i><span class="highlight-danger">--</span> 注释掉后续内容，使SQL语法完整</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: 根源分析 - 边界崩塌 -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-500 to-purple-400">根源：数据与代码的边界崩塌</h2>
+            <p class="mt-4 text-xl text-slate-400">当用户输入侵入SQL结构，灾难就此开始</p>
+            
+            <div class="content-panel mt-8 p-6 md:p-8 border-violet-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <!-- 左侧：视觉隐喻 -->
+                    <div class="flex flex-col items-center space-y-6">
+                        <div class="w-full">
+                            <h3 class="font-bold text-xl text-green-300 mb-4 text-center">理想状态：边界清晰</h3>
+                            <div class="flex items-center justify-around">
+                                <div class="diagram-node diagram-node-good bg-slate-800/50 p-6 w-2/5 text-center">
+                                    <i class="fa-solid fa-database text-4xl text-green-400 mb-2"></i>
+                                    <p class="font-bold text-green-300">数据区</p>
+                                    <p class="text-xs text-slate-400 mt-2">用户输入</p>
+                                </div>
+                                <div class="text-green-400 text-3xl">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                </div>
+                                <div class="diagram-node diagram-node-good bg-slate-800/50 p-6 w-2/5 text-center">
+                                    <i class="fa-solid fa-code text-4xl text-sky-400 mb-2"></i>
+                                    <p class="font-bold text-sky-300">代码区</p>
+                                    <p class="text-xs text-slate-400 mt-2">SQL逻辑</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="w-full">
+                            <h3 class="font-bold text-xl text-red-300 mb-4 text-center">危险状态：边界消失</h3>
+                            <div class="relative">
+                                <div class="flex items-center justify-center">
+                                    <div class="diagram-node diagram-node-bad bg-slate-800/50 p-6 w-4/5 text-center relative overflow-hidden" style="border-style: dashed; animation: border-breach 2s infinite;">
+                                        <div class="flex items-center justify-around relative z-10">
+                                            <div>
+                                                <i class="fa-solid fa-database text-4xl text-rose-400 mb-2 inline-block" style="animation: data-pulse 2s ease-in-out infinite;"></i>
+                                                <p class="font-bold text-rose-300">数据侵入</p>
+                                            </div>
+                                            <div class="text-red-500 text-3xl" style="animation: arrow-pulse 1.5s ease-in-out infinite;">
+                                                <i class="fa-solid fa-arrow-right"></i>
+                                            </div>
+                                            <div>
+                                                <i class="fa-solid fa-code text-4xl text-red-500 mb-2 inline-block" style="animation: code-corrupt 2s ease-in-out infinite;"></i>
+                                                <p class="font-bold text-red-300">代码被篡改</p>
+                                            </div>
+                                        </div>
+                                        <div class="absolute inset-0 bg-red-500/10"></div>
+                                    </div>
+                                </div>
+                                <p class="text-center text-red-400 font-bold mt-4">
+                                    <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+                                    字符串拼接导致边界消失
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：历史根源 -->
+                    <div class="text-left space-y-6">
+                        <div class="bg-slate-800/40 p-6 rounded-xl">
+                            <h3 class="font-bold text-xl text-amber-300 mb-4 flex items-center">
+                                <i class="fa-solid fa-clock-rotate-left mr-3"></i>历史根源：JDBC Statement时代
+                            </h3>
+                            <ul class="space-y-3 text-slate-300">
+                                <li class="flex items-start">
+                                    <i class="fa-solid fa-link-slash mr-3 mt-1 text-rose-400"></i>
+                                    <span><b>完全依赖字符串拼接：</b>SQL结构由开发者手动拼接决定</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fa-solid fa-unlock mr-3 mt-1 text-rose-400"></i>
+                                    <span><b>参数不可控：</b>用户输入直接融入SQL，无隔离机制</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fa-solid fa-shuffle mr-3 mt-1 text-rose-400"></i>
+                                    <span><b>SQL格式动态变化：</b>数据库无法预判和优化</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-slate-800/40 p-6 rounded-xl">
+                            <h3 class="font-bold text-xl text-sky-300 mb-4 flex items-center">
+                                <i class="fa-solid fa-brain mr-3"></i>开发者的认知盲区
+                            </h3>
+                            <ul class="space-y-3 text-slate-300">
+                                <li class="flex items-start">
+                                    <i class="fa-solid fa-layer-group mr-3 mt-1 text-sky-400"></i>
+                                    <span><b>框架屏蔽细节：</b>ORM默认使用参数化查询</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fa-solid fa-graduation-cap mr-3 mt-1 text-sky-400"></i>
+                                    <span><b>缺乏底层经验：</b>未接触过原始JDBC拼接</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fa-solid fa-shield-halved mr-3 mt-1 text-amber-400"></i>
+                                    <span><b>过度信任框架：</b>误以为"用了框架就绝对安全"</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 核心解决方案 - PreparedStatement (优化版) -->
+<section id="slide4" class="slide">
+    <div class="text-center w-full max-w-7xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-emerald-400 to-green-400">核心解决方案：PreparedStatement</h2>
+        <p class="mt-4 text-xl text-slate-400">通过预编译和参数化，重建数据与代码的边界</p>
+        
+        <div class="content-panel mt-8 p-6 md:p-8 border-green-500/30">
+            <!-- 工作原理三步图 -->
+            <div class="mb-12">
+                <h3 class="font-bold text-2xl text-green-300 mb-6">工作原理：三步走</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- 步骤1 -->
+                    <div class="diagram-node diagram-node-good bg-slate-800/50 p-6 text-center">
+                        <div class="flex items-center justify-center mb-4">
+                            <span class="flex-shrink-0 text-3xl h-12 w-12 rounded-full bg-green-500/30 flex items-center justify-center font-bold text-green-300">1</span>
+                        </div>
+                        <i class="fa-solid fa-file-code text-5xl text-sky-400 mb-4"></i>
+                        <h4 class="font-bold text-lg mb-2">定义SQL模板</h4>
+                        <p class="text-sm text-slate-400 mt-3">使用 <code class="text-green-300">?</code> 作为参数占位符</p>
+                    </div>
+                    <!-- 步骤2 -->
+                    <div class="diagram-node diagram-node-good bg-slate-800/50 p-6 text-center">
+                        <div class="flex items-center justify-center mb-4">
+                            <span class="flex-shrink-0 text-3xl h-12 w-12 rounded-full bg-green-500/30 flex items-center justify-center font-bold text-green-300">2</span>
+                        </div>
+                        <i class="fa-solid fa-lock text-5xl text-green-400 mb-4"></i>
+                        <h4 class="font-bold text-lg mb-2">预编译SQL结构</h4>
+                        <p class="text-sm text-slate-300 mt-3">数据库解析并<span class="highlight-safe">锁定SQL逻辑</span>，此时结构不可变</p>
+                    </div>
+                    <!-- 步骤3 -->
+                    <div class="diagram-node diagram-node-good bg-slate-800/50 p-6 text-center">
+                        <div class="flex items-center justify-center mb-4">
+                            <span class="flex-shrink-0 text-3xl h-12 w-12 rounded-full bg-green-500/30 flex items-center justify-center font-bold text-green-300">3</span>
+                        </div>
+                        <i class="fa-solid fa-shield-halved text-5xl text-emerald-400 mb-4"></i>
+                        <h4 class="font-bold text-lg mb-2">安全传递参数</h4>
+                        <p class="text-sm text-slate-400 mt-3">参数作为<span class="highlight-safe">纯数据</span>独立发送，无法篡改SQL结构</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 核心转变 -->
+            <div class="bg-slate-800/40 p-6 rounded-xl">
+                <h3 class="font-bold text-xl text-slate-200 mb-4 text-center">关键转变：从“拼接”到“分离”</h3>
+                <div class="grid grid-cols-2 gap-4 text-center">
+                    <div class="bg-red-900/20 p-4 rounded-lg">
+                        <h4 class="font-bold text-red-300">Statement (旧方式)</h4>
+                        <p class="text-sm text-slate-300 mt-2">代码 + 数据 = <span class="text-red-400">危险的SQL</span></p>
+                    </div>
+                    <div class="bg-green-900/20 p-4 rounded-lg">
+                        <h4 class="font-bold text-green-300">PreparedStatement (新方式)</h4>
+                        <p class="text-sm text-slate-300 mt-2">SQL模板(代码) + 参数(数据) = <span class="text-green-400">安全的执行</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 代码示例 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                <div class="bg-red-900/20 p-6 rounded-xl border border-red-500/30">
+                    <h4 class="font-bold text-lg text-red-300 mb-4 flex items-center"><i class="fa-solid fa-xmark mr-3"></i>不安全的写法</h4>
+                    <div class="code-block text-left">
+                        <code class="text-xs">
+                            String sql = "SELECT * FROM users WHERE username = '<span class="highlight-danger">" + username + "</span>'";<br>
+                            Statement stmt = conn.createStatement();<br>
+                            ResultSet rs = stmt.executeQuery(sql);
+                        </code>
+                    </div>
+                </div>
+                <div class="bg-green-900/20 p-6 rounded-xl border border-green-500/30">
+                    <h4 class="font-bold text-lg text-green-300 mb-4 flex items-center"><i class="fa-solid fa-check mr-3"></i>安全的写法</h4>
+                    <div class="code-block text-left">
+                        <code class="text-xs">
+                            String sql = "SELECT * FROM users WHERE username = <span class="highlight-safe">?</span>";<br>
+                            PreparedStatement pstmt = conn.prepareStatement(sql);<br>
+                            pstmt.<span class="highlight-safe">setString(1, username)</span>;<br>
+                            ResultSet rs = pstmt.executeQuery();
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+    <!-- Slide 5: MyBatis核心实践与边界 (三合一重构版) -->
+<section id="slide5-optimized" class="slide">
+    <div class="text-center w-full max-w-7xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-cyan-400 to-blue-400">MyBatis核心实践：认准 `#{}`</h2>
+        <p class="mt-4 text-xl text-slate-400">一个符号决定安全，覆盖99%的场景</p>
+        
+        <div class="content-panel mt-8 p-6 md:p-8 border-cyan-500/30">
+            <!-- #{} vs ${} 对比 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <!-- #{} 安全卡片 -->
+                <div class="bg-green-900/20 p-8 rounded-xl border-2 border-green-500/50">
+                    <h3 class="font-bold text-2xl text-green-300 mb-4">安全卫士: #{ }</h3>
+                    <ul class="text-left space-y-3 text-slate-300">
+                        <li><i class="fa-solid fa-cog mr-2 text-green-400"></i><b>原理:</b> PreparedStatement</li>
+                        <li><i class="fa-solid fa-shield-halved mr-2 text-green-400"></i><b>效果:</b> 解析为 `?`，参数被安全处理</li>
+                        <li><i class="fa-solid fa-bullseye mr-2 text-green-400"></i><b>场景:</b> 所有动态参数传递</li>
+                    </ul>
+                    <div class="code-block mt-4 text-left">
+                        <code class="text-xs">
+                            &lt;foreach collection="ids" item="id" open="(" separator="," close=")"&gt;<br>
+                            &nbsp;&nbsp;<span class="highlight-safe">#{id}</span><br>
+                            &lt;/foreach&gt;
+                        </code>
+                    </div>
+                </div>
+
+                <!-- ${} 危险卡片 -->
+                <div class="bg-red-900/20 p-8 rounded-xl border-2 border-red-500/50">
+                    <h3 class="font-bold text-2xl text-red-300 mb-4">双刃剑: ${ }</h3>
+                    <ul class="text-left space-y-3 text-slate-300">
+                        <li><i class="fa-solid fa-link mr-2 text-red-400"></i><b>原理:</b> 字符串拼接</li>
+                        <li><i class="fa-solid fa-skull-crossbones mr-2 text-red-400"></i><b>效果:</b> 直接文本替换，有注入风险</li>
+                        <li><i class="fa-solid fa-wrench mr-2 text-amber-400"></i><b class="text-amber-300">特殊场景:</b> 动态表名/列名/排序</li>
+                    </ul>
+                     <div class="code-block mt-4 text-left">
+                        <code class="text-xs">
+                            ORDER BY <span class="highlight-warning">${columnName}</span>
+                        </code>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 核心规则 -->
+            <div class="bg-gradient-to-r from-indigo-900/30 to-purple-900/30 p-8 rounded-xl border border-indigo-500/50">
+                <h3 class="font-bold text-2xl text-indigo-300 mb-6 text-center flex items-center justify-center">
+                    <i class="fa-solid fa-gavel mr-3"></i>最终裁决：使用原则
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
+                    <div class="bg-green-900/30 p-6 rounded-lg">
+                        <h4 class="font-bold text-xl text-green-300 mb-3">默认，永远，必须使用 `#{}`</h4>
+                        <p class="text-slate-300">无论是简单参数还是动态SQL（如 `<if>`, `<foreach>`），它都能保证安全。</p>
+                    </div>
+                    <div class="bg-amber-900/30 p-6 rounded-lg">
+                        <h4 class="font-bold text-xl text-amber-300 mb-3">仅在必要时，谨慎使用 `${}`</h4>
+                        <p class="text-slate-300">仅用于无法参数化的场景（如`ORDER BY`），且<b class="text-red-400">必须配合严格的白名单校验</b>，绝不能直接使用前端传入的值。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+    <!-- Slide 6: 总结与纵深防御 (二合一重构版) -->
+<section id="slide6-optimized" class="slide">
+    <div class="text-center w-full max-w-7xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-purple-400 to-pink-400">总结：从核心到体系</h2>
+        <p class="mt-4 text-xl text-slate-400">掌握核心，构建体系，告别注入</p>
+        
+        <div class="content-panel mt-8 p-6 md:p-8 border-purple-500/30">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 左侧：核心回顾 -->
+                <div class="space-y-6">
+                    <h3 class="font-bold text-2xl text-slate-200 mb-4 text-center">核心回顾</h3>
+                    <!-- 根源 -->
+                    <div class="bg-rose-900/20 p-4 rounded-xl">
+                        <h4 class="font-bold text-lg text-rose-300 mb-2">根源：边界崩塌</h4>
+                        <p class="text-sm text-slate-300">字符串拼接，导致用户输入的数据侵入了SQL代码的结构。</p>
+                    </div>
+                    <!-- 方案 -->
+                    <div class="bg-green-900/20 p-4 rounded-xl">
+                        <h4 class="font-bold text-lg text-green-300 mb-2">核心方案：参数化查询</h4>
+                        <p class="text-sm text-slate-300">使用 `PreparedStatement` (MyBatis中的 `#{}` )，将SQL结构和数据分离。</p>
+                    </div>
+                    <!-- 实践 -->
+                    <div class="bg-sky-900/20 p-4 rounded-xl">
+                        <h4 class="font-bold text-lg text-sky-300 mb-2">框架实践：认准`#{}`</h4>
+                        <p class="text-sm text-slate-300">始终用 `#{}`，仅在`ORDER BY`等场景严格校验后用 `${}`。</p>
+                    </div>
+                </div>
+
+                <!-- 右侧：体系构建 -->
+                <div class="space-y-6">
+                    <h3 class="font-bold text-2xl text-slate-200 mb-4 text-center">构建防御体系</h3>
+                    <div class="bg-teal-900/20 p-4 rounded-xl">
+                        <h4 class="font-bold text-lg text-teal-300 mb-3">纵深防御：不止于代码</h4>
+                        <p class="text-sm text-slate-300 mb-4">单一防御点可能被绕过，建立多层防御是专业做法。</p>
+                        <div class="flex items-center justify-center gap-2 flex-wrap">
+                            <span class="bg-teal-500/80 text-white font-bold py-2 px-4 rounded-full">参数化查询</span>
+                            <span class="text-slate-400 text-xl">+</span>
+                            <span class="bg-amber-500/80 text-white font-bold py-2 px-4 rounded-full">输入验证</span>
+                            <span class="text-slate-400 text-xl">+</span>
+                            <span class="bg-rose-500/80 text-white font-bold py-2 px-4 rounded-full">最小权限</span>
+                        </div>
+                    </div>
+                    <div class="bg-indigo-900/20 p-4 rounded-xl">
+                        <h4 class="font-bold text-lg text-indigo-300 mb-3">面试直通车</h4>
+                        <p class="text-sm text-slate-300"><b>Q:</b> `#{}` 和 `${}` 的区别？<br><b>A:</b> `#{}` 是预编译，防注入；`${}` 是拼接，有风险。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 金句 -->
+            <div class="mt-8 bg-gradient-to-r from-purple-600 to-pink-600 p-6 rounded-xl shadow-xl">
+                <p class="text-white text-2xl font-bold text-center">
+                    <i class="fa-solid fa-quote-left mr-3"></i>
+                    永远不要信任用户输入，<br>参数化查询是你的第一道、也是最重要的一道防线。
+                    <i class="fa-solid fa-quote-right ml-3"></i>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <footer class="text-center py-8 text-slate-500 border-t border-slate-800">
+        <p class="text-lg">什么是SQL注入？怎么处理？</p>
+        <p class="text-sm mt-2 text-slate-600">从根源理解，用方案防御，以实践巩固</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            
+            const navDots = navContainer.querySelectorAll('a');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            
+            slides.forEach(slide => { observer.observe(slide); });
+        });
+    </script>
+</body>
+</html>

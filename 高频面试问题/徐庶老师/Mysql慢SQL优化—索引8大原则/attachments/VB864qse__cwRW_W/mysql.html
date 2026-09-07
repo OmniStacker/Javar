@@ -1,0 +1,1607 @@
+<!DOCTYPE html>  
+<html lang="zh-CN">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>MySQL慢查询索引优化指南</title>  
+    <script src="https://cdn.tailwindcss.com"></script>  
+    <style>  
+        * {  
+            margin: 0;  
+            padding: 0;  
+            box-sizing: border-box;  
+        }  
+        body {  
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;  
+            overflow: hidden;  
+        }  
+        .slide {  
+            display: none;  
+            width: 100vw;  
+            height: 100vh;  
+            background: white;  
+        }  
+        .slide.active {  
+            display: flex;  
+        }  
+        .fade-in {  
+            animation: fadeIn 0.8s ease-in;  
+        }  
+        @keyframes fadeIn {  
+            from { opacity: 0; transform: translateY(20px); }  
+            to { opacity: 1; transform: translateY(0); }  
+        }  
+        .slide-in-left {  
+            animation: slideInLeft 0.6s ease-out;  
+        }  
+        @keyframes slideInLeft {  
+            from { opacity: 0; transform: translateX(-50px); }  
+            to { opacity: 1; transform: translateX(0); }  
+        }  
+        .slide-in-right {  
+            animation: slideInRight 0.6s ease-out;  
+        }  
+        @keyframes slideInRight {  
+            from { opacity: 0; transform: translateX(50px); }  
+            to { opacity: 1; transform: translateX(0); }  
+        }  
+        .pulse {  
+            animation: pulse 2s infinite;  
+        }  
+        @keyframes pulse {  
+            0%, 100% { transform: scale(1); }  
+            50% { transform: scale(1.05); }  
+        }  
+        .float {  
+            animation: float 3s ease-in-out infinite;  
+        }  
+        @keyframes float {  
+            0%, 100% { transform: translateY(0); }  
+            50% { transform: translateY(-20px); }  
+        }  
+        .accordion-content {  
+            max-height: 0;  
+            overflow: hidden;  
+            transition: max-height 0.5s ease-out;  
+        }  
+        .accordion-content.active {  
+            max-height: 90vh;  
+        }  
+        .accordion-item {  
+            transition: all 0.3s ease;  
+        }  
+        .accordion-item.collapsed {  
+            flex: 0 0 60px;  
+        }  
+        .accordion-item.expanded {  
+            flex: 1;  
+        }  
+        .tree-node {  
+            animation: treeGrow 0.8s ease-out;  
+        }  
+        @keyframes treeGrow {  
+            from { opacity: 0; transform: scale(0.8); }  
+            to { opacity: 1; transform: scale(1); }  
+        }  
+        .gradient-bg {  
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);  
+        }  
+        .tag {  
+            display: inline-block;  
+            padding: 8px 20px;  
+            border-radius: 25px;  
+            font-weight: 600;  
+            margin: 8px;  
+            animation: fadeIn 0.6s ease-in;  
+        }  
+        .flow-arrow {  
+            animation: flowMove 1.5s ease-in-out infinite;  
+        }  
+        @keyframes flowMove {  
+            0%, 100% { transform: translateX(0); }  
+            50% { transform: translateX(10px); }  
+        }  
+        .subtitle-badge {  
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);  
+            color: white;  
+            padding: 12px 24px;  
+            border-radius: 0 0 15px 0;  
+            font-size: 20px;  
+            font-weight: 700;  
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);  
+        }  
+        .comparison-box {  
+            transition: all 0.3s ease;  
+        }  
+        .comparison-box:hover {  
+            transform: translateY(-5px);  
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);  
+        }  
+        .btree-node {  
+            background: white;  
+            border: 3px solid #3b82f6;  
+            border-radius: 12px;  
+            padding: 12px;  
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);  
+        }  
+        .btree-leaf {  
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);  
+            border: 3px solid #d97706;  
+            color: white;  
+        }  
+        .pointer-line {  
+            stroke: #6366f1;  
+            stroke-width: 3;  
+            fill: none;  
+            animation: dash 1s linear infinite;  
+        }  
+        @keyframes dash {  
+            to { stroke-dashoffset: -20; }  
+        }  
+    </style>  
+</head>  
+<body>  
+
+<!-- 第1页：标题页 -->  
+<div class="slide active" id="slide1">  
+    <div class="w-full h-full flex flex-col items-center justify-center gradient-bg relative overflow-hidden">  
+        <div class="absolute top-20 left-20 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl"></div>  
+        <div class="absolute bottom-20 right-20 w-96 h-96 bg-white opacity-10 rounded-full blur-3xl"></div>  
+        
+        <div class="text-center z-10 fade-in">  
+            <div class="mb-8 float">  
+                <svg class="w-48 h-48 mx-auto drop-shadow-2xl" viewBox="0 0 200 200" fill="none">  
+                    <ellipse cx="100" cy="50" rx="70" ry="20" fill="#FFF" opacity="0.9"/>  
+                    <path d="M30 50 L30 130 Q30 150 100 150 Q170 150 170 130 L170 50" fill="#FFF" opacity="0.8"/>  
+                    <ellipse cx="100" cy="130" rx="70" ry="20" fill="#FFF" opacity="0.9"/>  
+                    <path d="M50 70 L150 70 M50 90 L150 90 M50 110 L150 110" stroke="#667eea" stroke-width="4"/>  
+                    <circle cx="120" cy="60" r="8" fill="#f59e0b"/>  
+                    <circle cx="120" cy="80" r="8" fill="#10b981"/>  
+                    <circle cx="120" cy="100" r="8" fill="#ef4444"/>  
+                </svg>  
+            </div>  
+            
+            <h1 class="text-7xl font-black text-white mb-6 tracking-tight slide-in-left">  
+                慢查询索引优化  
+            </h1>  
+            <h2 class="text-5xl font-bold text-yellow-300 mb-12 slide-in-right">  
+                8大原则 + B+树原理  
+            </h2>  
+            
+            <div class="flex flex-wrap justify-center gap-4 mt-16">  
+                <div class="tag bg-white text-purple-700 text-xl" style="animation-delay: 0.2s">🎯 最左前缀法则</div>  
+                <div class="tag bg-white text-purple-700 text-xl" style="animation-delay: 0.4s">⚡ B+树可视化</div>  
+                <div class="tag bg-white text-purple-700 text-xl" style="animation-delay: 0.6s">🚀 覆盖索引</div>  
+                <div class="tag bg-white text-purple-700 text-xl" style="animation-delay: 0.8s">❌ 索引失效场景</div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第2页：8大原则概览 -->  
+<div class="slide" id="slide2">  
+    <div class="w-full h-full bg-white p-12">  
+        <div class="subtitle-badge absolute top-0 left-0">索引创建八大原则</div>  
+        
+        <div class="grid grid-cols-4 grid-rows-2 gap-6 h-full pt-24">  
+            <div class="comparison-box bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-6 flex flex-col items-center justify-center fade-in">  
+                <div class="text-6xl mb-3">📍</div>  
+                <h3 class="text-2xl font-bold text-blue-900 mb-2 text-center">全值匹配</h3>  
+                <div class="mt-3 text-5xl font-black text-blue-300">01</div>  
+            </div>  
+            
+            <div class="comparison-box bg-gradient-to-br from-purple-50 to-purple-100 rounded-3xl p-6 flex flex-col items-center justify-center fade-in" style="animation-delay: 0.1s">  
+                <div class="text-6xl mb-3">👑</div>  
+                <h3 class="text-2xl font-bold text-purple-900 mb-2 text-center">最左前缀</h3>  
+                <div class="mt-3 text-5xl font-black text-purple-300">02</div>  
+            </div>  
+            
+            <div class="comparison-box bg-gradient-to-br from-green-50 to-green-100 rounded-3xl p-6 flex flex-col items-center justify-center fade-in" style="animation-delay: 0.2s">  
+                <div class="text-6xl mb-3">🧮</div>  
+                <h3 class="text-2xl font-bold text-green-900 mb-2 text-center">少计算</h3>  
+                <div class="mt-3 text-5xl font-black text-green-300">03</div>  
+            </div>  
+            
+            <div class="comparison-box bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-3xl p-6 flex flex-col items-center justify-center fade-in" style="animation-delay: 0.3s">  
+                <div class="text-6xl mb-3">📉</div>  
+                <h3 class="text-2xl font-bold text-yellow-900 mb-2 text-center">范围失效</h3>  
+                <div class="mt-3 text-5xl font-black text-yellow-300">04</div>  
+            </div>  
+            
+            <div class="comparison-box bg-gradient-to-br from-pink-50 to-pink-100 rounded-3xl p-6 flex flex-col items-center justify-center fade-in" style="animation-delay: 0.4s">  
+                <div class="text-6xl mb-3">🔍</div>  
+                <h3 class="text-2xl font-bold text-pink-900 mb-2 text-center">LIKE百分右</h3>  
+                <div class="mt-3 text-5xl font-black text-pink-300">05</div>  
+            </div>  
+            
+            <div class="comparison-box bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-3xl p-6 flex flex-col items-center justify-center fade-in" style="animation-delay: 0.5s">  
+                <div class="text-6xl mb-3">⭐</div>  
+                <h3 class="text-2xl font-bold text-indigo-900 mb-2 text-center">覆盖索引</h3>  
+                <div class="mt-3 text-5xl font-black text-indigo-300">06</div>  
+            </div>  
+            
+            <div class="comparison-box bg-gradient-to-br from-red-50 to-red-100 rounded-3xl p-6 flex flex-col items-center justify-center fade-in" style="animation-delay: 0.6s">  
+                <div class="text-6xl mb-3">⚠️</div>  
+                <h3 class="text-2xl font-bold text-red-900 mb-2 text-center">避免失效</h3>  
+                <div class="mt-3 text-5xl font-black text-red-300">07</div>  
+            </div>  
+            
+            <div class="comparison-box bg-gradient-to-br from-teal-50 to-teal-100 rounded-3xl p-6 flex flex-col items-center justify-center fade-in" style="animation-delay: 0.7s">  
+                <div class="text-6xl mb-3">💬</div>  
+                <h3 class="text-2xl font-bold text-teal-900 mb-2 text-center">加引号</h3>  
+                <div class="mt-3 text-5xl font-black text-teal-300">08</div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第3页：原则1 - 全值匹配 -->  
+<div class="slide" id="slide3">  
+    <div class="w-full h-full bg-white">  
+        <div class="subtitle-badge absolute top-0 left-0">原则① 全值匹配我最爱</div>  
+        
+        <div class="flex flex-col h-full pt-24 px-16 gap-6">  
+            <!-- B+树可视化 -->  
+            <div class="accordion-item expanded bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">🌳 B+树索引：(name, age, pos)</h3>  
+                    <span class="text-2xl">▼</span>  
+                </div>  
+                <div class="accordion-content active">  
+                    <svg viewBox="0 0 1200 600" class="w-full h-full">  
+                        <!-- 根节点 -->  
+                        <g class="tree-node">  
+                            <rect x="500" y="20" width="200" height="60" rx="10" fill="white" stroke="#3b82f6" stroke-width="3"/>  
+                            <text x="600" y="55" text-anchor="middle" class="text-xl font-bold" fill="#1e40af">李四 | 张三</text>  
+                        </g>  
+                        
+                        <!-- 指针线 -->  
+                        <line x1="550" y1="80" x2="250" y2="150" stroke="#6366f1" stroke-width="3" stroke-dasharray="5,5"/>  
+                        <line x1="600" y1="80" x2="600" y2="150" stroke="#6366f1" stroke-width="3" stroke-dasharray="5,5"/>  
+                        <line x1="650" y1="80" x2="950" y2="150" stroke="#6366f1" stroke-width="3" stroke-dasharray="5,5"/>  
+                        
+                        <!-- 第二层节点 - 按name分组 -->  
+                        <g class="tree-node" style="animation-delay: 0.2s">  
+                            <rect x="150" y="170" width="200" height="60" rx="10" fill="white" stroke="#3b82f6" stroke-width="3"/>  
+                            <text x="250" y="195" text-anchor="middle" class="text-lg font-semibold" fill="#7c3aed">name: 李四</text>  
+                            <text x="250" y="220" text-anchor="middle" class="text-base" fill="#4b5563">age: 25|30</text>  
+                        </g>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.3s">  
+                            <rect x="500" y="170" width="200" height="60" rx="10" fill="white" stroke="#3b82f6" stroke-width="3"/>  
+                            <text x="600" y="195" text-anchor="middle" class="text-lg font-semibold" fill="#7c3aed">name: 王五</text>  
+                            <text x="600" y="220" text-anchor="middle" class="text-base" fill="#4b5563">age: 28|35</text>  
+                        </g>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.4s">  
+                            <rect x="850" y="170" width="200" height="60" rx="10" fill="white" stroke="#3b82f6" stroke-width="3"/>  
+                            <text x="950" y="195" text-anchor="middle" class="text-lg font-semibold" fill="#7c3aed">name: 张三</text>  
+                            <text x="950" y="220" text-anchor="middle" class="text-base" fill="#4b5563">age: 22|27</text>  
+                        </g>  
+                        
+                        <!-- 第三层 - 叶子节点 -->  
+                        <line x1="200" y1="230" x2="100" y2="320" stroke="#6366f1" stroke-width="3" stroke-dasharray="5,5"/>  
+                        <line x1="300" y1="230" x2="350" y2="320" stroke="#6366f1" stroke-width="3" stroke-dasharray="5,5"/>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.5s">  
+                            <rect x="20" y="340" width="180" height="90" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="110" y="365" text-anchor="middle" class="text-base font-bold" fill="white">李四,25,开发</text>  
+                            <text x="110" y="390" text-anchor="middle" class="text-sm" fill="white">ID: 1001</text>  
+                            <text x="110" y="415" text-anchor="middle" class="text-xs" fill="white" opacity="0.8">→ 下一页</text>  
+                        </g>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.6s">  
+                            <rect x="260" y="340" width="180" height="90" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="350" y="365" text-anchor="middle" class="text-base font-bold" fill="white">李四,30,测试</text>  
+                            <text x="350" y="390" text-anchor="middle" class="text-sm" fill="white">ID: 1002</text>  
+                            <text x="350" y="415" text-anchor="middle" class="text-xs" fill="white" opacity="0.8">→ 下一页</text>  
+                        </g>  
+                        
+                        <!-- 叶子节点指针 -->  
+                        <line x1="200" y1="385" x2="260" y2="385" stroke="#ef4444" stroke-width="3" marker-end="url(#arrowhead)"/>  
+                        
+                        <defs>  
+                            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">  
+                                <polygon points="0 0, 10 3, 0 6" fill="#ef4444" />  
+                            </marker>  
+                        </defs>  
+                        
+                        <!-- 标注 -->  
+                        <text x="600" y="520" text-anchor="middle" class="text-2xl font-bold" fill="#1e40af">按 name → age → pos 三级排序</text>  
+                        <text x="600" y="560" text-anchor="middle" class="text-xl" fill="#6b7280">叶子节点存储完整数据 + 指向下一个叶子节点</text>  
+                    </svg>  
+                </div>  
+            </div>  
+            
+            <!-- 全值匹配示例 -->  
+            <div class="accordion-item collapsed bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">✅ 全值匹配 - 效率最高</h3>  
+                    <span class="text-2xl">▶</span>  
+                </div>  
+                <div class="accordion-content">  
+                    <div class="grid grid-cols-2 gap-8">  
+                        <div class="bg-white rounded-2xl p-8 shadow-lg">  
+                            <div class="text-3xl font-bold text-green-700 mb-6">查询条件</div>  
+                            <div class="bg-green-100 rounded-xl p-6 font-mono text-xl">  
+                                WHERE name='李四'<br/>  
+                                AND age=25<br/>  
+                                AND pos='开发'  
+                            </div>  
+                        </div>  
+                        
+                        <div class="bg-white rounded-2xl p-8 shadow-lg">  
+                            <div class="text-3xl font-bold text-blue-700 mb-6">查找过程</div>  
+                            <div class="space-y-3 text-lg">  
+                                <div class="flex items-center gap-3">  
+                                    <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">1</span>  
+                                    <span>定位name='李四'的范围</span>  
+                                </div>  
+                                <div class="flex items-center gap-3">  
+                                    <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">2</span>  
+                                    <span>在该范围内定位age=25</span>  
+                                </div>  
+                                <div class="flex items-center gap-3">  
+                                    <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">3</span>  
+                                    <span>精确匹配pos='开发'</span>  
+                                </div>  
+                                <div class="mt-6 bg-green-200 rounded-lg p-4 text-center text-xl font-bold text-green-800">  
+                                    🎯 直接命中，无需扫描  
+                                </div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+            
+            <!-- 部分匹配 -->  
+            <div class="accordion-item collapsed bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">⚡ 部分匹配 - 仍可使用索引</h3>  
+                    <span class="text-2xl">▶</span>  
+                </div>  
+                <div class="accordion-content">  
+                    <div class="space-y-4">  
+                        <div class="bg-white rounded-xl p-6 shadow-lg flex items-center gap-6">  
+                            <div class="text-4xl">✅</div>  
+                            <div class="flex-1">  
+                                <div class="font-mono text-xl mb-2">WHERE name='李四' AND age=25</div>  
+                                <div class="text-gray-600">使用name和age两列索引</div>  
+                            </div>  
+                        </div>  
+                        
+                        <div class="bg-white rounded-xl p-6 shadow-lg flex items-center gap-6">  
+                            <div class="text-4xl">✅</div>  
+                            <div class="flex-1">  
+                                <div class="font-mono text-xl mb-2">WHERE name='李四'</div>  
+                                <div class="text-gray-600">使用name一列索引</div>  
+                            </div>  
+                        </div>  
+                        
+                        <div class="bg-red-100 rounded-xl p-6 shadow-lg flex items-center gap-6 border-4 border-red-500">  
+                            <div class="text-4xl">❌</div>  
+                            <div class="flex-1">  
+                                <div class="font-mono text-xl mb-2">WHERE age=25 AND pos='开发'</div>  
+                                <div class="text-red-600 font-semibold">跳过name，索引完全失效！</div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第4页：原则2 - 最左前缀 -->  
+<div class="slide" id="slide4">  
+    <div class="w-full h-full bg-white">  
+        <div class="subtitle-badge absolute top-0 left-0">原则② 最左前缀要遵守</div>  
+        
+        <div class="flex flex-col h-full pt-24 px-16 gap-6">  
+            <!-- 带头大哥可视化 -->  
+            <div class="accordion-item expanded bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">👑 带头大哥不能死，中间兄弟不能断</h3>  
+                    <span class="text-2xl">▼</span>  
+                </div>  
+                <div class="accordion-content active">  
+                    <svg viewBox="0 0 1200 500" class="w-full">  
+                        <!-- 索引结构 -->  
+                        <g class="tree-node">  
+                            <rect x="100" y="100" width="280" height="120" rx="15" fill="#fbbf24" stroke="#d97706" stroke-width="4"/>  
+                            <text x="240" y="140" text-anchor="middle" class="text-3xl font-black" fill="#78350f">name</text>  
+                            <text x="240" y="175" text-anchor="middle" class="text-2xl font-bold" fill="#78350f">带头大哥</text>  
+                            <text x="240" y="205" text-anchor="middle" class="text-xl" fill="#78350f" opacity="0.9">👑 必须存在</text>  
+                        </g>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.2s">  
+                            <rect x="460" y="100" width="280" height="120" rx="15" fill="#3b82f6" stroke="#1d4ed8" stroke-width="4"/>  
+                            <text x="600" y="140" text-anchor="middle" class="text-3xl font-black" fill="white">age</text>  
+                            <text x="600" y="175" text-anchor="middle" class="text-2xl font-bold" fill="white">中间兄弟</text>  
+                            <text x="600" y="205" text-anchor="middle" class="text-xl" fill="white" opacity="0.9">🤝 不能跳过</text>  
+                        </g>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.4s">  
+                            <rect x="820" y="100" width="280" height="120" rx="15" fill="#10b981" stroke="#059669" stroke-width="4"/>  
+                            <text x="960" y="140" text-anchor="middle" class="text-3xl font-black" fill="white">pos</text>  
+                            <text x="960" y="175" text-anchor="middle" class="text-2xl font-bold" fill="white">小弟</text>  
+                            <text x="960" y="205" text-anchor="middle" class="text-xl" fill="white" opacity="0.9">👶 依赖前面</text>  
+                        </g>  
+                        
+                        <!-- 箭头 -->  
+                        <g class="flow-arrow">  
+                            <polygon points="400,160 440,140 440,180" fill="#ef4444"/>  
+                            <text x="420" y="150" text-anchor="middle" class="text-2xl font-bold" fill="#dc2626">→</text>  
+                        </g>  
+                        
+                        <g class="flow-arrow" style="animation-delay: 0.3s">  
+                            <polygon points="760,160 800,140 800,180" fill="#ef4444"/>  
+                            <text x="780" y="150" text-anchor="middle" class="text-2xl font-bold" fill="#dc2626">→</text>  
+                        </g>  
+                        
+                        <!-- B+树叶子节点示例 -->  
+                        <text x="600" y="280" text-anchor="middle" class="text-2xl font-bold" fill="#374151">索引在B+树中的存储：</text>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.5s">  
+                            <rect x="150" y="320" width="300" height="100" rx="12" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="300" y="355" text-anchor="middle" class="text-xl font-bold" fill="white">李四 | 25 | 开发</text>  
+                            <text x="300" y="385" text-anchor="middle" class="text-base" fill="white">有序排列</text>  
+                        </g>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.6s">  
+                            <rect x="500" y="320" width="300" height="100" rx="12" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="650" y="355" text-anchor="middle" class="text-xl font-bold" fill="white">李四 | 30 | 测试</text>  
+                            <text x="650" y="385" text-anchor="middle" class="text-base" fill="white">先按name排</text>  
+                        </g>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.7s">  
+                            <rect x="850" y="320" width="300" height="100" rx="12" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="1000" y="355" text-anchor="middle" class="text-xl font-bold" fill="white">张三 | 22 | 前端</text>  
+                            <text x="1000" y="385" text-anchor="middle" class="text-base" fill="white">name相同按age</text>  
+                        </g>  
+                        
+                        <!-- 连接线 -->  
+                        <line x1="450" y1="370" x2="500" y2="370" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow2)"/>  
+                        <line x1="800" y1="370" x2="850" y2="370" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow2)"/>  
+                        
+                        <defs>  
+                            <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">  
+                                <polygon points="0 0, 10 3, 0 6" fill="#ef4444" />  
+                            </marker>  
+                        </defs>  
+                    </svg>  
+                </div>  
+            </div>  
+            
+            <!-- 跳过带头大哥 -->  
+            <div class="accordion-item collapsed bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">💀 缺少带头大哥 - 全表扫描</h3>  
+                    <span class="text-2xl">▶</span>  
+                </div>  
+                <div class="accordion-content">  
+                    <div class="bg-white rounded-2xl p-8 shadow-lg">  
+                        <div class="text-2xl font-bold text-gray-800 mb-6">查询：WHERE age=25 AND pos='开发'</div>  
+                        
+                        <svg viewBox="0 0 1000 400" class="w-full">  
+                            <!-- 缺失name -->  
+                            <g>  
+                                <rect x="100" y="50" width="200" height="80" rx="10" fill="#ef4444" stroke="#dc2626" stroke-width="4"/>  
+                                <text x="200" y="80" text-anchor="middle" class="text-2xl font-bold" fill="white">name</text>  
+                                <text x="200" y="110" text-anchor="middle" class="text-xl" fill="white">缺失！</text>  
+                                <line x1="120" y1="70" x2="280" y2="110" stroke="white" stroke-width="4"/>  
+                                <line x1="280" y1="70" x2="120" y2="110" stroke="white" stroke-width="4"/>  
+                            </g>  
+                            
+                            <text x="350" y="95" class="text-4xl" fill="#374151">→</text>  
+                            
+                            <!-- 无法使用索引 -->  
+                            <g>  
+                                <rect x="450" y="50" width="450" height="280" rx="15" fill="#fef3c7" stroke="#f59e0b" stroke-width="4"/>  
+                                <text x="675" y="100" text-anchor="middle" class="text-3xl font-bold" fill="#78350f">无法定位索引位置</text>  
+                                
+                                <text x="675" y="160" text-anchor="middle" class="text-xl" fill="#78350f">不知道age=25在哪个name分组下</text>  
+                                <text x="675" y="200" text-anchor="middle" class="text-xl" fill="#78350f">可能在 李四、王五、张三...</text>  
+                                <text x="675" y="240" text-anchor="middle" class="text-xl" fill="#78350f">任何name分组中</text>  
+                                
+                                <text x="675" y="300" text-anchor="middle" class="text-3xl font-black" fill="#dc2626">只能全表扫描！</text>  
+                            </g>  
+                        </svg>  
+                    </div>  
+                </div>  
+            </div>  
+            
+            <!-- 跳过中间兄弟 -->  
+            <div class="accordion-item collapsed bg-gradient-to-r from-yellow-50 to-amber-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">⚡ 跳过中间兄弟 - 后续失效</h3>  
+                    <span class="text-2xl">▶</span>  
+                </div>  
+                <div class="accordion-content">  
+                    <div class="space-y-6">  
+                        <div class="bg-white rounded-2xl p-8 shadow-lg">  
+                            <div class="text-2xl font-bold text-gray-800 mb-6">查询：WHERE name='李四' AND pos='测试'</div>  
+                            
+                            <div class="flex items-center justify-between">  
+                                <div class="text-center">  
+                                    <div class="w-32 h-32 bg-green-500 rounded-2xl flex items-center justify-center text-white text-4xl font-bold mb-3">  
+                                        ✓  
+                                    </div>  
+                                    <div class="text-xl font-bold">name</div>  
+                                    <div class="text-green-600">索引生效</div>  
+                                </div>  
+                                
+                                <div class="text-5xl text-gray-400">→</div>  
+                                
+                                <div class="text-center">  
+                                    <div class="w-32 h-32 bg-gray-300 rounded-2xl flex items-center justify-center text-white text-4xl font-bold mb-3">  
+                                        ⊗  
+                                    </div>  
+                                    <div class="text-xl font-bold">age</div>  
+                                    <div class="text-gray-600">跳过</div>  
+                                </div>  
+                                
+                                <div class="text-5xl text-gray-400">→</div>  
+                                
+                                <div class="text-center">  
+                                    <div class="w-32 h-32 bg-red-500 rounded-2xl flex items-center justify-center text-white text-4xl font-bold mb-3">  
+                                        ✗  
+                                    </div>  
+                                    <div class="text-xl font-bold">pos</div>  
+                                    <div class="text-red-600">索引失效</div>  
+                                </div>  
+                            </div>  
+                            
+                            <div class="mt-8 bg-yellow-100 rounded-xl p-6 border-l-4 border-yellow-500">  
+                                <div class="text-xl font-bold text-yellow-800 mb-2">💡 失效原因：</div>  
+                                <div class="text-lg text-yellow-700">pos的排序依赖age，跳过age后，pos在B+树中是无序的，无法利用索引！</div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第5页：原则3 - 索引列上少计算 -->  
+<div class="slide" id="slide5">  
+    <div class="w-full h-full bg-white">  
+        <div class="subtitle-badge absolute top-0 left-0">原则③ 索引列上少计算</div>  
+        
+        <div class="flex flex-col h-full pt-24 px-16 gap-6">  
+            <!-- 为什么失效 -->  
+            <div class="accordion-item expanded bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">🚫 计算破坏B+树有序性</h3>  
+                    <span class="text-2xl">▼</span>  
+                </div>  
+                <div class="accordion-content active">  
+                    <svg viewBox="0 0 1200 500" class="w-full">  
+                        <!-- 原始索引 - 有序 -->  
+                        <text x="200" y="40" text-anchor="middle" class="text-2xl font-bold" fill="#059669">✅ 原始id索引（有序）</text>  
+                        <g class="tree-node">  
+                            <rect x="50" y="60" width="120" height="70" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="110" y="100" text-anchor="middle" class="text-xl font-bold" fill="white">id: 5</text>  
+                        </g>  
+                        <g class="tree-node" style="animation-delay: 0.1s">  
+                            <rect x="190" y="60" width="120" height="70" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="250" y="100" text-anchor="middle" class="text-xl font-bold" fill="white">id: 8</text>  
+                        </g>  
+                        <g class="tree-node" style="animation-delay: 0.2s">  
+                            <rect x="330" y="60" width="120" height="70" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="390" y="100" text-anchor="middle" class="text-xl font-bold" fill="white">id: 9</text>  
+                        </g>  
+                        
+                        <line x1="170" y1="95" x2="190" y2="95" stroke="#10b981" stroke-width="3" marker-end="url(#arrow3)"/>  
+                        <line x1="310" y1="95" x2="330" y2="95" stroke="#10b981" stroke-width="3" marker-end="url(#arrow3)"/>  
+                        
+                        <text x="230" y="170" text-anchor="middle" class="text-xl font-bold" fill="#059669">可以快速定位 id=9</text>  
+                        
+                        <!-- 计算后 - 无序 -->  
+                        <text x="200" y="250" text-anchor="middle" class="text-2xl font-bold" fill="#dc2626">❌ id+1 计算后（无序）</text>  
+                        <g class="tree-node" style="animation-delay: 0.3s">  
+                            <rect x="50" y="270" width="120" height="70" rx="10" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>  
+                            <text x="110" y="300" text-anchor="middle" class="text-lg font-bold" fill="#991b1b">5+1=6</text>  
+                        </g>  
+                        <g class="tree-node" style="animation-delay: 0.4s">  
+                            <rect x="190" y="270" width="120" height="70" rx="10" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>  
+                            <text x="250" y="300" text-anchor="middle" class="text-lg font-bold" fill="#991b1b">8+1=9</text>  
+                        </g>  
+                        <g class="tree-node" style="animation-delay: 0.5s">  
+                            <rect x="330" y="270" width="120" height="70" rx="10" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>  
+                            <text x="390" y="300" text-anchor="middle" class="text-lg font-bold" fill="#991b1b">9+1=10</text>  
+                        </g>  
+                        
+                        <text x="110" y="365" text-anchor="middle" class="text-base" fill="#6b7280">逐行计算</text>  
+                        <text x="250" y="365" text-anchor="middle" class="text-base" fill="#6b7280">逐行计算</text>  
+                        <text x="390" y="365" text-anchor="middle" class="text-base" fill="#6b7280">逐行计算</text>  
+                        
+                        <text x="230" y="410" text-anchor="middle" class="text-xl font-bold" fill="#dc2626">查 id+1=10 需要扫描全表！</text>  
+                        
+                        <!-- 右侧说明 -->  
+                        <rect x="600" y="60" width="500" height="350" rx="15" fill="#fef3c7" stroke="#f59e0b" stroke-width="4"/>  
+                        <text x="850" y="110" text-anchor="middle" class="text-3xl font-black" fill="#78350f">为什么失效？</text>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.6s">  
+                            <circle cx="680" cy="180" r="30" fill="#3b82f6"/>  
+                            <text x="680" y="190" text-anchor="middle" class="text-2xl font-bold" fill="white">1</text>  
+                        </g>  
+                        <text x="750" y="190" class="text-lg" fill="#78350f">索引按原始值排序(5,8,9)</text>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.7s">  
+                            <circle cx="680" cy="250" r="30" fill="#3b82f6"/>  
+                            <text x="680" y="260" text-anchor="middle" class="text-2xl font-bold" fill="white">2</text>  
+                        </g>  
+                        <text x="750" y="250" class="text-lg" fill="#78350f">计算后是(6,9,10)</text>  
+                        <text x="750" y="275" class="text-lg" fill="#78350f">顺序完全打乱</text>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.8s">  
+                            <circle cx="680" cy="340" r="30" fill="#3b82f6"/>  
+                            <text x="680" y="350" text-anchor="middle" class="text-2xl font-bold" fill="white">3</text>  
+                        </g>  
+                        <text x="750" y="340" class="text-lg" fill="#78350f">无法利用B+树有序性</text>  
+                        <text x="750" y="365" class="text-lg" fill="#78350f">只能逐行计算判断</text>  
+                        
+                        <defs>  
+                            <marker id="arrow3" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">  
+                                <polygon points="0 0, 10 3, 0 6" fill="#10b981" />  
+                            </marker>  
+                        </defs>  
+                    </svg>  
+                </div>  
+            </div>  
+            
+            <!-- 错误示例 -->  
+            <div class="accordion-item collapsed bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">❌ 常见错误写法</h3>  
+                    <span class="text-2xl">▶</span>  
+                </div>  
+                <div class="accordion-content">  
+                    <div class="grid grid-cols-2 gap-6">  
+                        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-red-500">  
+                            <div class="text-red-600 font-mono text-lg mb-2">WHERE id + 1 = 10</div>  
+                            <div class="text-gray-600">对索引列做算术运算</div>  
+                        </div>  
+                        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-red-500">  
+                            <div class="text-red-600 font-mono text-lg mb-2">WHERE YEAR(create_time) = 2024</div>  
+                            <div class="text-gray-600">对索引列使用函数</div>  
+                        </div>  
+                        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-red-500">  
+                            <div class="text-red-600 font-mono text-lg mb-2">WHERE UPPER(name) = 'ZHANG'</div>  
+                            <div class="text-gray-600">字符串函数转换</div>  
+                        </div>  
+                        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-red-500">  
+                            <div class="text-red-600 font-mono text-lg mb-2">WHERE salary * 1.1 > 10000</div>  
+                            <div class="text-gray-600">索引列参与表达式</div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+            
+            <!-- 正确写法 -->  
+            <div class="accordion-item collapsed bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">✅ 正确优化写法</h3>  
+                    <span class="text-2xl">▶</span>  
+                </div>  
+                <div class="accordion-content">  
+                    <div class="grid grid-cols-2 gap-6">  
+                        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500">  
+                            <div class="text-green-600 font-mono text-lg mb-2">WHERE id = 9</div>  
+                            <div class="text-gray-600">计算移到右侧 (10-1)</div>  
+                        </div>  
+                        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500">  
+                            <div class="text-green-600 font-mono text-sm mb-2">WHERE create_time BETWEEN '2024-01-01' AND '2024-12-31'</div>  
+                            <div class="text-gray-600">用范围查询代替函数</div>  
+                        </div>  
+                        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500">  
+                            <div class="text-green-600 font-mono text-lg mb-2">WHERE name = 'zhang'</div>  
+                            <div class="text-gray-600">直接匹配小写值</div>  
+                        </div>  
+                        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500">  
+                            <div class="text-green-600 font-mono text-lg mb-2">WHERE salary > 9090.9</div>  
+                            <div class="text-gray-600">计算移到右侧 (10000/1.1)</div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第6页：原则4 - 范围之后全失效 -->  
+<div class="slide" id="slide6">  
+    <div class="w-full h-full bg-white">  
+        <div class="subtitle-badge absolute top-0 left-0">原则④ 范围之后全失效</div>  
+        
+        <div class="flex flex-col h-full pt-24 px-16 gap-6">  
+            <!-- B+树可视化说明 -->  
+            <div class="accordion-item expanded bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">📉 范围查询破坏后续排序</h3>  
+                    <span class="text-2xl">▼</span>  
+                </div>  
+                <div class="accordion-content active">  
+                    <svg viewBox="0 0 1200 550" class="w-full">  
+                        <!-- 索引(a,b,c) -->  
+                        <text x="600" y="40" text-anchor="middle" class="text-3xl font-bold" fill="#1f2937">索引：(a, b, c)</text>  
+                        <text x="600" y="75" text-anchor="middle" class="text-xl" fill="#4b5563">查询：WHERE a=1 AND b>5 AND c=3</text>  
+                        
+                        <!-- a=1的节点 -->  
+                        <rect x="450" y="110" width="300" height="60" rx="10" fill="#10b981" stroke="#059669" stroke-width="3"/>  
+                        <text x="600" y="150" text-anchor="middle" class="text-2xl font-bold" fill="white">a = 1 （精确匹配✓）</text>  
+                        
+                        <!-- 箭头 -->  
+                        <line x1="600" y1="170" x2="600" y2="200" stroke="#4b5563" stroke-width="3" marker-end="url(#arrow4)"/>  
+                        
+                        <!-- b>5的范围 - 展开多个节点 -->  
+                        <text x="600" y="230" text-anchor="middle" class="text-2xl font-bold" fill="#ea580c">b > 5 （范围查询⚡）</text>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.2s">  
+                            <rect x="100" y="250" width="200" height="120" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="200" y="285" text-anchor="middle" class="text-lg font-bold" fill="#78350f">a=1, b=6</text>  
+                            <text x="200" y="315" text-anchor="middle" class="text-base" fill="#1e40af">c=1</text>  
+                            <text x="200" y="340" text-anchor="middle" class="text-base" fill="#1e40af">c=5</text>  
+                            <text x="200" y="365" text-anchor="middle" class="text-base" fill="#1e40af">c=9</text>  
+                        </g>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.3s">  
+                            <rect x="350" y="250" width="200" height="120" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="450" y="285" text-anchor="middle" class="text-lg font-bold" fill="#78350f">a=1, b=8</text>  
+                            <text x="450" y="315" text-anchor="middle" class="text-base" fill="#1e40af">c=2</text>  
+                            <text x="450" y="340" text-anchor="middle" class="text-base" fill="#1e40af">c=7</text>  
+                            <text x="450" y="365" text-anchor="middle" class="text-base" fill="#1e40af">c=3 ✓</text>  
+                        </g>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.4s">  
+                            <rect x="600" y="250" width="200" height="120" rx="12" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="700" y="285" text-anchor="middle" class="text-lg font-bold" fill="#78350f">a=1, b=10</text>  
+                            <text x="700" y="315" text-anchor="middle" class="text-base" fill="#1e40af">c=3 ✓</text>  
+                            <text x="700" y="340" text-anchor="middle" class="text-base" fill="#1e40af">c=6</text>  
+                            <text x="700" y="365" text-anchor="middle" class="text-base" fill="#1e40af">c=8</text>  
+                        </g>  
+                        
+                        <g class="tree-node" style="animation-delay: 0.5s">  
+                            <rect x="850" y="250" width="200" height="120" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>  
+                            <text x="950" y="285" text-anchor="middle" class="text-lg font-bold" fill="#78350f">a=1, b=12</text>  
+                            <text x="950" y="315" text-anchor="middle" class="text-base" fill="#1e40af">c=4</text>  
+                            <text x="950" y="340" text-anchor="middle" class="text-base" fill="#1e40af">c=3 ✓</text>  
+                            <text x="950" y="365" text-anchor="middle" class="text-base" fill="#1e40af">c=11</text>  
+                        </g>  
+                        
+                        <!-- 说明框 -->  
+                        <rect x="200" y="410" width="800" height="110" rx="15" fill="#fef3c7" stroke="#f59e0b" stroke-width="4"/>  
+                        <text x="600" y="450" text-anchor="middle" class="text-2xl font-bold" fill="#78350f">❌ c的索引失效原因：</text>  
+                        <text x="600" y="485" text-anchor="middle" class="text-xl" fill="#78350f">b>5 是范围，包含 b=6,8,10,12... 多个不同的b值</text>  
+                        <text x="600" y="515" text-anchor="middle" class="text-xl" fill="#78350f">每个b值对应的c是独立排序的，c=3 分散在各处，无法利用索引定位！</text>  
+                        
+                        <defs>  
+                            <marker id="arrow4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">  
+                                <polygon points="0 0, 10 3, 0 6" fill="#4b5563" />  
+                            </marker>  
+                        </defs>  
+                    </svg>  
+                </div>  
+            </div>  
+            
+            <!-- 对比示例 -->  
+            <div class="accordion-item collapsed bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-6" onclick="toggleAccordion(this)">  
+                <div class="flex items-center justify-between cursor-pointer mb-4">  
+                    <h3 class="text-3xl font-bold text-gray-800">✅ 精确 vs ❌ 范围</h3>  
+                    <span class="text-2xl">▶</span>  
+                </div>  
+                <div class="accordion-content">  
+                    <div class="grid grid-cols-2 gap-8">  
+                        <div class="bg-white rounded-2xl p-8 shadow-lg border-4 border-green-500">  
+                            <div class="text-3xl font-bold text-green-700 mb-6 text-center">精确匹配</div>  
+                            <div class="bg-green-100 rounded-xl p-6 font-mono text-lg mb-6">  
+                                WHERE a=1 AND b=5 AND c=3  
+                            </div>  
+                            <div class="space-y-3 text-lg">  
+                                <div class="flex items-center gap-3">  
+                                    <span class="text-3xl">✅</span>  
+                                    <span>a=1 定位范围</span>  
+                                </div>  
+                                <div class="flex items-center gap-3">  
+                                    <span class="text-3xl">✅</span>  
+                                    <span>b=5 精确定位</span>  
+                                </div>  
+                                <div class="flex items-center gap-3">  
+                                    <span class="text-3xl">✅</span>
+                                    <span>c=3 精确定位</span>
+                                </div>
+                            </div>
+                            <div class="mt-6 bg-green-200 rounded-lg p-4 text-center text-xl font-bold">
+                                三层索引全部生效
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-2xl p-8 shadow-lg border-4 border-red-500">
+                            <div class="text-3xl font-bold text-red-700 mb-6 text-center">范围查询</div>
+                            <div class="bg-red-100 rounded-xl p-6 font-mono text-lg mb-6">
+                                WHERE a=1 AND b>5 AND c=3
+                            </div>
+                            <div class="space-y-3 text-lg">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-3xl">✅</span>
+                                    <span>a=1 定位范围</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-3xl">⚡</span>
+                                    <span>b>5 范围扫描</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-3xl">❌</span>
+                                    <span>c=3 索引失效</span>
+                                </div>
+                            </div>
+                            <div class="mt-6 bg-red-200 rounded-lg p-4 text-center text-xl font-bold">
+                                c只能逐行过滤
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 优化建议 -->
+            <div class="accordion-item collapsed bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">💡 优化建议</h3>
+                    <span class="text-2xl">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="bg-white rounded-2xl p-8 shadow-lg">
+                        <div class="text-2xl font-bold text-gray-800 mb-6">调整索引顺序</div>
+                        <div class="flex items-center justify-around">
+                            <div class="text-center">
+                                <div class="bg-red-100 rounded-xl p-6 mb-4">
+                                    <div class="font-mono text-xl text-red-600">索引(a, b, c)</div>
+                                    <div class="text-gray-600 mt-2">b是范围，c失效</div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-5xl">→</div>
+                            
+                            <div class="text-center">
+                                <div class="bg-green-100 rounded-xl p-6 mb-4">
+                                    <div class="font-mono text-xl text-green-600">索引(a, c, b)</div>
+                                    <div class="text-gray-600 mt-2">把范围列放最后</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 bg-blue-100 rounded-lg p-6 text-center text-xl">
+                            🎯 让精确匹配的列优先使用索引
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 第7页：原则5 - LIKE百分写最右 -->
+<div class="slide" id="slide7">
+    <div class="w-full h-full bg-white">
+        <div class="subtitle-badge absolute top-0 left-0">原则⑤ LIKE百分写最右</div>
+        
+        <div class="flex flex-col h-full pt-24 px-16 gap-6">
+            <!-- LIKE规则可视化 -->
+            <div class="accordion-item expanded bg-gradient-to-r from-pink-50 to-rose-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">🔍 LIKE通配符位置</h3>
+                    <span class="text-2xl">▼</span>
+                </div>
+                <div class="accordion-content active">
+                    <div class="grid grid-cols-3 gap-6">
+                        <!-- %在右侧 -->
+                        <div class="bg-white rounded-2xl p-8 shadow-xl border-t-8 border-green-500">
+                            <div class="text-6xl mb-6 text-center">✅</div>
+                            <div class="text-3xl font-bold text-center mb-6">%在右侧</div>
+                            <div class="bg-green-100 rounded-xl p-6 font-mono text-2xl text-center mb-6">
+                                '张%'
+                            </div>
+                            <div class="text-xl text-center text-gray-700 mb-4">
+                                匹配"张"开头的所有值
+                            </div>
+                            <div class="bg-green-200 rounded-lg p-4 text-center text-lg font-bold text-green-800">
+                                🎯 使用索引
+                            </div>
+                        </div>
+                        
+                        <!-- %在左侧 -->
+                        <div class="bg-white rounded-2xl p-8 shadow-xl border-t-8 border-red-500">
+                            <div class="text-6xl mb-6 text-center">❌</div>
+                            <div class="text-3xl font-bold text-center mb-6">%在左侧</div>
+                            <div class="bg-red-100 rounded-xl p-6 font-mono text-2xl text-center mb-6">
+                                '%张'
+                            </div>
+                            <div class="text-xl text-center text-gray-700 mb-4">
+                                匹配以"张"结尾的值
+                            </div>
+                            <div class="bg-red-200 rounded-lg p-4 text-center text-lg font-bold text-red-800">
+                                💀 全表扫描
+                            </div>
+                        </div>
+                        
+                        <!-- %两侧 -->
+                        <div class="bg-white rounded-2xl p-8 shadow-xl border-t-8 border-red-500">
+                            <div class="text-6xl mb-6 text-center">❌</div>
+                            <div class="text-3xl font-bold text-center mb-6">%两侧</div>
+                            <div class="bg-red-100 rounded-xl p-6 font-mono text-2xl text-center mb-6">
+                                '%张%'
+                            </div>
+                            <div class="text-xl text-center text-gray-700 mb-4">
+                                匹配包含"张"的所有值
+                            </div>
+                            <div class="bg-red-200 rounded-lg p-4 text-center text-lg font-bold text-red-800">
+                                💀 全表扫描
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- B+树说明 -->
+            <div class="accordion-item collapsed bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">🌳 B+树前缀匹配原理</h3>
+                    <span class="text-2xl">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <svg viewBox="0 0 1200 450" class="w-full">
+                        <text x="600" y="40" text-anchor="middle" class="text-3xl font-bold" fill="#1f2937">name索引在B+树中按字典序排列</text>
+                        
+                        <!-- 有序的叶子节点 -->
+                        <g class="tree-node">
+                            <rect x="50" y="100" width="150" height="80" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>
+                            <text x="125" y="145" text-anchor="middle" class="text-xl font-bold" fill="white">张一</text>
+                        </g>
+                        <g class="tree-node" style="animation-delay: 0.1s">
+                            <rect x="220" y="100" width="150" height="80" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>
+                            <text x="295" y="145" text-anchor="middle" class="text-xl font-bold" fill="white">张三</text>
+                        </g>
+                        <g class="tree-node" style="animation-delay: 0.2s">
+                            <rect x="390" y="100" width="150" height="80" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>
+                            <text x="465" y="145" text-anchor="middle" class="text-xl font-bold" fill="white">张五</text>
+                        </g>
+                        <g class="tree-node" style="animation-delay: 0.3s">
+                            <rect x="560" y="100" width="150" height="80" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>
+                            <text x="635" y="145" text-anchor="middle" class="text-xl font-bold" fill="white">李四</text>
+                        </g>
+                        <g class="tree-node" style="animation-delay: 0.4s">
+                            <rect x="730" y="100" width="150" height="80" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>
+                            <text x="805" y="145" text-anchor="middle" class="text-xl font-bold" fill="white">王二</text>
+                        </g>
+                        <g class="tree-node" style="animation-delay: 0.5s">
+                            <rect x="900" y="100" width="150" height="80" rx="10" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>
+                            <text x="975" y="145" text-anchor="middle" class="text-xl font-bold" fill="white">赵六</text>
+                        </g>
+                        
+                        <!-- 箭头连接 -->
+                        <line x1="200" y1="140" x2="220" y2="140" stroke="#10b981" stroke-width="3" marker-end="url(#arrow5)"/>
+                        <line x1="370" y1="140" x2="390" y2="140" stroke="#10b981" stroke-width="3" marker-end="url(#arrow5)"/>
+                        <line x1="540" y1="140" x2="560" y2="140" stroke="#10b981" stroke-width="3" marker-end="url(#arrow5)"/>
+                        <line x1="710" y1="140" x2="730" y2="140" stroke="#10b981" stroke-width="3" marker-end="url(#arrow5)"/>
+                        <line x1="880" y1="140" x2="900" y2="140" stroke="#10b981" stroke-width="3" marker-end="url(#arrow5)"/>
+                        
+                        <!-- 查询说明 -->
+                        <rect x="50" y="230" width="500" height="180" rx="15" fill="#d1fae5" stroke="#10b981" stroke-width="4"/>
+                        <text x="300" y="270" text-anchor="middle" class="text-2xl font-bold" fill="#065f46">✅ LIKE '张%' 可用索引</text>
+                        <text x="300" y="310" text-anchor="middle" class="text-lg" fill="#065f46">前缀确定："张"</text>
+                        <text x="300" y="340" text-anchor="middle" class="text-lg" fill="#065f46">快速定位到"张"开头的范围</text>
+                        <text x="300" y="370" text-anchor="middle" class="text-lg" fill="#065f46">顺序扫描 张一→张三→张五</text>
+                        <text x="300" y="400" text-anchor="middle" class="text-xl font-bold" fill="#047857">遇到"李"就停止</text>
+                        
+                        <rect x="600" y="230" width="550" height="180" rx="15" fill="#fee2e2" stroke="#ef4444" stroke-width="4"/>
+                        <text x="875" y="270" text-anchor="middle" class="text-2xl font-bold" fill="#991b1b">❌ LIKE '%张' 不能用索引</text>
+                        <text x="875" y="310" text-anchor="middle" class="text-lg" fill="#991b1b">前缀不确定</text>
+                        <text x="875" y="340" text-anchor="middle" class="text-lg" fill="#991b1b">可能是：一张、三张、老张...</text>
+                        <text x="875" y="370" text-anchor="middle" class="text-lg" fill="#991b1b">无法利用有序性定位</text>
+                        <text x="875" y="400" text-anchor="middle" class="text-xl font-bold" fill="#dc2626">必须扫描全部数据</text>
+                        
+                        <defs>
+                            <marker id="arrow5" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#10b981" />
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- 记忆技巧 -->
+            <div class="accordion-item collapsed bg-gradient-to-r from-yellow-50 to-amber-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">💡 记忆口诀</h3>
+                    <span class="text-2xl">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl p-12 text-white text-center shadow-2xl">
+                        <div class="text-6xl mb-8">📖</div>
+                        <div class="text-5xl font-black mb-8">
+                            查字典找"张三"
+                        </div>
+                        <div class="text-3xl mb-6">
+                            ✅ 知道姓"张" → 翻到张字部
+                        </div>
+                        <div class="text-3xl mb-6">
+                            ❌ 只知道名"三" → 全书翻遍
+                        </div>
+                        <div class="mt-8 bg-white bg-opacity-20 rounded-2xl p-6 text-4xl font-bold">
+                            百分号写右边，前缀确定能用索引！
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 第8页：原则6 - 覆盖索引不写星 -->
+<div class="slide" id="slide8">
+    <div class="w-full h-full bg-white">
+        <div class="subtitle-badge absolute top-0 left-0">原则⑥ 覆盖索引不写星</div>
+        
+        <div class="flex flex-col h-full pt-24 px-16 gap-6">
+            <!-- 回表过程可视化 -->
+            <div class="accordion-item expanded bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">💔 SELECT * 的回表代价</h3>
+                    <span class="text-2xl">▼</span>
+                </div>
+                <div class="accordion-content active">
+                    <svg viewBox="0 0 1200 500" class="w-full">
+                        <text x="600" y="40" text-anchor="middle" class="text-3xl font-bold" fill="#1f2937">查询：SELECT * FROM staff WHERE name='张三'</text>
+                        
+                        <!-- 步骤1：扫描二级索引 -->
+                        <g class="tree-node">
+                            <rect x="100" y="100" width="350" height="150" rx="15" fill="#dbeafe" stroke="#3b82f6" stroke-width="4"/>
+                            <text x="275" y="140" text-anchor="middle" class="text-2xl font-bold" fill="#1e40af">① 扫描二级索引</text>
+                            <text x="275" y="175" text-anchor="middle" class="text-lg" fill="#1e40af">name索引树</text>
+                            <rect x="150" y="190" width="250" height="45" rx="8" fill="white" stroke="#3b82f6" stroke-width="2"/>
+                            <text x="275" y="220" text-anchor="middle" class="text-base font-mono" fill="#1f2937">name='张三' → ID:1001</text>
+                        </g>
+                        
+                        <!-- 箭头 -->
+                        <g class="flow-arrow">
+                            <line x1="450" y1="175" x2="550" y2="175" stroke="#ef4444" stroke-width="4" marker-end="url(#arrow6)"/>
+                            <text x="500" y="165" text-anchor="middle" class="text-xl font-bold" fill="#dc2626">回表</text>
+                        </g>
+                        
+                        <!-- 步骤2：回表查询聚簇索引 -->
+                        <g class="tree-node" style="animation-delay: 0.3s">
+                            <rect x="550" y="100" width="350" height="150" rx="15" fill="#fef3c7" stroke="#f59e0b" stroke-width="4"/>
+                            <text x="725" y="140" text-anchor="middle" class="text-2xl font-bold" fill="#92400e">② 回表查主键索引</text>
+                            <text x="725" y="175" text-anchor="middle" class="text-lg" fill="#92400e">聚簇索引（主键）</text>
+                            <rect x="600" y="190" width="250" height="45" rx="8" fill="white" stroke="#f59e0b" stroke-width="2"/>
+                            <text x="725" y="215" text-anchor="middle" class="text-sm font-mono" fill="#1f2937">ID:1001 → 完整行数据</text>
+                        </g>
+                        
+                        <!-- 性能分析 -->
+                        <rect x="150" y="300" width="900" height="170" rx="15" fill="#fee2e2" stroke="#ef4444" stroke-width="4"/>
+                        <text x="600" y="340" text-anchor="middle" class="text-3xl font-bold" fill="#991b1b">⚠️ 性能损耗</text>
+                        
+                        <g>
+                            <circle cx="250" cy="390" r="35" fill="#ef4444"/>
+                            <text x="250" y="400" text-anchor="middle" class="text-2xl font-bold" fill="white">1</text>
+                        </g>
+                        <text x="320" y="395" class="text-xl" fill="#991b1b">需要访问两棵B+树</text>
+                        
+                        <g>
+                            <circle cx="600" cy="390" r="35" fill="#ef4444"/>
+                            <text x="600" y="400" text-anchor="middle" class="text-2xl font-bold" fill="white">2</text>
+                        </g>
+                        <text x="670" y="395" class="text-xl" fill="#991b1b">产生随机IO读盘</text>
+                        
+                        <g>
+                            <circle cx="920" cy="390" r="35" fill="#ef4444"/>
+                            <text x="920" y="400" text-anchor="middle" class="text-2xl font-bold" fill="white">3</text>
+                        </g>
+                        <text x="990" y="395" class="text-xl" fill="#991b1b">性能慢50%+</text>
+                        
+                        <text x="600" y="450" text-anchor="middle" class="text-2xl font-bold" fill="#dc2626">匹配1000行就要回表1000次！</text>
+                        
+                        <defs>
+                            <marker id="arrow6" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#ef4444" />
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- 覆盖索引优化 -->
+            <div class="accordion-item collapsed bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">🚀 覆盖索引 - 无需回表</h3>
+                    <span class="text-2xl">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <svg viewBox="0 0 1200 450" class="w-full">
+                        <text x="600" y="40" text-anchor="middle" class="text-3xl font-bold" fill="#1f2937">索引：(name, age, pos)</text>
+                        <text x="600" y="80" text-anchor="middle" class="text-2xl" fill="#059669">查询：SELECT name, age, pos FROM staff WHERE name='张三'</text>
+                        
+                        <!-- 只访问一棵树 -->
+                        <g class="tree-node">
+                            <rect x="325" y="130" width="550" height="180" rx="15" fill="#d1fae5" stroke="#10b981" stroke-width="4"/>
+                            <text x="600" y="175" text-anchor="middle" class="text-3xl font-bold" fill="#065f46">✅ 只需扫描二级索引</text>
+                            <text x="600" y="215" text-anchor="middle" class="text-xl" fill="#065f46">索引中已包含所需的全部列</text>
+                            
+                            <rect x="375" y="240" width="450" height="50" rx="10" fill="white" stroke="#10b981" stroke-width="3"/>
+                            <text x="600" y="272" text-anchor="middle" class="text-lg font-mono" fill="#1f2937">name='张三' | age=25 | pos='开发' ✓</text>
+                        </g>
+                        
+                        <!-- 优势说明 -->
+                        <rect x="150" y="350" width="900" height="80" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-width="3"/>
+                        <text x="600" y="395" text-anchor="middle" class="text-2xl font-bold" fill="#065f46">🎯 直接返回，无需回表，性能提升50%+</text>
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- 实战对比 -->
+            <div class="accordion-item collapsed bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">📊 性能对比</h3>
+                    <span class="text-2xl">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="grid grid-cols-2 gap-8">
+                        <div class="bg-white rounded-2xl p-8 shadow-lg border-l-8 border-red-500">
+                            <div class="text-3xl font-bold text-red-700 mb-6">❌ 未使用覆盖索引</div>
+                            <div class="bg-red-50 rounded-xl p-6 font-mono text-lg mb-6">
+                                SELECT * FROM staff<br/>
+                                WHERE name='张三'
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-lg">
+                                    <span>扫描索引：</span>
+                                    <span class="font-bold">1次</span>
+                                </div>
+                                <div class="flex justify-between text-lg">
+                                    <span>回表次数：</span>
+                                    <span class="font-bold text-red-600">N次</span>
+                                </div>
+                                <div class="flex justify-between text-lg">
+                                    <span>磁盘IO：</span>
+                                    <span class="font-bold text-red-600">1+N次</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-2xl p-8 shadow-lg border-l-8 border-green-500">
+                            <div class="text-3xl font-bold text-green-700 mb-6">✅ 使用覆盖索引</div>
+                            <div class="bg-green-50 rounded-xl p-6 font-mono text-lg mb-6">
+                                SELECT name,age,pos<br/>
+                                FROM staff WHERE name='张三'
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-lg">
+                                    <span>扫描索引：</span>
+                                    <span class="font-bold">1次</span>
+                                </div>
+                                <div class="flex justify-between text-lg">
+                                    <span>回表次数：</span>
+                                    <span class="font-bold text-green-600">0次</span>
+                                </div>
+                                <div class="flex justify-between text-lg">
+                                    <span>磁盘IO：</span>
+                                    <span class="font-bold text-green-600">1次</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 第9页：原则7 - 不等空值还有OR -->
+<div class="slide" id="slide9">
+    <div class="w-full h-full bg-white">
+        <div class="subtitle-badge absolute top-0 left-0">原则⑦ 不等空值还有OR</div>
+        
+        <div class="flex flex-col h-full pt-24 px-16 gap-6">
+            <!-- 三大杀手 -->
+            <div class="accordion-item expanded bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">⚠️ 索引失效三大杀手</h3>
+                    <span class="text-2xl">▼</span>
+                </div>
+                <div class="accordion-content active">
+                    <div class="grid grid-cols-3 gap-6">
+                        <div class="bg-white rounded-2xl p-8 shadow-xl border-t-8 border-red-500">
+                            <div class="text-7xl mb-6 text-center">≠</div>
+                            <div class="text-3xl font-bold text-center text-gray-800 mb-6">不等判断</div>
+                            <div class="space-y-4">
+                                <div class="bg-red-100 rounded-lg p-4 font-mono text-center text-xl">
+                                    age != 25
+                                </div>
+                                <div class="bg-red-100 rounded-lg p-4 font-mono text-center text-xl">
+                                    age &lt;&gt; 25
+                                </div>
+                            </div>
+                            <div class="mt-6 text-lg text-center text-gray-600">
+                                范围太大<br/>优化器放弃索引
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-2xl p-8 shadow-xl border-t-8 border-orange-500">
+                            <div class="text-7xl mb-6 text-center">∅</div>
+                            <div class="text-3xl font-bold text-center text-gray-800 mb-6">空值判断</div>
+                            <div class="space-y-4">
+                                <div class="bg-orange-100 rounded-lg p-4 font-mono text-center text-xl">
+                                    IS NULL
+                                </div>
+                                <div class="bg-orange-100 rounded-lg p-4 font-mono text-center text-xl">
+                                    IS NOT NULL
+                                </div>
+                            </div>
+                            <div class="mt-6 text-lg text-center text-gray-600">
+                                NULL不在索引中<br/>无法定位
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-2xl p-8 shadow-xl border-t-8 border-yellow-500">
+                            <div class="text-7xl mb-6 text-center">∨</div>
+                            <div class="text-3xl font-bold text-center text-gray-800 mb-6">OR连接</div>
+                            <div class="space-y-4">
+                                <div class="bg-yellow-100 rounded-lg p-4 font-mono text-center text-lg">
+                                    a=1 OR b=2
+                                </div>
+                            </div>
+                            <div class="mt-6 text-lg text-center text-gray-600">
+                                一个条件无索引<br/>全部失效
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 不等判断详解 -->
+            <div class="accordion-item collapsed bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">🔍 不等判断为何失效？</h3>
+                    <span class="text-2xl">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <svg viewBox="0 0 1200 400" class="w-full">
+                        <text x="600" y="40" text-anchor="middle" class="text-3xl font-bold" fill="#1f2937">查询：WHERE age != 25（共10000条数据）</text>
+                        
+                        <!-- 数据分布 -->
+                        <g class="tree-node">
+                            <rect x="100" y="100" width="300" height="120" rx="12" fill="#dbeafe" stroke="#3b82f6" stroke-width="3"/>
+                            <text x="250" y="140" text-anchor="middle" class="text-2xl font-bold" fill="#1e40af">📊 数据分布</text>
+                            <text x="250" y="175" text-anchor="middle" class="text-xl" fill="#1e40af">age = 25: 10条</text>
+                            <text x="250" y="205" text-anchor="middle" class="text-xl font-bold" fill="#dc2626">age ≠ 25: 9990条</text>
+                        </g>
+                        
+                        <text x="450" y="160" class="text-5xl" fill="#4b5563">→</text>
+                        
+                        <!-- 优化器判断 -->
+                        <g class="tree-node" style="animation-delay: 0.2s">
+                            <rect x="550" y="100" width="300" height="120" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="3"/>
+                            <text x="700" y="140" text-anchor="middle" class="text-2xl font-bold" fill="#92400e">🤔 优化器分析</text>
+                            <text x="700" y="175" text-anchor="middle" class="text-lg" fill="#92400e">扫描索引：9990次</text>
+                            <text x="700" y="205" text-anchor="middle" class="text-lg" fill="#92400e">全表扫描：1次</text>
+                        </g>
+                        
+                        <text x="900" y="160" class="text-5xl" fill="#4b5563">→</text>
+                        
+                        <!-- 结果 -->
+                        <g class="tree-node" style="animation-delay: 0.4s">
+                            <rect x="1000" y="100" width="180" height="120" rx="12" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>
+                            <text x="1090" y="140" text-anchor="middle" class="text-3xl">💀</text>
+                            <text x="1090" y="175" text-anchor="middle" class="text-xl font-bold" fill="#991b1b">放弃索引</text>
+                            <text x="1090" y="205" text-anchor="middle" class="text-lg" fill="#dc2626">全表扫描</text>
+                        </g>
+                        
+                        <!-- 说明 -->
+                        <rect x="200" y="270" width="800" height="100" rx="12" fill="#f3f4f6" stroke="#9ca3af" stroke-width="3"/>
+                        <text x="600" y="310" text-anchor="middle" class="text-2xl font-bold" fill="#1f2937">💡 优化器成本计算</text>
+                        <text x="600" y="345" text-anchor="middle" class="text-xl" fill="#4b5563">!=会匹配大量数据，扫描索引成本 > 全表扫描成本</text>
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- 优化方案 -->
+            <div class="accordion-item collapsed bg-gradient-to-r from-green-50 to-teal-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">💡 替代优化方案</h3>
+                    <span class="text-2xl">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-8">
+                            <div class="flex-1 bg-red-100 rounded-2xl p-6 border-4 border-red-500">
+                                <div class="text-2xl font-bold text-red-700 mb-3">❌ 不等判断</div>
+                                <div class="font-mono text-xl">WHERE age != 25</div>
+                            </div>
+                            <div class="text-5xl">→</div>
+                            <div class="flex-1 bg-green-100 rounded-2xl p-6 border-4 border-green-500">
+                                <div class="text-2xl font-bold text-green-700 mb-3">✅ 范围查询</div>
+                                <div class="font-mono text-lg">WHERE age &lt; 25<br/>OR age &gt; 25</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-8">
+                            <div class="flex-1 bg-red-100 rounded-2xl p-6 border-4 border-red-500">
+                                <div class="text-2xl font-bold text-red-700 mb-3">❌ 空值判断</div>
+                                <div class="font-mono text-xl">WHERE name IS NULL</div>
+                            </div>
+                            <div class="text-5xl">→</div>
+                            <div class="flex-1 bg-green-100 rounded-2xl p-6 border-4 border-green-500">
+                                <div class="text-2xl font-bold text-green-700 mb-3">✅ 设计默认值</div>
+                                <div class="font-mono text-lg">字段设置 DEFAULT ''<br/>WHERE name = ''</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-8">
+                            <div class="flex-1 bg-red-100 rounded-2xl p-6 border-4 border-red-500">
+                                <div class="text-2xl font-bold text-red-700 mb-3">❌ OR连接</div>
+                                <div class="font-mono text-xl">WHERE a=1 OR b=2</div>
+                            </div>
+                            <div class="text-5xl">→</div>
+                            <div class="flex-1 bg-green-100 rounded-2xl p-6 border-4 border-green-500">
+                                <div class="text-2xl font-bold text-green-700 mb-3">✅ UNION拆分</div>
+                                <div class="font-mono text-sm">SELECT WHERE a=1<br/>UNION<br/>SELECT WHERE b=2</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 第10页：原则8 - 字符串加引号 -->
+<div class="slide" id="slide10">
+    <div class="w-full h-full bg-white">
+        <div class="subtitle-badge absolute top-0 left-0">原则⑧ VARCHAR加引号</div>
+        
+        <div class="flex flex-col h-full pt-24 px-16 gap-6">
+            <!-- 隐式转换可视化 -->
+            <div class="accordion-item expanded bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">🔄 隐式类型转换的危害</h3>
+                    <span class="text-2xl">▼</span>
+                </div>
+                <div class="accordion-content active">
+                    <svg viewBox="0 0 1200 500" class="w-full">
+                        <text x="600" y="40" text-anchor="middle" class="text-3xl font-bold" fill="#1f2937">字段类型：VARCHAR(20)</text>
+                        
+                        <!-- 步骤1 -->
+                        <g class="tree-node">
+                            <rect x="100" y="100" width="350" height="80" rx="12" fill="#dbeafe" stroke="#3b82f6" stroke-width="3"/>
+                            <text x="275" y="130" text-anchor="middle" class="text-xl font-bold" fill="#1e40af">① 你写的SQL</text>
+                            <text x="275" y="160" text-anchor="middle" class="text-lg font-mono" fill="#1e40af">WHERE phone = 13800000000</text>
+                        </g>
+                        
+                        <line x1="450" y1="140" x2="550" y2="140" stroke="#ef4444" stroke-width="4" marker-end="url(#arrow7)"/>
+                        
+                        <!-- 步骤2 -->
+                        <g class="tree-node" style="animation-delay: 0.2s">
+                            <rect x="550" y="100" width="550" height="80" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="3"/>
+                            <text x="825" y="130" text-anchor="middle" class="text-xl font-bold" fill="#92400e">② MySQL自动转换</text>
+                            <text x="825" y="160" text-anchor="middle" class="text-lg font-mono" fill="#dc2626">WHERE CAST(phone AS UNSIGNED) = 13800000000</text>
+                        </g>
+                        
+                        <line x1="825" y1="180" x2="825" y2="230" stroke="#ef4444" stroke-width="4" marker-end="url(#arrow7)"/>
+                        
+                        <!-- 步骤3 -->
+                        <g class="tree-node" style="animation-delay: 0.4s">
+                            <rect x="550" y="250" width="550" height="100" rx="12" fill="#fee2e2" stroke="#ef4444" stroke-width="4"/>
+                            <text x="825" y="285" text-anchor="middle" class="text-xl font-bold" fill="#991b1b">③ 索引失效</text>
+                            <text x="825" y="315" text-anchor="middle" class="text-lg" fill="#991b1b">对索引列使用了函数 CAST()</text>
+                            <text x="825" y="340" text-anchor="middle" class="text-2xl font-bold" fill="#dc2626">→ 全表扫描！</text>
+                        </g>
+                        
+                        <!-- 说明框 -->
+                        <rect x="150" y="400" width="900" height="80" rx="12" fill="#f3f4f6" stroke="#9ca3af" stroke-width="3"/>
+                        <text x="600" y="440" text-anchor="middle" class="text-2xl font-bold" fill="#1f2937">💡 原理：字符串和数字比较时，MySQL会将字符串转数字</text>
+                        <text x="600" y="470" text-anchor="middle" class="text-xl" fill="#4b5563">转换发生在索引列上 → 破坏索引有序性 → 索引失效</text>
+                        
+                        <defs>
+                            <marker id="arrow7" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#ef4444" />
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- 对比示例 -->
+            <div class="accordion-item collapsed bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">✅ 正确 vs ❌ 错误</h3>
+                    <span class="text-2xl">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="grid grid-cols-2 gap-8">
+                        <div class="bg-white rounded-2xl p-8 shadow-lg border-t-8 border-green-500">
+                            <div class="text-5xl mb-6 text-center">✅</div>
+                            <div class="text-3xl font-bold text-green-700 mb-6 text-center">加引号</div>
+                            <div class="space-y-4">
+                                <div class="bg-green-50 rounded-xl p-6">
+                                    <div class="text-gray-600 mb-2">VARCHAR类型</div>
+                                    <div class="font-mono text-xl text-green-700">
+                                        phone = '13800000000'
+                                    </div>
+                                </div>
+                                <div class="bg-green-50 rounded-xl p-6">
+                                    <div class="text-gray-600 mb-2">CHAR类型</div>
+                                    <div class="font-mono text-xl text-green-700">
+                                        code = 'A123'
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-6 bg-green-200 rounded-lg p-4 text-center text-xl font-bold">
+                                🎯 直接匹配索引
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-2xl p-8 shadow-lg border-t-8 border-red-500">
+                            <div class="text-5xl mb-6 text-center">❌</div>
+                            <div class="text-3xl font-bold text-red-700 mb-6 text-center">不加引号</div>
+                            <div class="space-y-4">
+                                <div class="bg-red-50 rounded-xl p-6">
+                                    <div class="text-gray-600 mb-2">VARCHAR类型</div>
+                                    <div class="font-mono text-xl text-red-700">
+                                        phone = 13800000000
+                                    </div>
+                                </div>
+                                <div class="bg-red-50 rounded-xl p-6">
+                                    <div class="text-gray-600 mb-2">CHAR类型</div>
+                                    <div class="font-mono text-xl text-red-700">
+                                        code = A123
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-6 bg-red-200 rounded-lg p-4 text-center text-xl font-bold">
+                                💀 隐式转换失效
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 记忆口诀 -->
+            <div class="accordion-item collapsed bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6" onclick="toggleAccordion(this)">
+                <div class="flex items-center justify-between cursor-pointer mb-4">
+                    <h3 class="text-3xl font-bold text-gray-800">📝 记忆口诀</h3>
+                    <span class="text-2xl">▶</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="bg-gradient-to-br from-purple-500 to-pink-500 rounded-3xl p-16 text-white text-center shadow-2xl">
+                        <div class="text-8xl mb-8">💬</div>
+                        <div class="text-6xl font-black mb-8">
+                            字符串类型
+                        </div>
+                        <div class="text-5xl font-bold mb-12">
+                            必须加引号！
+                        </div>
+                        <div class="bg-white bg-opacity-20 rounded-2xl p-8 text-4xl font-bold">
+                            不加引号 = 隐式转换 = 索引失效
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 第11页：总结 -->
+<div class="slide" id="slide11">
+    <div class="w-full h-full gradient-bg flex items-center justify-center p-16">
+        <div class="text-white text-center">
+            <div class="text-7xl font-black mb-12 fade-in">八大原则总结</div>
+            
+            <div class="grid grid-cols-2 gap-6 mb-12">
+                <div class="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-6 slide-in-left">
+                    <div class="text-5xl mb-3">①</div>
+                    <div class="text-2xl font-bold">全值匹配我最爱</div>
+                </div>
+                <div class="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-6 slide-in-right" style="animation-delay: 0.1s">
+                    <div class="text-5xl mb-3">②</div>
+                    <div class="text-2xl font-bold">最左前缀要遵守</div>
+                </div>
+                <div class="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-6 slide-in-left" style="animation-delay: 0.2s">
+                    <div class="text-5xl mb-3">③</div>
+                    <div class="text-2xl font-bold">索引列上少计算</div>
+                </div>
+                <div class="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-6 slide-in-right" style="animation-delay: 0.3s">
+                    <div class="text-5xl mb-3">④</div>
+                    <div class="text-2xl font-bold">范围之后全失效</div>
+                </div>
+                <div class="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-6 slide-in-left" style="animation-delay: 0.4s">
+                    <div class="text-5xl mb-3">⑤</div>
+                    <div class="text-2xl font-bold">LIKE百分写最右</div>
+                </div>
+                <div class="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-6 slide-in-right" style="animation-delay: 0.5s">
+                    <div class="text-5xl mb-3">⑥</div>
+                    <div class="text-2xl font-bold">覆盖索引不写星</div>
+                </div>
+                <div class="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-6 slide-in-left" style="animation-delay: 0.6s">
+                    <div class="text-5xl mb-3">⑦</div>
+                    <div class="text-2xl font-bold">不等空值还有OR</div>
+                </div>
+                <div class="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-6 slide-in-right" style="animation-delay: 0.7s">
+                    <div class="text-5xl mb-3">⑧</div>
+                    <div class="text-2xl font-bold">VARCHAR加引号</div>
+                </div>
+            </div>
+            
+            <div class="bg-yellow-400 text-purple-900 rounded-3xl p-12 text-5xl font-black pulse">
+                掌握B+树原理，索引优化不求人！
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentSlide = 1;
+    const totalSlides = 11;
+    
+    function showSlide(n) {
+        const slides = document.querySelectorAll('.slide');
+        slides.forEach(slide => slide.classList.remove('active'));
+        
+        if (n > totalSlides) currentSlide = 1;
+        if (n < 1) currentSlide = totalSlides;
+        
+        document.getElementById('slide' + currentSlide).classList.add('active');
+    }
+    
+    function nextSlide() {
+        currentSlide++;
+        showSlide(currentSlide);
+    }
+    
+    function prevSlide() {
+        currentSlide--;
+        showSlide(currentSlide);
+    }
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+            nextSlide();
+        } else if (e.key === 'ArrowLeft') {
+            prevSlide();
+        }
+    });
+    
+    function toggleAccordion(element) {
+        const content = element.querySelector('.accordion-content');
+        const arrow = element.querySelector('span');
+        const isExpanded = element.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // 如果当前是展开状态，点击后收缩
+            element.classList.remove('expanded');
+            element.classList.add('collapsed');
+            content.classList.remove('active');
+            arrow.textContent = '▶';
+        } else {
+            // 如果当前是收缩状态，先收缩所有，再展开当前
+            const allItems = element.parentElement.querySelectorAll('.accordion-item');
+            allItems.forEach(item => {
+                item.classList.remove('expanded');
+                item.classList.add('collapsed');
+                item.querySelector('.accordion-content').classList.remove('active');
+                item.querySelector('span').textContent = '▶';
+            });
+            
+            // 展开当前项
+            element.classList.remove('collapsed');
+            element.classList.add('expanded');
+            content.classList.add('active');
+            arrow.textContent = '▼';
+        }
+    }
+    
+    showSlide(currentSlide);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大白话讲解RBAC四级角色权限模型</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-lime { 0%, 100% { box-shadow: 0 0 0 0 rgba(163, 230, 53, 0.6); } 50% { box-shadow: 0 0 25px 12px rgba(163, 230, 53, 0); } }
+        @keyframes subtle-pulse-fuchsia { 0%, 100% { box-shadow: 0 0 0 0 rgba(217, 70, 239, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(217, 70, 239, 0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        
+        .diagram-node { border-radius: 1rem; padding: 1.5rem; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .diagram-node:hover { transform: translateY(-5px) scale(1.02); }
+        .diagram-node-good { background-color: rgba(163, 230, 53, 0.1); border: 2px solid rgba(163, 230, 53, 0.5); animation: subtle-pulse-lime 3s infinite; }
+        .diagram-node-bad { background-color: rgba(217, 70, 239, 0.1); border: 2px solid rgba(217, 70, 239, 0.5); animation: subtle-pulse-fuchsia 2s infinite, shake 3s infinite; }
+        .diagram-node-neutral { background-color: rgba(148, 163, 184, 0.1); border: 2px solid rgba(148, 163, 184, 0.5); }
+
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .slide:last-of-type { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1 to 7 are the same as the previous version -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-100">
+                大白话讲解
+                <span 
+                    class="gradient-text bg-gradient-to-r from-fuchsia-500 via-cyan-400 to-sky-400" 
+                    style="text-shadow: 0 0 20px rgba(217, 70, 239, 0.5), 0 0 35px rgba(34, 211, 238, 0.3);"
+                >RBAC</span>
+                四级角色权限模型
+            </h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-6 text-slate-300">
+                从“<span class="text-fuchsia-500">权限混乱</span>”
+                <i class="fa-solid fa-arrow-right-long text-xl mx-2 text-slate-500"></i>
+                “<span class="text-lime-400">井然有序</span>”的架构演进
+            </h2>
+            <div class="content-panel mt-12 p-8 md:p-12 border-purple-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-center gap-12">
+                    <div class="flex flex-col items-center">
+                        <div class="diagram-node diagram-node-neutral w-40 h-40">
+                            <i class="fa-solid fa-user text-5xl text-cyan-400"></i>
+                            <p class="mt-3 font-bold text-lg">用户</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <i class="fa-solid fa-arrow-right text-4xl text-fuchsia-400"></i>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="diagram-node diagram-node-good w-40 h-40 border-purple-500/80 bg-purple-900/20" style="animation: none;">
+                            <i class="fa-solid fa-user-tag text-5xl text-purple-400"></i>
+                            <p class="mt-3 font-bold text-lg">角色</p>
+                            <p class="text-xs text-slate-400 mt-1">中转站</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <i class="fa-solid fa-arrow-right text-4xl text-fuchsia-400"></i>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="diagram-node diagram-node-neutral w-40 h-40">
+                            <i class="fa-solid fa-key text-5xl text-orange-400"></i>
+                            <p class="mt-3 font-bold text-lg">权限</p>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-center text-slate-400 mt-8 text-lg">通过“角色”这个中间层，实现用户与权限的优雅解耦</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: RBAC vs 直接分配权限 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-400 to-fuchsia-500">为什么需要RBAC？</h2>
+            <p class="mt-4 text-xl text-slate-400">直接分配权限 vs 基于角色分配：一场效率与混乱的对决</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-rose-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 左侧：直接分配权限（混乱） -->
+                    <div class="bg-slate-900/40 p-6 rounded-xl border border-fuchsia-500/30 flex flex-col">
+                        <h3 class="font-bold text-xl text-fuchsia-400 mb-4 flex items-center justify-center">
+                            <i class="fa-solid fa-triangle-exclamation mr-3"></i>直接分配权限
+                        </h3>
+                        <div id="diagram-container-s2-bad" class="relative h-80 flex items-center justify-between px-4">
+                            <div class="flex flex-col gap-8 z-10">
+                                <div id="s2-bad-user-a" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-user text-2xl text-cyan-300"></i><p class="text-xs mt-1">用户A</p></div>
+                                <div id="s2-bad-user-b" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-user text-2xl text-cyan-300"></i><p class="text-xs mt-1">用户B</p></div>
+                                <div id="s2-bad-user-c" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-user text-2xl text-cyan-300"></i><p class="text-xs mt-1">用户C</p></div>
+                            </div>
+                            <div class="flex flex-col gap-8 z-10">
+                                <div id="s2-bad-perm-1" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-key text-2xl text-orange-400"></i><p class="text-xs mt-1">权限1</p></div>
+                                <div id="s2-bad-perm-2" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-key text-2xl text-orange-400"></i><p class="text-xs mt-1">权限2</p></div>
+                                <div id="s2-bad-perm-3" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-key text-2xl text-orange-400"></i><p class="text-xs mt-1">权限3</p></div>
+                            </div>
+                            <svg id="svg-canvas-s2-bad" class="absolute inset-0 w-full h-full" style="z-index: 0;"></svg>
+                        </div>
+                        <div class="mt-6 space-y-3 flex-grow">
+                            <div class="flex items-center p-2 rounded-lg text-sm text-slate-300 bg-white/5 transition-all hover:bg-white/10"><i class="fa-solid fa-circle-xmark text-fuchsia-500 w-5 text-center mr-3 flex-shrink-0"></i><span>维护成本极高</span></div>
+                            <div class="flex items-center p-2 rounded-lg text-sm text-slate-300 bg-white/5 transition-all hover:bg-white/10"><i class="fa-solid fa-circle-xmark text-fuchsia-500 w-5 text-center mr-3 flex-shrink-0"></i><span>权限蔓延难回收</span></div>
+                            <div class="flex items-center p-2 rounded-lg text-sm text-slate-300 bg-white/5 transition-all hover:bg-white/10"><i class="fa-solid fa-circle-xmark text-fuchsia-500 w-5 text-center mr-3 flex-shrink-0"></i><span>合规审计风险高</span></div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：RBAC（清晰） -->
+                    <div class="bg-slate-900/40 p-6 rounded-xl border border-lime-500/30 flex flex-col">
+                        <h3 class="font-bold text-xl text-lime-400 mb-4 flex items-center justify-center">
+                            <i class="fa-solid fa-circle-check mr-3"></i>RBAC模型
+                        </h3>
+                        <div id="diagram-container-s2-good" class="relative h-80 flex items-center justify-between px-4">
+                             <div class="flex flex-col gap-8 z-10">
+                                <div id="s2-good-user-a" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-user text-2xl text-cyan-300"></i><p class="text-xs mt-1">用户A</p></div>
+                                <div id="s2-good-user-b" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-user text-2xl text-cyan-300"></i><p class="text-xs mt-1">用户B</p></div>
+                                <div id="s2-good-user-c" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-user text-2xl text-cyan-300"></i><p class="text-xs mt-1">用户C</p></div>
+                            </div>
+                            <div class="flex items-center z-10">
+                                <div id="s2-good-role" class="diagram-node bg-purple-900/50 border-2 border-purple-400 p-4 w-28"><i class="fa-solid fa-user-tag text-3xl text-purple-300"></i><p class="text-sm mt-2 font-bold">角色</p></div>
+                            </div>
+                            <div class="flex flex-col gap-8 z-10">
+                                <div id="s2-good-perm-1" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-key text-2xl text-orange-400"></i><p class="text-xs mt-1">权限1</p></div>
+                                <div id="s2-good-perm-2" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-key text-2xl text-orange-400"></i><p class="text-xs mt-1">权限2</p></div>
+                                <div id="s2-good-perm-3" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-24"><i class="fa-solid fa-key text-2xl text-orange-400"></i><p class="text-xs mt-1">权限3</p></div>
+                            </div>
+                            <svg id="svg-canvas-s2-good" class="absolute inset-0 w-full h-full" style="z-index: 0;"></svg>
+                        </div>
+                        <div class="mt-6 space-y-3 flex-grow">
+                            <div class="flex items-center p-2 rounded-lg text-sm text-slate-300 bg-white/5 transition-all hover:bg-white/10"><i class="fa-solid fa-circle-check text-lime-400 w-5 text-center mr-3 flex-shrink-0"></i><span>批量管理效率高</span></div>
+                            <div class="flex items-center p-2 rounded-lg text-sm text-slate-300 bg-white/5 transition-all hover:bg-white/10"><i class="fa-solid fa-circle-check text-lime-400 w-5 text-center mr-3 flex-shrink-0"></i><span>权限收敛更安全</span></div>
+                            <div class="flex items-center p-2 rounded-lg text-sm text-slate-300 bg-white/5 transition-all hover:bg-white/10"><i class="fa-solid fa-circle-check text-lime-400 w-5 text-center mr-3 flex-shrink-0"></i><span>审计友好易合规</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+          function drawSlide2LinesV4() {
+              const drawLine = (fromId, toId, svg, container, color, dash, width, opacity) => {
+                  const fromEl = document.getElementById(fromId);
+                  const toEl = document.getElementById(toId);
+                  if (!fromEl || !toEl) return;
+                  const cRect = container.getBoundingClientRect();
+                  const fRect = fromEl.getBoundingClientRect();
+                  const tRect = toEl.getBoundingClientRect();
+                  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                  const fromIsLeft = fRect.left < tRect.left;
+                  line.setAttribute('x1', (fromIsLeft ? fRect.right : fRect.left) - cRect.left);
+                  line.setAttribute('y1', fRect.top + fRect.height / 2 - cRect.top);
+                  line.setAttribute('x2', (fromIsLeft ? tRect.left : tRect.right) - cRect.left);
+                  line.setAttribute('y2', tRect.top + tRect.height / 2 - cRect.top);
+                  line.setAttribute('stroke', color);
+                  line.setAttribute('stroke-width', width);
+                  if (dash) line.setAttribute('stroke-dasharray', dash);
+                  line.setAttribute('opacity', opacity);
+                  svg.appendChild(line);
+              };
+              const svgBad = document.getElementById('svg-canvas-s2-bad');
+              const cBad = document.getElementById('diagram-container-s2-bad');
+              if (svgBad && cBad) {
+                  svgBad.innerHTML = '';
+                  const users = ['s2-bad-user-a', 's2-bad-user-b', 's2-bad-user-c'];
+                  const perms = ['s2-bad-perm-1', 's2-bad-perm-2', 's2-bad-perm-3'];
+                  users.forEach(u => perms.forEach(p => drawLine(u, p, svgBad, cBad, '#d946ef', null, '1', '0.4')));
+              }
+              const svgGood = document.getElementById('svg-canvas-s2-good');
+              const cGood = document.getElementById('diagram-container-s2-good');
+              if (svgGood && cGood) {
+                  svgGood.innerHTML = '';
+                  const users = ['s2-good-user-a', 's2-good-user-b', 's2-good-user-c'];
+                  const perms = ['s2-good-perm-1', 's2-good-perm-2', 's2-good-perm-3'];
+                  const role = 's2-good-role';
+                  users.forEach(u => drawLine(u, role, svgGood, cGood, '#a3e635', null, '2', '0.9'));
+                  perms.forEach(p => drawLine(role, p, svgGood, cGood, '#a3e635', null, '2', '0.9'));
+              }
+          }
+          const observerS2v4 = new MutationObserver((mutations, obs) => {
+              if (document.getElementById('diagram-container-s2-bad')) {
+                  drawSlide2LinesV4();
+                  window.addEventListener('resize', drawSlide2LinesV4);
+                  obs.disconnect();
+              }
+          });
+          observerS2v4.observe(document.body, { childList: true, subtree: true });
+        </script>
+    </section>
+
+    <!-- Slide 3: 角色的多维度与三大属性 -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-cyan-300 to-fuchsia-400">角色不只是"职位"</h2>
+            <p class="mt-4 text-xl text-slate-400">多维度拆分 + 三大核心属性</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-cyan-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 左侧：多维度拆分 -->
+                    <div class="flex flex-col justify-center">
+                        <h3 class="font-bold text-2xl text-cyan-300 mb-6 text-center">角色的四大维度</h3>
+                        <div class="relative h-80 flex items-center justify-center">
+                            <div class="diagram-node diagram-node-good p-6 w-32 h-32 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 border-purple-500/80 bg-purple-900/20" style="animation:none;">
+                                <i class="fa-solid fa-user-tag text-4xl text-purple-400"></i>
+                                <p class="text-sm mt-2 font-bold">角色</p>
+                            </div>
+                            <!-- 四个维度节点 -->
+                            <div class="diagram-node bg-sky-900/30 border-sky-500/50 p-4 w-28 absolute top-0 left-1/2 -translate-x-1/2">
+                                <i class="fa-solid fa-building text-2xl text-sky-400"></i>
+                                <p class="text-xs mt-2">部门维度</p>
+                            </div>
+                            <div class="diagram-node bg-lime-900/30 border-lime-500/50 p-4 w-28 absolute bottom-0 left-1/2 -translate-x-1/2">
+                                <i class="fa-solid fa-location-dot text-2xl text-lime-400"></i>
+                                <p class="text-xs mt-2">地点维度</p>
+                            </div>
+                            <div class="diagram-node bg-orange-900/30 border-orange-500/50 p-4 w-28 absolute left-0 top-1/2 -translate-y-1/2">
+                                <i class="fa-solid fa-star text-2xl text-orange-400"></i>
+                                <p class="text-xs mt-2">资历维度</p>
+                            </div>
+                            <div class="diagram-node bg-rose-900/30 border-rose-500/50 p-4 w-28 absolute right-0 top-1/2 -translate-y-1/2">
+                                <i class="fa-solid fa-briefcase text-2xl text-rose-400"></i>
+                                <p class="text-xs mt-2">职责维度</p>
+                            </div>
+                            <!-- 连接线 -->
+                            <svg class="absolute inset-0 w-full h-full" style="z-index: 0;">
+                                <line x1="50%" y1="50%" x2="50%" y2="15%" stroke="#38bdf8" stroke-width="2" stroke-dasharray="5,5" opacity="0.6"/>
+                                <line x1="50%" y1="50%" x2="50%" y2="85%" stroke="#a3e635" stroke-width="2" stroke-dasharray="5,5" opacity="0.6"/>
+                                <line x1="50%" y1="50%" x2="15%" y2="50%" stroke="#fb923c" stroke-width="2" stroke-dasharray="5,5" opacity="0.6"/>
+                                <line x1="50%" y1="50%" x2="85%" y2="50%" stroke="#f43f5e" stroke-width="2" stroke-dasharray="5,5" opacity="0.6"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：三大属性 -->
+                    <div class="flex flex-col justify-center">
+                        <h3 class="font-bold text-2xl text-cyan-300 mb-6 text-center">角色的三大属性</h3>
+                        <div class="space-y-4">
+                            <div class="bg-cyan-900/20 p-5 rounded-xl border border-cyan-500/30">
+                                <h4 class="font-bold text-lg text-cyan-300 mb-2 flex items-center">
+                                    <i class="fa-solid fa-eye mr-3 text-2xl"></i>访问权限 (Access)
+                                </h4>
+                                <p class="text-sm text-slate-300 pl-9">用户能"看到"什么内容<br>例如：UI菜单项、数据可见范围</p>
+                            </div>
+                            <div class="bg-lime-900/20 p-5 rounded-xl border border-lime-500/30">
+                                <h4 class="font-bold text-lg text-lime-300 mb-2 flex items-center">
+                                    <i class="fa-solid fa-hand-pointer mr-3 text-2xl"></i>操作权限 (Operation)
+                                </h4>
+                                <p class="text-sm text-slate-300 pl-9">用户能"执行"什么动作<br>例如：读取、写入、创建、删除</p>
+                            </div>
+                            <div class="bg-fuchsia-900/20 p-5 rounded-xl border border-fuchsia-500/30">
+                                <h4 class="font-bold text-lg text-fuchsia-300 mb-2 flex items-center">
+                                    <i class="fa-solid fa-clock mr-3 text-2xl"></i>会话权限 (Session)
+                                </h4>
+                                <p class="text-sm text-slate-300 pl-9">用户登录后的会话有效期<br>例如：普通员工2小时，管理员8小时</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 0级模型 -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-lime-400 to-emerald-400">0级模型：扁平RBAC</h2>
+            <p class="mt-4 text-xl text-slate-400">最基础、最实用的RBAC实现，绝大多数场景的首选</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-lime-500/30">
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+                    <div class="lg:col-span-3">
+                        <h3 class="font-bold text-lg text-lime-300 mb-4 text-center">扁平结构：多对多关系图</h3>
+                        <div id="diagram-container-s4" class="relative h-[400px] flex justify-between items-center p-4">
+                            <div class="flex flex-col gap-12 z-10">
+                                <div id="s4-user1" class="diagram-node bg-cyan-900/30 border-cyan-500/50 p-3 w-32"><i class="fa-solid fa-user text-2xl text-cyan-400"></i><p class="text-sm mt-1">用户A</p></div>
+                                <div id="s4-user2" class="diagram-node bg-cyan-900/30 border-cyan-500/50 p-3 w-32"><i class="fa-solid fa-user text-2xl text-cyan-400"></i><p class="text-sm mt-1">用户B</p></div>
+                            </div>
+                            <div class="flex flex-col gap-12 z-10">
+                                <div id="s4-role1" class="diagram-node diagram-node-good p-3 w-32 border-purple-500/80 bg-purple-900/20" style="animation:none;"><i class="fa-solid fa-user-tag text-2xl text-purple-400"></i><p class="text-sm mt-1">角色X</p></div>
+                                <div id="s4-role2" class="diagram-node diagram-node-good p-3 w-32 border-purple-500/80 bg-purple-900/20" style="animation:none;"><i class="fa-solid fa-user-tag text-2xl text-purple-400"></i><p class="text-sm mt-1">角色Y</p></div>
+                            </div>
+                            <div class="flex flex-col gap-6 z-10">
+                                <div id="s4-perm1" class="diagram-node bg-orange-900/30 border-orange-500/50 p-3 w-32"><i class="fa-solid fa-key text-2xl text-orange-400"></i><p class="text-sm mt-1">权限1</p></div>
+                                <div id="s4-perm2" class="diagram-node bg-orange-900/30 border-orange-500/50 p-3 w-32"><i class="fa-solid fa-key text-2xl text-orange-400"></i><p class="text-sm mt-1">权限2</p></div>
+                                <div id="s4-perm3" class="diagram-node bg-orange-900/30 border-orange-500/50 p-3 w-32"><i class="fa-solid fa-key text-2xl text-orange-400"></i><p class="text-sm mt-1">权限3</p></div>
+                            </div>
+                            <svg id="svg-canvas-s4" class="absolute top-0 left-0 w-full h-full" style="z-index: 0;"></svg>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2 flex flex-col justify-center gap-6">
+                        <div class="bg-lime-900/20 p-5 rounded-xl border border-lime-500/30">
+                            <h4 class="font-bold text-lg text-lime-400 mb-3 flex items-center"><i class="fa-solid fa-circle-check mr-3"></i>核心特征</h4>
+                            <ul class="space-y-2 text-slate-300">
+                                <li class="flex items-start"><i class="fa-solid fa-check mr-2 mt-1 text-lime-400/70"></i><span class="text-sm">用户-角色：多对多关系</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-check mr-2 mt-1 text-lime-400/70"></i><span class="text-sm">角色-权限：多对多关系</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-check mr-2 mt-1 text-lime-400/70"></i><span class="text-sm">扁平结构，无层级继承</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-check mr-2 mt-1 text-lime-400/70"></i><span class="text-sm">无额外约束和限制</span></li>
+                            </ul>
+                        </div>
+                        <div class="bg-cyan-900/20 p-5 rounded-xl border border-cyan-500/30">
+                            <h4 class="font-bold text-lg text-cyan-400 mb-3 flex items-center"><i class="fa-solid fa-lightbulb mr-3"></i>适用场景</h4>
+                            <ul class="space-y-2 text-slate-300">
+                                <li class="flex items-start"><i class="fa-solid fa-rocket mr-2 mt-1 text-cyan-400/70"></i><span class="text-sm">小型创业公司后台系统</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-rocket mr-2 mt-1 text-cyan-400/70"></i><span class="text-sm">权限需求简单的应用</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-rocket mr-2 mt-1 text-cyan-400/70"></i><span class="text-sm">快速上线的MVP产品</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 text-center">
+                    <span class="inline-block px-6 py-3 text-lg font-bold text-lime-200 bg-lime-600/50 rounded-full ring-2 ring-lime-400">
+                        ★★★★★ 实际使用率超过70%
+                    </span>
+                </div>
+            </div>
+        </div>
+        <script>
+          function drawRbac0Lines() {
+              const svg = document.getElementById('svg-canvas-s4');
+              const container = document.getElementById('diagram-container-s4');
+              if (!svg || !container) return;
+              svg.innerHTML = '';
+              const containerRect = container.getBoundingClientRect();
+              const connections = [
+                  { from: 's4-user1', to: 's4-role1', color: '#a855f7' }, { from: 's4-user2', to: 's4-role1', color: '#a855f7' },
+                  { from: 's4-user2', to: 's4-role2', color: '#a855f7' }, { from: 's4-role1', to: 's4-perm1', color: '#fb923c' },
+                  { from: 's4-role1', to: 's4-perm2', color: '#fb923c' }, { from: 's4-role2', to: 's4-perm2', color: '#fb923c' },
+                  { from: 's4-role2', to: 's4-perm3', color: '#fb923c' }
+              ];
+              connections.forEach(conn => {
+                  const fromEl = document.getElementById(conn.from);
+                  const toEl = document.getElementById(conn.to);
+                  if (!fromEl || !toEl) return;
+                  const fromRect = fromEl.getBoundingClientRect();
+                  const toRect = toEl.getBoundingClientRect();
+                  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                  const x1 = (fromRect.right - containerRect.left) + 5;
+                  const y1 = (fromRect.top + fromRect.height / 2) - containerRect.top;
+                  const x2 = (toRect.left - containerRect.left) - 5;
+                  const y2 = (toRect.top + toRect.height / 2) - containerRect.top;
+                  line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+                  line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+                  line.setAttribute('stroke', conn.color); line.setAttribute('stroke-width', '2');
+                  line.setAttribute('stroke-dasharray', '5,5'); line.setAttribute('opacity', '0.7');
+                  svg.appendChild(line);
+              });
+          }
+          const observerS4 = new MutationObserver((mutations, obs) => {
+              if (document.getElementById('diagram-container-s4')) {
+                  drawRbac0Lines();
+                  window.addEventListener('resize', drawRbac0Lines);
+                  obs.disconnect();
+              }
+          });
+          observerS4.observe(document.body, { childList: true, subtree: true });
+        </script>
+    </section>
+
+    <!-- Slide 5: 1级模型 -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-violet-400">1级模型：分层RBAC</h2>
+            <p class="mt-4 text-xl text-slate-400">引入角色继承，权限配置更高效</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-sky-500/30">
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+                    <div class="lg:col-span-3">
+                        <h3 class="font-bold text-lg text-sky-300 mb-4 text-center">角色层级与权限继承</h3>
+                        <div id="diagram-container-s5" class="relative h-[450px] flex justify-around items-center p-4">
+                            <div class="flex flex-col justify-between h-full z-10">
+                                <div id="s5-role-dir" class="diagram-node bg-fuchsia-900/40 border-fuchsia-500/60 p-3 w-40 text-center"><i class="fa-solid fa-crown text-2xl text-yellow-300"></i><p class="font-bold mt-1">销售总监</p></div>
+                                <div id="s5-role-man" class="diagram-node bg-purple-900/40 border-purple-500/60 p-3 w-40 text-center"><i class="fa-solid fa-user-tie text-2xl text-purple-400"></i><p class="font-bold mt-1">销售经理</p></div>
+                                <div id="s5-role-spec" class="diagram-node bg-cyan-900/40 border-cyan-500/60 p-3 w-40 text-center"><i class="fa-solid fa-user text-2xl text-cyan-400"></i><p class="font-bold mt-1">销售专员</p></div>
+                            </div>
+                            <div class="flex flex-col justify-between h-full z-10">
+                                <div id="s5-perm-all" class="diagram-node bg-yellow-900/30 border-yellow-500/50 p-3 w-48 text-left"><p class="font-bold text-yellow-300">专属权限</p><p class="text-xs text-slate-300 mt-1">▶︎ 设定销售目标</p></div>
+                                <div id="s5-perm-approve" class="diagram-node bg-orange-900/30 border-orange-500/50 p-3 w-48 text-left"><p class="font-bold text-orange-300">专属权限</p><p class="text-xs text-slate-300 mt-1">▶︎ 审批折扣</p></div>
+                                <div id="s5-perm-base" class="diagram-node bg-teal-900/30 border-teal-500/50 p-3 w-48 text-left"><p class="font-bold text-teal-300">基础权限</p><p class="text-xs text-slate-300 mt-1">▶︎ 查看/录入客户</p></div>
+                            </div>
+                            <svg id="svg-canvas-s5" class="absolute top-0 left-0 w-full h-full" style="z-index: 0;">
+                                <defs>
+                                    <marker id="arrow-sky" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" /></marker>
+                                </defs>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2 flex flex-col justify-center gap-6">
+                        <div class="bg-lime-900/20 p-5 rounded-xl border border-lime-500/30">
+                            <h4 class="font-bold text-lg text-lime-400 mb-3 flex items-center"><i class="fa-solid fa-circle-check mr-3"></i>优势</h4>
+                            <ul class="space-y-2 text-slate-300">
+                                <li class="flex items-start"><i class="fa-solid fa-check mr-2 mt-1 text-lime-400/70"></i><span class="text-sm">通过继承避免权限重复配置</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-check mr-2 mt-1 text-lime-400/70"></i><span class="text-sm">完美映射企业组织架构</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-check mr-2 mt-1 text-lime-400/70"></i><span class="text-sm">权限变更只需修改基础角色</span></li>
+                            </ul>
+                        </div>
+                        <div class="bg-sky-900/20 p-5 rounded-xl border border-sky-500/30">
+                            <h4 class="font-bold text-lg text-sky-400 mb-3 flex items-center"><i class="fa-solid fa-lightbulb mr-3"></i>适用场景</h4>
+                            <ul class="space-y-2 text-slate-300">
+                                <li class="flex items-start"><i class="fa-solid fa-building mr-2 mt-1 text-sky-400/70"></i><span class="text-sm">中大型企业内部系统</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-sitemap mr-2 mt-1 text-sky-400/70"></i><span class="text-sm">有明确职级汇报关系</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-layer-group mr-2 mt-1 text-sky-400/70"></i><span class="text-sm">需要按管理层级区分权限</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                 <div class="mt-8 text-center">
+                    <span class="inline-block px-6 py-3 text-lg font-bold text-sky-200 bg-sky-600/50 rounded-full ring-2 ring-sky-400">
+                        ★★★☆☆ 实际使用率约20%
+                    </span>
+                </div>
+            </div>
+        </div>
+        <script>
+          function drawRbac1Lines() {
+              const svg = document.getElementById('svg-canvas-s5');
+              const container = document.getElementById('diagram-container-s5');
+              if (!svg || !container) return;
+              svg.innerHTML = '<defs>' + svg.querySelector('defs').innerHTML + '</defs>';
+              const containerRect = container.getBoundingClientRect();
+              const connections = [
+                  { from: 's5-role-dir', to: 's5-perm-all', color: '#fde047', style: 'solid' }, { from: 's5-role-man', to: 's5-perm-approve', color: '#fb923c', style: 'solid' },
+                  { from: 's5-role-spec', to: 's5-perm-base', color: '#2dd4bf', style: 'solid' }, { from: 's5-role-man', to: 's5-role-dir', color: '#38bdf8', style: 'dashed' },
+                  { from: 's5-role-spec', to: 's5-role-man', color: '#38bdf8', style: 'dashed' },
+              ];
+              const drawLine = (p1, p2, color, style, marker) => {
+                  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                  line.setAttribute('x1', p1.x); line.setAttribute('y1', p1.y);
+                  line.setAttribute('x2', p2.x); line.setAttribute('y2', p2.y);
+                  line.setAttribute('stroke', color); line.setAttribute('stroke-width', '2');
+                  if (style === 'dashed') line.setAttribute('stroke-dasharray', '6,6');
+                  if (marker) line.setAttribute('marker-end', `url(#${marker})`);
+                  svg.appendChild(line);
+              };
+              connections.forEach(conn => {
+                  const fromEl = document.getElementById(conn.from);
+                  const toEl = document.getElementById(conn.to);
+                  if (!fromEl || !toEl) return;
+                  const fromRect = fromEl.getBoundingClientRect();
+                  const toRect = toEl.getBoundingClientRect();
+                  let p1, p2, markerId;
+                  if(conn.from.includes('role') && conn.to.includes('perm')) {
+                      p1 = { x: fromRect.right - containerRect.left, y: fromRect.top + fromRect.height / 2 - containerRect.top };
+                      p2 = { x: toRect.left - containerRect.left - 10, y: toRect.top + toRect.height / 2 - containerRect.top };
+                      drawLine(p1, p2, conn.color, conn.style, null);
+                  } else {
+                      p1 = { x: fromRect.left + fromRect.width / 2 - containerRect.left, y: fromRect.top - containerRect.top };
+                      p2 = { x: toRect.left + toRect.width / 2 - containerRect.left, y: toRect.bottom - containerRect.top + 10 };
+                      markerId = 'arrow-sky';
+                      drawLine(p1, p2, conn.color, conn.style, markerId);
+                  }
+              });
+          }
+          const observerS5 = new MutationObserver((mutations, obs) => {
+              if (document.getElementById('diagram-container-s5')) {
+                  drawRbac1Lines();
+                  window.addEventListener('resize', drawRbac1Lines);
+                  obs.disconnect();
+              }
+          });
+          observerS5.observe(document.body, { childList: true, subtree: true });
+        </script>
+    </section>
+
+    <!-- Slide 6: 2级模型 -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-orange-400 to-amber-300">2级模型：约束RBAC</h2>
+            <p class="mt-4 text-xl text-slate-400">职责分离 (SoD)，防止权限滥用和内部舞弊</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-orange-500/30">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                    <div class="flex flex-col h-full">
+                        <h3 class="font-bold text-xl text-fuchsia-400 mb-4 text-center">静态职责分离 (Static SoD)</h3>
+                        <div id="diagram-container-s6-static" class="relative h-[300px] flex flex-col justify-center items-center p-4 bg-fuchsia-900/10 rounded-lg border border-fuchsia-500/20">
+                            <div id="s6-static-user" class="diagram-node bg-cyan-900/30 border-cyan-500/50 p-3 w-32 z-10"><i class="fa-solid fa-user text-2xl text-cyan-400"></i><p class="text-sm mt-1">用户U</p></div>
+                            <div class="flex justify-around w-full mt-16 z-10">
+                                <div id="s6-role-acc" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-32"><i class="fa-solid fa-calculator text-2xl text-slate-400"></i><p class="text-sm mt-1 font-bold">会计</p></div>
+                                <div id="s6-role-cash" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-32"><i class="fa-solid fa-money-bill-transfer text-2xl text-slate-400"></i><p class="text-sm mt-1 font-bold">出纳</p></div>
+                            </div>
+                            <i class="fa-solid fa-ban text-8xl text-fuchsia-500/80 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-60 z-20"></i>
+                            <svg id="svg-canvas-s6-static" class="absolute top-0 left-0 w-full h-full" style="z-index: 5;"></svg>
+                        </div>
+                        <div class="mt-4 text-center text-slate-300 bg-black/20 p-4 rounded-lg">
+                            <p class="font-bold text-fuchsia-300">规则：用户不能<span class="text-fuchsia-100">同时拥有</span>互斥的角色</p>
+                            <p class="text-sm text-slate-400 mt-2">在分配权限的环节进行约束，从源头杜绝风险。</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col h-full">
+                        <h3 class="font-bold text-xl text-purple-400 mb-4 text-center">动态职责分离 (Dynamic SoD)</h3>
+                        <div id="diagram-container-s6-dynamic" class="relative h-[300px] flex flex-col justify-center items-center p-4 bg-purple-900/10 rounded-lg border border-purple-500/20">
+                            <div id="s6-dynamic-user" class="diagram-node bg-cyan-900/30 border-cyan-500/50 p-3 w-40 z-10"><i class="fa-solid fa-user-check text-2xl text-cyan-400"></i><p class="text-sm mt-1">用户U (拥有双角色)</p></div>
+                            <div class="flex justify-around w-full mt-16 z-10">
+                                <div id="s6-role-sales" class="diagram-node diagram-node-good p-3 w-32 ring-2 ring-lime-400 shadow-lg shadow-lime-500/20"><i class="fa-solid fa-toggle-on text-2xl text-lime-400"></i><p class="text-sm mt-1 font-bold">销售角色</p><p class="text-xs text-lime-300">已激活</p></div>
+                                <div id="s6-role-ops" class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-32 opacity-60"><i class="fa-solid fa-toggle-off text-2xl text-slate-500"></i><p class="text-sm mt-1 font-bold">运营角色</p><p class="text-xs text-slate-500">未激活</p></div>
+                            </div>
+                                                        <svg id="svg-canvas-s6-dynamic" class="absolute top-0 left-0 w-full h-full" style="z-index: 5;"></svg>
+                        </div>
+                        <div class="mt-4 text-center text-slate-300 bg-black/20 p-4 rounded-lg">
+                             <p class="font-bold text-purple-300">规则：同一会话中只能<span class="text-purple-100">激活一个</span>角色</p>
+                             <p class="text-sm text-slate-400 mt-2">用户登录后选择一个身份进行操作，运行时进行约束。</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 text-center">
+                     <span class="inline-block px-6 py-3 text-lg font-bold text-orange-200 bg-orange-600/50 rounded-full ring-2 ring-orange-400">
+                        ★★★☆☆ 实际使用率约15%
+                    </span>
+                </div>
+            </div>
+        </div>
+        <script>
+          function drawRbac2Lines() {
+              const svgStatic = document.getElementById('svg-canvas-s6-static');
+              const containerStatic = document.getElementById('diagram-container-s6-static');
+              if (svgStatic && containerStatic) {
+                  svgStatic.innerHTML = '';
+                  const staticRect = containerStatic.getBoundingClientRect();
+                  const staticUser = document.getElementById('s6-static-user').getBoundingClientRect();
+                  const roleAcc = document.getElementById('s6-role-acc').getBoundingClientRect();
+                  const roleCash = document.getElementById('s6-role-cash').getBoundingClientRect();
+                  const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                  line1.setAttribute('x1', staticUser.left + staticUser.width / 2 - staticRect.left);
+                  line1.setAttribute('y1', staticUser.bottom - staticRect.top);
+                  line1.setAttribute('x2', roleAcc.left + roleAcc.width / 2 - staticRect.left);
+                  line1.setAttribute('y2', roleAcc.top - staticRect.top);
+                  line1.setAttribute('stroke', '#9ca3af'); line1.setAttribute('stroke-width', '2'); line1.setAttribute('stroke-dasharray', '4,4');
+                  svgStatic.appendChild(line1);
+                  const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                  line2.setAttribute('x1', staticUser.left + staticUser.width / 2 - staticRect.left);
+                  line2.setAttribute('y1', staticUser.bottom - staticRect.top);
+                  line2.setAttribute('x2', roleCash.left + roleCash.width / 2 - staticRect.left);
+                  line2.setAttribute('y2', roleCash.top - staticRect.top);
+                  line2.setAttribute('stroke', '#9ca3af'); line2.setAttribute('stroke-width', '2'); line2.setAttribute('stroke-dasharray', '4,4');
+                  svgStatic.appendChild(line2);
+              }
+              const svgDynamic = document.getElementById('svg-canvas-s6-dynamic');
+              const containerDynamic = document.getElementById('diagram-container-s6-dynamic');
+              if (svgDynamic && containerDynamic) {
+                  svgDynamic.innerHTML = '';
+                  const dynamicRect = containerDynamic.getBoundingClientRect();
+                  const dynamicUser = document.getElementById('s6-dynamic-user').getBoundingClientRect();
+                  const roleSales = document.getElementById('s6-role-sales').getBoundingClientRect();
+                  const roleOps = document.getElementById('s6-role-ops').getBoundingClientRect();
+                  const line3 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                  line3.setAttribute('x1', dynamicUser.left + dynamicUser.width /2 - dynamicRect.left);
+                  line3.setAttribute('y1', dynamicUser.bottom - dynamicRect.top);
+                  line3.setAttribute('x2', roleSales.left + roleSales.width / 2 - dynamicRect.left);
+                  line3.setAttribute('y2', roleSales.top - dynamicRect.top);
+                  line3.setAttribute('stroke', '#a3e635');
+                  line3.setAttribute('stroke-width', '2');
+                  svgDynamic.appendChild(line3);
+
+                  const line4 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                  line4.setAttribute('x1', dynamicUser.left + dynamicUser.width / 2 - dynamicRect.left);
+                  line4.setAttribute('y1', dynamicUser.bottom - dynamicRect.top);
+                  line4.setAttribute('x2', roleOps.left + roleOps.width / 2 - dynamicRect.left);
+                  line4.setAttribute('y2', roleOps.top - dynamicRect.top);
+                  line4.setAttribute('stroke', '#6b7280');
+                  line4.setAttribute('stroke-width', '2');
+                  line4.setAttribute('stroke-dasharray', '4,4');
+                  svgDynamic.appendChild(line4);
+              }
+          }
+
+          const observerS6 = new MutationObserver((mutations, obs) => {
+              if (document.getElementById('diagram-container-s6-static') && document.getElementById('diagram-container-s6-dynamic')) {
+                  drawRbac2Lines();
+                  window.addEventListener('resize', drawRbac2Lines);
+                  obs.disconnect();
+              }
+          });
+          observerS6.observe(document.body, { childList: true, subtree: true });
+        </script>
+    </section>
+
+    <!-- Slide 7: 3级模型 -->
+    <section id="slide7" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-purple-400 to-fuchsia-500">3级模型：统一RBAC</h2>
+            <p class="mt-4 text-xl text-slate-400">融合1级与2级，并引入权限审查机制</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-purple-500/30">
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+                    <div class="lg:col-span-3">
+                        <h3 class="font-bold text-lg text-purple-300 mb-4 text-center">模型融合与审查机制</h3>
+                        <div id="diagram-container-s7" class="relative h-[450px] flex flex-col justify-center items-center p-4">
+                            <div class="flex justify-around w-full max-w-md z-10">
+                                <div id="s7-model1" class="diagram-node bg-sky-900/30 border-sky-500/50 p-3 w-40 text-center"><i class="fa-solid fa-sitemap text-2xl text-sky-400"></i><p class="font-bold mt-1">1级: 角色分层</p></div>
+                                <div id="s7-model2" class="diagram-node bg-orange-900/30 border-orange-500/50 p-3 w-40 text-center"><i class="fa-solid fa-shield-halved text-2xl text-orange-400"></i><p class="font-bold mt-1">2级: 职责分离</p></div>
+                            </div>
+                            <div id="s7-core" class="diagram-node bg-purple-900/40 border-purple-500/60 p-6 w-64 text-center my-12 z-10"><i class="fa-solid fa-layer-group text-4xl text-purple-300"></i><p class="font-bold text-xl mt-2">统一RBAC核心</p><p class="text-xs text-slate-400">融合分层与约束</p></div>
+                            <div id="s7-review" class="absolute bottom-0 flex items-center justify-center flex-col z-10">
+                                 <div class="diagram-node bg-teal-900/30 border-teal-500/50 p-3 w-56 text-center"><i class="fa-solid fa-magnifying-glass-chart text-2xl text-teal-400"></i><p class="font-bold mt-1">3级: 权限审查</p></div>
+                            </div>
+                            <svg id="svg-canvas-s7" class="absolute top-0 left-0 w-full h-full" style="z-index: 5;">
+                                 <defs>
+                                    <marker id="arrow-purple" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c084fc" /></marker>
+                                    <marker id="arrow-teal" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5eead4" /></marker>
+                                </defs>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2 flex flex-col justify-center gap-6">
+                        <div class="bg-lime-900/20 p-5 rounded-xl border border-lime-500/30">
+                            <h4 class="font-bold text-lg text-lime-400 mb-3 flex items-center"><i class="fa-solid fa-lightbulb mr-3"></i>适用场景</h4>
+                            <ul class="space-y-2 text-sm text-slate-300">
+                                <li class="flex items-start"><i class="fa-solid fa-landmark mr-2 mt-1 text-lime-400/70"></i><span>金融、政务等高合规系统</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-certificate mr-2 mt-1 text-lime-400/70"></i><span>需通过SOX、ISO27001认证</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-shield-halved mr-2 mt-1 text-lime-400/70"></i><span>对权限管理有极致要求的组织</span></li>
+                            </ul>
+                        </div>
+                        <div class="bg-yellow-900/20 p-5 rounded-xl border border-yellow-500/30">
+                            <h4 class="font-bold text-lg text-yellow-400 mb-3 flex items-center"><i class="fa-solid fa-triangle-exclamation mr-3"></i>实现成本</h4>
+                            <ul class="space-y-2 text-sm text-slate-300">
+                                <li class="flex items-start"><i class="fa-solid fa-gears mr-2 mt-1 text-yellow-400/70"></i><span>需要工作流与审计引擎</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-users-gear mr-2 mt-1 text-yellow-400/70"></i><span>需要专门的权限管理岗</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-sack-dollar mr-2 mt-1 text-yellow-400/70"></i><span>系统复杂度和维护成本极高</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                 <div class="mt-8 text-center">
+                    <span class="inline-block px-6 py-3 text-lg font-bold text-purple-200 bg-purple-600/50 rounded-full ring-2 ring-purple-400">
+                        ★☆☆☆☆ 实际使用率不足5%
+                    </span>
+                </div>
+            </div>
+        </div>
+        <script>
+          function drawRbac3Lines() {
+              const svg = document.getElementById('svg-canvas-s7');
+              const container = document.getElementById('diagram-container-s7');
+              if (!svg || !container) return;
+              svg.innerHTML = '<defs>' + svg.querySelector('defs').innerHTML + '</defs>';
+              const containerRect = container.getBoundingClientRect();
+              const connections = [
+                  { from: 's7-model1', to: 's7-core', marker: 'arrow-purple' }, { from: 's7-model2', to: 's7-core', marker: 'arrow-purple' },
+                  { from: 's7-core', to: 's7-review', marker: 'arrow-teal' },
+              ];
+              const drawLine = (p1, p2, markerId, isDashed) => {
+                  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                  line.setAttribute('x1', p1.x); line.setAttribute('y1', p1.y);
+                  line.setAttribute('x2', p2.x); line.setAttribute('y2', p2.y);
+                  line.setAttribute('stroke-width', '2.5');
+                  if(markerId === 'arrow-purple') {
+                      line.setAttribute('stroke', '#c084fc');
+                  } else {
+                      line.setAttribute('stroke', '#5eead4');
+                      line.setAttribute('stroke-dasharray', '8,8');
+                  }
+                  line.setAttribute('marker-end', `url(#${markerId})`);
+                  svg.appendChild(line);
+              };
+              connections.forEach(conn => {
+                  const fromEl = document.getElementById(conn.from);
+                  const toEl = document.getElementById(conn.to);
+                  if (!fromEl || !toEl) return;
+                  const fromRect = fromEl.getBoundingClientRect();
+                  const toRect = toEl.getBoundingClientRect();
+                  let p1, p2;
+                  if (conn.from.includes('model')) {
+                      p1 = { x: fromRect.left + fromRect.width / 2 - containerRect.left, y: fromRect.bottom - containerRect.top };
+                      p2 = { x: toRect.left + toRect.width / 2 - containerRect.left, y: toRect.top - containerRect.top + 10 };
+                  } else {
+                      p1 = { x: fromRect.left + fromRect.width / 2 - containerRect.left, y: fromRect.bottom - containerRect.top };
+                      p2 = { x: toRect.left + toRect.width / 2 - containerRect.left, y: toRect.top - containerRect.top + 10 };
+                  }
+                  drawLine(p1, p2, conn.marker, conn.from === 's7-core');
+              });
+          }
+          const observerS7 = new MutationObserver((mutations, obs) => {
+              if (document.getElementById('diagram-container-s7')) {
+                  drawRbac3Lines();
+                  window.addEventListener('resize', drawRbac3Lines);
+                  obs.disconnect();
+              }
+          });
+          observerS7.observe(document.body, { childList: true, subtree: true });
+        </script>
+    </section>
+
+    <!-- Slide 8: 四级模型对比 (黄金建议优化版) -->
+    <section id="slide8" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-cyan-400 to-fuchsia-400">四级模型对比</h2>
+            <p class="mt-4 text-xl text-slate-400">从简单到复杂，选择适合你的那一级</p>
+            <div class="content-panel mt-8 p-0 md:p-4 border-cyan-500/30 overflow-x-auto">
+                <table class="w-full text-left text-sm md:text-base border-collapse min-w-[1000px]">
+                    <thead>
+                        <tr class="border-b-2 border-slate-700">
+                            <th class="p-4 w-1/6 text-slate-400 font-semibold uppercase">级别</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">核心特征</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">复杂度</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">适用场景</th>
+                            <th class="p-4 text-slate-400 font-semibold uppercase">使用率(推荐)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        <tr class="bg-lime-900/20 hover:bg-lime-900/40 transition-colors duration-200">
+                            <td class="p-4 font-bold text-lg text-lime-300">0级模型</td>
+                            <td class="p-4 text-slate-300">扁平结构，多对多关系</td>
+                            <td class="p-4"><span class="inline-block px-3 py-1 text-sm font-bold text-lime-200 bg-lime-600/50 rounded-full">简单</span></td>
+                            <td class="p-4 text-slate-300">小型系统、创业公司后台</td>
+                            <td class="p-4 font-bold text-lime-300">★★★★★ (约70%)</td>
+                        </tr>
+                        <tr class="bg-sky-900/20 hover:bg-sky-900/40 transition-colors duration-200">
+                            <td class="p-4 font-bold text-lg text-sky-300">1级模型</td>
+                            <td class="p-4 text-slate-300">增加角色分层与继承</td>
+                            <td class="p-4"><span class="inline-block px-3 py-1 text-sm font-bold text-sky-200 bg-sky-600/50 rounded-full">中等</span></td>
+                            <td class="p-4 text-slate-300">中大型企业，有职级体系</td>
+                            <td class="p-4 font-bold text-sky-300">★★★☆☆ (约20%)</td>
+                        </tr>
+                        <tr class="bg-orange-900/20 hover:bg-orange-900/40 transition-colors duration-200">
+                            <td class="p-4 font-bold text-lg text-orange-300">2级模型</td>
+                            <td class="p-4 text-slate-300">增加职责分离约束</td>
+                            <td class="p-4"><span class="inline-block px-3 py-1 text-sm font-bold text-orange-200 bg-orange-600/50 rounded-full">较高</span></td>
+                            <td class="p-4 text-slate-300">金融、医疗等强合规行业</td>
+                            <td class="p-4 font-bold text-orange-300">★★☆☆☆ (约5%)</td>
+                        </tr>
+                        <tr class="bg-purple-900/20 hover:bg-purple-900/40 transition-colors duration-200">
+                            <td class="p-4 font-bold text-lg text-purple-300">3级模型</td>
+                            <td class="p-4 text-slate-300">融合1+2级，增加权限审查</td>
+                            <td class="p-4"><span class="inline-block px-3 py-1 text-sm font-bold text-purple-200 bg-purple-600/50 rounded-full">复杂</span></td>
+                            <td class="p-4 text-slate-300">极端合规场景，政务系统</td>
+                            <td class="p-4 font-bold text-purple-300">★☆☆☆☆ (&lt;5%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-8 bg-gradient-to-r from-fuchsia-900/30 to-purple-900/30 p-8 rounded-xl border border-fuchsia-500/30">
+                <h3 class="font-bold text-3xl text-center mb-4 gradient-text bg-gradient-to-r from-fuchsia-300 to-purple-300">
+                    <i class="fa-solid fa-star mr-3"></i>黄金建议
+                </h3>
+                <div class="text-center text-xl text-slate-200 leading-relaxed">
+                    <p class="mb-4">
+                        对于<span class="text-lime-400 font-bold">90%的企业应用场景</span>，
+                        <span class="align-middle inline-block text-2xl font-bold gradient-text bg-gradient-to-r from-lime-300 to-emerald-400 mx-2 px-2 rounded">
+                            RBAC 0级模型 + 数据权限层
+                        </span>
+                        是最佳选择！
+                    </p>
+                    <p class="text-base text-slate-400 italic">"够用就好" — 从简单开始，根据实际需求逐步演进</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center py-8 text-slate-500">
+        大白话讲解RBAC四级角色权限模型
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            const navDots = navContainer.querySelectorAll('a');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            slides.forEach(slide => { observer.observe(slide); });
+        });
+    </script>
+</body>
+</html>

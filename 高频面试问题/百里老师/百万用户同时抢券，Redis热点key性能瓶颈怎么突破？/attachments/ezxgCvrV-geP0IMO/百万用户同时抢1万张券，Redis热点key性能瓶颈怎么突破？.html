@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百万用户同时抢1万张券，Redis热点key性能瓶颈怎么突破？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-in-up { animation: slide-in-up 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+            50% { box-shadow: 0 0 20px 10px rgba(74, 222, 128, 0); }
+        }
+        .diagram-node-good { animation: pulse-green 2s infinite; }
+        
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.8); }
+            50% { box-shadow: 0 0 25px 12px rgba(248, 113, 113, 0); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+            20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+        .diagram-node-bad {
+            animation: pulse-red 1.5s infinite, shake 3.2s infinite;
+        }
+
+        /* New animation for request arrows */
+        @keyframes barrage {
+            0% { opacity: 0; transform: scale(0.3) translateY(0); }
+            50% { opacity: 1; }
+            100% { opacity: 0; transform: scale(1) translateY(100px); }
+        }
+        .request-arrow {
+            position: absolute;
+            animation: barrage 2s ease-out infinite;
+            animation-delay: var(--delay);
+        }
+
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: #0c0a09;
+            color: #e2e8f0;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        section {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            position: relative;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+        }
+        .content-panel {
+            background-color: rgba(31, 29, 29, 0.5);
+            backdrop-filter: blur(20px);
+            border: 1px solid;
+            border-radius: 20px;
+            padding: 2rem 3rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        .theme-sky .gradient-text { background-image: linear-gradient(to right, #38bdf8, #0ea5e9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .theme-sky .border-theme { border-color: #38bdf8; }
+        
+        .theme-rose .gradient-text { background-image: linear-gradient(to right, #fb7185, #f43f5e); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .theme-rose .border-theme { border-color: #fb7185; }
+
+        .theme-violet .gradient-text { background-image: linear-gradient(to right, #a78bfa, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .theme-violet .border-theme { border-color: #a78bfa; }
+
+        .theme-teal .gradient-text { background-image: linear-gradient(to right, #2dd4bf, #14b8a6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .theme-teal .border-theme { border-color: #2dd4bf; }
+        
+        .theme-amber .gradient-text { background-image: linear-gradient(to right, #fbbF59, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .theme-amber .border-theme { border-color: #f59e0b; }
+
+        .theme-green .gradient-text { background-image: linear-gradient(to right, #4ade80, #22c55e); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .theme-green .border-theme { border-color: #4ade80; }
+
+        .side-nav {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 50;
+        }
+        .side-nav a {
+            width: 12px;
+            height: 12px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        .side-nav a:hover, .side-nav a.active {
+            background-color: white;
+            transform: scale(1.3);
+        }
+        .diagram-node {
+            transition: transform 0.3s ease;
+        }
+        .diagram-node:hover {
+            transform: scale(1.1);
+        }
+
+        /* For particles that get stuck at the top of the funnel */
+        @keyframes jitter {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(2px, -1px); }
+            50% { transform: translate(-2px, 1px); }
+            75% { transform: translate(1px, -2px); }
+        }
+        /* For the few particles that escape through the bottleneck */
+        @keyframes flow-through {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(120px); opacity: 0; }
+        }
+        .jammed-particle {
+            position: absolute;
+            animation: jitter 0.2s ease-in-out infinite;
+            animation-delay: var(--delay);
+        }
+        .flowing-particle {
+            position: absolute;
+            left: 50%;
+            margin-left: -4px; /* Center the particle */
+            animation: flow-through 1.5s ease-in infinite;
+            animation-delay: var(--delay);
+        }
+    </style>
+</head>
+<body class="bg-stone-950">
+
+    <nav class="side-nav">
+        <a href="#s0" class="active"></a>
+        <a href="#s1"></a>
+        <a href="#s2"></a>
+        <a href="#s3"></a>
+        <a href="#s4"></a>
+        <a href="#s5"></a>
+        <a href="#s6"></a>
+        <a href="#s7"></a>
+    </nav>
+
+    <!-- Section 0: Title -->
+    <section id="s0" class="theme-sky slide-in-up">
+        <div class="text-center">
+            <h1 class="text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-r from-sky-400 to-blue-500 text-transparent bg-clip-text">百万用户抢券，Redis瓶颈如何突破？</h1>
+            <p class="mt-4 text-xl lg:text-2xl text-slate-400">高并发场景 · Redis热点Key问题 · 视觉化剖析</p>
+        </div>
+        <div class="w-full max-w-5xl flex justify-center items-center gap-2 md:gap-4 p-8 mt-8">
+            <div class="diagram-node text-center">
+                <div class="p-4 bg-gray-800 rounded-lg shadow-lg"><i class="fa-solid fa-users text-sky-400 text-3xl"></i></div>
+                <p class="mt-2 text-sm">海量并发</p>
+            </div>
+            <i class="fa-solid fa-arrow-right-long text-slate-500 text-2xl md:text-3xl mx-4"></i>
+            <div class="diagram-node text-center">
+                <div class="p-4 bg-gray-800 rounded-lg shadow-lg"><i class="fa-solid fa-key text-rose-500 text-3xl"></i></div>
+                <p class="mt-2 text-sm text-rose-400 font-semibold">单一热点Key</p>
+            </div>
+            <i class="fa-solid fa-arrow-right-long text-slate-500 text-2xl md:text-3xl mx-4"></i>
+            <div class="diagram-node text-center">
+                <div class="p-4 bg-gray-800 rounded-lg shadow-lg"><i class="fa-solid fa-server text-amber-500 text-3xl"></i></div>
+                <p class="mt-2 text-sm text-amber-400 font-semibold">单点瓶颈</p>
+            </div>
+            <i class="fa-solid fa-arrow-right-long text-slate-500 text-2xl md:text-3xl mx-4"></i>
+            <div class="diagram-node text-center">
+                <div class="p-4 bg-gray-800 rounded-lg shadow-lg"><i class="fa-solid fa-burst text-violet-500 text-3xl"></i></div>
+                <p class="mt-2 text-sm">分Key策略</p>
+            </div>
+            <i class="fa-solid fa-arrow-right-long text-slate-500 text-2xl md:text-3xl mx-4"></i>
+            <div class="diagram-node text-center">
+                <div class="p-4 bg-gray-800 rounded-lg shadow-lg"><i class="fa-solid fa-scale-balanced text-green-500 text-3xl"></i></div>
+                <p class="mt-2 text-sm text-green-400 font-semibold">负载均衡</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 1: The Problem (Funnel Version) -->
+    <section id="s1" class="theme-rose slide-in-up">
+        <h2 class="text-4xl lg:text-5xl font-bold mb-4 gradient-text">现象：请求的唯一瓶颈</h2>
+        <p class="text-xl text-slate-400 max-w-4xl text-center mb-10">百万并发请求被强制通过一个狭窄通道，造成大规模拥堵。</p>
+        
+        <div class="relative w-full max-w-md h-[450px] flex flex-col items-center justify-between">
+            
+            <!-- 1. Incoming Requests (Users) -->
+            <div class="w-full text-center">
+                <p class="text-slate-400 text-lg mb-2">百万用户请求...</p>
+                <div class="flex justify-center gap-x-6">
+                    <i class="fa-solid fa-user text-4xl text-slate-400"></i>
+                    <i class="fa-solid fa-user text-4xl text-slate-300"></i>
+                    <i class="fa-solid fa-user text-4xl text-slate-500"></i>
+                    <i class="fa-solid fa-user text-4xl text-slate-400"></i>
+                </div>
+            </div>
+
+            <!-- 2. The Funnel & Particles -->
+            <div class="absolute top-28 w-[320px] h-[220px]">
+                <!-- Funnel Shape -->
+                <div class="w-full h-full" style="
+                    background: linear-gradient(to bottom, rgba(251, 113, 133, 0.2), rgba(251, 113, 133, 0));
+                    -webkit-mask-image: linear-gradient(to bottom, black, black 80%, transparent);
+                    mask-image: linear-gradient(to bottom, black, black 80%, transparent);
+                    clip-path: polygon(0 0, 100% 0, 70% 100%, 30% 100%);
+                "></div>
+
+                <!-- Jammed Particles (at the top) -->
+                <div class="absolute top-8 left-1/2 -translate-x-1/2 w-4/5 h-24">
+                    <i class="jammed-particle fa-solid fa-circle text-[8px] text-rose-400" style="--delay: 0.1s; top: 10%; left: 20%;"></i>
+                    <i class="jammed-particle fa-solid fa-circle text-[8px] text-rose-400" style="--delay: 0.3s; top: 20%; left: 70%;"></i>
+                    <i class="jammed-particle fa-solid fa-circle text-[8px] text-rose-400" style="--delay: 0.5s; top: 30%; left: 45%;"></i>
+                    <i class="jammed-particle fa-solid fa-circle text-[8px] text-rose-400" style="--delay: 0.2s; top: 40%; left: 80%;"></i>
+                    <i class="jammed-particle fa-solid fa-circle text-[8px] text-rose-400" style="--delay: 0.4s; top: 5%; left: 55%;"></i>
+                    <i class="jammed-particle fa-solid fa-circle text-[8px] text-rose-400" style="--delay: 0.6s; top: 50%; left: 30%;"></i>
+                    <i class="jammed-particle fa-solid fa-circle text-[8px] text-rose-400" style="--delay: 0.7s; top: 60%; left: 60%;"></i>
+                </div>
+                
+                <!-- Flowing Particles (through the neck) -->
+                <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/4 h-full">
+                    <i class="flowing-particle fa-solid fa-circle text-[10px] text-rose-300" style="--delay: 0s;"></i>
+                    <i class="flowing-particle fa-solid fa-circle text-[10px] text-rose-300" style="--delay: 1s;"></i>
+                </div>
+            </div>
+
+            <!-- 3. The Bottleneck (Redis Icon) -->
+            <div class="z-10 text-center absolute bottom-0">
+                <div class="diagram-node diagram-node-bad p-6 rounded-full bg-rose-900/50 border-2 border-rose-500">
+                    <i class="fa-brands fa-redis text-6xl text-rose-400"></i>
+                </div>
+                <p class="mt-4 font-bold text-rose-400 text-lg">热点Key瓶颈</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 2: The Root Cause -->
+    <section id="s2" class="theme-amber slide-in-up">
+        <h2 class="text-4xl lg:text-5xl font-bold mb-4 gradient-text">根源：集群也无解的“单点宿命”</h2>
+        <p class="text-xl text-slate-400 max-w-4xl text-center mb-10">集群模式下，一个Key的哈希槽位是固定的，导致所有压力仍由<span class="text-rose-400 font-bold">单一主节点</span>承担。</p>
+        <div class="content-panel border-theme flex flex-col items-center justify-center p-8 w-full max-w-2xl">
+            <p class="mb-6 text-xl">所有请求 <i class="fa-solid fa-arrow-down"></i></p>
+            <div class="grid grid-cols-3 gap-6 w-full">
+                <div class="diagram-node p-6 border border-slate-600 rounded-lg flex flex-col items-center gap-3 bg-slate-800">
+                    <i class="fa-solid fa-server text-4xl text-sky-400"></i>
+                    <span class="text-base">主节点A (空闲)</span>
+                </div>
+                <div class="diagram-node diagram-node-bad p-6 border-2 border-rose-500 rounded-lg flex flex-col items-center gap-3 bg-rose-900/50">
+                    <i class="fa-solid fa-server text-4xl text-rose-400"></i>
+                    <span class="text-base font-bold text-rose-300">主节点B (过载)</span>
+                </div>
+                <div class="diagram-node p-6 border border-slate-600 rounded-lg flex flex-col items-center gap-3 bg-slate-800">
+                    <i class="fa-solid fa-server text-4xl text-sky-400"></i>
+                    <span class="text-base">主节点C (空闲)</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 3: Step 1 - Key Splitting -->
+    <section id="s3" class="theme-violet slide-in-up">
+        <h2 class="text-4xl lg:text-5xl font-bold mb-4 gradient-text">方案：化整为零第一步 · 拆分</h2>
+        <p class="text-xl text-slate-400 max-w-4xl text-center mb-10">核心思路：将一个热点大Key，化整为零，拆分成N个小Key。</p>
+        <div class="content-panel border-theme flex items-center justify-center p-8 w-full max-w-3xl">
+            <div class="diagram-node text-center bg-gray-800 p-6 rounded-lg">
+                <i class="fa-solid fa-key text-violet-400 text-5xl"></i>
+                <p class="mt-3 text-lg">coupon:stock</p>
+            </div>
+            <i class="fa-solid fa-arrow-right-long text-6xl text-violet-500 mx-12 animate-pulse"></i>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="diagram-node text-center bg-gray-800 p-3 rounded-lg text-base"><span>coupon:stock:0</span></div>
+                <div class="diagram-node text-center bg-gray-800 p-3 rounded-lg text-base"><span>coupon:stock:1</span></div>
+                <div class="diagram-node text-center bg-gray-800 p-3 rounded-lg text-base font-bold">...</div>
+                <div class="diagram-node text-center bg-gray-800 p-3 rounded-lg text-base"><span>coupon:stock:N</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 4: Step 2 - Hashing -->
+    <section id="s4" class="theme-teal slide-in-up">
+        <h2 class="text-4xl lg:text-5xl font-bold mb-4 gradient-text">方案：化整为零第二步 · 散列</h2>
+        <p class="text-xl text-slate-400 max-w-4xl text-center mb-10">利用CRC16哈希，将不同的小Key自动散列到集群中的不同物理节点。</p>
+        <div class="content-panel border-theme flex items-center justify-around p-8 w-full max-w-4xl">
+            <div class="diagram-node text-center">
+                <div class="p-4 bg-gray-800 rounded-lg"><span class="font-mono text-lg">coupon:stock:1</span></div>
+                <p class="text-base mt-3">小Key</p>
+            </div>
+            <i class="fa-solid fa-arrow-right-long text-teal-400 text-4xl"></i>
+            <div class="text-center">
+                <div class="diagram-node p-5 bg-gray-800 rounded-full shadow-lg border border-teal-500">
+                   <i class="fa-solid fa-calculator text-teal-400 text-3xl"></i>
+                </div>
+                <p class="mt-3 text-base font-mono">CRC16(key) % 16384</p>
+            </div>
+            <i class="fa-solid fa-arrow-right-long text-teal-400 text-4xl"></i>
+            <div class="text-center">
+                <div class="diagram-node p-5 bg-gray-800 rounded-lg shadow-lg">
+                   <i class="fa-solid fa-server text-teal-400 text-3xl"></i>
+                </div>
+                 <p class="mt-3 text-base">映射到某主节点</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 5: Step 3 - Routing -->
+    <section id="s5" class="theme-sky slide-in-up">
+        <h2 class="text-4xl lg:text-5xl font-bold mb-4 gradient-text">方案：化整为零第三步 · 路由</h2>
+        <p class="text-xl text-slate-400 max-w-4xl text-center mb-10">客户端根据UserID等信息进行路由，将请求均匀地分发到不同的小Key上。</p>
+        <div class="content-panel border-theme flex items-center justify-center p-8 w-full max-w-4xl">
+            <div class="flex flex-col gap-6 items-center">
+                 <div class="diagram-node flex items-center gap-2"><i class="fa-solid fa-user text-3xl text-sky-300"></i> <span class="text-lg">User A</span></div>
+                 <div class="diagram-node flex items-center gap-2"><i class="fa-solid fa-user text-3xl text-sky-400"></i> <span class="text-lg">User B</span></div>
+                 <div class="diagram-node flex items-center gap-2"><i class="fa-solid fa-user text-3xl text-sky-500"></i> <span class="text-lg">User C</span></div>
+            </div>
+            <i class="fa-solid fa-arrow-right-long text-slate-500 text-4xl mx-10"></i>
+            <div class="diagram-node p-6 border border-sky-500 rounded-lg bg-gray-800 text-center">
+                <i class="fa-solid fa-code-branch text-4xl text-sky-400 mb-3"></i>
+                <p class="text-lg">业务逻辑分发</p>
+                <p class="text-sm font-mono mt-1">userID.hashCode() % N</p>
+            </div>
+            <i class="fa-solid fa-arrow-right-long text-slate-500 text-4xl mx-10"></i>
+             <div class="flex flex-col gap-4 items-center text-base">
+                 <div class="diagram-node bg-gray-700 p-3 rounded">Node1 <span class="font-mono text-sky-300">decr(key:0)</span></div>
+                 <div class="diagram-node bg-gray-700 p-3 rounded">Node2 <span class="font-mono text-sky-400">decr(key:1)</span></div>
+                 <div class="diagram-node bg-gray-700 p-3 rounded">Node3 <span class="font-mono text-sky-500">decr(key:2)</span></div>
+            </div>
+        </div>
+    </section>
+
+     <!-- Section 6: Pros & Cons -->
+    <section id="s6" class="theme-amber slide-in-up">
+        <h2 class="text-4xl lg:text-5xl font-bold mb-10 gradient-text">权衡：没有银弹，只有取舍</h2>
+        <div class="flex flex-col md:flex-row gap-8 items-stretch w-full max-w-5xl">
+            <!-- Pros -->
+            <div class="flex-1 content-panel border-theme theme-green p-6 border-green-500/80">
+                <h3 class="text-3xl font-bold text-green-400 mb-6 flex items-center gap-3"><i class="fa-solid fa-circle-check text-4xl"></i> 优点</h3>
+                <ul class="space-y-4 text-lg text-slate-300">
+                    <li class="flex items-start gap-3"><i class="fa-solid fa-rocket text-green-400 mt-1"></i><span><strong class="font-semibold">吞吐量提升:</strong> 将压力分散到多节点，系统总QPS成倍增长。</span></li>
+                    <li class="flex items-start gap-3"><i class="fa-solid fa-scale-balanced text-green-400 mt-1"></i><span><strong class="font-semibold">负载均衡:</strong> 有效避免单点过载，提升系统整体稳定性。</span></li>
+                </ul>
+            </div>
+            <!-- Cons -->
+            <div class="flex-1 content-panel border-theme theme-amber p-6 border-amber-500/80">
+                <h3 class="text-3xl font-bold text-amber-400 mb-6 flex items-center gap-3"><i class="fa-solid fa-triangle-exclamation text-4xl"></i> 缺点</h3>
+                <ul class="space-y-4 text-lg text-slate-300">
+                    <li class="flex items-start gap-3"><i class="fa-solid fa-puzzle-piece text-amber-400 mt-1"></i><span><strong class="font-semibold">系统复杂性:</strong> 需引入客户端路由逻辑，增加开发心智负担。</span></li>
+                    <li class="flex items-start gap-3"><i class="fa-solid fa-wrench text-amber-400 mt-1"></i><span><strong class="font-semibold">维护开销:</strong> Key数量调整、数据聚合、集群扩容等操作更复杂。</span></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 7: Before & After -->
+    <section id="s7" class="theme-green slide-in-up">
+        <h2 class="text-4xl lg:text-5xl font-bold mb-10 gradient-text">总结：从“一点引爆”到“雨露均沾”</h2>
+        <div class="flex flex-col md:flex-row gap-8 items-stretch w-full max-w-6xl">
+            <!-- Before -->
+            <div class="flex-1 content-panel border-theme theme-rose p-8 text-center border-rose-500/80">
+                <h3 class="text-3xl font-bold text-rose-400 mb-6">优化前</h3>
+                <div class="relative flex flex-col items-center justify-center h-full">
+                    <span class="text-slate-400 mb-6 text-lg">海量请求</span>
+                    <i class="fa-solid fa-arrow-down-long text-4xl text-rose-500 animate-pulse"></i>
+                    <div class="diagram-node diagram-node-bad mt-8 p-6 rounded-full bg-rose-900/50 border-2 border-rose-500">
+                        <i class="fa-solid fa-server text-6xl text-rose-400"></i>
+                    </div>
+                    <p class="mt-6 font-bold text-rose-400 text-xl">单点过载，系统崩溃</p>
+                </div>
+            </div>
+            <!-- After -->
+            <div class="flex-1 content-panel border-theme theme-green p-8 text-center border-green-500/80">
+                <h3 class="text-3xl font-bold text-green-400 mb-6">优化后</h3>
+                 <div class="relative flex flex-col items-center justify-center h-full">
+                    <span class="text-slate-400 mb-6 text-lg">请求被均匀分散</span>
+                    <div class="grid grid-cols-3 gap-x-8 w-full max-w-sm">
+                        <i class="fa-solid fa-arrow-down-long text-2xl text-green-500"></i>
+                        <i class="fa-solid fa-arrow-down-long text-2xl text-green-500"></i>
+                        <i class="fa-solid fa-arrow-down-long text-2xl text-green-500"></i>
+                    </div>
+                    <div class="grid grid-cols-3 gap-x-6 mt-4 w-full max-w-sm">
+                       <div class="diagram-node diagram-node-good p-4 rounded-full bg-green-900/50 border-2 border-green-500"><i class="fa-solid fa-server text-3xl text-green-400"></i></div>
+                       <div class="diagram-node diagram-node-good p-4 rounded-full bg-green-900/50 border-2 border-green-500"><i class="fa-solid fa-server text-3xl text-green-400"></i></div>
+                       <div class="diagram-node diagram-node-good p-4 rounded-full bg-green-900/50 border-2 border-green-500"><i class="fa-solid fa-server text-3xl text-green-400"></i></div>
+                    </div>
+                    <p class="mt-6 font-bold text-green-400 text-xl">负载均衡，稳定运行</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center p-4 text-sm text-slate-500 w-full">
+        百万用户同时抢1万张券，Redis热点key性能瓶颈怎么突破？
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.side-nav a');
+
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.5
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('id');
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href') === '#' + id) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, observerOptions);
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+
+</body>
+</html>

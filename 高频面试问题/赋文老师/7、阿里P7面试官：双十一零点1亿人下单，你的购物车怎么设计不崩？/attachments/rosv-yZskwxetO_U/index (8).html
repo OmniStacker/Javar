@@ -1,0 +1,304 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>【最终版】高并发购物车架构设计</title>
+<style>
+  /* --- 1. 视觉与颜色系统 (全面提亮) --- */
+  :root {
+    --bg-color: #0d1117;
+    --text-primary: #f0f2f5; /* 主文本: 更亮 */
+    --text-secondary: #a0b1ce; /* 次文本: 大幅提亮 */
+    --accent-blue: #4dabf7;
+    --accent-green: #40c057;
+    --accent-red: #fa5252;
+    --accent-yellow: #fcc419;
+    --border-color: #30363d;
+    --highlight-bg: rgba(29, 41, 59, 0.8);
+  }
+  body, html {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    display: flex; justify-content: center; align-items: center;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: pan-background 60s linear infinite;
+  }
+  @keyframes pan-background {
+    from { background-position: 0 0; }
+    to { background-position: -240px -240px; }
+  }
+
+  /* --- 2. 幻灯片与导航 --- */
+  #presentation {
+    width: 90%; height: 90%; max-width: 1200px; max-height: 800px;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    position: relative;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(15px);
+    background-color: rgba(13, 17, 23, 0.75);
+  }
+  .slide {
+    width: 100%; height: 100%;
+    display: none; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center;
+    padding: 40px; box-sizing: border-box;
+    animation: slideIn 0.7s cubic-bezier(0.165, 0.84, 0.44, 1);
+  }
+  .slide.active { display: flex; }
+  @keyframes slideIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+  .navigation {
+    position: absolute; bottom: 25px; left: 50%;
+    transform: translateX(-50%); display: flex; align-items: center; gap: 20px;
+  }
+  .nav-btn {
+    background: var(--highlight-bg); border: 1px solid var(--border-color); color: var(--text-secondary);
+    padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;
+  }
+  .nav-btn:hover { background-color: var(--border-color); color: var(--text-primary); box-shadow: 0 0 10px var(--border-color); transform: translateY(-2px); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+  #page-counter { color: #6b7280; font-size: 16px; min-width: 60px; text-align: center; }
+  
+  /* --- 3. 内容与排版优化 --- */
+  .title { font-size: 52px; color: var(--text-primary); margin: 0; line-height: 1.4; text-shadow: 0 0 20px var(--accent-blue); }
+  .subtitle { font-size: 28px; color: var(--text-secondary); margin-top: 20px; font-weight: 300;}
+  .whiteboard {
+    background-color: var(--highlight-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
+    margin-top: 30px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 25px;
+  }
+  .diagram-box { font-family: 'SF Mono', 'Courier New', monospace; font-size: 18px; line-height: 1.8; }
+  .icon { font-size: 50px; line-height: 1; display: inline-block; }
+  .red { color: var(--accent-red); }
+  .green { color: var(--accent-green); }
+  .yellow { color: var(--accent-yellow); }
+  .blue { color: var(--accent-blue); }
+  b { font-weight: 600; }
+  
+  /* 布局与动画 */
+  .two-panel { display: flex; flex-direction: row; justify-content: space-around; width: 100%; gap: 30px; align-items: stretch; }
+  .panel { flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 25px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.3s ease; }
+  .panel:hover { transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0,0,0,0.3); border-color: var(--accent-blue); }
+  .stagger-in > * { animation: slideIn 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) both; }
+  .stagger-in > *:nth-child(1) { animation-delay: 0.1s; }
+  .stagger-in > *:nth-child(2) { animation-delay: 0.3s; }
+  .stagger-in > *:nth-child(3) { animation-delay: 0.5s; }
+
+</style>
+</head>
+<body>
+
+<div id="presentation">
+  <!-- 1. 开场 -->
+  <div class="slide active">
+    <h1 class="title">面试官：双十一1亿人下单，你的购物车怎么不崩？</h1>
+    <p class="subtitle">高手都懂：这题考的不是CRUD，是<b class="yellow">架构思维</b></p>
+  </div>
+
+  <!-- 2. 场景冲突 -->
+  <div class="slide">
+    <h2 class="subtitle">购物车的核心矛盾：“冰”与“火”</h2>
+    <div class="whiteboard two-panel">
+      <div class="panel">
+        <div class="icon">🔥</div>
+        <h3 class="red">火焰: 极度写压力</h3>
+        <p style="font-size: 18px; color: var(--text-secondary)">零点前疯狂加购、改数量<br>写操作是读的数倍</p>
+      </div>
+      <div class="panel">
+        <div class="icon">🧊</div>
+        <h3 class="blue">冰山: 临时非核心</h3>
+        <p style="font-size: 18px; color: var(--text-secondary)">下单前随时被清空<br>无需昂贵的强一致性</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 面试官的担忧 -->
+  <div class="slide">
+    <h2 class="subtitle">面试官的3层恐惧</h2>
+    <div class="whiteboard stagger-in" style="gap: 25px; text-align: left; padding: 30px 50px;">
+        <div style="font-size: 24px;"><b>1. 存储雪崩：</b><span class="red">无脑MySQL，行锁打满，瞬间崩溃</span></div>
+        <div style="font-size: 24px;"><b>2. 设计缺陷：</b><span class="yellow">读写竞争，数据覆盖，用户抓狂</span></div>
+        <div style="font-size: 24px;"><b>3. 业务漏洞：</b><span class="blue">登录丢数据，合并出Bug，客诉爆炸</span></div>
+    </div>
+  </div>
+  
+  <!-- 4. 存储方案对比 -->
+  <div class="slide">
+    <h2 class="subtitle">破局第一步：选对主战场</h2>
+    <div class="whiteboard two-panel">
+      <div class="panel">
+        <h3><span class="red">❌ MySQL: 锁地狱</span></h3>
+        <div class="diagram-box">
+          <span>U1 ↘️ U2 → [ <b class="red">DB LOCK 🔒</b> ]</span><br>
+          <span>U3 ↗️ U4 → [ <b class="red">DB LOCK 🔒</b> ]</span>
+        </div>
+        <p style="font-size:16px; color:var(--text-secondary)">串行操作，性能瓶颈</p>
+      </div>
+      <div class="panel">
+        <h3><span class="green">✅ Redis: 并发天堂</span></h3>
+        <div class="diagram-box">
+          <span>U1 → [ Hash A ]</span><br>
+          <span>U2 → [ Hash B ]</span><br>
+          <span>U3 → [ Hash C ]</span>
+        </div>
+        <p style="font-size:16px; color:var(--text-secondary)">独立空间，无锁竞争</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Redis数据结构 -->
+  <div class="slide">
+    <h2 class="subtitle">制胜武器：Redis <b class="green">Hash</b> 结构</h2>
+    <div class="whiteboard" style="width: 90%;">
+      <p style="margin-top:0;">Key: <b class="blue">cart:user_10086</b></p>
+      <div class="diagram-box" style="background-color: #0d1117; padding: 20px; border-radius: 8px; width:100%; text-align: left; font-size: 18px; line-height: 2;">
+        {<br>
+        &nbsp;&nbsp;"prod_8801": "{'qty': 2}", <span class="yellow">// HSET (新增/覆盖)</span><br>
+        &nbsp;&nbsp;"prod_8802": "{'qty': 1}", <span class="blue">// HINCRBY (原子增减)</span><br>
+        &nbsp;&nbsp;"prod_8803": "{'qty': 5}" <span class="red">// HDEL (删除)</span><br>
+        }
+      </div>
+      <p style="font-size: 20px; color: var(--text-primary); margin-top: 20px;"><b>O(1)</b> 复杂度 | <b>原子</b>操作 | 完美匹配</p>
+    </div>
+  </div>
+  
+  <!-- 6. 同步方案对比 -->
+  <div class="slide">
+    <h2 class="subtitle">破局第二步：性能与一致性的权衡</h2>
+    <div class="whiteboard two-panel">
+      <div class="panel">
+        <h3><span class="red">❌ 同步写: 阻塞</span></h3>
+        <div class="diagram-box">
+          <span>User ➡️ Redis ➡️ <b class="red">DB (Slow)</b></span><br>
+          <span class="icon" style="font-size: 30px;">⏳</span><br>
+          <span>用户等待...</span>
+        </div>
+        <p style="font-size:16px; color:var(--text-secondary)">核心路径被IO拖垮</p>
+      </div>
+      <div class="panel">
+        <h3><span class="green">✅ 异步写回: 解耦</span></h3>
+        <div class="diagram-box">
+          <span>User ➡️ Redis <b class="green">(Fast Return)</b></span><br>
+          <span class="icon" style="font-size: 30px;">⚡️</span><br>
+          <span>Event ➡️ Kafka ➡️ DB</span>
+        </div>
+        <p style="font-size:16px; color:var(--text-secondary)">极致体验与最终一致</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. 登录合并 -->
+  <div class="slide">
+    <h2 class="subtitle">破局第三步：用 <b class="yellow">Lua</b> 保证业务原子性</h2>
+    <div class="whiteboard diagram-box" style="gap: 15px;">
+        <p>-- 合并前 --</p>
+        <div>
+            <span>🛒 Guest: {P1: 1, P2: 1}</span><br>
+            <span>🛒 User: &nbsp;{P2: 2, P3: 5}</span>
+        </div>
+        <div style="font-size: 24px; color:var(--text-secondary)">⬇️ <b style="color:var(--text-primary)">登录触发</b> ⬇️</div>
+        <div style="border: 1px solid var(--accent-yellow); padding: 10px 20px; border-radius: 8px; box-shadow: 0 0 15px var(--accent-yellow);">
+            <b class="yellow">Lua Script (原子执行)</b>
+        </div>
+        <div style="font-size: 24px; color:var(--text-secondary)">⬇️ <b style="color:var(--text-primary)">合并完成</b> ⬇️</div>
+        <div style="text-align: left;">
+            <b class="green">✅ User: &nbsp;{P1: 1, <span class="yellow">P2: 3</span>, P3: 5}</b><br>
+            <b class="red">🗑️ Guest: (已删除)</b>
+        </div>
+    </div>
+  </div>
+
+  <!-- 8. 最终架构图 (重构) -->
+  <div class="slide">
+    <h2 class="subtitle">终极答案：分层解耦架构图</h2>
+    <div class="whiteboard" style="display: flex; flex-direction: row; justify-content: space-between; gap: 20px; font-size: 14px; width: 95%;">
+        <!-- 用户与实时路径 -->
+        <div style="flex: 2; border: 1px solid var(--accent-blue); border-radius: 8px; padding: 15px;">
+            <h3 style="margin:0 0 15px 0; color:var(--accent-blue)">⚡️ 实时路径 (Fast Path)</h3>
+            <p>[ 用户请求 ]</p>
+            <p>↓</p>
+            <p style="border:1px solid var(--border-color); padding: 5px; border-radius:4px;">应用服务 (API)</p>
+            <p>↕ (读/写/合并)</p>
+            <p style="background-color: var(--accent-green); color:#000; padding:10px; border-radius:4px; font-weight:bold;">Redis (Hash)</p>
+            <p>↓ (立即响应)</p>
+            <p>[ 响应用户 ]</p>
+        </div>
+        <!-- 箭头 -->
+        <div style="display: flex; align-items: center; font-size: 18px; color: var(--text-secondary);">
+            <p>---►<br>异步<br>事件<br>---►</p>
+        </div>
+        <!-- 异步路径 -->
+        <div style="flex: 1.5; border: 1px dashed var(--accent-yellow); border-radius: 8px; padding: 15px;">
+            <h3 style="margin:0 0 15px 0; color: var(--accent-yellow)">⏳ 异步路径 (Slow Path)</h3>
+            <p style="border:1px solid var(--border-color); padding: 5px; border-radius:4px;">消息队列 (Kafka)</p>
+            <p>↓</p>
+            <p style="border:1px solid var(--border-color); padding: 5px; border-radius:4px;">消费者服务</p>
+            <p>↓</p>
+            <p style="background-color: var(--accent-red); color:#fff; padding:10px; border-radius:4px; font-weight:bold;">MySQL</p>
+        </div>
+    </div>
+</div>
+
+
+  <!-- 9. 总结 -->
+  <div class="slide">
+    <h1 class="title">架构师的核心思维</h1>
+    <div class="whiteboard stagger-in" style="width: 80%; text-align: left; padding: 30px 50px; font-size: 24px; line-height: 2;">
+      <p>✅ <b class="green">分层：</b>用Redis抗压，用MySQL兜底</p>
+      <p>✅ <b class="yellow">解耦：</b>用MQ隔离，保证核心路径性能</p>
+      <p>✅ <b class="blue">原子：</b>用Lua/锁，保证关键业务一致性</p>
+    </div>
+    <p class="subtitle" style="margin-top: 40px;">点赞收藏，下一个架构师就是你！</p>
+  </div>
+
+
+  <!-- 导航 -->
+  <div class="navigation">
+    <button id="prev-btn" class="nav-btn">◀ 上一页</button>
+    <div id="page-counter">1 / 9</div>
+    <button id="next-btn" class="nav-btn">下一页 ▶</button>
+  </div>
+
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const pageCounter = document.getElementById('page-counter');
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  let currentSlide = 0;
+  const totalSlides = slides.length;
+
+  function updateView() {
+    slides.forEach((slide, index) => slide.classList.toggle('active', index === currentSlide));
+    pageCounter.textContent = `${currentSlide + 1} / ${totalSlides}`;
+    prevBtn.disabled = currentSlide === 0;
+    nextBtn.disabled = currentSlide === totalSlides - 1;
+  }
+
+  prevBtn.addEventListener('click', () => { if (currentSlide > 0) { currentSlide--; updateView(); } });
+  nextBtn.addEventListener('click', () => { if (currentSlide < totalSlides - 1) { currentSlide++; updateView(); } });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') prevBtn.click();
+    else if (e.key === 'ArrowRight') nextBtn.click();
+  });
+  updateView();
+</script>
+
+</body>
+</html>

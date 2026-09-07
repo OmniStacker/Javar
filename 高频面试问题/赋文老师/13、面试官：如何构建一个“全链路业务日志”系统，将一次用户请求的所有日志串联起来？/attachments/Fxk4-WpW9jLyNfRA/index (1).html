@@ -1,0 +1,667 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微服务日志追踪 - TraceID实战</title>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --text-color: #333;
+            --primary-color: #409EFF;
+            --danger-color: #F56C6C;
+            --success-color: #67C23A;
+            --warning-color: #E6A23C;
+            --dark-bg: #2c3e50;
+            --white-color: #FFFFFF;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background: var(--bg-color);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .aspect-ratio-box {
+            position: relative;
+            width: 100vw;
+            height: 56.25vw;
+            max-height: 100vh;
+            max-width: 177.78vh;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-color);
+        }
+        
+        .slides {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slide {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            padding: 4vh 4vw;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .slide.active {
+            display: flex;
+        }
+        
+        .slide-title {
+            font-size: 3.5vw;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 3vh;
+        }
+
+        .slide-subtitle {
+            font-size: 2.2vw;
+            color: #666;
+            margin-bottom: 2vh;
+        }
+
+        .content-box {
+            background: var(--white-color);
+            border-radius: 12px;
+            padding: 3vh 3vw;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            width: 90%;
+            max-width: 1400px;
+        }
+        
+        .diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5vw;
+            margin: 2vh 0;
+            flex-wrap: wrap;
+        }
+        
+        .box {
+            background: var(--primary-color);
+            color: var(--white-color);
+            padding: 1.5vh 2vw;
+            border-radius: 8px;
+            font-size: 1.5vw;
+            font-weight: 500;
+            text-align: center;
+            min-width: 10vw;
+        }
+        
+        .box.problem { background: var(--danger-color); }
+        .box.solution { background: var(--success-color); }
+        .box.gray { background: #95a5a6; }
+        
+        .arrow {
+            font-size: 2.5vw;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .text-large {
+            font-size: 2vw;
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 2vh 0;
+        }
+        
+        .text-medium {
+            font-size: 1.6vw;
+            color: #555;
+            line-height: 1.5;
+            margin: 1.5vh 0;
+        }
+        
+        .highlight {
+            color: var(--danger-color);
+            font-weight: bold;
+        }
+
+        .highlight-green {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .highlight-blue {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        .code-block {
+            background: var(--dark-bg);
+            color: #ecf0f1;
+            padding: 2vh 2vw;
+            border-radius: 8px;
+            font-family: "SF Mono", "Courier New", monospace;
+            font-size: 1.2vw;
+            line-height: 1.6;
+            margin: 2vh 0;
+            text-align: left;
+            overflow-x: auto;
+        }
+        
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2vw;
+            margin: 3vh 0;
+            width: 100%;
+        }
+        
+        .step {
+            background: var(--white-color);
+            border: 3px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 2vh 1.5vw;
+        }
+        
+        .step-number {
+            background: var(--primary-color);
+            color: var(--white-color);
+            width: 3.5vw;
+            height: 3.5vw;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2vw;
+            font-weight: bold;
+            margin: 0 auto 1.5vh;
+        }
+        
+        .step-title {
+            font-size: 1.6vw;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 1vh;
+        }
+        
+        .step-desc {
+            font-size: 1.2vw;
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .navigation {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 8vh;
+            background: var(--white-color);
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 4vw;
+            z-index: 10;
+        }
+        
+        .nav-btn {
+            padding: 1.2vh 2.5vw;
+            background: var(--primary-color);
+            color: var(--white-color);
+            border: none;
+            border-radius: 6px;
+            font-size: 1.3vw;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .nav-btn:hover:not(:disabled) { background: #357abd; }
+        .nav-btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        .page-indicator {
+            font-size: 1.3vw;
+            color: #666;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2vw;
+            margin: 3vh 0;
+            width: 100%;
+        }
+        
+        .comparison-item {
+            padding: 2vh 2vw;
+            border-radius: 8px;
+        }
+        
+        .comparison-item.before { background: #fee; border: 2px solid var(--danger-color); }
+        .comparison-item.after { background: #efe; border: 2px solid var(--success-color); }
+        
+        .comparison-title {
+            font-size: 1.8vw;
+            font-weight: bold;
+            margin-bottom: 2vh;
+        }
+        
+        .snowflake {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5vw;
+            margin: 2vh 0;
+            font-family: "SF Mono", "Courier New", monospace;
+        }
+        
+        .snowflake-part {
+            padding: 1.5vh 1vw;
+            border-radius: 6px;
+            font-size: 1vw;
+            font-weight: bold;
+        }
+        
+        .snowflake-part .title { font-size: 1.2vw; margin-bottom: 0.5vh; }
+        .snowflake-part .desc { font-size: 0.8vw; color: #555;}
+        
+        .snowflake-part:nth-child(1) { background: #fffbe6; border: 2px solid var(--warning-color); }
+        .snowflake-part:nth-child(2) { background: #ecf5ff; border: 2px solid var(--primary-color); }
+        .snowflake-part:nth-child(3) { background: #fef0f0; border: 2px solid var(--danger-color); }
+        .snowflake-part:nth-child(4) { background: #f0f9eb; border: 2px solid var(--success-color); }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3vw;
+            width: 90%;
+            margin-top: 3vh;
+        }
+
+        .summary-block {
+            background: var(--white-color);
+            padding: 3vh 2vw;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            text-align: left;
+        }
+
+        .summary-block-title {
+            font-size: 2vw;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 2vh;
+            text-align: center;
+        }
+
+        .summary-item {
+            display: flex;
+            align-items: flex-start;
+            margin: 1.5vh 0;
+        }
+
+        .summary-icon {
+            font-size: 2vw;
+            margin-right: 1vw;
+            flex-shrink: 0;
+        }
+
+        .summary-text {
+            font-size: 1.4vw;
+            line-height: 1.6;
+            color: var(--text-color);
+        }
+
+        .summary-text strong {
+            font-weight: bold;
+        }
+
+        .key-takeaway {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--white-color);
+            padding: 3vh 3vw;
+            border-radius: 12px;
+            margin-top: 4vh;
+            width: 90%;
+        }
+
+        .key-takeaway-title {
+            font-size: 2.5vw;
+            font-weight: bold;
+            margin-bottom: 2vh;
+        }
+
+        .key-takeaway-text {
+            font-size: 1.6vw;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="aspect-ratio-box">
+        <div class="container">
+            <div class="slides">
+                <!-- Page 1: Title -->
+                <div class="slide active">
+                    <div class="slide-title">面试官：线上出Bug你怎么查？</div>
+                    <div class="slide-subtitle" style="font-size: 2.8vw;">我：看日志啊...🤔</div>
+                    <div class="text-large" style="margin-top: 5vh; color: #555;">
+                        "一个支付成功但没发货的Bug，值班同学查了 <span class="highlight" style="font-size: 2.5vw">40分钟</span> 才定位..."
+                    </div>
+                </div>
+
+                <!-- Page 2: The Problem -->
+                <div class="slide">
+                    <div class="slide-title">面试官的灵魂拷问，你顶得住吗？</div>
+                    <div class="diagram">
+                        <div class="box problem">日志分散</div>
+                        <div class="box problem">无法关联</div>
+                        <div class="box problem">链路断裂</div>
+                        <div class="box problem">日志量大</div>
+                    </div>
+                    <div class="text-large" style="margin-top: 3vh;">
+                        在微服务架构下，用 <span class="highlight">grep</span> 查日志就像...
+                    </div>
+                    <div class="text-large" style="font-size: 3vw; margin-top: 2vh;">
+                        大海捞针 🌊 🔎
+                    </div>
+                </div>
+
+                <!-- Page 3: Solution Intro -->
+                <div class="slide">
+                    <div class="slide-title">破局：给每个请求发一张"身份证"</div>
+                    <div class="slide-subtitle">这张身份证，就叫 <span class="highlight-green">TraceID</span></div>
+                    <div class="diagram" style="flex-direction: column; margin-top: 3vh;">
+                        <div class="box solution" style="font-size: 2vw; padding: 2vh 3vw;">
+                            TraceID: 7234567890123456789
+                        </div>
+                        <div class="arrow">⬇️</div>
+                        <div class="diagram">
+                            <div class="box">网关</div>
+                            <div class="arrow">→</div>
+                            <div class="box">订单</div>
+                            <div class="arrow">→</div>
+                            <div class="box">支付</div>
+                            <div class="arrow">→</div>
+                            <div class="box gray">MQ</div>
+                            <div class="arrow">→</div>
+                            <div class="box">物流</div>
+                        </div>
+                    </div>
+                    <div class="text-large" style="margin-top: 3vh;">
+                        一条<span class="highlight-green">隐形的红线</span>，串联所有服务
+                    </div>
+                </div>
+                
+                <!-- Page 4: Comparison -->
+                <div class="slide">
+                    <div class="slide-title">效果对比：天壤之别</div>
+                    <div class="comparison">
+                        <div class="comparison-item before">
+                            <div class="comparison-title" style="color:var(--danger-color)">❌ 传统方式</div>
+                            <div class="text-medium">登录4台机器</div>
+                            <div class="text-medium">Grep 8万条日志</div>
+                            <div class="text-medium">人工猜测关联</div>
+                            <div class="text-large highlight" style="margin-top: 3vh;">40 分钟</div>
+                        </div>
+                        <div class="comparison-item after">
+                            <div class="comparison-title" style="color:var(--success-color)">✅ TraceID方式</div>
+                            <div class="text-medium">获取TraceID</div>
+                            <div class="text-medium">Kibana搜一下</div>
+                            <div class="text-medium">完整链路呈现</div>
+                            <div class="text-large highlight-green" style="margin-top: 3vh;">10 秒</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page 5: 3 Steps -->
+                <div class="slide">
+                    <div class="slide-title">三步搞定全链路追踪</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-title">生成 ID</div>
+                            <div class="step-desc">用雪花算法，生成全局唯一的19位数字ID</div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-title">传递 ID</div>
+                            <div class="step-desc">用拦截器，让ID在HTTP、RPC、MQ中自动透传</div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-title">打印 ID</div>
+                            <div class="step-desc">用MDC机制，让日志自动带上ID，零侵入</div>
+                        </div>
+                    </div>
+                    <div class="text-large" style="margin-top: 4vh;">
+                        业务代码 <span class="highlight-green">完全无感知</span>，优雅！
+                    </div>
+                </div>
+
+                <!-- Page 6: Step 1 - Snowflake -->
+                <div class="slide">
+                    <div class="slide-title">第1步：雪花算法 (Snowflake)</div>
+                    <div class="content-box">
+                        <div class="text-medium" style="margin-bottom: 2vh;">Twitter开源的64位ID结构</div>
+                        <div class="snowflake">
+                            <div class="snowflake-part">
+                                <div class="title">1位</div>
+                                <div class="desc">符号位</div>
+                            </div>
+                            <div class="snowflake-part" style="flex: 2;">
+                                <div class="title">41位</div>
+                                <div class="desc">时间戳(69年)</div>
+                            </div>
+                            <div class="snowflake-part">
+                                <div class="title">10位</div>
+                                <div class="desc">机器ID(1024台)</div>
+                            </div>
+                            <div class="snowflake-part">
+                                <div class="title">12位</div>
+                                <div class="desc">序列号(4096/ms)</div>
+                            </div>
+                        </div>
+                        <div class="diagram" style="margin-top: 3vh;">
+                            <div class="box solution">19位数字</div>
+                            <div class="box solution">天然有序</div>
+                            <div class="box solution">高性能</div>
+                            <div class="box solution">分布式唯一</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page 7: Step 2 - Propagation -->
+                <div class="slide">
+                    <div class="slide-title">第2步：TraceID 自动传递</div>
+                    <div class="content-box">
+                        <div class="diagram" style="flex-direction: column; gap: 3vh;">
+                            <div class="diagram">
+                                <div class="box">服务A</div>
+                                <div class="arrow">HTTP Header<br/>X-Trace-Id</div>
+                                <div class="box">服务B</div>
+                            </div>
+                            <div class="diagram">
+                                <div class="box">服务A</div>
+                                <div class="arrow">RPC Attachment</div>
+                                <div class="box">服务B</div>
+                            </div>
+                            <div class="diagram">
+                                <div class="box">生产者</div>
+                                <div class="arrow">MQ Header</div>
+                                <div class="box">消费者</div>
+                            </div>
+                        </div>
+                        <div class="text-large" style="margin-top: 3vh;">
+                            核心技术：<span class="highlight-green">ThreadLocal</span> + <span class="highlight-green">拦截器 (Interceptor)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page 8: Step 3 - Logging -->
+                <div class="slide">
+                    <div class="slide-title">第3步：日志自动打印</div>
+                    <div class="content-box">
+                        <div class="text-medium">Logback配置，一行搞定：</div>
+                        <div class="code-block" style="font-size: 1.4vw;">
+&lt;pattern&gt;
+  %d{HH:mm:ss} <span class="highlight-blue">[%X{traceId}]</span> %logger - %msg%n
+&lt;/pattern&gt;
+                        </div>
+                        <div class="text-medium" style="margin-top:3vh">效果：</div>
+                        <div class="code-block" style="background: #ecf0f1; color: var(--text-color); font-size: 1.1vw;">
+15:30:01 [<span class="highlight-blue">7234...6789</span>] OrderService - 用户下单
+15:30:02 [<span class="highlight-blue">7234...6789</span>] PaymentService - 支付成功
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page 9: Pitfalls -->
+                <div class="slide">
+                    <div class="slide-title">生产环境三大坑 & 解决方案</div>
+                    <div class="steps">
+                        <div class="step" style="border-color:var(--danger-color)">
+                            <div class="step-number" style="background:var(--danger-color)">坑1</div>
+                            <div class="step-title">线程池丢ID</div>
+                            <div class="step-desc"><span class="highlight-green">解决</span>：自定义线程池，包装Runnable自动传递</div>
+                        </div>
+                        <div class="step" style="border-color:var(--danger-color)">
+                            <div class="step-number" style="background:var(--danger-color)">坑2</div>
+                            <div class="step-title">日志量爆炸</div>
+                            <div class="step-desc"><span class="highlight-green">解决</span>：智能采样，成本降低99%，核心链路100%追踪</div>
+                        </div>
+                        <div class="step" style="border-color:var(--danger-color)">
+                            <div class="step-number" style="background:var(--danger-color)">坑3</div>
+                            <div class="step-title">前端难获取</div>
+                            <div class="step-desc"><span class="highlight-green">解决</span>：响应头返回ID，报障时自动提交</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page 10: Final Summary (全新设计) -->
+                <div class="slide">
+                    <div class="slide-title">从"不会"到"拿offer"，这套方案帮你跃升</div>
+                    <div class="summary-grid">
+                        <div class="summary-block">
+                            <div class="summary-block-title">💼 业务价值</div>
+                            <div class="summary-item">
+                                <div class="summary-icon">⚡</div>
+                                <div class="summary-text"><strong>排障时间：</strong>从40分钟降至10秒，效率提升<span class="highlight">240倍</span></div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-icon">💰</div>
+                                <div class="summary-text"><strong>日志成本：</strong>从92万/年降至9200元，节省<span class="highlight-green">99%</span></div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-icon">👥</div>
+                                <div class="summary-text"><strong>用户体验：</strong>快速定位问题，故障影响降至最低</div>
+                            </div>
+                        </div>
+                        <div class="summary-block">
+                            <div class="summary-block-title">🎯 核心技术点</div>
+                            <div class="summary-item">
+                                <div class="summary-icon">🔑</div>
+                                <div class="summary-text"><strong>雪花算法：</strong>全局唯一ID生成，高性能分布式方案</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-icon">🔗</div>
+                                <div class="summary-text"><strong>自动传递：</strong>ThreadLocal + 拦截器，业务代码零侵入</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-icon">📝</div>
+                                <div class="summary-text"><strong>智能打印：</strong>MDC机制 + 智能采样，完美平衡</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="key-takeaway">
+                        <div class="key-takeaway-title">🎓 关键启示</div>
+                        <div class="key-takeaway-text">
+                            <strong>不是"会写代码"就够了，而是要具备"系统思维"：</strong><br>
+                            • 发现问题本质（日志分散 → 缺少全局ID）<br>
+                            • 设计优雅方案（三步实现，零侵入）<br>
+                            • 考虑生产问题（线程池、成本、前端集成）
+                        </div>
+                    </div>
+                    <div class="text-large" style="margin-top: 3vh; color: var(--primary-color);">
+                        掌握这套思维，你也能在面试中脱颖而出！👍
+                    </div>
+                </div>
+            </div>
+
+            <div class="navigation">
+                <button class="nav-btn" id="prevBtn">上一页</button>
+                <div class="page-indicator"><span id="currentPage">1</span> / <span id="totalPages">10</span></div>
+                <button class="nav-btn" id="nextBtn">下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlideIdx = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('totalPages').textContent = totalSlides;
+        
+        function showSlide(index) {
+            if (!slides[currentSlideIdx]) return;
+            slides[currentSlideIdx].classList.remove('active');
+            currentSlideIdx = (index + totalSlides) % totalSlides;
+            slides[currentSlideIdx].classList.add('active');
+            
+            document.getElementById('currentPage').textContent = currentSlideIdx + 1;
+            document.getElementById('prevBtn').disabled = currentSlideIdx === 0;
+            document.getElementById('nextBtn').disabled = currentSlideIdx === totalSlides - 1;
+        }
+        
+        function nextSlide() {
+            if (currentSlideIdx < totalSlides - 1) {
+                showSlide(currentSlideIdx + 1);
+            }
+        }
+        
+        function prevSlide() {
+            if (currentSlideIdx > 0) {
+                showSlide(currentSlideIdx - 1);
+            }
+        }
+
+        document.getElementById('nextBtn').addEventListener('click', nextSlide);
+        document.getElementById('prevBtn').addEventListener('click', prevSlide);
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            }
+        });
+        
+        showSlide(0);
+    </script>
+</body>
+</html>

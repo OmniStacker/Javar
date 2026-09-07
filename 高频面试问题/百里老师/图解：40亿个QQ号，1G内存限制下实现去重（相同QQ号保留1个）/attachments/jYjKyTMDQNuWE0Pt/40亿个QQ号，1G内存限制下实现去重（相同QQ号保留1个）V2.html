@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>40亿个QQ号，1G内存限制下实现去重（相同QQ号保留1个）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 50% { box-shadow: 0 0 25px 12px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(239, 68, 68, 0); } }
+        @keyframes subtle-pulse-amber { 0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); } 50% { box-shadow: 0 0 25px 12px rgba(245, 158, 11, 0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        @keyframes stress { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .diagram-node { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 1.5rem; border-radius: 1rem; font-weight: 600; text-align: center; border: 1px solid; transition: all 0.3s ease; }
+        .diagram-node:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(148, 163, 184, 0.2); }
+        .diagram-node-bad { animation: subtle-pulse-red 2s infinite ease-in-out; }
+        .diagram-node-good { animation: subtle-pulse-green 2s infinite ease-in-out; }
+        .diagram-node-warn { animation: subtle-pulse-amber 2.5s infinite ease-in-out; }
+        .annotation { position: absolute; background-color: rgba(239, 68, 68, 0.8); color: white; padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: bold; white-space: nowrap; }
+        .slide:last-of-type { border-bottom: none; }
+        
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场通关图 (已按建议增强) -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">40亿QQ号，1G内存，如何去重？</h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">从内存爆炸到空间魔法，一图通关！</h2>
+            <div class="content-panel mt-10 p-6 md:p-8 border-sky-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-4 text-white">
+                    <!-- 错误路线 -->
+                    <div class="flex flex-col items-center gap-3">
+                        <h3 class="text-xl font-bold text-red-400">第一步：分析失败根因</h3>
+                        <div class="diagram-node diagram-node-bad border-red-600/50 bg-red-900/30 p-4 w-48 h-full">
+                            <i class="fa-solid fa-memory text-4xl text-red-400"></i>
+                            <h4 class="font-bold mt-2">HashSet硬存</h4>
+                            <p class="text-sm text-slate-400">内存当场爆炸</p>
+                            <p class="text-xs font-mono text-red-400">> 59 GB</p>
+                        </div>
+                    </div>
+                    <!-- 箭头 -->
+                    <div class="hidden md:flex items-center justify-center text-5xl text-sky-400/50 px-4"><i class="fa-solid fa-angles-right animate-pulse"></i></div>
+                    <div class="flex md:hidden items-center justify-center text-5xl text-sky-400/50 rotate-90 my-4"><i class="fa-solid fa-angles-down animate-pulse"></i></div>
+                    <!-- 正确路线 -->
+                    <div class="flex flex-col items-center gap-3">
+                        <h3 class="text-xl font-bold text-green-400">第二步：讲解破局方案</h3>
+                        <div class="diagram-node diagram-node-good border-teal-500/80 bg-teal-900/40 p-4 w-48 h-full">
+                            <i class="fa-solid fa-wand-magic-sparkles text-4xl text-teal-300"></i>
+                            <h4 class="font-bold mt-2">BitMap标记</h4>
+                            <p class="text-sm text-slate-300">精准、高效</p>
+                            <p class="text-xs font-mono text-green-300">< 512 MB</p>
+                        </div>
+                    </div>
+                    <!-- 箭头 -->
+                    <div class="hidden md:flex items-center justify-center text-4xl text-amber-400/50 px-2"><i class="fa-solid fa-arrow-right-long"></i></div>
+                    <div class="flex md:hidden items-center justify-center text-4xl text-amber-400/50 rotate-90 my-2"><i class="fa-solid fa-arrow-down-long"></i></div>
+                    <!-- 延伸思考 -->
+                    <div class="flex flex-col items-center gap-3">
+                        <h3 class="text-xl font-bold text-amber-400">第三步：拓展更优解</h3>
+                        <div class="diagram-node diagram-node-warn border-amber-500/60 bg-amber-900/30 p-4 w-48 h-full">
+                            <i class="fa-solid fa-magnifying-glass-chart text-4xl text-amber-300"></i>
+                            <h4 class="font-bold mt-2">布隆过滤器</h4>
+                            <p class="text-sm text-slate-300">极致空间、有误判</p>
+                            <p class="text-xs font-mono text-amber-300">~ 100MB</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 内存爆炸 (已按建议增强) -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-5xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-red-500 to-orange-400">第一步：直面“内存爆炸”</h2>
+            <p class="mt-4 text-xl text-slate-400">最直观的 `HashSet` 方案，为何是“不可能完成的任务”？</p>
+            <div class="content-panel mt-8 p-8 border-red-500/30">
+                <div class="relative flex flex-col md:flex-row items-center justify-center gap-8">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-file-lines text-6xl text-sky-300"></i><h4 class="font-bold mt-2 text-lg">40亿QQ号数据</h4></div>
+                    <div class="diagram-arrow text-4xl md:text-6xl text-red-400 flex flex-col gap-2"><i class="fa-solid fa-arrow-right-long fa-beat"></i><span class="text-lg font-mono">ADD TO SET</span></div>
+                    <div class="relative diagram-node bg-red-900/40 border-red-500 p-6" style="animation: stress 1.5s infinite ease-in-out, shake 3s infinite ease-in-out;">
+                        <i class="fa-solid fa-server text-6xl text-red-300"></i><h4 class="font-bold mt-2 text-lg">HashSet (内存)</h4>
+                        <div class="annotation -top-5 -right-8"><i class="fa-solid fa-fire-flame"></i> 内存爆炸!</div>
+                        <div class="annotation -bottom-5 text-base" style="background-color: rgba(249, 115, 22, 0.8);">需求: >59GB</div>
+                    </div>
+                </div>
+                <!-- 内存结构分解图 -->
+                <div class="mt-10 pt-6 border-t border-slate-700">
+                    <h3 class="text-2xl font-bold text-center text-red-300">根源：一个QQ号 ≠ 4字节</h3>
+                    <div class="mt-4 flex flex-col md:flex-row justify-center items-center gap-4 text-center">
+                        <div class="font-mono text-lg p-3 bg-sky-900/50 border border-sky-700 rounded-lg">QQ号 (unsigned int)<br><span class="font-bold text-2xl text-sky-300">4 字节</span></div>
+                        <div class="text-3xl text-slate-500">+</div>
+                        <div class="font-mono text-lg p-3 bg-orange-900/50 border border-orange-700 rounded-lg">对象开销 (对象头等)<br><span class="font-bold text-2xl text-orange-300">12 字节</span></div>
+                        <div class="text-3xl text-slate-500">=</div>
+                        <div class="font-mono text-lg p-3 bg-red-900/50 border border-red-700 rounded-lg">存入HashSet的对象<br><span class="font-bold text-2xl text-red-300">16 字节</span></div>
+                    </div>
+                    <p class="mt-6 text-center text-xl font-bold text-red-300 font-mono">40亿 × 16字节 ≈ 59.6 GB</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: BitMap 解决方案 (已按建议增强) -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-emerald-400 to-green-400">破局之道：BitMap 空间魔法</h2>
+            <p class="mt-4 text-xl text-slate-400">不存数值，只存“状态”，用一个 bit 代表一个 QQ 号是否出现过。</p>
+            <div class="content-panel mt-8 p-8 border-green-500/30">
+                <div class="flex flex-col items-center justify-center gap-6">
+                    <!-- 计算过程 -->
+                    <div class="relative flex flex-col md:flex-row items-center gap-4 md:gap-8">
+                        <div class="text-lg">QQ号: <span class="font-mono p-2 bg-slate-700 rounded-md text-amber-300">10</span></div>
+                        <div class="text-3xl text-slate-500 hidden md:block"><i class="fa-solid fa-arrow-right-long"></i></div>
+                        <div id="calc-index" class="text-lg font-mono">index = 10 / 8 = <span class="p-2 bg-slate-700 rounded-md text-sky-300">1</span></div>
+                        <div class="text-3xl text-slate-500">+</div>
+                        <div id="calc-pos" class="text-lg font-mono">position = 10 % 8 = <span class="p-2 bg-slate-700 rounded-md text-violet-300">2</span></div>
+                    </div>
+                    <!-- 可视化 -->
+                    <div id="bitmap-vis" class="relative w-full max-w-4xl bg-slate-900/50 p-4 rounded-xl mt-4">
+                        <h4 class="text-center font-bold text-lg mb-2">BitMap (内存中的字节数组)</h4>
+                        <div class="flex gap-2 justify-center">
+                            <div class="flex flex-col items-center"><div class="font-mono text-sm text-slate-400">Byte 0</div><div class="flex border-2 border-slate-600 rounded-md p-1">
+                                <div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div>
+                                <div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div>
+                            </div></div>
+                            <div id="target-byte" class="flex flex-col items-center"><div class="font-mono text-sm text-slate-400">Byte 1</div><div class="flex border-2 border-green-500 rounded-md p-1 bg-green-900/30">
+                                <div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div>
+                                <div id="target-bit" class="relative w-8 h-8 bg-green-500 m-0.5 flex justify-center items-center text-white font-bold text-2xl">1</div>
+                                <div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div>
+                                <div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div>
+                            </div></div>
+                            <div class="hidden md:flex flex-col items-center"><div class="font-mono text-sm text-slate-400">Byte 2</div><div class="flex border-2 border-slate-600 rounded-md p-1">
+                                <div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div>
+                                <div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div><div class="w-8 h-8 bg-slate-700 m-0.5"></div>
+                            </div></div>
+                            <div class="hidden lg:flex items-center text-2xl text-slate-500 px-2">...</div>
+                        </div>
+                        <!-- 增强的注解 -->
+                        <div class="absolute top-0 left-1/2 -translate-x-1/2 -mt-10 text-sky-300 font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-arrow-down fa-bounce"></i> <span>定位字节 (找楼层)</span>
+                        </div>
+                        <div class="absolute top-full left-1/2 -translate-x-1/2 mt-10 text-violet-300 font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-arrow-up fa-bounce"></i> <span>定位bit位 (找座位号)</span>
+                        </div>
+                    </div>
+                    <div class="mt-12 text-center text-xl font-bold text-green-300">
+                        <p><i class="fa-solid fa-circle-check"></i> 内存占用仅 512MB，100% 精确去重，问题解决！</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 布隆过滤器 (已按建议增强) -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-400 to-yellow-400">延伸思考：布隆过滤器与“误判”</h2>
+            <p class="mt-4 text-xl text-slate-400">用更极致的空间效率，换取一个“可能存在”的答案。</p>
+            <div class="content-panel mt-8 p-8 border-amber-500/30">
+                <div class="flex flex-col items-center justify-center gap-6">
+                    <!-- 场景 -->
+                    <div class="flex flex-col md:flex-row gap-8 w-full">
+                        <!-- 场景A: 存入 -->
+                        <div class="flex-1 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                            <h4 class="font-bold text-lg text-center mb-2 text-sky-300">1. 存入 "Hello"</h4>
+                            <div class="flex items-center justify-center gap-2">
+                                <span class="font-mono p-2 bg-slate-700 rounded-md text-amber-300">"Hello"</span>
+                                <i class="fa-solid fa-arrow-right-long text-slate-500"></i>
+                                <div class="flex flex-col gap-1 text-sm">
+                                    <span>H1() <i class="fa-solid fa-arrow-right"></i> Pos 2</span>
+                                    <span>H2() <i class="fa-solid fa-arrow-right"></i> Pos 5</span>
+                                    <span>H3() <i class="fa-solid fa-arrow-right"></i> Pos 8</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 场景B: 误判 -->
+                        <div class="flex-1 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                            <h4 class="font-bold text-lg text-center mb-2 text-red-400">2. 查询 "World" (实际未存入)</h4>
+                            <div class="flex items-center justify-center gap-2">
+                                <span class="font-mono p-2 bg-slate-700 rounded-md text-amber-300">"World"</span>
+                                <i class="fa-solid fa-arrow-right-long text-slate-500"></i>
+                                <div class="flex flex-col gap-1 text-sm">
+                                    <span>H'1() <i class="fa-solid fa-arrow-right"></i> Pos 2</span>
+                                    <span>H'2() <i class="fa-solid fa-arrow-right"></i> Pos 8</span>
+                                    <span>H'3() <i class="fa-solid fa-arrow-right"></i> Pos 13</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 统一的 Bit Array -->
+                    <div class="w-full bg-slate-900/50 p-4 rounded-xl mt-4">
+                        <h4 class="text-center font-bold text-lg mb-2">共享的 Bit 数组</h4>
+                        <div class="flex gap-1 justify-center flex-wrap">
+                            <div class="w-8 h-8 bg-slate-700 m-0.5 border border-slate-600"></div>
+                            <div class="w-8 h-8 bg-sky-500 m-0.5 border border-sky-400 flex justify-center items-center font-bold">1</div>
+                            <div class="w-8 h-8 bg-slate-700 m-0.5 border border-slate-600"></div>
+                            <div class="w-8 h-8 bg-pink-500 m-0.5 border border-pink-400 flex justify-center items-center font-bold">1</div>
+                            <div class="w-8 h-8 bg-sky-500 m-0.5 border border-sky-400 flex justify-center items-center font-bold">1</div>
+                            <div class="w-8 h-8 bg-slate-700 m-0.5 border border-slate-600"></div>
+                              <div class="w-8 h-8 bg-slate-700 m-0.5 border border-slate-600"></div>
+                              <div class="w-8 h-8 bg-sky-500 m-0.5 border border-sky-400 flex justify-center items-center font-bold">1</div>
+                              <div class="w-8 h-8 bg-slate-700 m-0.5 border border-slate-600"></div>
+                              <div class="w-8 h-8 bg-slate-700 m-0.5 border border-slate-600"></div>
+                              <div class="w-8 h-8 bg-slate-700 m-0.5 border border-slate-600"></div>
+                              <div class="w-8 h-8 bg-red-500 m-0.5 border border-red-400 flex justify-center items-center font-bold">1</div>
+                              <div class="w-8 h-8 bg-slate-700 m-0.5 border border-slate-600"></div>
+                              <div class="w-8 h-8 bg-slate-700 m-0.5 border border-slate-600"></div>
+                              <div class="hidden md:flex items-center text-2xl text-slate-500 px-2">...</div>
+                        </div>
+                        <div class="mt-4 text-center text-sm">
+                            <span class="px-2 py-1 bg-sky-500/50 rounded-md mr-2">"Hello" 标记位</span>
+                            <span class="px-2 py-1 bg-pink-500/50 rounded-md mr-2">其他数据标记位</span>
+                            <span class="px-2 py-1 bg-red-500/50 rounded-md">"World" 查询位之一</span>
+                        </div>
+                    </div>
+                    <!-- 结论 -->
+                    <div class="relative diagram-node diagram-node-warn bg-amber-900/40 border-amber-500/80 p-6 w-full max-w-2xl mt-4" style="animation-duration: 3s;">
+                        <i class="fa-solid fa-triangle-exclamation text-6xl text-amber-300"></i>
+                        <h4 class="font-bold mt-2 text-lg">查询 "World" 的哈希位 (2, 8, 13) 全为1</h4>
+                        <div class="annotation -top-5" style="background-color: rgba(217, 119, 6, 0.8); animation: shake 4s infinite ease-in-out;">发生误判! (False Positive)</div>
+                        <p class="text-slate-300 text-xl mt-2">结论：<span class="font-bold text-amber-300">"World" 可能存在</span> (但实际不存在)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 最终总结 (已按建议增强) -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">最终总结：3步选对方案</h2>
+            <p class="mt-4 text-xl text-slate-400">掌握这套决策框架，面试稳操胜券。</p>
+            <!-- 三步选型法 -->
+            <div class="content-panel mt-8 p-6 md:p-8 border-sky-500/30">
+                <h3 class="text-2xl font-bold text-center mb-6 text-sky-300">海量数据去重选型决策流</h3>
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <div class="p-4 bg-slate-800 border border-slate-600 rounded-xl">
+                            <p class="font-bold text-lg">1. 是否需精确去重?</p>
+                        </div>
+                        <div class="flex mt-4">
+                            <div class="flex items-center">
+                                <div class="w-16 md:w-24 h-px bg-slate-600"></div>
+                                <div class="flex flex-col items-center">
+                                    <p class="text-red-400 font-bold">否 (可容忍误判)</p>
+                                    <i class="fa-solid fa-arrow-down text-red-400 mt-1"></i>
+                                    <div class="mt-2 p-3 bg-amber-900/50 border border-amber-600 rounded-lg font-bold text-amber-300">布隆过滤器</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center ml-4 md:ml-8">
+                                <div class="w-16 md:w-24 h-px bg-slate-600"></div>
+                                <div class="flex flex-col items-center">
+                                    <p class="text-green-400 font-bold">是</p>
+                                    <i class="fa-solid fa-arrow-down text-green-400 mt-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hidden md:flex items-center text-3xl text-slate-500 mx-4 pt-16"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="flex md:hidden items-center text-3xl text-slate-500 my-4"><i class="fa-solid fa-arrow-down"></i></div>
+                    <div class="flex flex-col items-center md:pt-16">
+                         <div class="p-4 bg-slate-800 border border-slate-600 rounded-xl">
+                            <p class="font-bold text-lg">2. 数据是否为整数?</p>
+                        </div>
+                         <div class="flex mt-4">
+                            <div class="flex items-center">
+                                <div class="w-16 md:w-24 h-px bg-slate-600"></div>
+                                <div class="flex flex-col items-center">
+                                    <p class="text-green-400 font-bold">是 (且范围适中)</p>
+                                    <i class="fa-solid fa-arrow-down text-green-400 mt-1"></i>
+                                    <div class="mt-2 p-3 bg-green-900/50 border border-green-600 rounded-lg font-bold text-green-300">BitMap</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center ml-4 md:ml-8">
+                                <div class="w-16 md:w-24 h-px bg-slate-600"></div>
+                                <div class="flex flex-col items-center">
+                                    <p class="text-red-400 font-bold">否 / 内存充足</p>
+                                    <i class="fa-solid fa-arrow-down text-red-400 mt-1"></i>
+                                     <div class="mt-2 p-3 bg-red-900/50 border border-red-600 rounded-lg font-bold text-red-300">HashSet</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 对比表 -->
+            <div class="content-panel mt-8 p-6 md:p-8 border-sky-500/30 overflow-x-auto">
+                <table class="w-full text-left text-base md:text-lg border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-600">
+                            <th class="p-4">方案</th>
+                            <th class="p-4">内存占用</th>
+                            <th class="p-4">准确性</th>
+                            <th class="p-4">适用场景</th>
+                            <th class="p-4">本题结论</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700">
+                        <tr class="bg-red-900/20 hover:bg-red-900/40 transition-colors">
+                            <td class="p-4 font-bold">HashSet</td>
+                            <td class="p-4 text-red-400 font-bold">极大 (~60G)</td>
+                            <td class="p-4">100% 精确</td>
+                            <td class="p-4">小数据集 / 内存充足</td>
+                            <td class="p-4 font-bold"><i class="fa-solid fa-circle-xmark text-red-500"></i> 空间不符</td>
+                        </tr>
+                        <tr class="bg-green-900/20 hover:bg-green-900/40 transition-colors">
+                            <td class="p-4 font-bold">BitMap</td>
+                            <td class="p-4 text-green-300 font-bold">中等 (512M)</td>
+                            <td class="p-4 text-green-300 font-bold">100% 精确</td>
+                            <td class="p-4">海量整数精确去重</td>
+                            <td class="p-4 text-teal-300 font-bold"><i class="fa-solid fa-crown"></i> 最佳选择</td>
+                        </tr>
+                        <tr class="bg-amber-900/20 hover:bg-amber-900/40 transition-colors">
+                            <td class="p-4 font-bold">Bloom Filter</td>
+                            <td class="p-4 text-amber-300 font-bold">极小 (可调)</td>
+                            <td class="p-4 text-amber-300 font-bold">存在误判</td>
+                            <td class="p-4">海量数据容错判重</td>
+                            <td class="p-4 text-sky-300 font-bold"><i class="fa-solid fa-star"></i> 知识广度加分项</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="text-center py-8 text-slate-500">
+        40亿个QQ号，1G内存限制下实现去重（相同QQ号保留1个）
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            const navDots = navContainer.querySelectorAll('a');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            slides.forEach(slide => { observer.observe(slide); });
+        });
+    </script>
+</body>
+</html>

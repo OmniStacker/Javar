@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MySQL RR 隔离级别下的幻读问题场景分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { 
+            from { opacity: 0; transform: translateY(50px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        @keyframes subtle-pulse-green { 
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 
+            50% { box-shadow: 0 0 25px 12px rgba(34, 197, 94, 0); } 
+        }
+        @keyframes subtle-pulse-red { 
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 
+            50% { box-shadow: 0 0 25px 12px rgba(239, 68, 68, 0); } 
+        }
+        @keyframes gentle-pulse { 
+            0%, 100% { transform: scale(1); opacity: 1; } 
+            50% { transform: scale(1.03); opacity: 0.9; } 
+        }
+
+        html { scroll-behavior: smooth; }
+        body { 
+            background-color: #0f172a; 
+            color: #e2e8f0; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+        }
+        .slide { 
+            min-height: 100vh; 
+            width: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 3rem 1.5rem; 
+            opacity: 0; 
+            animation: slide-in-up 0.8s ease-out forwards; 
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5); 
+        }
+        .content-panel { 
+            background-color: rgba(30, 41, 59, 0.4); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px); 
+            border: 1px solid rgba(71, 85, 105, 0.3); 
+            border-radius: 1.5rem; 
+            padding: 2rem; 
+            width: 100%; 
+        }
+        .gradient-text { 
+            background-clip: text; 
+            -webkit-background-clip: text; 
+            color: transparent; 
+        }
+        .diagram-node { 
+            transition: all 0.3s ease; 
+        }
+        .diagram-node:hover { 
+            transform: scale(1.05); 
+        }
+        .diagram-node-good { 
+            animation: subtle-pulse-green 3s infinite; 
+        }
+        .diagram-node-bad { 
+            animation: subtle-pulse-red 2s infinite; 
+        }
+        .diagram-node-bad i { 
+            animation: gentle-pulse 2s infinite; 
+        }
+
+        #nav-dots { 
+            position: fixed; 
+            right: 20px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            z-index: 9999; 
+            background: rgba(15, 23, 42, 0.8);
+            padding: 15px 10px;
+            border-radius: 25px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        #nav-dots a { 
+            width: 12px; 
+            height: 12px; 
+            background-color: rgba(148, 163, 184, 0.5); 
+            border-radius: 50%; 
+            transition: all 0.3s ease;
+            display: block;
+            position: relative;
+        }
+        #nav-dots a::before {
+            position: absolute;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            color: #e2e8f0;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+        #nav-dots a:hover::before {
+            opacity: 1;
+        }
+        #nav-dots a.active { 
+            background-color: #3b82f6;
+            transform: scale(1.5);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+        #nav-dots a:hover { 
+            background-color: #60a5fa;
+            transform: scale(1.3);
+        }
+        .slide:last-of-type { 
+            border-bottom: none; 
+        }
+        
+        /* 代码块优化 */
+        code { 
+            display: block; 
+            padding: 0.5rem; 
+            border-radius: 0.375rem; 
+            background-color: rgba(15, 23, 42, 0.6); 
+            margin-top: 0.5rem;
+            word-break: break-all;
+        }
+        
+        /* 表格响应式优化 */
+        @media (max-width: 768px) {
+            .content-panel { padding: 1rem; }
+            h1 { font-size: 2.5rem !important; }
+            h2 { font-size: 1.75rem !important; }
+            #nav-dots {
+                right: 10px;
+                padding: 10px 8px;
+                gap: 12px;
+            }
+            #nav-dots a {
+                width: 10px;
+                height: 10px;
+            }
+            #nav-dots a::before {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场，点明问题 -->
+<section id="slide1" class="slide">
+    <div class="text-center w-full max-w-7xl mx-auto">
+        <!-- 标题区域 -->
+        <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-200 leading-tight">
+            MySQL RR 隔离级别下无法避免<span class="gradient-text bg-gradient-to-r from-rose-500 to-pink-400">幻读</span>的场景
+        </h1>
+        <h2 class="text-xl md:text-2xl font-bold mt-4 text-slate-300">快照读与当前读混合使用的并发问题分析</h2>
+        
+        <div class="content-panel mt-8 p-6 md:p-8 border-rose-500/30">
+            
+            <!-- 核心问题说明 -->
+            <div class="mb-6 bg-gradient-to-r from-rose-900/30 to-pink-900/30 rounded-xl p-5 border border-rose-500/50">
+                <div class="flex items-center gap-3 justify-center">
+                    <i class="fa-solid fa-circle-exclamation text-3xl text-rose-400"></i>
+                    <div class="text-left">
+                        <h3 class="text-lg font-bold text-rose-300 mb-1">核心问题</h3>
+                        <p class="text-slate-300 text-base">在 <span class="text-sky-300 font-bold">Repeatable Read 隔离级别</span>下，当事务内<span class="text-amber-300 font-bold">混合使用</span>快照读和当前读时，特定的操作序列会导致<span class="text-rose-400 font-bold">幻读现象</span>。</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 简化的三阶段展示 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
+                
+                <!-- 阶段1：正常查询 -->
+                <div class="flex flex-col items-center gap-3">
+                    <div class="w-14 h-14 bg-sky-500/20 rounded-full flex items-center justify-center border-2 border-sky-500">
+                        <span class="text-2xl font-bold text-sky-300">1</span>
+                    </div>
+                    <div class="diagram-node diagram-node-good bg-slate-800/50 border-2 border-sky-500/50 rounded-xl p-5 w-full">
+                        <i class="fa-solid fa-camera text-4xl text-sky-400 mb-2"></i>
+                        <h3 class="font-bold text-lg text-sky-300 mb-2">事务 A 开始</h3>
+                        <div class="bg-slate-900/50 rounded p-2.5 mb-2">
+                            <p class="text-xs text-slate-400 mb-1">快照读查询</p>
+                            <code class="text-xs text-slate-300">SELECT * FROM products<br>WHERE id > 100;</code>
+                        </div>
+                        <div class="text-green-400 font-bold text-sm flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span>返回: 0 行</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1.5">基于 MVCC 快照</p>
+                    </div>
+                </div>
+
+                <!-- 阶段2：并发插入 -->
+                <div class="flex flex-col items-center gap-3">
+                    <div class="w-14 h-14 bg-amber-500/20 rounded-full flex items-center justify-center border-2 border-amber-500">
+                        <span class="text-2xl font-bold text-amber-300">2</span>
+                    </div>
+                    <div class="diagram-node bg-amber-900/30 border-2 border-amber-500/50 rounded-xl p-5 w-full">
+                        <i class="fa-solid fa-bolt text-4xl text-amber-400 mb-2"></i>
+                        <h3 class="font-bold text-lg text-amber-300 mb-2">事务 B 插入</h3>
+                        <div class="bg-slate-900/50 rounded p-2.5 mb-2">
+                            <p class="text-xs text-slate-400 mb-1">并发操作</p>
+                            <code class="text-xs text-slate-300">INSERT INTO products<br>VALUES (101, ...);<br>COMMIT;</code>
+                        </div>
+                        <div class="text-green-400 font-bold text-sm flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span>成功提交</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1.5">事务A无法感知</p>
+                    </div>
+                </div>
+
+                <!-- 阶段3：幻读发生 -->
+                <div class="flex flex-col items-center gap-3">
+                    <div class="w-14 h-14 bg-rose-500/20 rounded-full flex items-center justify-center border-2 border-rose-500 animate-pulse">
+                        <span class="text-2xl font-bold text-rose-300">3</span>
+                    </div>
+                    <div class="diagram-node diagram-node-bad bg-rose-900/40 border-2 border-rose-500/70 rounded-xl p-5 w-full">
+                        <i class="fa-solid fa-ghost text-4xl text-rose-400 mb-2"></i>
+                        <h3 class="font-bold text-lg text-rose-300 mb-2">幻读出现</h3>
+                        <div class="bg-slate-900/50 rounded p-2.5 mb-2">
+                            <p class="text-xs text-slate-400 mb-1">尝试插入</p>
+                            <code class="text-xs text-rose-300">INSERT ... (失败)<br>SELECT ... FOR UPDATE</code>
+                        </div>
+                        <div class="text-rose-400 font-bold text-sm flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                            <span>数据不一致</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1.5">查到了"幻影"数据</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 时间线指示 -->
+            <div class="mt-5 flex items-center justify-center gap-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-2.5 h-2.5 bg-sky-500 rounded-full"></div>
+                    <div class="h-0.5 w-20 bg-gradient-to-r from-sky-500 to-amber-500 rounded-full"></div>
+                    <div class="w-2.5 h-2.5 bg-amber-500 rounded-full"></div>
+                    <div class="h-0.5 w-20 bg-gradient-to-r from-amber-500 to-rose-500 rounded-full"></div>
+                    <div class="w-2.5 h-2.5 bg-rose-500 rounded-full"></div>
+                </div>
+            </div>
+            <p class="text-slate-500 mt-2 text-sm">
+                <i class="fa-solid fa-clock mr-1"></i>时间流逝
+            </p>
+
+            <!-- 底部关键信息 -->
+            <div class="mt-6 pt-5 border-t border-slate-700/50">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-slate-800/30 rounded-lg p-3.5 border border-slate-700/50">
+                        <div class="text-purple-400 font-bold text-sm mb-1.5 flex items-center gap-2">
+                            <i class="fa-solid fa-camera text-lg"></i>
+                            <span>快照读 (MVCC)</span>
+                        </div>
+                        <p class="text-slate-400 text-xs leading-relaxed">基于事务开始时的数据版本，无法看到其他事务的提交</p>
+                    </div>
+                    <div class="bg-slate-800/30 rounded-lg p-3.5 border border-slate-700/50">
+                        <div class="text-amber-400 font-bold text-sm mb-1.5 flex items-center gap-2">
+                            <i class="fa-solid fa-lock text-lg"></i>
+                            <span>当前读 (Lock)</span>
+                        </div>
+                        <p class="text-slate-400 text-xs leading-relaxed">读取最新提交的数据，并加锁防止其他事务修改</p>
+                    </div>
+                    <div class="bg-slate-800/30 rounded-lg p-3.5 border border-slate-700/50">
+                        <div class="text-rose-400 font-bold text-sm mb-1.5 flex items-center gap-2">
+                            <i class="fa-solid fa-ghost text-lg"></i>
+                            <span>幻读现象</span>
+                        </div>
+                        <p class="text-slate-400 text-xs leading-relaxed">同一事务中两次查询结果不一致，出现"幻影"数据</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+    <!-- Slide 2: RR 隔离级别的防御机制 -->
+<section id="slide2" class="slide">
+    <div class="text-center w-full max-w-7xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-teal-400 to-cyan-400">RR 隔离级别的幻读防御机制</h2>
+        <p class="mt-4 text-xl text-slate-400">MySQL 通过 MVCC 和 Next-Key Lock 两种机制防御幻读</p>
+        
+        <div class="content-panel mt-8 p-6 md:p-8 border-teal-500/30">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+                
+                <!-- 左侧: MVCC -->
+                <div class="text-center p-6 bg-slate-800/40 rounded-xl diagram-node diagram-node-good border border-teal-500/20">
+                    <div class="flex items-center justify-center gap-3 mb-6">
+                        <i class="fa-solid fa-layer-group text-3xl text-teal-400"></i>
+                        <h3 class="font-bold text-2xl text-teal-300">MVCC 机制</h3>
+                    </div>
+                    <p class="text-slate-400 text-sm mb-6">Multi-Version Concurrency Control<br>多版本并发控制</p>
+                    
+                    <div class="flex flex-col items-center gap-5">
+                        <!-- 客户端查询 -->
+                        <div class="w-full bg-slate-900/50 rounded-lg p-4 border border-sky-500/30">
+                            <div class="flex items-center justify-center gap-2 mb-2">
+                                <i class="fa-solid fa-user text-2xl text-sky-300"></i>
+                                <span class="text-sky-300 font-semibold">客户端 (快照读)</span>
+                            </div>
+                            <code class="text-sm text-slate-300">SELECT * FROM products WHERE id > 100;</code>
+                        </div>
+                        
+                        <i class="fa-solid fa-arrow-down text-2xl text-green-400"></i>
+                        
+                        <!-- Read View -->
+                        <div class="w-full bg-gradient-to-br from-slate-800/60 to-slate-900/60 rounded-lg p-4 border border-purple-500/30">
+                            <div class="flex items-center justify-center gap-2 mb-3">
+                                <i class="fa-solid fa-camera text-2xl text-purple-400"></i>
+                                <span class="text-purple-300 font-semibold">Read View</span>
+                            </div>
+                            <div class="text-xs text-slate-400 space-y-1">
+                                <p>• 事务开启时创建快照</p>
+                                <p>• 记录活跃事务列表</p>
+                                <p>• 确定数据可见性规则</p>
+                            </div>
+                        </div>
+                        
+                        <i class="fa-solid fa-arrow-down text-2xl text-green-400"></i>
+                        
+                        <!-- 数据库多版本 -->
+                        <div class="w-full bg-slate-900/50 rounded-lg p-4 border border-slate-600/30">
+                            <div class="flex items-center justify-center gap-2 mb-3">
+                                <i class="fa-solid fa-database text-2xl text-slate-400"></i>
+                                <span class="text-slate-300 font-semibold">Undo Log 版本链</span>
+                            </div>
+                            <div class="flex items-center justify-center gap-2">
+                                <div class="bg-slate-700/50 px-3 py-2 rounded text-xs">
+                                    <div class="text-slate-400">版本1</div>
+                                    <div class="text-green-400">可见</div>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-slate-500"></i>
+                                <div class="bg-slate-700/50 px-3 py-2 rounded text-xs">
+                                    <div class="text-slate-400">版本2</div>
+                                    <div class="text-red-400">不可见</div>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-slate-500"></i>
+                                <div class="bg-slate-700/50 px-3 py-2 rounded text-xs">
+                                    <div class="text-slate-400">版本3</div>
+                                    <div class="text-red-400">不可见</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <i class="fa-solid fa-arrow-up text-2xl text-green-400"></i>
+                        
+                        <!-- 返回结果 -->
+                        <div class="w-full bg-green-900/30 rounded-lg p-3 border border-green-500/50">
+                            <div class="text-green-300 font-bold flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <span>返回一致性快照数据</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">不加锁，高并发性能</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 特点标签 -->
+                    <div class="mt-6 flex flex-wrap gap-2 justify-center">
+                        <span class="px-3 py-1 bg-green-900/30 border border-green-500/30 rounded-full text-xs text-green-300">
+                            <i class="fa-solid fa-bolt mr-1"></i>高性能
+                        </span>
+                        <span class="px-3 py-1 bg-blue-900/30 border border-blue-500/30 rounded-full text-xs text-blue-300">
+                            <i class="fa-solid fa-unlock mr-1"></i>无锁读取
+                        </span>
+                        <span class="px-3 py-1 bg-purple-900/30 border border-purple-500/30 rounded-full text-xs text-purple-300">
+                            <i class="fa-solid fa-clock-rotate-left mr-1"></i>历史版本
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- 右侧: Next-Key Lock -->
+                <div class="text-center p-6 bg-slate-800/40 rounded-xl diagram-node diagram-node-good border border-teal-500/20">
+                    <div class="flex items-center justify-center gap-3 mb-6">
+                        <i class="fa-solid fa-lock text-3xl text-teal-400"></i>
+                        <h3 class="font-bold text-2xl text-teal-300">Next-Key Lock 机制</h3>
+                    </div>
+                    <p class="text-slate-400 text-sm mb-6">Record Lock + Gap Lock<br>记录锁 + 间隙锁</p>
+                    
+                    <div class="flex flex-col items-center gap-5">
+                        <!-- 事务A加锁 -->
+                        <div class="w-full bg-slate-900/50 rounded-lg p-4 border border-sky-500/30">
+                            <div class="flex items-center justify-center gap-2 mb-2">
+                                <i class="fa-solid fa-user-lock text-2xl text-sky-300"></i>
+                                <span class="text-sky-300 font-semibold">事务 A (当前读)</span>
+                            </div>
+                            <code class="text-sm text-slate-300">SELECT * FROM products<br>WHERE id > 100 FOR UPDATE;</code>
+                        </div>
+                        
+                        <i class="fa-solid fa-arrow-down text-2xl text-amber-400"></i>
+                        
+                        <!-- 锁定范围可视化 -->
+                        <div class="w-full bg-slate-900/50 rounded-lg p-4 border border-amber-500/30">
+                            <div class="text-amber-300 font-semibold mb-3">锁定范围</div>
+                            <div class="flex items-center justify-center gap-1 text-xs">
+                                <div class="px-2 py-1 bg-slate-700 rounded">id=100</div>
+                                <div class="flex-1 h-8 bg-gradient-to-r from-red-500/30 to-red-500/30 border-2 border-dashed border-red-500/70 rounded flex items-center justify-center">
+                                    <i class="fa-solid fa-lock text-red-400 mr-1"></i>
+                                    <span class="text-red-300 font-mono">(100, +∞)</span>
+                                </div>
+                                <div class="px-2 py-1 bg-slate-700 rounded">id=+∞</div>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">锁定所有 id &gt; 100 的记录和间隙</p>
+                        </div>
+                        
+                        <i class="fa-solid fa-arrow-down text-2xl text-red-400"></i>
+                        
+                        <!-- 事务B尝试插入 -->
+                        <div class="w-full bg-red-900/20 rounded-lg p-4 border border-red-500/30">
+                            <div class="flex items-center justify-center gap-2 mb-2">
+                                <i class="fa-solid fa-user text-2xl text-red-300"></i>
+                                <span class="text-red-300 font-semibold">事务 B 尝试插入</span>
+                            </div>
+                            <code class="text-sm text-red-300">INSERT INTO products<br>VALUES (101, ...);</code>
+                        </div>
+                        
+                        <div class="w-full flex items-center justify-center gap-3">
+                            <i class="fa-solid fa-hourglass-half fa-spin text-3xl text-amber-400"></i>
+                            <div class="text-left">
+                                <div class="text-amber-300 font-bold">等待锁释放</div>
+                                <p class="text-xs text-slate-400">事务B被阻塞</p>
+                            </div>
+                        </div>
+                        
+                        <i class="fa-solid fa-arrow-down text-2xl text-green-400"></i>
+                        
+                        <!-- 结果 -->
+                        <div class="w-full bg-green-900/30 rounded-lg p-3 border border-green-500/50">
+                            <div class="text-green-300 font-bold flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <span>防止幻读发生</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">事务A提交前，事务B无法插入</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 特点标签 -->
+                    <div class="mt-6 flex flex-wrap gap-2 justify-center">
+                        <span class="px-3 py-1 bg-red-900/30 border border-red-500/30 rounded-full text-xs text-red-300">
+                            <i class="fa-solid fa-lock mr-1"></i>加锁读取
+                        </span>
+                        <span class="px-3 py-1 bg-amber-900/30 border border-amber-500/30 rounded-full text-xs text-amber-300">
+                            <i class="fa-solid fa-shield mr-1"></i>范围锁定
+                        </span>
+                        <span class="px-3 py-1 bg-green-900/30 border border-green-500/30 rounded-full text-xs text-green-300">
+                            <i class="fa-solid fa-ban mr-1"></i>阻止插入
+                        </span>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- 底部对比总结 -->
+            <div class="mt-8 pt-6 border-t border-slate-700/50">
+                <h4 class="text-xl font-bold text-slate-300 mb-4 text-center">两种机制对比</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-800/30 rounded-lg p-4 border border-slate-700/50">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-layer-group text-xl text-teal-400"></i>
+                            <h5 class="font-bold text-teal-300">MVCC 适用场景</h5>
+                        </div>
+                        <ul class="text-sm text-slate-400 space-y-2 text-left">
+                            <li><i class="fa-solid fa-check text-green-400 mr-2"></i>纯查询操作（SELECT）</li>
+                            <li><i class="fa-solid fa-check text-green-400 mr-2"></i>不需要修改数据的场景</li>
+                            <li><i class="fa-solid fa-check text-green-400 mr-2"></i>高并发读取需求</li>
+                            <li><i class="fa-solid fa-check text-green-400 mr-2"></i>数据分析和报表生成</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-800/30 rounded-lg p-4 border border-slate-700/50">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-lock text-xl text-teal-400"></i>
+                            <h5 class="font-bold text-teal-300">Next-Key Lock 适用场景</h5>
+                        </div>
+                        <ul class="text-sm text-slate-400 space-y-2 text-left">
+                            <li><i class="fa-solid fa-check text-green-400 mr-2"></i>读后写入操作（SELECT + INSERT/UPDATE）</li>
+                            <li><i class="fa-solid fa-check text-green-400 mr-2"></i>需要保证数据强一致性</li>
+                            <li><i class="fa-solid fa-check text-green-400 mr-2"></i>防止并发插入导致的幻读</li>
+                            <li><i class="fa-solid fa-check text-green-400 mr-2"></i>关键业务逻辑（如库存扣减）</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+    <!-- Slide 3: 问题场景：混合读模式 -->
+<section id="slide3" class="slide">
+    <div class="text-center w-full max-w-7xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-500 to-red-500">问题场景：快照读与当前读的混合使用</h2>
+        <p class="mt-4 text-xl text-slate-400">当事务内混合使用两种读取模式时，MVCC 的保护机制将失效</p>
+        
+        <div class="content-panel mt-8 p-6 md:p-8 border-rose-500/30">
+            
+            <!-- 时间线标题 -->
+            <div class="mb-8 text-center">
+                <div class="inline-flex items-center gap-3 bg-slate-800/50 px-6 py-3 rounded-full border border-slate-700">
+                    <i class="fa-solid fa-clock text-2xl text-amber-400"></i>
+                    <span class="text-xl font-bold text-slate-300">并发执行时间线</span>
+                </div>
+            </div>
+            
+            <!-- 主要内容区 -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- 左侧: 事务A -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="flex items-center justify-center gap-3 mb-6 bg-sky-900/30 py-3 rounded-lg border border-sky-500/30">
+                        <i class="fa-solid fa-user-circle text-2xl text-sky-300"></i>
+                        <h3 class="text-2xl font-bold text-sky-300">事务 A</h3>
+                    </div>
+                    
+                    <!-- 步骤 1 -->
+                    <div class="relative">
+                        <div class="absolute -left-3 top-0 w-6 h-6 bg-sky-500 rounded-full flex items-center justify-center text-xs font-bold text-white">1</div>
+                        <div class="p-4 bg-slate-800/50 rounded-lg border-2 border-sky-500/50 ml-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i class="fa-solid fa-camera text-lg text-purple-400"></i>
+                                <span class="font-bold text-purple-300">快照读</span>
+                                <span class="ml-auto text-xs bg-purple-900/50 px-2 py-1 rounded text-purple-300">MVCC</span>
+                            </div>
+                            <code class="text-sm text-sky-300 block mb-2">SELECT * FROM products<br>WHERE id > 100;</code>
+                            <div class="mt-3 pt-3 border-t border-slate-700">
+                                <div class="flex items-center gap-2 text-green-400 font-bold">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span>返回: 0 行</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">基于事务开始时的快照</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 等待指示 -->
+                    <div class="flex items-center justify-center gap-2 text-slate-500 my-2">
+                        <div class="h-12 w-0.5 bg-slate-700"></div>
+                        <i class="fa-solid fa-hourglass-half text-lg"></i>
+                    </div>
+                    
+                    <!-- 步骤 3 -->
+                    <div class="relative">
+                        <div class="absolute -left-3 top-0 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-xs font-bold text-white">3</div>
+                        <div class="p-4 bg-slate-800/50 rounded-lg border-2 border-amber-500/50 ml-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i class="fa-solid fa-plus-circle text-lg text-amber-400"></i>
+                                <span class="font-bold text-amber-300">尝试插入</span>
+                            </div>
+                            <code class="text-sm text-amber-300 block mb-2">INSERT INTO products<br>VALUES (101, 'Product A', 99.99);</code>
+                            <div class="mt-3 pt-3 border-t border-slate-700">
+                                <div class="flex items-center gap-2 text-red-400 font-bold">
+                                    <i class="fa-solid fa-circle-xmark"></i>
+                                    <span>错误: Duplicate entry '101'</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">主键冲突 - 但快照读时明明没有数据？</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 等待指示 -->
+                    <div class="flex items-center justify-center gap-2 text-slate-500 my-2">
+                        <div class="h-12 w-0.5 bg-slate-700"></div>
+                        <i class="fa-solid fa-question text-lg text-rose-400"></i>
+                    </div>
+                    
+                    <!-- 步骤 4 - 幻读发生 -->
+                    <div class="relative">
+                        <div class="absolute -left-3 top-0 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center text-xs font-bold text-white animate-pulse">4</div>
+                        <div class="p-4 bg-rose-900/40 rounded-lg border-2 border-rose-500 ml-4 diagram-node diagram-node-bad">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i class="fa-solid fa-lock text-lg text-rose-400"></i>
+                                <span class="font-bold text-rose-300">当前读验证</span>
+                                <span class="ml-auto text-xs bg-rose-900/50 px-2 py-1 rounded text-rose-300">Next-Key Lock</span>
+                            </div>
+                            <code class="text-sm text-rose-300 block mb-2">SELECT * FROM products<br>WHERE id = 101 FOR UPDATE;</code>
+                            <div class="mt-3 pt-3 border-t border-rose-700">
+                                <div class="flex items-center gap-2 text-rose-300 font-bold mb-2">
+                                    <i class="fa-solid fa-ghost text-xl"></i>
+                                    <span>返回: 1 行 (幻读！)</span>
+                                </div>
+                                <div class="bg-rose-950/50 p-3 rounded border border-rose-500/30">
+                                    <p class="text-xs text-rose-200 font-bold mb-1">
+                                        <i class="fa-solid fa-exclamation-triangle mr-1"></i>幻读现象
+                                    </p>
+                                    <p class="text-xs text-slate-400">步骤1查询为空，步骤4却查到数据</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 中间: 时间轴 -->
+                <div class="lg:col-span-2 flex flex-col items-center justify-center">
+                    <div class="hidden lg:flex flex-col items-center gap-4 h-full justify-center">
+                        <!-- 时间点1 -->
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-3 h-3 bg-sky-500 rounded-full"></div>
+                            <div class="h-20 w-0.5 bg-gradient-to-b from-sky-500 to-amber-500"></div>
+                        </div>
+                        
+                        <!-- 时间点2 -->
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
+                            <div class="h-20 w-0.5 bg-gradient-to-b from-amber-500 to-amber-500"></div>
+                        </div>
+                        
+                        <!-- 时间点3 -->
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-3 h-3 bg-amber-500 rounded-full"></div>
+                            <div class="h-20 w-0.5 bg-gradient-to-b from-amber-500 to-rose-500"></div>
+                        </div>
+                        
+                        <!-- 时间点4 -->
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-3 h-3 bg-rose-500 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 移动端时间轴 -->
+                    <div class="lg:hidden flex items-center gap-4 w-full justify-center my-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-sky-500 rounded-full"></div>
+                            <div class="w-16 h-0.5 bg-gradient-to-r from-sky-500 to-amber-500"></div>
+                            <div class="w-3 h-3 bg-amber-500 rounded-full"></div>
+                            <div class="w-16 h-0.5 bg-gradient-to-r from-amber-500 to-rose-500"></div>
+                            <div class="w-3 h-3 bg-rose-500 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 右侧: 事务B -->
+                <div class="lg:col-span-5 flex flex-col justify-center">
+                    <div class="flex items-center justify-center gap-3 mb-6 bg-amber-900/30 py-3 rounded-lg border border-amber-500/30">
+                        <i class="fa-solid fa-user-circle text-2xl text-amber-300"></i>
+                        <h3 class="text-2xl font-bold text-amber-300">事务 B</h3>
+                    </div>
+                    
+                    <!-- 空白占位 - 对齐事务A步骤1 -->
+                    <div class="h-32 lg:h-40 flex items-center justify-center text-slate-600">
+                        <div class="text-center">
+                            <i class="fa-solid fa-ellipsis text-2xl mb-2"></i>
+                            <p class="text-xs">事务B尚未开始</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 步骤 2 - 事务B插入 -->
+                    <div class="relative mt-4">
+                        <div class="absolute -right-3 top-0 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-xs font-bold text-white">2</div>
+                        <div class="p-6 bg-gradient-to-br from-amber-900/40 to-green-900/40 rounded-lg border-2 border-amber-500 mr-4">
+                            <div class="flex items-center gap-2 mb-4">
+                                <i class="fa-solid fa-bolt text-2xl text-amber-400"></i>
+                                <span class="font-bold text-amber-300 text-lg">并发插入并提交</span>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-xs text-slate-400 mb-1">开始事务</p>
+                                    <code class="text-sm text-slate-300 block">BEGIN;</code>
+                                </div>
+                                
+                                <div>
+                                    <p class="text-xs text-slate-400 mb-1">插入数据</p>
+                                    <code class="text-sm text-amber-300 block">INSERT INTO products<br>VALUES (101, 'Product B', 88.88);</code>
+                                </div>
+                                
+                                <div>
+                                    <p class="text-xs text-slate-400 mb-1">提交事务</p>
+                                    <code class="text-sm text-green-300 block">COMMIT;</code>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 pt-4 border-t border-amber-700">
+                                <div class="flex items-center gap-2 text-green-400 font-bold">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span>成功提交 (id=101 已存在)</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">此时事务A的快照读无法看到此数据</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 空白占位 - 对齐事务A步骤4 -->
+                    <div class="h-32 lg:h-48 mt-4"></div>
+                </div>
+                
+            </div>
+            
+            <!-- 底部问题分析 -->
+            <div class="mt-10 pt-8 border-t border-rose-700/50">
+                <div class="bg-gradient-to-r from-rose-900/30 to-red-900/30 rounded-xl p-6 border border-rose-500/50">
+                    <div class="flex items-start gap-4">
+                        <i class="fa-solid fa-lightbulb text-4xl text-rose-400 mt-1"></i>
+                        <div class="flex-1">
+                            <h4 class="text-xl font-bold text-rose-300 mb-3">问题根源分析</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                                    <div class="text-purple-400 font-bold mb-2">
+                                        <i class="fa-solid fa-1 mr-2"></i>快照读的局限
+                                    </div>
+                                    <p class="text-slate-400">步骤1使用MVCC快照读，只能看到事务开始时的数据，无法感知事务B的插入</p>
+                                </div>
+                                <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                                    <div class="text-amber-400 font-bold mb-2">
+                                        <i class="fa-solid fa-2 mr-2"></i>写入操作的真实性
+                                    </div>
+                                    <p class="text-slate-400">步骤3的INSERT检查的是当前最新数据，发现id=101已存在，导致主键冲突</p>
+                                </div>
+                                <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                                    <div class="text-rose-400 font-bold mb-2">
+                                        <i class="fa-solid fa-3 mr-2"></i>当前读的"惊喜"
+                                    </div>
+                                    <p class="text-slate-400">步骤4使用当前读，读取到最新数据，与步骤1的结果不一致，形成幻读</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 关键结论 -->
+            <div class="mt-6 bg-slate-800/50 rounded-lg p-5 border-l-4 border-rose-500">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-triangle-exclamation text-3xl text-rose-400"></i>
+                    <div>
+                        <p class="text-lg font-bold text-rose-300">关键结论</p>
+                        <p class="text-slate-400 mt-1">在同一事务中<span class="text-rose-300 font-bold">混合使用快照读和当前读</span>会导致数据不一致，RR隔离级别<span class="text-rose-300 font-bold">无法防御</span>这种场景下的幻读。</p>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</section>
+
+
+    <!-- Slide 4: 解决方案 -->
+<section id="slide4" class="slide">
+    <div class="text-center w-full max-w-7xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-blue-500">解决方案：统一使用当前读模式</h2>
+        <p class="mt-4 text-xl text-slate-400">将首次检查升级为当前读，通过 Next-Key Lock 锁定范围防止幻读</p>
+        
+        <div class="content-panel mt-8 p-6 md:p-8 border-sky-500/30">
+            
+            <!-- 解决方案核心要点 -->
+            <div class="mb-8 bg-gradient-to-r from-green-900/30 to-emerald-900/30 rounded-xl p-5 border border-green-500/50">
+                <div class="flex items-center gap-4">
+                    <i class="fa-solid fa-lightbulb text-4xl text-green-400"></i>
+                    <div class="text-left flex-1">
+                        <h3 class="text-xl font-bold text-green-300 mb-2">核心解决思路</h3>
+                        <p class="text-slate-300">将<span class="text-rose-400 line-through">快照读 (SELECT)</span> 改为 <span class="text-green-400 font-bold">当前读 (SELECT ... FOR UPDATE)</span>，在首次查询时就锁定范围，阻止其他事务插入数据。</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 时间线标题 -->
+            <div class="mb-8 text-center">
+                <div class="inline-flex items-center gap-3 bg-slate-800/50 px-6 py-3 rounded-full border border-slate-700">
+                    <i class="fa-solid fa-shield-halved text-2xl text-green-400"></i>
+                    <span class="text-xl font-bold text-slate-300">修正后的执行流程</span>
+                </div>
+            </div>
+            
+            <!-- 主要内容区 -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- 左侧: 事务A (修正版) -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="flex items-center justify-center gap-3 mb-6 bg-sky-900/30 py-3 rounded-lg border border-sky-500/30">
+                        <i class="fa-solid fa-user-shield text-2xl text-sky-300"></i>
+                        <h3 class="text-2xl font-bold text-sky-300">事务 A (修正版)</h3>
+                    </div>
+                    
+                    <!-- 步骤 1 - 当前读加锁 -->
+                    <div class="relative">
+                        <div class="absolute -left-3 top-0 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-xs font-bold text-white">1</div>
+                        <div class="p-5 bg-gradient-to-br from-green-900/40 to-emerald-900/40 rounded-lg border-2 border-green-500 ml-4 diagram-node diagram-node-good">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i class="fa-solid fa-lock text-xl text-green-400"></i>
+                                <span class="font-bold text-green-300 text-lg">当前读 + 加锁</span>
+                                <span class="ml-auto text-xs bg-green-900/50 px-2 py-1 rounded text-green-300">FOR UPDATE</span>
+                            </div>
+                            
+                            <div class="bg-slate-900/50 rounded p-3 mb-3">
+                                <code class="text-sm text-green-300 block">SELECT * FROM products<br>WHERE id > 100 <span class="font-bold text-white bg-green-700/50 px-1 rounded">FOR UPDATE</span>;</code>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div class="pt-3 border-t border-green-700">
+                                    <div class="flex items-center gap-2 text-green-300 font-bold mb-2">
+                                        <i class="fa-solid fa-circle-check"></i>
+                                        <span>查询结果: 0 行</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 锁定范围可视化 -->
+                                <div class="bg-slate-900/70 rounded-lg p-3 border border-green-500/30">
+                                    <div class="text-green-400 font-semibold mb-2 text-sm flex items-center gap-2">
+                                        <i class="fa-solid fa-shield-halved"></i>
+                                        <span>Next-Key Lock 锁定范围</span>
+                                    </div>
+                                    <div class="flex items-center justify-center gap-1 text-xs">
+                                        <div class="px-2 py-1 bg-slate-700 rounded text-slate-300">id=100</div>
+                                        <div class="flex-1 h-10 bg-gradient-to-r from-green-500/30 to-green-500/30 border-2 border-dashed border-green-500 rounded flex items-center justify-center">
+                                            <i class="fa-solid fa-lock text-green-400 mr-1"></i>
+                                            <span class="text-green-300 font-mono font-bold">(100, +∞)</span>
+                                        </div>
+                                        <div class="px-2 py-1 bg-slate-700 rounded text-slate-300">id=+∞</div>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-2 text-center">锁定所有 id &gt; 100 的记录和间隙</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 等待指示 -->
+                    <div class="flex items-center justify-center gap-2 text-slate-500 my-2">
+                        <div class="h-16 w-0.5 bg-slate-700"></div>
+                        <i class="fa-solid fa-shield-halved text-lg text-green-500"></i>
+                    </div>
+                    
+                    <!-- 步骤 3 - 安全插入 -->
+                    <div class="relative">
+                        <div class="absolute -left-3 top-0 w-6 h-6 bg-sky-500 rounded-full flex items-center justify-center text-xs font-bold text-white">3</div>
+                        <div class="p-4 bg-slate-800/50 rounded-lg border-2 border-sky-500/50 ml-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i class="fa-solid fa-plus-circle text-lg text-sky-400"></i>
+                                <span class="font-bold text-sky-300">安全插入</span>
+                            </div>
+                            <code class="text-sm text-sky-300 block mb-2">INSERT INTO products<br>VALUES (101, 'Product A', 99.99);</code>
+                            <div class="mt-3 pt-3 border-t border-slate-700">
+                                <div class="flex items-center gap-2 text-green-400 font-bold">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span>成功插入</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">由于持有锁，没有其他事务能插入冲突数据</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 等待指示 -->
+                    <div class="flex items-center justify-center gap-2 text-slate-500 my-2">
+                        <div class="h-12 w-0.5 bg-slate-700"></div>
+                    </div>
+                    
+                    <!-- 步骤 4 - 提交事务 -->
+                    <div class="relative">
+                        <div class="absolute -left-3 top-0 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-xs font-bold text-white">4</div>
+                        <div class="p-4 bg-green-900/30 rounded-lg border border-green-500/50 ml-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i class="fa-solid fa-check-double text-lg text-green-400"></i>
+                                <span class="font-bold text-green-300">提交事务</span>
+                            </div>
+                            <code class="text-sm text-green-300 block">COMMIT;</code>
+                            <p class="text-xs text-slate-400 mt-2">释放锁，事务B可以继续执行</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 中间: 时间轴 -->
+                <div class="lg:col-span-2 flex flex-col items-center justify-center">
+                    <div class="hidden lg:flex flex-col items-center gap-4 h-full justify-center">
+                        <!-- 时间点1 -->
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <div class="h-24 w-0.5 bg-gradient-to-b from-green-500 to-amber-500"></div>
+                        </div>
+                        
+                        <!-- 时间点2 - 阻塞 -->
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
+                            <div class="px-2 py-1 bg-amber-900/50 rounded text-xs text-amber-300 whitespace-nowrap">
+                                <i class="fa-solid fa-ban mr-1"></i>阻塞
+                            </div>
+                            <div class="h-24 w-0.5 bg-amber-500"></div>
+                        </div>
+                        
+                        <!-- 时间点3 -->
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-3 h-3 bg-sky-500 rounded-full"></div>
+                            <div class="h-20 w-0.5 bg-gradient-to-b from-sky-500 to-green-500"></div>
+                        </div>
+                        
+                        <!-- 时间点4 -->
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 右侧: 事务B -->
+                <div class="lg:col-span-5 flex flex-col justify-center">
+                    <div class="flex items-center justify-center gap-3 mb-6 bg-amber-900/30 py-3 rounded-lg border border-amber-500/30">
+                        <i class="fa-solid fa-user-clock text-2xl text-amber-300"></i>
+                        <h3 class="text-2xl font-bold text-amber-300">事务 B</h3>
+                    </div>
+                    
+                    <!-- 空白占位 - 对齐事务A步骤1 -->
+                    <div class="h-48 lg:h-64 flex items-center justify-center text-slate-600">
+                        <div class="text-center">
+                            <i class="fa-solid fa-ellipsis text-2xl mb-2"></i>
+                            <p class="text-xs">事务B尚未开始</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 步骤 2 - 被阻塞 -->
+                    <div class="relative mt-4">
+                        <div class="absolute -right-3 top-0 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-xs font-bold text-white">2</div>
+                        <div class="p-6 bg-gradient-to-br from-amber-900/40 to-red-900/30 rounded-lg border-2 border-amber-500 mr-4">
+                            <div class="flex items-center gap-2 mb-4">
+                                <i class="fa-solid fa-hourglass-half fa-spin text-2xl text-amber-400"></i>
+                                <span class="font-bold text-amber-300 text-lg">尝试插入 - 被阻塞</span>
+                            </div>
+                            
+                            <div class="bg-slate-900/50 rounded p-3 mb-4">
+                                <code class="text-sm text-amber-300 block">INSERT INTO products<br>VALUES (101, 'Product B', 88.88);</code>
+                            </div>
+                            
+                            <div class="bg-amber-950/50 rounded-lg p-4 border border-amber-500/30 mb-3">
+                                <div class="flex items-center gap-2 text-amber-300 font-bold mb-2">
+                                    <i class="fa-solid fa-ban text-xl"></i>
+                                    <span>等待锁释放...</span>
+                                </div>
+                                <p class="text-xs text-slate-400">由于事务A已锁定 (100, +∞) 间隙</p>
+                                <p class="text-xs text-slate-400">事务B无法插入 id=101 的记录</p>
+                            </div>
+                            
+                            <!-- 阻塞原因说明 -->
+                            <div class="bg-slate-900/70 rounded-lg p-3 border-l-4 border-red-500">
+                                <div class="text-xs text-slate-300 space-y-1">
+                                    <p><i class="fa-solid fa-info-circle text-red-400 mr-1"></i><span class="font-bold">阻塞原因:</span></p>
+                                    <p>• 事务A持有 Next-Key Lock</p>
+                                    <p>• 锁定范围包含 id=101</p>
+                                    <p>• 必须等待事务A提交或回滚</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 空白占位 -->
+                    <div class="h-20"></div>
+                </div>
+                
+            </div>
+            
+            <!-- 对比分析 -->
+            <div class="mt-10 pt-8 border-t border-sky-700/50">
+                <h4 class="text-2xl font-bold text-slate-300 mb-6 text-center">
+                    <i class="fa-solid fa-code-compare mr-2 text-sky-400"></i>
+                    问题场景 vs 解决方案对比
+                </h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 问题场景 -->
+                    <div class="bg-gradient-to-br from-rose-900/30 to-red-900/30 rounded-xl p-6 border-2 border-rose-500/50">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i class="fa-solid fa-triangle-exclamation text-3xl text-rose-400"></i>
+                            <h5 class="text-xl font-bold text-rose-300">问题场景 (混合读)</h5>
+                        </div>
+                        
+                        <div class="space-y-3 text-sm">
+                            <div class="bg-slate-900/50 rounded p-3 border border-slate-700">
+                                <div class="text-purple-400 font-bold mb-1">步骤1: 快照读</div>
+                                <code class="text-xs text-slate-300">SELECT ... (无锁)</code>
+                                <p class="text-xs text-slate-400 mt-1">✗ 不加锁，无法阻止并发插入</p>
+                            </div>
+                            
+                            <div class="flex items-center justify-center">
+                                <i class="fa-solid fa-arrow-down text-amber-400"></i>
+                            </div>
+                            
+                            <div class="bg-slate-900/50 rounded p-3 border border-slate-700">
+                                <div class="text-amber-400 font-bold mb-1">步骤2: 事务B插入</div>
+                                <code class="text-xs text-slate-300">INSERT ... COMMIT;</code>
+                                <p class="text-xs text-green-400 mt-1">✓ 成功插入 (没有锁阻止)</p>
+                            </div>
+                            
+                            <div class="flex items-center justify-center">
+                                <i class="fa-solid fa-arrow-down text-amber-400"></i>
+                            </div>
+                            
+                            <div class="bg-rose-950/50 rounded p-3 border border-rose-500">
+                                <div class="text-rose-400 font-bold mb-1">步骤3-4: 幻读发生</div>
+                                <code class="text-xs text-slate-300">INSERT 失败 → SELECT FOR UPDATE 查到数据</code>
+                                <p class="text-xs text-rose-300 mt-1">✗ 数据不一致，幻读出现</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 解决方案 -->
+                    <div class="bg-gradient-to-br from-green-900/30 to-emerald-900/30 rounded-xl p-6 border-2 border-green-500/50">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i class="fa-solid fa-circle-check text-3xl text-green-400"></i>
+                            <h5 class="text-xl font-bold text-green-300">解决方案 (统一当前读)</h5>
+                        </div>
+                        
+                        <div class="space-y-3 text-sm">
+                            <div class="bg-slate-900/50 rounded p-3 border border-green-700">
+                                <div class="text-green-400 font-bold mb-1">步骤1: 当前读加锁</div>
+                                <code class="text-xs text-slate-300">SELECT ... FOR UPDATE</code>
+                                <p class="text-xs text-green-400 mt-1">✓ 锁定范围 (100, +∞)</p>
+                            </div>
+                            
+                            <div class="flex items-center justify-center">
+                                <i class="fa-solid fa-arrow-down text-green-400"></i>
+                            </div>
+                            
+                            <div class="bg-slate-900/50 rounded p-3 border border-slate-700">
+                                <div class="text-amber-400 font-bold mb-1">步骤2: 事务B尝试插入</div>
+                                <code class="text-xs text-slate-300">INSERT ... (阻塞)</code>
+                                <p class="text-xs text-amber-400 mt-1">⏳ 等待锁释放 (被阻止)</p>
+                            </div>
+                            
+                            <div class="flex items-center justify-center">
+                                <i class="fa-solid fa-arrow-down text-green-400"></i>
+                            </div>
+                            
+                            <div class="bg-green-950/50 rounded p-3 border border-green-500">
+                                <div class="text-green-400 font-bold mb-1">步骤3-4: 一致性保证</div>
+                                <code class="text-xs text-slate-300">INSERT 成功 → COMMIT</code>
+                                <p class="text-xs text-green-300 mt-1">✓ 数据一致，无幻读</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 最佳实践建议 -->
+            <div class="mt-8 bg-gradient-to-r from-blue-900/30 to-cyan-900/30 rounded-xl p-6 border border-blue-500/50">
+                <div class="flex items-start gap-4">
+                    <i class="fa-solid fa-book-open text-4xl text-blue-400 mt-1"></i>
+                    <div class="flex-1">
+                        <h4 class="text-xl font-bold text-blue-300 mb-4">最佳实践建议</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-check-circle text-green-400 text-lg mt-0.5"></i>
+                                <div>
+                                    <p class="font-bold text-slate-300 mb-1">读后写场景使用当前读</p>
+                                    <p class="text-slate-400">如果查询后需要基于结果进行写操作，首次查询就应使用 FOR UPDATE</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-check-circle text-green-400 text-lg mt-0.5"></i>
+                                <div>
+                                    <p class="font-bold text-slate-300 mb-1">保持读模式一致性</p>
+                                    <p class="text-slate-400">同一事务中避免混合使用快照读和当前读</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-check-circle text-green-400 text-lg mt-0.5"></i>
+                                <div>
+                                    <p class="font-bold text-slate-300 mb-1">关键业务逻辑加锁</p>
+                                    <p class="text-slate-400">库存扣减、账户余额等关键操作必须使用当前读</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-check-circle text-green-400 text-lg mt-0.5"></i>
+                                <div>
+                                    <p class="font-bold text-slate-300 mb-1">纯查询可用快照读</p>
+                                    <p class="text-slate-400">报表、数据分析等只读场景，快照读性能更优</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</section>
+
+
+    <!-- Slide 5: 最终总结 -->
+<section id="slide5" class="slide">
+    <div class="text-center w-full max-w-7xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-purple-400 to-indigo-400">总结：幻读防御策略决策指南</h2>
+        <p class="mt-4 text-xl text-slate-400">根据业务场景选择合适的读取模式和锁策略</p>
+        
+        <div class="content-panel mt-8 p-6 md:p-8 border-indigo-500/30">
+            
+            <!-- 三种场景卡片式展示 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+                
+                <!-- 场景1: 纯查询 -->
+                <div class="bg-gradient-to-br from-green-900/30 to-emerald-900/30 rounded-xl p-6 border-2 border-green-500/50 text-left">
+                    <div class="flex items-center gap-3 mb-4">
+                        <i class="fa-solid fa-search text-4xl text-green-400"></i>
+                        <div>
+                            <h3 class="text-xl font-bold text-green-300">纯查询场景</h3>
+                            <p class="text-xs text-slate-400">数据分析 / 报表生成</p>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-slate-900/50 rounded-lg p-3 border border-slate-700">
+                            <div class="text-xs text-slate-400 mb-1">幻读风险</div>
+                            <div class="text-green-400 font-bold flex items-center gap-2">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <span>无风险</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-slate-900/50 rounded-lg p-3 border border-green-700">
+                            <div class="text-xs text-slate-400 mb-2">推荐方案</div>
+                            <div class="text-green-300 font-bold mb-2">快照读 (MVCC)</div>
+                            <code class="text-xs text-slate-300 block bg-slate-800 p-2 rounded">SELECT * FROM products<br>WHERE id > 100;</code>
+                        </div>
+                        
+                        <div class="bg-slate-900/50 rounded-lg p-3 border border-slate-700">
+                            <div class="text-xs text-slate-400 mb-1">特点</div>
+                            <ul class="text-xs text-slate-300 space-y-1">
+                                <li><i class="fa-solid fa-check text-green-400 mr-1"></i>高并发性能</li>
+                                <li><i class="fa-solid fa-check text-green-400 mr-1"></i>无需加锁</li>
+                                <li><i class="fa-solid fa-check text-green-400 mr-1"></i>一致性快照</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="text-center pt-3 border-t border-green-700/50">
+                            <div class="text-2xl font-bold text-green-200">★★★★★</div>
+                            <p class="text-xs text-green-300 mt-1">推荐使用</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 场景2: 混合读（问题场景） -->
+                <div class="bg-gradient-to-br from-rose-900/30 to-red-900/30 rounded-xl p-6 border-2 border-rose-500/50 text-left">
+                    <div class="flex items-center gap-3 mb-4">
+                        <i class="fa-solid fa-triangle-exclamation text-4xl text-rose-400"></i>
+                        <div>
+                            <h3 class="text-xl font-bold text-rose-300">混合读场景</h3>
+                            <p class="text-xs text-slate-400">先查询后写入（错误示范）</p>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-slate-900/50 rounded-lg p-3 border border-rose-700">
+                            <div class="text-xs text-slate-400 mb-1">幻读风险</div>
+                            <div class="text-rose-400 font-bold flex items-center gap-2">
+                                <i class="fa-solid fa-skull-crossbones"></i>
+                                <span>高风险</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-rose-950/50 rounded-lg p-3 border border-rose-500">
+                            <div class="text-xs text-slate-400 mb-2">问题代码</div>
+                            <div class="text-rose-300 font-bold mb-2">快照读 → 写入</div>
+                            <code class="text-xs text-rose-300 block bg-slate-900 p-2 rounded">SELECT ... (快照读)<br>INSERT ... (冲突!)</code>
+                        </div>
+                        
+                        <div class="bg-slate-900/50 rounded-lg p-3 border border-slate-700">
+                            <div class="text-xs text-slate-400 mb-1">问题</div>
+                            <ul class="text-xs text-slate-300 space-y-1">
+                                <li><i class="fa-solid fa-xmark text-rose-400 mr-1"></i>数据不一致</li>
+                                <li><i class="fa-solid fa-xmark text-rose-400 mr-1"></i>无法防御幻读</li>
+                                <li><i class="fa-solid fa-xmark text-rose-400 mr-1"></i>业务逻辑错误</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="text-center pt-3 border-t border-rose-700/50">
+                            <div class="text-2xl font-bold text-rose-200">★☆☆☆☆</div>
+                            <p class="text-xs text-rose-300 mt-1 font-bold">严禁使用</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 场景3: 统一当前读（解决方案） -->
+                <div class="bg-gradient-to-br from-sky-900/30 to-blue-900/30 rounded-xl p-6 border-2 border-sky-500/50 text-left">
+                    <div class="flex items-center gap-3 mb-4">
+                        <i class="fa-solid fa-lock text-4xl text-sky-400"></i>
+                        <div>
+                            <h3 class="text-xl font-bold text-sky-300">当前读场景</h3>
+                            <p class="text-xs text-slate-400">读后写入（正确方案）</p>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-slate-900/50 rounded-lg p-3 border border-slate-700">
+                            <div class="text-xs text-slate-400 mb-1">幻读风险</div>
+                            <div class="text-green-400 font-bold flex items-center gap-2">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <span>无风险</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-slate-900/50 rounded-lg p-3 border border-sky-700">
+                            <div class="text-xs text-slate-400 mb-2">推荐方案</div>
+                            <div class="text-sky-300 font-bold mb-2">当前读 + 锁定</div>
+                            <code class="text-xs text-sky-300 block bg-slate-800 p-2 rounded">SELECT ... <span class="text-white font-bold">FOR UPDATE</span><br>INSERT ...</code>
+                        </div>
+                        
+                        <div class="bg-slate-900/50 rounded-lg p-3 border border-slate-700">
+                            <div class="text-xs text-slate-400 mb-1">特点</div>
+                            <ul class="text-xs text-slate-300 space-y-1">
+                                <li><i class="fa-solid fa-check text-green-400 mr-1"></i>Next-Key Lock</li>
+                                <li><i class="fa-solid fa-check text-green-400 mr-1"></i>范围锁定</li>
+                                <li><i class="fa-solid fa-check text-green-400 mr-1"></i>强一致性</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="text-center pt-3 border-t border-sky-700/50">
+                            <div class="text-2xl font-bold text-sky-200">★★★★★</div>
+                            <p class="text-xs text-sky-300 mt-1">强烈推荐</p>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- 决策流程图 -->
+            <div class="bg-slate-800/40 rounded-xl p-6 border border-slate-700 mb-8">
+                <h3 class="text-2xl font-bold text-indigo-300 mb-6 text-center">
+                    <i class="fa-solid fa-sitemap mr-2"></i>决策流程
+                </h3>
+                
+                <div class="flex flex-col items-center gap-4">
+                    <!-- 起点 -->
+                    <div class="bg-indigo-900/40 rounded-lg p-4 border-2 border-indigo-500 text-center max-w-md">
+                        <div class="text-lg font-bold text-indigo-300">开始：需要查询数据</div>
+                    </div>
+                    
+                    <i class="fa-solid fa-arrow-down text-2xl text-slate-500"></i>
+                    
+                    <!-- 判断点 -->
+                    <div class="bg-amber-900/40 rounded-lg p-4 border-2 border-amber-500 text-center max-w-md">
+                        <div class="text-lg font-bold text-amber-300 mb-2">查询后是否需要写入？</div>
+                        <p class="text-xs text-slate-400">(INSERT / UPDATE / DELETE)</p>
+                    </div>
+                    
+                    <div class="flex items-center gap-8">
+                        <!-- 左侧：否 -->
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="px-4 py-2 bg-slate-700 rounded-full text-green-300 font-bold">否</div>
+                            <i class="fa-solid fa-arrow-down text-xl text-green-400"></i>
+                            <div class="bg-green-900/40 rounded-lg p-4 border-2 border-green-500 text-center w-48">
+                                <i class="fa-solid fa-camera text-3xl text-green-400 mb-2"></i>
+                                <div class="font-bold text-green-300">使用快照读</div>
+                                <code class="text-xs text-slate-300 mt-2 block">SELECT ...</code>
+                            </div>
+                        </div>
+                        
+                        <!-- 右侧：是 -->
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="px-4 py-2 bg-slate-700 rounded-full text-sky-300 font-bold">是</div>
+                            <i class="fa-solid fa-arrow-down text-xl text-sky-400"></i>
+                            <div class="bg-sky-900/40 rounded-lg p-4 border-2 border-sky-500 text-center w-48">
+                                <i class="fa-solid fa-lock text-3xl text-sky-400 mb-2"></i>
+                                <div class="font-bold text-sky-300">使用当前读</div>
+                                <code class="text-xs text-slate-300 mt-2 block">SELECT ... FOR UPDATE</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 关键原则 -->
+            <div class="bg-gradient-to-r from-purple-900/30 to-indigo-900/30 rounded-xl p-6 border border-purple-500/50">
+                <h3 class="text-2xl font-bold text-purple-300 mb-4 text-center">
+                    <i class="fa-solid fa-book-open mr-2"></i>三大核心原则
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-slate-800/40 rounded-lg p-4 border border-slate-700">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-10 h-10 bg-sky-500/20 rounded-full flex items-center justify-center border border-sky-500">
+                                <span class="text-xl font-bold text-sky-300">1</span>
+                            </div>
+                            <div class="text-sky-400 font-bold">模式一致性</div>
+                        </div>
+                        <p class="text-slate-300 text-sm">同一事务内保持读取模式一致，避免混合使用</p>
+                    </div>
+                    <div class="bg-slate-800/40 rounded-lg p-4 border border-slate-700">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-10 h-10 bg-amber-500/20 rounded-full flex items-center justify-center border border-amber-500">
+                                <span class="text-xl font-bold text-amber-300">2</span>
+                            </div>
+                            <div class="text-amber-400 font-bold">提前加锁</div>
+                        </div>
+                        <p class="text-slate-300 text-sm">读后写场景必须在首次查询时就使用 FOR UPDATE</p>
+                    </div>
+                    <div class="bg-slate-800/40 rounded-lg p-4 border border-slate-700">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center border border-green-500">
+                                <span class="text-xl font-bold text-green-300">3</span>
+                            </div>
+                            <div class="text-green-400 font-bold">场景匹配</div>
+                        </div>
+                        <p class="text-slate-300 text-sm">根据业务需求选择合适的锁策略，平衡性能与安全</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 典型应用场景 -->
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-800/30 rounded-lg p-5 border border-green-700/50">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-check-circle text-2xl text-green-400"></i>
+                        <h4 class="font-bold text-lg text-green-300">适合快照读的场景</h4>
+                    </div>
+                    <ul class="text-sm text-slate-300 space-y-2">
+                        <li><i class="fa-solid fa-chart-line text-green-400 mr-2"></i>数据分析和报表生成</li>
+                        <li><i class="fa-solid fa-eye text-green-400 mr-2"></i>只读查询和数据展示</li>
+                        <li><i class="fa-solid fa-search text-green-400 mr-2"></i>搜索和过滤操作</li>
+                        <li><i class="fa-solid fa-download text-green-400 mr-2"></i>数据导出和备份</li>
+                    </ul>
+                </div>
+                <div class="bg-slate-800/30 rounded-lg p-5 border border-sky-700/50">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-lock text-2xl text-sky-400"></i>
+                        <h4 class="font-bold text-lg text-sky-300">必须当前读的场景</h4>
+                    </div>
+                    <ul class="text-sm text-slate-300 space-y-2">
+                        <li><i class="fa-solid fa-box text-sky-400 mr-2"></i>库存扣减和预订系统</li>
+                        <li><i class="fa-solid fa-wallet text-sky-400 mr-2"></i>账户余额操作</li>
+                        <li><i class="fa-solid fa-ticket text-sky-400 mr-2"></i>唯一性约束检查</li>
+                        <li><i class="fa-solid fa-shield-halved text-sky-400 mr-2"></i>关键业务逻辑保护</li>
+                    </ul>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</section>
+
+
+    <footer class="text-center py-8 text-slate-500 text-sm">
+        <p>MySQL RR 隔离级别下的幻读问题场景分析</p>
+        <p class="mt-2 text-xs">© 2024 技术分享 | Repeatable Read Isolation Level</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            
+            if (slides.length === 0) {
+                console.warn('未找到任何 slide 元素');
+                return;
+            }
+            
+            // 定义每个 slide 的标题
+            const slideTitles = [
+                '问题场景',
+                '防御机制',
+                '混合读问题',
+                '解决方案',
+                '决策指南'
+            ];
+            
+            // 创建导航点
+            slides.forEach((slide, index) => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`;
+                dot.setAttribute('aria-label', `跳转到第 ${index + 1} 页: ${slideTitles[index]}`);
+                dot.classList.add('nav-dot');
+                dot.dataset.index = index;
+                navContainer.appendChild(dot);
+            });
+            
+            const navDots = navContainer.querySelectorAll('a');
+            
+            // 初始化：设置第一个点为激活状态
+            if (navDots.length > 0) {
+                navDots[0].classList.add('active');
+            }
+            
+            // 使用 Intersection Observer 监听滚动
+            const observerOptions = {
+                root: null,
+                threshold: 0.5,
+                rootMargin: '-10% 0px -10% 0px'
+            };
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const slideId = entry.target.id;
+                        const activeDot = navContainer.querySelector(`a[href="#${slideId}"]`);
+                        
+                        // 移除所有激活状态
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        
+                        // 添加当前激活状态
+                        if (activeDot) {
+                            activeDot.classList.add('active');
+                            console.log(`激活导航点: ${slideId}`);
+                        }
+                    }
+                });
+            }, observerOptions);
+            
+            // 观察所有 slides
+            slides.forEach(slide => {
+                observer.observe(slide);
+            });
+            
+            // 平滑滚动优化
+            navDots.forEach(dot => {
+                dot.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = dot.getAttribute('href').substring(1);
+                    const targetSlide = document.getElementById(targetId);
+                    
+                    if (targetSlide) {
+                        // 立即更新激活状态
+                        navDots.forEach(d => d.classList.remove('active'));
+                        dot.classList.add('active');
+                        
+                        // 滚动到目标
+                        targetSlide.scrollIntoView({ 
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                        
+                        console.log(`点击导航到: ${targetId}`);
+                    }
+                });
+            });
+            
+            // 键盘导航支持
+            document.addEventListener('keydown', (e) => {
+                const currentIndex = Array.from(navDots).findIndex(dot => dot.classList.contains('active'));
+                let targetIndex = currentIndex;
+                
+                if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+                    e.preventDefault();
+                    targetIndex = Math.min(currentIndex + 1, navDots.length - 1);
+                } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+                    e.preventDefault();
+                    targetIndex = Math.max(currentIndex - 1, 0);
+                } else if (e.key === 'Home') {
+                    e.preventDefault();
+                    targetIndex = 0;
+                } else if (e.key === 'End') {
+                    e.preventDefault();
+                    targetIndex = navDots.length - 1;
+                }
+                
+                if (targetIndex !== currentIndex) {
+                    navDots[targetIndex].click();
+                }
+            });
+            
+            console.log(`导航系统初始化完成，共 ${slides.length} 个 slides`);
+        });
+    </script>
+</body>
+</html>

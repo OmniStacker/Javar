@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微服务熔断设计看板 (Final v6)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #111827;
+            color: #F9FAFB;
+            scroll-behavior: smooth;
+            overflow: hidden; /* Hide scrollbar */
+        }
+        .page {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 4rem;
+            box-sizing: border-box;
+            border-bottom: 1px solid #374151;
+        }
+        .tag {
+            background-color: #1F2937;
+            color: #D1D5DB;
+            padding: 0.85rem 1.75rem;
+            margin: 0.6rem;
+            border-radius: 9999px;
+            font-size: 1.25rem; /* Increased */
+            border: 1px solid #374151;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .tag:hover {
+            background-color: #3B82F6;
+            color: #F9FAFB;
+            transform: translateY(-3px) scale(1.02);
+            border-color: #1D4ED8;
+        }
+        .diagram-box {
+            background-color: #1F2937;
+            border: 1px solid #4B5563;
+            border-radius: 0.75rem;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <!-- Page 1: Opening -->
+        <section id="page-1" class="page bg-gray-900">
+            <div class="text-center">
+                <h1 class="text-7xl font-bold text-white mb-4 tracking-wider">微服务熔断如何设计？</h1>
+                <p class="text-3xl text-blue-400 font-light mb-12">从“青铜”到“王者”的熔断策略演进</p>
+            </div>
+            <div class="flex flex-wrap justify-center max-w-6xl">
+                <div class="tag">服务熔断是干什么的？解决什么问题？</div>
+                <div class="tag">你用过哪些熔断框架？他们是如何处理服务熔断的？</div>
+                <div class="tag">你们项目中是如何确定服务是否需要熔断的？</div>
+                <div class="tag">服务熔断后要怎么恢复服务？</div>
+                <div class="tag">每次服务熔断都会丢失客户请求，有没有更好的处理方法？</div>
+            </div>
+            <div class="absolute bottom-10 text-gray-500 text-xl animate-pulse">
+                按 [↓] 键，层层深入
+            </div>
+        </section>
+
+        <!-- Page 2: Service Avalanche -->
+        <section id="page-2" class="page bg-gray-900">
+            <h2 class="text-5xl font-bold mb-10 text-rose-400">1. 剖析服务雪崩：连锁故障三部曲</h2>
+            <div class="flex items-start justify-center space-x-8 w-full max-w-7xl">
+                <div class="flex flex-col items-center w-1/3">
+                    <div class="text-3xl font-bold mb-4"><span class="bg-rose-500 text-white rounded-full w-10 h-10 inline-flex items-center justify-center mr-2">1</span>局部过载</div>
+                    <div class="diagram-box w-full p-4"><i class="fas fa-server text-5xl text-blue-300"></i><p class="mt-3 text-xl font-semibold">服务 C (下游)</p><p class="text-yellow-400 font-mono mt-2 text-lg">CPU: 99% / QPS 超限</p><p class="text-gray-400 mt-1">起因：流量洪峰、程序Bug...</p></div>
+                </div>
+                <div class="text-6xl text-gray-600 font-mono mt-24">&rarr;</div>
+                <div class="flex flex-col items-center w-1/3">
+                    <div class="text-3xl font-bold mb-4"><span class="bg-rose-500 text-white rounded-full w-10 h-10 inline-flex items-center justify-center mr-2">2</span>资源耗尽</div>
+                    <div class="diagram-box w-full p-4"><i class="fas fa-layer-group text-5xl text-orange-400"></i><p class="mt-3 text-xl font-semibold">服务 B (中游)</p><p class="text-red-500 font-mono mt-2 text-lg">线程池/内存耗尽</p><p class="text-gray-400 mt-1">开始大量报错，对外“不可用”</p></div>
+                </div>
+                <div class="text-6xl text-gray-600 font-mono mt-24">&rarr;</div>
+                <div class="flex flex-col items-center w-1/3">
+                    <div class="text-3xl font-bold mb-4"><span class="bg-rose-500 text-white rounded-full w-10 h-10 inline-flex items-center justify-center mr-2">3</span>逆向蔓延</div>
+                    <div class="diagram-box w-full p-4"><i class="fas fa-network-wired text-5xl text-red-600"></i><p class="mt-3 text-xl font-semibold">服务 B &rarr; A (上游)</p><p class="text-red-500 font-mono mt-2 text-lg">请求阻塞，连锁失败</p><p class="text-gray-400 mt-1">故障逆向传播，系统全面瘫痪</p></div>
+                </div>
+            </div>
+            <p class="text-2xl text-gray-400 mt-12 max-w-5xl text-center">熔断机制的目标，就是在<span class="text-yellow-400 font-bold">第一步</span>和<span class="text-orange-400 font-bold">第二步</span>之间，果断“拉下电闸”。</p>
+        </section>
+
+        <!-- Page 3: How to Design -->
+        <section id="page-3" class="page bg-gray-900">
+            <h2 class="text-5xl font-bold mb-8 text-cyan-300">2. 设计熔断保护方案</h2>
+            <p class="text-2xl text-gray-400 mb-10 max-w-5xl text-center">思路：将所有对下游服务的网络调用，用一个“熔断器对象”包裹起来，由它来统计和执行熔断逻辑。</p>
+            
+            <div class="flex items-center justify-center space-x-12 w-full max-w-6xl mb-16 transform scale-105">
+                <div class="text-center"><i class="fas fa-user-cog text-8xl text-blue-300"></i><p class="mt-3 text-2xl font-semibold">调用方</p></div>
+                <div class="text-7xl text-gray-600 font-mono">&rarr;</div>
+                <div class="diagram-box p-8 border-cyan-400/70 w-96">
+                    <i class="fas fa-shield-virus text-8xl text-cyan-300"></i>
+                    <p class="mt-4 text-3xl font-bold">熔断器对象</p>
+                    <p class="text-gray-400 text-lg mt-2">监控调用 / 决策熔断 / 执行降级</p>
+                </div>
+                <div class="text-7xl text-gray-600 font-mono">&rarr;</div>
+                <div class="text-center"><i class="fas fa-server text-8xl text-blue-300"></i><p class="mt-3 text-2xl font-semibold">下游服务</p></div>
+            </div>
+            
+            <div class="flex flex-col items-center">
+              <h4 class="text-xl font-semibold mb-4 text-gray-500">补充：业界主流熔断框架</h4>
+              <div class="flex space-x-6">
+                  <div class="diagram-box w-60 h-40 flex flex-col justify-center items-center"><p class="text-2xl font-bold">Hystrix</p><p class="text-sm text-gray-500 mb-2">Netflix</p><i class="fas fa-shield-alt text-4xl text-orange-400 mb-2"></i><p class="text-gray-400 text-sm">业界鼻祖 (维护模式)</p></div>
+                  <div class="diagram-box w-60 h-40 flex flex-col justify-center items-center border-green-400/50"><p class="text-2xl font-bold">Resilience4j</p><p class="text-sm text-gray-500 mb-2">Community</p><i class="fas fa-leaf text-4xl text-green-400 mb-2"></i><p class="text-gray-400 text-sm">轻量级，主流继任者</p></div>
+                  <div class="diagram-box w-60 h-40 flex flex-col justify-center items-center border-blue-400/50"><p class="text-2xl font-bold">Sentinel</p><p class="text-sm text-gray-500 mb-2">Alibaba</p><i class="fas fa-project-diagram text-4xl text-blue-400 mb-2"></i><p class="text-gray-400 text-sm">功能强大，面向分布式</p></div>
+              </div>
+            </div>
+        </section>
+
+        <!-- Page 4: Flapping/Oscillation Problem (MOVED UP) -->
+        <section id="page-4" class="page bg-gray-900">
+            <h2 class="text-5xl font-bold mb-10 text-yellow-400">3. 解决恢复“抖动”问题</h2>
+            <p class="text-2xl text-gray-400 mb-12 max-w-5xl text-center">问题：服务刚恢复，大量请求涌入再次压垮服务，导致熔断器在<span class="text-green-400">关闭</span>和<span class="text-red-400">打开</span>状态间高频切换。</p>
+            <div class="flex w-full max-w-6xl justify-around">
+                <div class="w-2/5">
+                    <h3 class="text-3xl font-semibold text-center mb-6 text-red-400">错误示范：硬恢复</h3>
+                    <div class="diagram-box border-red-400/50 p-6 space-y-4">
+                        <div class="flex items-center"><span class="text-2xl font-bold w-32">熔断打开</span><i class="fas fa-arrow-right text-2xl text-gray-500 mx-4"></i><span class="text-lg">超时结束</span></div>
+                        <div class="flex items-center"><span class="text-2xl font-bold w-32 text-green-400">直接关闭</span><i class="fas fa-arrow-right text-2xl text-gray-500 mx-4"></i><span class="text-lg">100%流量涌入</span></div>
+                        <div class="flex items-center"><span class="text-2xl font-bold w-32 text-red-500">再次过载</span><i class="fas fa-arrow-right text-2xl text-gray-500 mx-4"></i><span class="text-lg">服务再次瘫痪</span></div>
+                        <div class="flex items-center"><span class="text-2xl font-bold w-32">再次熔断</span><i class="fas fa-sync-alt text-2xl text-yellow-400 mx-4 animate-spin"></i><span class="text-lg text-yellow-400">陷入抖动循环</span></div>
+                    </div>
+                </div>
+                <div class="w-2/5">
+                    <h3 class="text-3xl font-semibold text-center mb-6 text-green-400">正确做法：软恢复</h3>
+                    <div class="diagram-box border-green-400/50 p-6 space-y-4">
+                        <div class="flex items-center"><span class="text-2xl font-bold w-32">熔断打开</span><i class="fas fa-arrow-right text-2xl text-gray-500 mx-4"></i><span class="text-lg">超时结束</span></div>
+                        <div class="flex items-center"><span class="text-2xl font-bold w-32 text-yellow-400">进入半开</span><i class="fas fa-arrow-right text-2xl text-gray-500 mx-4"></i><span class="text-lg">放行少量探测请求</span></div>
+                        <div class="flex items-center"><span class="text-2xl font-bold w-32 text-teal-400">探测成功</span><i class="fas fa-arrow-right text-2xl text-gray-500 mx-4"></i><span class="text-lg">逐步增加流量</span></div>
+                        <div class="flex items-center"><span class="text-2xl font-bold w-32 text-green-400">完全关闭</span><i class="fas fa-check-circle text-2xl text-green-400 mx-4"></i><span class="text-lg">服务平稳恢复</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page 5: Circuit Breaker States (MOVED DOWN) -->
+        <section id="page-5" class="page bg-gray-900">
+            <h2 class="text-5xl font-bold mb-12 text-teal-300">4. 核心设计：熔断器的状态机</h2>
+            <p class="text-2xl text-gray-400 mb-10 max-w-5xl text-center">为解决“抖动”问题，引入“半开”状态，形成了经典的熔断器三态模型。</p>
+            <div class="flex items-center justify-center space-x-6 w-full max-w-7xl">
+                <div class="diagram-box w-72 h-64 flex flex-col justify-center items-center border-green-400/50"><div class="text-3xl font-bold text-green-400">关闭 (Closed)</div><i class="fas fa-shield-alt text-6xl my-5 text-green-400"></i><p class="text-xl text-gray-300">请求正常通过</p><p class="text-md text-gray-500">所有流量100%</p></div>
+                <div class="flex flex-col items-center text-center w-64"><span class="text-gray-400">滑动窗口内失败率/响应时间</span><span class="text-red-400 font-bold text-xl">持续超过阈值</span><span class="text-6xl text-gray-500 font-mono">&rarr;</span><span class="text-6xl text-gray-500 font-mono mt-4">&larr;</span><span class="text-green-400 font-bold text-xl">探测请求成功</span><span class="text-gray-400">逐步恢复流量</span></div>
+                <div class="flex flex-col space-y-6">
+                    <div class="diagram-box w-72 h-64 flex flex-col justify-center items-center border-red-400/50"><div class="text-3xl font-bold text-red-400">打开 (Open)</div><i class="fas fa-ban text-6xl my-5 text-red-400"></i><p class="text-xl text-gray-300">请求快速失败</p><p class="text-md text-gray-500">阻断所有新流量</p></div>
+                    <div class="flex items-center justify-center text-center h-12"><span class="text-6xl text-gray-500 font-mono">&darr;</span><span class="text-xl text-gray-400 ml-4">等待固定超时周期</span></div>
+                    <div class="diagram-box w-72 h-64 flex flex-col justify-center items-center border-yellow-400/50"><div class="text-3xl font-bold text-yellow-400">半开 (Half-Open)</div><i class="fas fa-vial text-6xl my-5 text-yellow-400"></i><p class="text-xl text-gray-300">发送少量探测请求</p><p class="text-md text-gray-500">若失败，退回打开状态</p></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page 6: Advanced Strategy -->
+        <section id="page-6" class="page bg-gray-900">
+            <h2 class="text-5xl font-bold mb-10 text-indigo-400">5. 王者方案：客户端负载均衡联动</h2>
+            <div class="flex items-stretch justify-between w-full max-w-7xl">
+                <div class="w-2/5 flex flex-col items-center"><p class="text-3xl font-semibold mb-4">客户端 (调用方)</p><div class="diagram-box p-6 w-full flex flex-col justify-between"><p class="text-2xl font-semibold text-left">智能负载均衡器</p><div class="mt-4 bg-gray-800 p-4 rounded-md text-left"><p class="font-mono text-gray-400">// 可用节点列表</p><p class="font-mono text-indigo-300 text-xl">nodes = [A, B, C]</p><p class="font-mono text-gray-400 mt-4">// 收到熔断信号后</p><p class="font-mono text-yellow-400 text-xl">nodes = [B, C]</p></div></div></div>
+                <div class="w-1/5 flex flex-col items-center text-center justify-around"><div class="flex flex-col items-center"><p class="text-lg">1. 请求节点A</p><div class="text-3xl font-thin">&rarr;</div><div class="text-3xl font-thin">&larr;</div><p class="text-lg">2. 收到<span class="text-red-400">熔断信号</span></p></div><i class="fas fa-arrow-down text-4xl text-gray-600"></i><p class="text-lg">3. 客户端<span class="text-yellow-400">主动摘除</span>节点A</p><i class="fas fa-arrow-down text-4xl text-gray-600"></i><div class="flex flex-col items-center"><p class="text-lg">4. 探测并<span class="text-green-400">恢复</span>节点A</p></div></div>
+                <div class="w-2/5 flex flex-col items-center"><p class="text-3xl font-semibold mb-4">服务端 (被调用方)</p><div class="flex flex-col w-full justify-between flex-grow space-y-4"><div class="diagram-box w-full h-full flex items-center justify-center border-red-500/80"><p class="text-xl font-semibold">服务节点 A (已熔断 💥)</p></div><div class="diagram-box w-full h-full flex items-center justify-center border-green-500/60"><p class="text-xl font-semibold">服务节点 B (正常)</p></div><div class="diagram-box w-full h-full flex items-center justify-center border-green-500/60"><p class="text-xl font-semibold">服务节点 C (正常)</p></div></div></div>
+            </div>
+            <p class="text-2xl text-gray-400 mt-12 max-w-5xl text-center">决策前置到客户端，从<span class="text-indigo-300 font-bold">请求源头</span>控制流量，实现最快速、优雅的故障转移。</p>
+        </section>
+
+        <!-- Page 7: Summary -->
+        <section id="page-7" class="page bg-gray-900 border-b-0">
+            <div class="text-center"><h2 class="text-6xl font-bold text-white mb-12">核心总结</h2></div>
+            <div class="grid grid-cols-2 gap-x-16 gap-y-10 max-w-6xl text-xl">
+                <div class="bg-gray-800 p-8 rounded-lg border border-gray-700"><h3 class="font-semibold text-blue-300 text-2xl mb-3">为何熔断 (Why)</h3><p class="text-gray-300">避免局部故障演变成连锁反应，从根源上防止“服务雪崩”。</p></div>
+                <div class="bg-gray-800 p-8 rounded-lg border border-gray-700"><h3 class="font-semibold text-teal-300 text-2xl mb-3">如何设计 (How)</h3><p class="text-gray-300">核心是“关闭”、“打开”、“半开”三种状态，并基于持续性指标进行精确流转。</p></div>
+                <div class="bg-gray-800 p-8 rounded-lg border border-gray-700"><h3 class="font-semibold text-yellow-300 text-2xl mb-3">如何恢复 (Recovery)</h3><p class="text-gray-300">通过“半开”状态的探测和逐步放量实现“软着陆”，避免系统抖动。</p></div>
+                <div class="bg-gray-800 p-8 rounded-lg border border-gray-700"><h3 class="font-semibold text-indigo-300 text-2xl mb-3">终极方案 (Ultimate)</h3><p class="text-gray-300">客户端与服务端联动，将故障隔离和流量恢复的决策前置，实现智能、高效的故障转移。</p></div>
+            </div>
+            <div class="mt-20 border-t-2 border-dashed border-gray-700 pt-10">
+                <p class="text-4xl font-light text-gray-300 italic">"系统中的熔断，是为了阻断故障；</p>
+                <p class="text-4xl font-light text-gray-300 italic mt-3 text-right">生活中的“暂停”，是为了更好地前行。"</p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const pages = document.querySelectorAll('.page');
+        let currentPageIndex = 0;
+
+        function showPage(index) {
+            if (index >= 0 && index < pages.length) {
+                pages[index].scrollIntoView({ behavior: 'smooth' });
+                currentPageIndex = index;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                showPage(currentPageIndex + 1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                showPage(currentPageIndex - 1);
+            }
+        });
+        
+        showPage(0);
+    </script>
+</body>
+</html>

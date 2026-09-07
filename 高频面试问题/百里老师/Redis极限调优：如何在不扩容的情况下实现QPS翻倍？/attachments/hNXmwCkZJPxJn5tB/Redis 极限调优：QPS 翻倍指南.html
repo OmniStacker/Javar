@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redis 极限调优：QPS 翻倍指南</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* === 全局字体与重置 === */
+        .reveal { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
+        
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none !important; letter-spacing: -0.02em; }
+        
+        /* 强制每页 Slide 占满高度，这是布局稳定的关键 */
+        .reveal .slides > section {
+            height: 100% !important;
+            top: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* === 核心布局系统 (复刻参考代码) === */
+        .slide-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* 顶部对齐 */
+            align-items: center;
+            padding: 4rem 2rem 2rem 2rem; /* 顶部留出足够空间给标题 */
+            box-sizing: border-box;
+        }
+
+        /* 封面特殊布局 */
+        .slide-container.cover-layout {
+            justify-content: center !important;
+            padding: 0 !important;
+        }
+
+        /* 内容容器：自动占据剩余空间并居中 */
+        .slide-content-wrapper {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative; /* 为子元素定位提供基准 */
+        }
+
+        /* 统一标题样式 */
+        .slide-title {
+            font-size: 3.5rem !important;
+            font-weight: 800 !important;
+            margin: 0 0 2rem 0 !important; /* 底部留白，顶部由 container padding 控制 */
+            flex-shrink: 0; /* 防止被压缩 */
+            line-height: 1.1 !important;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            text-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            width: 100%;
+            text-align: center;
+        }
+
+        /* === 玻璃拟态组件 === */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .glass-panel:hover {
+            transform: translateY(-5px) scale(1.02);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* === 提示层 === */
+        #start-hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 99px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        /* === 主题色变量 === */
+        .slide-cover { --gradient-start: #f472b6; --gradient-end: #db2777; }
+        .slide-pipeline { --gradient-start: #60a5fa; --gradient-end: #2563eb; }
+        .slide-local { --gradient-start: #34d399; --gradient-end: #059669; }
+        .slide-data { --gradient-start: #fbbf24; --gradient-end: #d97706; }
+        .slide-io { --gradient-start: #a78bfa; --gradient-end: #7c3aed; }
+        .slide-summary { --gradient-start: #f87171; --gradient-end: #ef4444; }
+
+    </style>
+</head>
+<body>
+    <div id="start-hint">PRESS ANY KEY TO START</div>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: Cover -->
+            <section class="slide-cover" data-background-gradient="linear-gradient(135deg, #3f0c26 0%, #831843 100%)">
+                <div class="slide-container cover-layout relative overflow-hidden">
+                    <div class="absolute inset-0 opacity-20 pointer-events-none" 
+                         style="background-image: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%);">
+                    </div>
+                    
+                    <div class="z-10 flex flex-col items-center text-center">
+                        <div class="mb-6 p-6 rounded-full border-4 border-pink-400/30 bg-pink-900/40 shadow-[0_0_80px_rgba(219,39,119,0.6)] animate-pulse">
+                            <i class="fa-solid fa-bolt text-7xl text-pink-300"></i>
+                        </div>
+                        <h1 class="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-rose-400 to-red-500 mb-6 drop-shadow-2xl">
+                            Redis 极限调优
+                        </h1>
+                        <h2 class="text-3xl font-bold text-white/90 mb-12 tracking-widest uppercase">
+                            不扩容如何实现 <span class="text-pink-400 border-b-4 border-pink-500 px-2">QPS 翻倍</span>
+                        </h2>
+                        
+                        <div class="flex gap-8 mt-8">
+                            <div class="glass-panel px-8 py-4 flex items-center gap-3 fragment fade-up hover:bg-blue-500/20">
+                                <i class="fa-solid fa-network-wired text-blue-400 text-xl"></i>
+                                <span class="text-base font-mono text-gray-200">Pipeline</span>
+                            </div>
+                            <div class="glass-panel px-8 py-4 flex items-center gap-3 fragment fade-up hover:bg-emerald-500/20" style="transition-delay: 100ms">
+                                <i class="fa-solid fa-memory text-emerald-400 text-xl"></i>
+                                <span class="text-base font-mono text-gray-200">Local Cache</span>
+                            </div>
+                            <div class="glass-panel px-8 py-4 flex items-center gap-3 fragment fade-up hover:bg-violet-500/20" style="transition-delay: 200ms">
+                                <i class="fa-solid fa-microchip text-violet-400 text-xl"></i>
+                                <span class="text-base font-mono text-gray-200">Threaded I/O</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 2: Pipeline -->
+            <section class="slide-pipeline" data-background-gradient="linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title"><i class="fa-solid fa-road mr-4"></i>斩断网络延迟 (RTT)</h2>
+                    
+                    <div class="slide-content-wrapper">
+                        <div class="w-full max-w-6xl grid grid-cols-1 gap-10">
+                            <!-- Serial Mode (Bad) -->
+                            <div class="glass-panel p-8 border-red-500/30 bg-red-950/20 fragment fade-right">
+                                <div class="flex justify-between items-center mb-6">
+                                    <span class="text-red-300 font-bold text-2xl"><i class="fa-solid fa-triangle-exclamation mr-3"></i>串行模式</span>
+                                    <span class="text-sm font-mono text-red-400 bg-red-900/50 px-3 py-1 rounded border border-red-500/30">High Latency</span>
+                                </div>
+                                <div class="relative h-20 bg-black/40 rounded-xl flex items-center px-16 overflow-hidden border border-white/5">
+                                    <div class="absolute left-6 text-gray-400 font-mono font-bold">Client</div>
+                                    <div class="absolute right-6 text-gray-400 font-mono font-bold">Redis</div>
+                                    <div class="w-full h-1 bg-gray-700/50 dashed-line"></div>
+                                    <!-- Single ball moving back and forth slowly -->
+                                    <div class="absolute w-6 h-6 bg-red-500 rounded-full shadow-[0_0_15px_red] animate-[pingPong_4s_linear_infinite]"></div>
+                                </div>
+                                <div class="mt-3 text-right text-sm text-gray-500 font-mono">Cost: 1000 x RTT (Very Slow)</div>
+                            </div>
+
+                            <!-- Pipeline Mode (Good) -->
+                            <div class="glass-panel p-8 border-blue-500/30 bg-blue-950/20 fragment fade-left">
+                                <div class="flex justify-between items-center mb-6">
+                                    <span class="text-blue-300 font-bold text-2xl"><i class="fa-solid fa-forward-fast mr-3"></i>管道模式</span>
+                                    <span class="text-sm font-mono text-blue-400 bg-blue-900/50 px-3 py-1 rounded border border-blue-500/30">High Throughput</span>
+                                </div>
+                                <div class="relative h-20 bg-black/40 rounded-xl flex items-center px-16 overflow-hidden border border-white/5">
+                                    <div class="absolute left-6 text-gray-400 font-mono font-bold">Client</div>
+                                    <div class="absolute right-6 text-gray-400 font-mono font-bold">Redis</div>
+                                    <div class="w-full h-1 bg-gray-700/50"></div>
+                                    <!-- Batch moving fast -->
+                                    <div class="absolute w-32 h-8 bg-blue-500/80 rounded-lg flex items-center justify-center gap-2 shadow-[0_0_30px_blue] animate-[pipelineFlow_1.5s_linear_infinite]">
+                                        <div class="w-2 h-2 bg-white rounded-full"></div>
+                                        <div class="w-2 h-2 bg-white rounded-full"></div>
+                                        <div class="w-2 h-2 bg-white rounded-full"></div>
+                                        <div class="w-2 h-2 bg-white rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-right text-sm text-gray-500 font-mono">Cost: 1 x RTT (Ultra Fast)</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <style>
+                        @keyframes pingPong { 0% { left: 10%; } 50% { left: 90%; } 100% { left: 10%; } }
+                        @keyframes pipelineFlow { 0% { left: 10%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { left: 90%; opacity: 0; } }
+                        .dashed-line { background-image: linear-gradient(to right, #333 50%, transparent 50%); background-size: 20px 100%; }
+                    </style>
+                </div>
+            </section>
+
+            <!-- Slide 3: Local Cache (Fixed Layout) -->
+            <section class="slide-local" data-background-gradient="linear-gradient(135deg, #022c22 0%, #064e3b 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title"><i class="fa-solid fa-layer-group mr-4"></i>终极方案：多级缓存</h2>
+                    
+                    <div class="slide-content-wrapper">
+                        <!-- 使用 Grid 布局替代 Flex，防止挤压 -->
+                        <div class="grid grid-cols-[200px_1fr_200px] gap-8 w-full max-w-7xl items-center">
+                            
+                            <!-- Client -->
+                            <div class="flex flex-col items-center z-10 fragment fade-right">
+                                <div class="w-32 h-32 glass-panel rounded-full flex items-center justify-center bg-gray-800 border-gray-600 shadow-xl">
+                                    <i class="fa-solid fa-user text-5xl text-gray-300"></i>
+                                </div>
+                                <span class="mt-4 text-lg font-bold text-gray-300">User</span>
+                            </div>
+
+                            <!-- App Server (The Hero) - 居中且突出 -->
+                            <div class="relative h-[400px] w-full glass-panel border-emerald-500/50 bg-emerald-900/20 flex flex-col items-center justify-center p-8 fragment zoom-in shadow-[0_0_50px_rgba(16,185,129,0.2)]">
+                                <div class="absolute -top-5 bg-emerald-600 text-white px-6 py-2 rounded-full text-base font-bold shadow-lg border border-emerald-400">App Server (JVM)</div>
+                                
+                                <!-- Caffeine Cache Visualization -->
+                                <div class="w-full max-w-md p-6 mb-6 glass-panel bg-emerald-500/20 border-emerald-400/60 rounded-xl flex items-center justify-between animate-pulse">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-emerald-400/20 rounded-lg flex items-center justify-center">
+                                            <i class="fa-solid fa-mug-hot text-emerald-300 text-2xl"></i>
+                                        </div>
+                                        <div class="text-left">
+                                            <div class="text-emerald-200 font-bold text-xl">Caffeine</div>
+                                            <div class="text-xs text-emerald-400 uppercase tracking-wider">Local Cache (L1)</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-sm font-mono text-emerald-300 bg-emerald-900/50 px-3 py-1 rounded">Hit: 99%</div>
+                                </div>
+
+                                <!-- Code Logic -->
+                                <div class="w-full max-w-md p-4 bg-black/40 rounded-lg border border-gray-600/30 font-mono text-sm text-gray-400 text-left shadow-inner">
+                                    <span class="text-purple-400">if</span> (cache.get(key)) <span class="text-emerald-400">return</span>;<br>
+                                    <span class="text-purple-400">else</span> redis.get(key);
+                                </div>
+
+                                <!-- Fast Return Path Arrow -->
+                                <div class="absolute -left-4 top-1/2 w-16 h-1 bg-emerald-500 shadow-[0_0_15px_#10b981]"></div>
+                                <i class="fa-solid fa-rotate-left absolute left-4 top-[42%] text-emerald-400 text-3xl animate-spin" style="animation-duration: 3s;"></i>
+                            </div>
+
+                            <!-- Redis (The Backup) -->
+                            <div class="flex flex-col items-center z-10 fragment fade-left opacity-50 grayscale transition-all duration-500 hover:grayscale-0 hover:opacity-100">
+                                <div class="w-32 h-40 glass-panel rounded-xl flex flex-col items-center justify-center bg-red-900/20 border-red-500/30">
+                                    <i class="fa-solid fa-database text-4xl text-red-400 mb-3"></i>
+                                    <span class="text-sm font-bold text-red-300">Redis</span>
+                                </div>
+                                <span class="mt-4 text-sm text-gray-500 bg-black/30 px-3 py-1 rounded-full">Only 1% Traffic</span>
+                            </div>
+
+                        </div>
+                        
+                        <div class="mt-12 glass-panel px-10 py-5 border-emerald-500/30 bg-emerald-950/40 fragment fade-up">
+                            <p class="text-2xl text-emerald-200 font-light">
+                                <i class="fa-solid fa-quote-left text-emerald-500 mr-4 opacity-50"></i>
+                                最快的 Redis 请求，是 <span class="font-bold text-white border-b-4 border-emerald-400">不请求 Redis</span>。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 4: Data Optimization (Fixed Title) -->
+            <section class="slide-data" data-background-gradient="linear-gradient(135deg, #451a03 0%, #78350f 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title"><i class="fa-solid fa-weight-hanging mr-4"></i>拒绝“虚胖”：数据瘦身</h2>
+                    
+                    <div class="slide-content-wrapper">
+                        <div class="grid grid-cols-[1fr_auto_1fr] gap-12 w-full max-w-7xl items-center">
+                            
+                            <!-- Before: JSON BigKey -->
+                            <div class="glass-panel p-10 border-red-500/30 bg-red-900/20 flex flex-col items-center fragment fade-right group h-[400px] justify-center">
+                                <div class="relative mb-8">
+                                    <i class="fa-solid fa-file-code text-9xl text-red-400 group-hover:animate-shake drop-shadow-lg"></i>
+                                    <div class="absolute -right-4 -bottom-2 bg-red-600 text-white text-sm font-bold px-3 py-1 rounded shadow-lg">1 MB</div>
+                                </div>
+                                <h3 class="text-3xl font-bold text-red-200 mb-4">JSON BigKey</h3>
+                                <div class="w-full bg-black/30 rounded-lg p-3 mb-4 space-y-2 border border-red-500/20">
+                                    <div class="h-2 bg-red-500/50 rounded w-[90%]"></div>
+                                    <div class="h-2 bg-red-500/50 rounded w-[80%]"></div>
+                                    <div class="h-2 bg-red-500/50 rounded w-[95%]"></div>
+                                </div>
+                                <p class="text-base text-red-300 text-center font-bold"><i class="fa-solid fa-ban mr-2"></i>阻塞主线程</p>
+                            </div>
+
+                            <!-- Arrow -->
+                            <div class="flex flex-col items-center justify-center fragment zoom-in z-10">
+                                <i class="fa-solid fa-arrow-right-long text-7xl text-amber-500 animate-pulse drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]"></i>
+                                <span class="text-amber-300 font-mono mt-4 bg-amber-900/50 px-4 py-2 rounded border border-amber-500/30">Protobuf</span>
+                            </div>
+
+                            <!-- After: Protobuf -->
+                            <div class="glass-panel p-10 border-amber-500/30 bg-amber-900/20 flex flex-col items-center fragment fade-left h-[400px] justify-center">
+                                <div class="relative mb-8">
+                                    <i class="fa-solid fa-file-zipper text-9xl text-amber-400 drop-shadow-lg"></i>
+                                    <div class="absolute -right-4 -bottom-2 bg-amber-600 text-white text-sm font-bold px-3 py-1 rounded shadow-lg">50 KB</div>
+                                </div>
+                                <h3 class="text-3xl font-bold text-amber-200 mb-4">Binary Stream</h3>
+                                <div class="w-full bg-black/30 rounded-lg p-3 mb-4 flex gap-2 justify-center border border-amber-500/20">
+                                    <div class="h-3 w-3 bg-amber-500 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+                                    <div class="h-3 w-3 bg-amber-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                                    <div class="h-3 w-3 bg-amber-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                                </div>
+                                <p class="text-base text-amber-300 text-center font-bold"><i class="fa-solid fa-check mr-2"></i>体积减少 95%</p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    @keyframes shake {
+                        0%, 100% { transform: translateX(0); }
+                        25% { transform: translateX(-5px); }
+                        75% { transform: translateX(5px); }
+                    }
+                    .animate-shake { animation: shake 0.5s ease-in-out infinite; }
+                </style>
+            </section>
+
+            <!-- Slide 5: Threaded I/O (New Style: Highway) -->
+            <section class="slide-io" data-background-gradient="linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title"><i class="fa-solid fa-server mr-4"></i>Redis 6.0 多线程 I/O</h2>
+                    
+                    <div class="slide-content-wrapper perspective-container">
+                        <!-- 3D Highway Container -->
+                        <div class="relative w-[800px] h-[500px] flex flex-col items-center transform-style-3d rotate-x-20">
+                            
+                            <!-- Main Thread (Dispatcher) -->
+                            <div class="z-20 w-full flex justify-center mb-4 fragment fade-down">
+                                <div class="px-8 py-4 glass-panel bg-violet-600/80 border-violet-300 flex items-center gap-4 shadow-[0_0_50px_rgba(139,92,246,0.5)]">
+                                    <i class="fa-solid fa-brain text-4xl text-white"></i>
+                                    <div class="text-left">
+                                        <div class="text-2xl font-bold text-white">Main Thread</div>
+                                        <div class="text-xs text-violet-200">Command Execution Only</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Lanes Container -->
+                            <div class="flex justify-center gap-4 w-full h-full relative">
+                                <!-- Background Grid -->
+                                <div class="absolute inset-0 bg-gradient-to-b from-violet-900/0 to-violet-900/80 pointer-events-none"></div>
+
+                                <!-- Lane 1 -->
+                                <div class="w-32 h-full bg-black/20 border-x-2 border-violet-500/30 relative overflow-hidden fragment fade-up" style="transition-delay: 0ms">
+                                    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-violet-400 font-mono text-xs">IO-1</div>
+                                    <div class="absolute w-16 h-24 bg-violet-500/40 rounded top-0 left-1/2 -translate-x-1/2 animate-[drive_2s_linear_infinite] shadow-[0_0_20px_#8b5cf6]"></div>
+                                </div>
+                                <!-- Lane 2 -->
+                                <div class="w-32 h-full bg-black/20 border-x-2 border-violet-500/30 relative overflow-hidden fragment fade-up" style="transition-delay: 100ms">
+                                    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-violet-400 font-mono text-xs">IO-2</div>
+                                    <div class="absolute w-16 h-24 bg-violet-500/40 rounded top-0 left-1/2 -translate-x-1/2 animate-[drive_2.5s_linear_infinite] shadow-[0_0_20px_#8b5cf6]"></div>
+                                </div>
+                                <!-- Lane 3 -->
+                                <div class="w-32 h-full bg-black/20 border-x-2 border-violet-500/30 relative overflow-hidden fragment fade-up" style="transition-delay: 200ms">
+                                    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-violet-400 font-mono text-xs">IO-3</div>
+                                    <div class="absolute w-16 h-24 bg-violet-500/40 rounded top-0 left-1/2 -translate-x-1/2 animate-[drive_1.8s_linear_infinite] shadow-[0_0_20px_#8b5cf6]"></div>
+                                </div>
+                                <!-- Lane 4 -->
+                                <div class="w-32 h-full bg-black/20 border-x-2 border-violet-500/30 relative overflow-hidden fragment fade-up" style="transition-delay: 300ms">
+                                    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-violet-400 font-mono text-xs">IO-4</div>
+                                    <div class="absolute w-16 h-24 bg-violet-500/40 rounded top-0 left-1/2 -translate-x-1/2 animate-[drive_2.2s_linear_infinite] shadow-[0_0_20px_#8b5cf6]"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="absolute bottom-20 right-20 glass-panel px-8 py-4 border-violet-500/50 fragment fade-left bg-violet-900/80">
+                            <div class="text-4xl font-bold text-violet-300 flex items-center gap-3">
+                                <i class="fa-solid fa-gauge-high"></i> + 200%
+                            </div>
+                            <div class="text-sm text-violet-200 mt-1">Performance on Multi-Core</div>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    .perspective-container { perspective: 1000px; }
+                    .transform-style-3d { transform-style: preserve-3d; transform: rotateX(30deg); }
+                    @keyframes drive {
+                        0% { top: -20%; opacity: 0; transform: translateX(-50%) scale(0.5); }
+                        20% { opacity: 1; }
+                        100% { top: 120%; opacity: 1; transform: translateX(-50%) scale(1.5); }
+                    }
+                </style>
+            </section>
+
+            <!-- Slide 6: Summary (New) -->
+            <section class="slide-summary" data-background-gradient="linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title"><i class="fa-solid fa-clipboard-check mr-4"></i>核心策略回顾</h2>
+                    
+                    <div class="slide-content-wrapper">
+                        <div class="grid grid-cols-2 gap-8 w-full max-w-6xl h-[500px]">
+                            
+                            <!-- Card 1 -->
+                            <div class="glass-panel p-6 flex flex-col justify-center items-start border-l-8 border-blue-500 fragment fade-up hover:bg-blue-900/20">
+                                <div class="text-blue-400 text-xl font-bold mb-2 flex items-center gap-2">
+                                    <i class="fa-solid fa-road"></i> 客户端优化
+                                </div>
+                                <div class="text-4xl font-bold text-white mb-2">Pipeline</div>
+                                <div class="text-gray-300 text-sm">减少网络 RTT，批量操作</div>
+                            </div>
+
+                            <!-- Card 2 -->
+                            <div class="glass-panel p-6 flex flex-col justify-center items-start border-l-8 border-emerald-500 fragment fade-up hover:bg-emerald-900/20" style="transition-delay: 100ms">
+                                <div class="text-emerald-400 text-xl font-bold mb-2 flex items-center gap-2">
+                                    <i class="fa-solid fa-layer-group"></i> 架构策略
+                                </div>
+                                <div class="text-4xl font-bold text-white mb-2">Local Cache</div>
+                                <div class="text-gray-300 text-sm">热点 Key 本地化，指数级提升</div>
+                            </div>
+
+                            <!-- Card 3 -->
+                            <div class="glass-panel p-6 flex flex-col justify-center items-start border-l-8 border-amber-500 fragment fade-up hover:bg-amber-900/20" style="transition-delay: 200ms">
+                                <div class="text-amber-400 text-xl font-bold mb-2 flex items-center gap-2">
+                                    <i class="fa-solid fa-weight-hanging"></i> 数据优化
+                                </div>
+                                <div class="text-4xl font-bold text-white mb-2">No BigKey</div>
+                                <div class="text-gray-300 text-sm">Protobuf 序列化，拆分大对象</div>
+                            </div>
+
+                            <!-- Card 4 -->
+                            <div class="glass-panel p-6 flex flex-col justify-center items-start border-l-8 border-violet-500 fragment fade-up hover:bg-violet-900/20" style="transition-delay: 300ms">
+                                <div class="text-violet-400 text-xl font-bold mb-2 flex items-center gap-2">
+                                    <i class="fa-solid fa-server"></i> 服务端配置
+                                </div>
+                                <div class="text-4xl font-bold text-white mb-2">Threaded I/O</div>
+                                <div class="text-gray-300 text-sm">升级 Redis 6.0+，释放多核性能</div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: false,
+            progress: false,
+            center: false,
+            hash: true,
+            transition: 'convex',
+            backgroundTransition: 'zoom',
+            fragments: true,
+            transitionSpeed: 'fast',
+        });
+
+        // Attract Mode Logic
+        (function() {
+            let autoPlayInterval;
+            const autoPlaySpeed = 50; 
+            let isAttractMode = true;
+
+            function startAttractMode() {
+                if (!isAttractMode) return; 
+                Reveal.configure({ loop: true }); 
+                autoPlayInterval = setInterval(() => {
+                    Reveal.next();
+                }, autoPlaySpeed);
+            }
+
+            function stopAttractMode() {
+                if (!isAttractMode) return; 
+                isAttractMode = false;
+                clearInterval(autoPlayInterval);
+                Reveal.slide(0);
+                Reveal.configure({ loop: false });
+                const hint = document.getElementById('start-hint');
+                if(hint) {
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.remove(), 500);
+                }
+            }
+
+            window.addEventListener('keydown', stopAttractMode);
+            window.addEventListener('click', stopAttractMode);
+            startAttractMode();
+        })();
+    </script>
+</body>
+</html>

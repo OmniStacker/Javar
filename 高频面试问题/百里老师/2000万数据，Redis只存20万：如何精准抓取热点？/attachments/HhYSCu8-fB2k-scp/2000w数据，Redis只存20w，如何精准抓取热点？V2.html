@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2000w数据，Redis只存20w，如何精准抓取热点？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* --- 全局动画定义 --- */
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); } 50% { box-shadow: 0 0 25px 12px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); } 50% { box-shadow: 0 0 25px 12px rgba(239, 68, 68, 0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        @keyframes stress { 0%, 100% { transform: scale(1); box-shadow: 0 0 20px 5px rgba(244, 63, 94, 0.3); } 50% { transform: scale(1.05); box-shadow: 0 0 35px 10px rgba(244, 63, 94, 0.5); } }
+        @keyframes arrow-flow { 0% { opacity: 0.3; transform: translateX(-15px); } 50% { opacity: 1; } 100% { opacity: 0.3; transform: translateX(15px); } }
+        
+        /* --- Slide 1 动画 --- */
+        @keyframes icon-pulse-green { 0%, 100% { filter: drop-shadow(0 0 3px rgba(74, 222, 128, 0.4)); } 50% { filter: drop-shadow(0 0 15px rgba(74, 222, 128, 0.9)); } }
+        .animate-icon-pulse-green { animation: icon-pulse-green 2.5s infinite ease-in-out; }
+        @keyframes filter-flow-compact { from { transform: translateX(-10rem) scale(0.95); opacity: 0.9; } to { transform: translateX(10rem) scale(1.05); opacity: 1; } }
+        .animate-filter-flow-compact { animation: filter-flow-compact 3s infinite linear alternate; }
+        
+        /* --- Slide 2 动画 --- */
+        @keyframes request-flow-fast { 0% { opacity: 0; transform: translateX(0); } 20% { opacity: 1; } 80% { opacity: 1; transform: translateX(20rem); } 100% { opacity: 0; transform: translateX(20rem); } }
+        .animate-flow-fast { position: absolute; top: 1.125rem; left: 3rem; width: 0.75rem; height: 0.75rem; background-color: #4ade80; border-radius: 9999px; box-shadow: 0 0 10px #4ade80, 0 0 20px #4ade80; transform: translateY(-50%); animation: request-flow-fast 2s ease-in-out infinite; }
+        @keyframes path-highlight { from { opacity: 0; } to { opacity: 1; } }
+        .animate-path-reveal { opacity: 0; animation: path-highlight 0.5s ease-in forwards; }
+        @keyframes text-throb-warning { from { text-shadow: 0 0 5px rgba(239, 68, 68, 0.5); } to { text-shadow: 0 0 20px rgba(239, 68, 68, 1); } }
+        .animate-text-throb { animation: text-throb-warning 1s infinite alternate; }
+
+        /* --- Slide 4 动画 --- */
+        @keyframes flow-line-animation { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+        .animated-line { background-size: 200% 100%; background-image: linear-gradient( to right, #334155 0%, #334155 45%, #67e8f9 50%, #334155 55%, #334155 100% ); animation: flow-line-animation 2.5s linear infinite; }
+        
+        /* --- Slide 5 动画 --- */
+        @keyframes fill-cache { from { width: 0%; } to { width: 100%; } }
+        .animate-fill-cache { animation: fill-cache 2s linear infinite; }
+        
+        /* --- Slide 6 动画 --- */
+        @keyframes bolt-strike { from { opacity: 0; transform: translate(var(--tx-start), var(--ty-start)) scale(0.8); } to { opacity: 1; transform: translate(var(--tx-end), var(--ty-end)) scale(1); } }
+        .animate-bolt-strike { animation: bolt-strike 1s ease-in infinite; position: absolute; }
+        @keyframes node-pop-in { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        .animate-node-pop-in { animation: node-pop-in 0.5s ease-out forwards; opacity: 0; }
+        @keyframes bolt-hit-node { from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+        .animate-bolt-hit-node { position: absolute; top: 50%; left: 50%; animation: bolt-hit-node 0.4s ease-out forwards; }
+        @keyframes spawn-and-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+        .bolt-spawner { position: absolute; top: var(--spawn-y, -20px); left: var(--spawn-x, -20px); width: 20px; height: 20px; animation: spawn-and-fade 1.5s infinite; }
+
+        /* --- 全局基础样式 --- */
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .slide:last-of-type { border-bottom: none; }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2.5rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .annotation { position: absolute; background-color: rgba(239, 68, 68, 0.8); color: white; padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: bold; white-space: nowrap; z-index: 10; }
+        
+        /* --- 导航点样式 --- */
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+
+        /* --- 可复用组件样式 --- */
+        .diagram-node { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 1.5rem; border-radius: 1rem; font-weight: 600; text-align: center; border: 1px solid; transition: all 0.3s ease; }
+        .diagram-node:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(148, 163, 184, 0.2); }
+        .diagram-item { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; width: 6rem; }
+        .flow-step { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 6rem; text-align: center; }
+        .flow-step i { font-size: 1.875rem; line-height: 2.25rem; }
+        .flow-step span { font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; }
+        .flow-arrow { font-size: 2.25rem; align-self: center; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场封面 -->
+    <section id="slide1" class="slide">
+        <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-10 items-center">
+            <div class="text-center lg:text-left">
+                <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">
+                    <span class="text-amber-300 font-extrabold">2000w</span>数据，Redis只存<span class="text-amber-300 font-extrabold">20w</span>
+                </h1>
+                <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">
+                    如何<span class="text-amber-300">精准抓取</span>热点？
+                </h2>
+                <p class="mt-6 text-lg text-slate-400">
+                    面对海量数据洪流与有限的缓存空间，我们的目标是构建一个智能筛选系统。它能自动识别并拦截绝大多数请求，只让真正的“热点数据”进入昂贵的Redis内存，最终实现高达99%的缓存命中率。
+                </p>
+            </div>
+            <div class="content-panel p-6 border-sky-500/30">
+                <div class="relative flex items-center justify-center py-8">
+                    <div class="absolute inset-x-0 h-1 bg-slate-700"></div>
+                    <div class="absolute"><i class="fa-solid fa-filter-circle-xmark text-4xl text-sky-400 bg-slate-900 p-2 rounded-full shadow-lg animate-filter-flow-compact"></i></div>
+                    <div class="relative flex justify-between items-start w-full">
+                        <div class="diagram-item">
+                            <i class="fa-solid fa-database text-5xl text-slate-400"></i>
+                            <h3 class="font-bold">MySQL</h3>
+                            <p class="font-mono text-xl text-slate-300">2000w</p>
+                        </div>
+                        <div class="diagram-item">
+                            <i class="fa-solid fa-cube text-5xl text-green-400 animate-icon-pulse-green"></i>
+                            <h3 class="font-bold">Redis</h3>
+                            <p class="font-mono text-xl text-green-300">20w</p>
+                        </div>
+                        <div class="diagram-item">
+                            <i class="fa-solid fa-bolt-lightning text-5xl text-amber-400"></i>
+                            <h3 class="font-bold">API</h3>
+                            <p class="font-mono text-xl text-amber-300">99% Hit</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 传统方案 -->
+    <section id="slide2" class="slide">
+        <div class="w-full max-w-6xl mx-auto">
+            <div class="text-center">
+                <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-400 to-orange-400">传统方案：简单粗暴的缓存</h2>
+                <p class="mt-4 text-xl text-slate-400">“有请求就缓存，无差别对待所有数据”</p>
+            </div>
+            <div class="content-panel mt-8 p-8 border-rose-500/30">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-12">
+                    <div class="p-6 rounded-xl">
+                        <h3 class="font-bold text-lg mb-8 text-green-400 text-center"><i class="fa-solid fa-circle-check mr-2"></i>理想情况：缓存命中</h3>
+                        <div class="relative">
+                             <div class="animate-flow-fast" style="animation-delay: 0.5s;"></div>
+                             <div class="flex items-start justify-center" style="opacity: 0.8">
+                                <div class="flow-step text-green-400"><i class="fa-solid fa-server"></i><span>API</span></div>
+                                <i class="fa-solid fa-arrow-right-long text-green-400 flow-arrow mx-2"></i>
+                                <div class="flow-step text-green-400"><i class="fa-solid fa-cube"></i><span>Redis 缓存</span></div>
+                                <i class="fa-solid fa-arrow-right-long text-green-400 flow-arrow mx-2"></i>
+                                <div class="flow-step text-green-400"><i class="fa-solid fa-rocket"></i><span>快速响应</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 rounded-xl border-2 border-rose-500/50">
+                        <h3 class="font-bold text-lg mb-8 text-rose-400 text-center"><i class="fa-solid fa-circle-xmark mr-2"></i>现实问题：缓存穿透</h3>
+                        <div class="flex flex-wrap items-start justify-center gap-x-2 gap-y-6">
+                            <div class="flow-step text-sky-400 animate-path-reveal" style="animation-delay: 0s;"><i class="fa-solid fa-server"></i><span>API</span></div>
+                            <i class="fa-solid fa-arrow-right-long text-rose-400 flow-arrow mx-1 animate-path-reveal" style="animation-delay: 0.5s;"></i>
+                            <div class="flow-step text-rose-400 animate-path-reveal" style="animation-delay: 1s;"><i class="fa-solid fa-filter-circle-xmark"></i><span>穿透</span></div>
+                            <i class="fa-solid fa-arrow-right-long text-rose-400 flow-arrow mx-1 animate-path-reveal" style="animation-delay: 1.5s;"></i>
+                            <div class="flow-step text-rose-400 animate-path-reveal" style="animation-delay: 2s;"><i class="fa-solid fa-cube"></i><span>缓存 Miss</span></div>
+                            <i class="fa-solid fa-arrow-right-long text-amber-500 flow-arrow mx-1 animate-path-reveal" style="animation-delay: 2.5s;"></i>
+                            <div class="flow-step text-amber-500 animate-path-reveal" style="animation-delay: 3s;"><i class="fa-solid fa-database"></i><span>MySQL</span></div>
+                            <i class="fa-solid fa-arrow-right-long text-amber-500 flow-arrow mx-1 animate-path-reveal" style="animation-delay: 3.5s;"></i>
+                            <div class="flow-step text-amber-500 animate-path-reveal" style="animation-delay: 4s;"><i class="fa-solid fa-pen-to-square"></i><span>回写缓存</span></div>
+                            <i class="fa-solid fa-arrow-right-long text-red-500 flow-arrow mx-1 animate-path-reveal" style="animation-delay: 4.5s;"></i>
+                            <div class="flow-step text-red-500 animate-path-reveal" style="animation-delay: 5s;"><i class="fa-solid fa-hourglass-half animate-text-throb" style="animation-delay: 5s;"></i><span class="animate-text-throb" style="animation-delay: 5s;">缓慢响应</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-12 pt-6 border-t border-slate-700">
+                    <h3 class="text-2xl font-bold text-center text-amber-300 mb-6">症结所在</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                        <div class="bg-slate-800/40 p-4 rounded-lg flex flex-col items-center gap-2">
+                            <i class="fa-solid fa-memory text-3xl text-sky-400"></i>
+                            <p class="font-semibold">冷数据挤占宝贵内存</p>
+                            <p class="text-sm text-slate-400">无关请求将大量非热点数据写入Redis。</p>
+                        </div>
+                        <div class="bg-slate-800/40 p-4 rounded-lg flex flex-col items-center gap-2">
+                            <i class="fa-solid fa-arrow-down-a-z text-3xl text-orange-400"></i>
+                            <p class="font-semibold">命中率持续走低</p>
+                            <p class="text-sm text-slate-400">热点数据被频繁逐出，缓存形同虚设。</p>
+                        </div>
+                        <div class="bg-slate-800/40 p-4 rounded-lg flex flex-col items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-3xl text-rose-400"></i>
+                            <p class="font-semibold">数据库不堪重负</p>
+                            <p class="text-sm text-slate-400">大量请求穿透，直接压垮MySQL。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: 怎么做1：Flink -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-5xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-400 to-purple-400">解决方案①：Flink 实时热点探测</h2>
+            <p class="mt-4 text-xl text-slate-400">构建全局“战场雷达”，动态生成“热点排行榜”。</p>
+            <div class="content-panel mt-8 p-8 border-violet-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-6 text-center">
+                    <div class="flex flex-col gap-4">
+                        <div class="diagram-node bg-slate-800/50 border-slate-600"><i class="fa-solid fa-mobile-screen-button text-violet-300 mr-2"></i> App日志</div>
+                        <div class="diagram-node bg-slate-800/50 border-slate-600"><i class="fa-solid fa-desktop text-violet-300 mr-2"></i> Web日志</div>
+                        <div class="diagram-node bg-slate-800/50 border-slate-600"><i class="fa-solid fa-database text-violet-300 mr-2"></i> Binlog</div>
+                    </div>
+                    <div class="text-4xl text-slate-400 my-4 md:my-0"><i class="fa-solid fa-arrow-right-long fa-beat"></i></div>
+                    <div class="diagram-node bg-purple-900/40 border-purple-500/80 p-8">
+                        <i class="fa-solid fa-gears text-6xl text-violet-400 animate-spin" style="animation-duration: 5s;"></i>
+                        <p class="mt-4 font-bold text-lg">Flink 实时计算</p>
+                        <p class="text-sm text-slate-400">1分钟窗口</p>
+                    </div>
+                    <div class="text-4xl text-slate-400 my-4 md:my-0"><i class="fa-solid fa-arrow-right-long fa-beat"></i></div>
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6">
+                        <i class="fa-solid fa-ranking-star text-4xl text-amber-400 mb-3"></i>
+                        <h4 class="font-bold">Top 20w 热点榜</h4>
+                        <div class="text-left text-xs mt-2 space-y-1 text-slate-300 font-mono">
+                            <p>1. Item A - 1024</p>
+                            <p>2. Item B - 980</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 怎么做2：三级缓存 -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-cyan-400">解决方案②：构建三级缓存防线</h2>
+            <p class="mt-4 text-xl text-slate-400">层层设防，过滤请求，极致性能，保护后端。</p>
+            <div class="content-panel mt-8 p-8 border-sky-500/30">
+                <div class="flex items-center justify-center gap-2 md:gap-4 p-4 text-sm md:text-base">
+                    <div class="flex flex-col items-center h-40 justify-center">
+                        <i class="fa-solid fa-user text-4xl text-sky-300"></i>
+                        <p class="font-bold mt-2">User</p>
+                    </div>
+                    <div class="flex-grow"><div class="h-1 w-full animated-line rounded-full"></div></div>
+                    <div class="h-40 flex flex-col justify-center">
+                        <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 w-32 md:w-40 relative">
+                            <i class="fa-solid fa-laptop-code text-2xl text-sky-400"></i>
+                            <p class="font-bold mt-2">L1: 本地缓存</p>
+                            <p class="text-xs text-slate-400">(Caffeine)</p>
+                                                        <div class="absolute top-full mt-2 left-0 w-full flex justify-between px-2">
+                                <div class="text-green-400 flex items-center gap-1"><i class="fa-solid fa-arrow-turn-up"></i> Hit</div>
+                                <div class="text-amber-400 flex items-center gap-1">Miss <i class="fa-solid fa-arrow-right"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-grow"><div class="h-1 w-full animated-line rounded-full" style="animation-delay: 0.8s;"></div></div>
+                    <div class="h-40 flex flex-col justify-center">
+                        <div class="diagram-node bg-green-900/40 border-green-500/80 p-4 w-32 md:w-40 relative" style="animation: subtle-pulse-green 2.5s infinite ease-in-out;">
+                            <i class="fa-solid fa-cube text-2xl text-green-400"></i>
+                            <p class="font-bold mt-2">L2: Redis缓存</p>
+                            <p class="text-xs text-slate-400">(20w 热点)</p>
+                            <div class="absolute top-full mt-2 left-0 w-full flex justify-between px-2">
+                                <div class="text-green-400 flex items-center gap-1"><i class="fa-solid fa-arrow-turn-up"></i> Hit</div>
+                                <div class="text-amber-400 flex items-center gap-1">Miss <i class="fa-solid fa-arrow-right"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-grow"><div class="h-1 w-full animated-line rounded-full" style="animation-delay: 1.6s;"></div></div>
+                    <div class="h-40 flex flex-col justify-center">
+                        <div class="diagram-node bg-red-900/40 border-red-500/80 p-4 w-32 md:w-40 relative" style="animation: stress 1.5s infinite ease-in-out;">
+                            <div class="annotation -top-4 -right-4"><i class="fa-solid fa-shield-virus"></i> 限流</div>
+                            <i class="fa-solid fa-database text-2xl text-blue-400"></i>
+                            <p class="font-bold mt-2">L3: MySQL</p>
+                            <p class="text-xs text-slate-400">(2000w)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 怎么做3：智能预热 -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-400 to-yellow-300">解决方案③：智能预热与冷热分离</h2>
+            <p class="mt-4 text-xl text-slate-400">低谷期“填满”缓存，从容应对早高峰“冷启动”。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-amber-500/30">
+                <div class="relative flex w-full min-h-[18rem]">
+                    <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-600 border-l-2 border-dashed border-slate-600"></div>
+                    <div class="w-1/2 flex flex-col items-center p-4 pr-8">
+                        <div class="flex items-center gap-3 text-amber-300">
+                            <i class="fa-solid fa-moon text-2xl"></i>
+                            <h3 class="text-xl font-bold">00:00 凌晨低谷</h3>
+                        </div>
+                        <div class="flex-grow w-full flex items-center justify-center gap-4 mt-4">
+                            <div class="flex flex-col items-center text-center">
+                                <i class="fa-brands fa-python text-6xl text-amber-300"></i>
+                                <p class="font-bold mt-2">预热脚本</p>
+                                <p class="text-xs text-slate-400">拉取Top 20w</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-right-long text-4xl text-amber-400 opacity-75"></i>
+                            <div class="flex flex-col items-center text-center">
+                                <i class="fa-solid fa-cube text-6xl text-green-400"></i>
+                                <div class="w-32 h-5 bg-slate-700 rounded-full mt-2 overflow-hidden border border-slate-600">
+                                    <div class="h-full bg-gradient-to-r from-yellow-500 to-amber-400 animate-fill-cache"></div>
+                                </div>
+                                <p class="text-xs mt-1 text-amber-400">填充缓存中...</p>
+                            </div>
+                        </div>
+                        <div class="annotation -bottom-2 -right-2" style="background-color: rgba(217, 119, 6, 0.8); animation: shake 5s infinite ease-in-out;"><i class="fa-solid fa-triangle-exclamation"></i> 预热不准会浪费空间</div>
+                    </div>
+                    <div class="w-1/2 flex flex-col items-center p-4 pl-8">
+                        <div class="flex items-center gap-3 text-sky-300">
+                            <i class="fa-solid fa-sun text-2xl"></i>
+                            <h3 class="text-xl font-bold">09:00 早高峰</h3>
+                        </div>
+                        <div class="flex-grow w-full flex items-center justify-center gap-4 mt-4">
+                            <div class="flex flex-col items-center text-center">
+                                <i class="fa-solid fa-cube text-6xl text-green-400"></i>
+                                <div class="w-32 h-5 bg-green-500/80 rounded-full mt-2 border border-green-600"></div>
+                                <p class="text-xs mt-1 text-green-400 font-bold">缓存已就绪</p>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <i class="fa-solid fa-arrow-right-long text-4xl text-green-400"></i>
+                                <p class="text-sm font-bold text-green-400 mt-1">100% Hit</p>
+                            </div>
+                            <div class="flex flex-col items-center text-center">
+                                <div class="flex -space-x-4">
+                                    <i class="fa-solid fa-user text-4xl text-sky-300"></i>
+                                    <i class="fa-solid fa-user text-4xl text-sky-400"></i>
+                                    <i class="fa-solid fa-user text-4xl text-sky-500"></i>
+                                </div>
+                                <p class="font-bold mt-2">海量请求</p>
+                                <p class="text-xs text-slate-400">全部命中缓存</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: 面试加分项 -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-5xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-400 to-pink-400">面试加分项：热点Key压力分摊</h2>
+            <p class="mt-4 text-xl text-slate-400">应对秒杀等场景下的“超级热点”，避免单点过载。</p>
+            <div class="content-panel mt-8 p-8 border-rose-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div class="bg-slate-800/50 p-6 rounded-xl text-center">
+                        <h3 class="font-bold text-lg mb-6 text-rose-400">Before: 压力集中</h3>
+                        <div class="relative flex justify-center items-center h-40">
+                            <div class="diagram-node bg-red-900/40 border-red-500/80 p-4" style="animation: stress 1.5s infinite ease-in-out;">
+                                <i class="fa-solid fa-fire-flame-curved text-2xl text-rose-400"></i>
+                                <p class="font-bold">item:123</p>
+                            </div>
+                            <i class="fa-solid fa-bolt text-amber-400 animate-bolt-strike" style="--tx-start: -100px; --ty-start: -80px; --tx-end: -10px; --ty-end: -10px; animation-delay: 0s;"></i>
+                            <i class="fa-solid fa-bolt text-amber-400 animate-bolt-strike" style="--tx-start: 100px; --ty-start: -60px; --tx-end: 20px; --ty-end: -20px; animation-delay: 0.2s;"></i>
+                            <i class="fa-solid fa-bolt text-amber-400 animate-bolt-strike" style="--tx-start: -120px; --ty-start: 70px; --tx-end: -20px; --ty-end: 20px; animation-delay: 0.4s;"></i>
+                            <i class="fa-solid fa-bolt text-amber-400 animate-bolt-strike" style="--tx-start: 80px; --ty-start: 90px; --tx-end: 10px; --ty-end: 10px; animation-delay: 0.6s;"></i>
+                        </div>
+                        <p class="text-sm text-rose-300 mt-4">大量请求涌向单Key，造成Redis节点瓶颈。</p>
+                    </div>
+                    <div class="bg-slate-800/50 p-6 rounded-xl text-center">
+                        <h3 class="font-bold text-lg mb-6 text-green-400">After: 压力均摊</h3>
+                        <div class="grid grid-cols-3 gap-4 h-40 items-center">
+                            <div class="relative h-full w-full flex items-center justify-center">
+                                <div class="diagram-node bg-green-900/40 border-green-500/80 text-xs animate-node-pop-in" style="animation-delay: 0.1s;">item:123:p1</div>
+                                <div class="bolt-spawner" style="--spawn-x: -10px; --spawn-y: -20px; animation-delay: 1s;"><i class="fa-solid fa-bolt text-sky-300 animate-bolt-hit-node"></i></div>
+                            </div>
+                            <div class="relative h-full w-full flex items-center justify-center">
+                                <div class="diagram-node bg-green-900/40 border-green-500/80 text-xs animate-node-pop-in" style="animation-delay: 0.2s;">item:123:p2</div>
+                            </div>
+                            <div class="relative h-full w-full flex items-center justify-center">
+                                <div class="diagram-node bg-green-900/40 border-green-500/80 text-xs animate-node-pop-in" style="animation-delay: 0.3s;">item:123:p3</div>
+                                <div class="bolt-spawner" style="--spawn-x: 30px; --spawn-y: -20px; animation-delay: 1.5s;"><i class="fa-solid fa-bolt text-sky-300 animate-bolt-hit-node"></i></div>
+                            </div>
+                            <div class="relative h-full w-full flex items-center justify-center">
+                                <div class="diagram-node bg-green-900/40 border-green-500/80 text-xs animate-node-pop-in" style="animation-delay: 0.4s;">item:123:p4</div>
+                            </div>
+                            <div class="relative h-full w-full flex items-center justify-center">
+                                <div class="diagram-node bg-green-900/40 border-green-500/80 text-xs animate-node-pop-in" style="animation-delay: 0.5s;">item:123:p5</div>
+                                 <div class="bolt-spawner" style="--spawn-x: -20px; --spawn-y: 40px; animation-delay: 2s;"><i class="fa-solid fa-bolt text-sky-300 animate-bolt-hit-node"></i></div>
+                            </div>
+                            <div class="relative h-full w-full flex items-center justify-center">
+                                <div class="diagram-node bg-green-900/40 border-green-500/80 text-xs animate-node-pop-in" style="animation-delay: 0.6s;">item:123:p6</div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-green-300 mt-4">请求被随机路由到多个子Key，压力被有效分散。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: 最终总结 -->
+    <section id="slide7" class="slide">
+        <div class="text-center w-full max-w-5xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-green-400 to-emerald-400">总结：从“缓存”到“数据治理”</h2>
+            <p class="mt-4 text-xl text-slate-400">用系统化思维，实现资源利用率和性能的飞跃。</p>
+            <div class="content-panel mt-8 p-8 border-green-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-slate-800/50 p-6 rounded-xl text-center border-2 border-rose-500/50">
+                        <h3 class="font-bold text-2xl mb-6 text-rose-400">Before: 传统方案</h3>
+                        <div class="flex justify-around items-center h-32">
+                            <div><p class="text-slate-400 text-sm">缓存命中率</p><p class="text-5xl font-bold text-rose-400">~30%</p></div>
+                            <div><p class="text-slate-400 text-sm">MySQL负载</p><p class="text-5xl font-bold text-rose-400">~95%</p></div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/50 p-6 rounded-xl text-center border-2 border-green-500/50">
+                        <h3 class="font-bold text-2xl mb-6 text-green-400">After: 精准治理</h3>
+                        <div class="flex justify-around items-center h-32">
+                            <div><p class="text-slate-400 text-sm">缓存命中率</p><p class="text-5xl font-bold text-green-400">>98%</p></div>
+                            <div><p class="text-slate-400 text-sm">MySQL负载</p><p class="text-5xl font-bold text-green-400"><20%</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="text-center py-8 text-slate-500">
+        2000w数据，Redis只存20w，如何精准抓取热点？
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            const navDots = navContainer.querySelectorAll('a');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            slides.forEach(slide => { observer.observe(slide); });
+        });
+    </script>
+</body>
+</html>

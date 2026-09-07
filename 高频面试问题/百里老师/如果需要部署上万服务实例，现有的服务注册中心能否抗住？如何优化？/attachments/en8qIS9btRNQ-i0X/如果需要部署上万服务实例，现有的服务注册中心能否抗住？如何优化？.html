@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>如果需要部署上万服务实例，现有的服务注册中心能否抗住？如何优化？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 全局字体与重置 */
+        .reveal { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none !important; letter-spacing: -0.02em; }
+        
+        /* 玻璃拟态核心类 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        /* 堆叠卡片交互效果 */
+        .stacked-card {
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), z-index 0s;
+        }
+        .stacked-card:hover {
+            /* 悬停时：大幅上浮 + 放大 + 确保在最上层 */
+            transform: translateY(-100px) scale(1.05) !important; 
+            z-index: 100 !important;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        /* 布局辅助类 */
+        .slide-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 40px;
+            box-sizing: border-box;
+        }
+        
+        .slide-content {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding-bottom: 20px;
+        }
+
+        /* 统一标题样式 */
+        .slide-title {
+            font-size: 3.5rem !important;
+            font-weight: 700 !important;
+            margin: 0 0 2rem 0 !important;
+            padding: 0 !important;
+            line-height: 1.2 !important;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            flex-shrink: 0;
+        }
+        
+        /* 动画定义 */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+        .animate-float { animation: float 4s ease-in-out infinite; }
+        
+        @keyframes shake-hard {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .animate-shake { animation: shake-hard 0.8s infinite; }
+
+        /* 渐变文字 */
+        .text-gradient {
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        }
+
+        /* 主题色变量 */
+        .slide-intro { --gradient-start: #818cf8; --gradient-end: #c084fc; }
+        .slide-problem { --gradient-start: #fb7185; --gradient-end: #f43f5e; }
+        .slide-client { --gradient-start: #34d399; --gradient-end: #10b981; }
+        .slide-server { --gradient-start: #60a5fa; --gradient-end: #3b82f6; }
+        .slide-protocol { --gradient-start: #a78bfa; --gradient-end: #8b5cf6; }
+        .slide-arch { --gradient-start: #fbbf24; --gradient-end: #f59e0b; }
+        .slide-summary { --gradient-start: #f472b6; --gradient-end: #ec4899; }
+
+        /* Fragment 动画修复 */
+        /* 关键修复：不再强制重置 transform，允许 margin 和其他属性生效 */
+        .fragment.visible { opacity: 1; }
+        
+        /* 针对堆叠卡片的特殊入场动画 */
+        .stacked-card.fragment { 
+            opacity: 0; 
+            transform: translateY(50px); /* 初始位置在更下方 */
+        }
+        .stacked-card.fragment.visible { 
+            opacity: 1; 
+            transform: translateY(0); /* 回到原位（原位由 margin 决定） */
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+                        <!-- Slide 1: 极限挑战版 - 既吸睛又专业 -->
+            <section class="slide-intro" data-background-gradient="linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)">
+                <div class="slide-container justify-center relative">
+                    
+                    <!-- 背景动态网格，暗示复杂的网络环境 -->
+                    <div class="absolute inset-0 opacity-20" 
+                         style="background-image: radial-gradient(#6366f1 1px, transparent 1px); background-size: 30px 30px;">
+                    </div>
+
+                    <!-- 核心视觉容器 -->
+                    <div class="glass-panel p-12 flex flex-col items-center z-10 border-t-4 border-indigo-500 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                        
+                        <!-- 顶部标签：强调场景的极端性 -->
+                        <div class="flex items-center gap-3 mb-6">
+                            <span class="bg-indigo-600 text-white px-4 py-1 rounded-full text-sm font-bold tracking-wider uppercase">High Concurrency</span>
+                            <span class="bg-rose-600 text-white px-4 py-1 rounded-full text-sm font-bold tracking-wider uppercase animate-pulse">Limit Test</span>
+                        </div>
+
+                        <!-- 主标题：用巨大的数字制造压迫感 -->
+                        <h1 class="text-8xl font-black mb-2 text-white tracking-tighter" style="text-shadow: 0 10px 30px rgba(99, 102, 241, 0.5);">
+                            10,000+
+                            <span class="block text-4xl font-bold text-indigo-300 mt-2 tracking-normal opacity-80">微服务实例同时在线</span>
+                        </h1>
+
+                        <!-- 分割线 -->
+                        <div class="w-24 h-1 bg-gradient-to-r from-indigo-500 to-rose-500 my-8"></div>
+
+                        <!-- 副标题：直击痛点（对应 Slide 2 的内容） -->
+                        <h2 class="text-2xl text-gray-300 font-light mb-8 text-center leading-relaxed">
+                            当 Zookeeper 扛不住<span class="text-rose-400 font-bold mx-2">心跳风暴</span>时<br>
+                            架构师该如何<span class="text-indigo-400 font-bold mx-2 border-b border-indigo-400">绝地反击</span>？
+                        </h2>
+
+                        <!-- 底部：预告干货（对应 Slide 3-7） -->
+                        <div class="grid grid-cols-3 gap-8 w-full mt-4 fragment fade-up">
+                            <div class="text-center">
+                                <div class="text-indigo-400 text-xl font-bold mb-1"><i class="fa-solid fa-compress"></i> 流量压缩</div>
+                                <div class="text-xs text-gray-500">Payload -90%</div>
+                            </div>
+                            <div class="text-center border-l border-gray-700">
+                                <div class="text-indigo-400 text-xl font-bold mb-1"><i class="fa-solid fa-bolt"></i> 协议升级</div>
+                                <div class="text-xs text-gray-500">HTTP -> gRPC</div>
+                            </div>
+                            <div class="text-center border-l border-gray-700">
+                                <div class="text-indigo-400 text-xl font-bold mb-1"><i class="fa-solid fa-cubes"></i> 物理隔离</div>
+                                <div class="text-xs text-gray-500">Namespace</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 2: 核心瓶颈 -->
+            <section class="slide-problem" data-background-gradient="linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title">⚠️ 核心瓶颈：为什么抗不住？</h2>
+                    <div class="slide-content">
+                        <div class="grid grid-cols-3 gap-8 w-full px-4">
+                            <div class="glass-panel p-8 flex flex-col items-center border-red-500/30 fragment fade-up h-full justify-between">
+                                <div class="text-6xl mb-6 text-rose-400 animate-shake"><i class="fa-solid fa-heart-pulse"></i></div>
+                                <h3 class="text-2xl font-bold text-rose-300 mb-4">写压力：心跳风暴</h3>
+                                <p class="text-base text-gray-300 leading-relaxed">10,000 实例 x 频繁心跳<br>+ 网络重试<br>= <span class="text-rose-400 font-bold">集群TPS过载</span></p>
+                            </div>
+                            <div class="glass-panel p-8 flex flex-col items-center border-red-500/30 fragment fade-up h-full justify-between" style="transition-delay: 100ms">
+                                <div class="text-6xl mb-6 text-rose-400 animate-pulse"><i class="fa-solid fa-download"></i></div>
+                                <h3 class="text-2xl font-bold text-rose-300 mb-4">读压力：带宽打满</h3>
+                                <p class="text-base text-gray-300 leading-relaxed">全量拉取元数据<br>几十MB x 并发数<br>= <span class="text-rose-400 font-bold">网卡阻塞</span></p>
+                            </div>
+                            <div class="glass-panel p-8 flex flex-col items-center border-red-500/30 fragment fade-up h-full justify-between" style="transition-delay: 200ms">
+                                <div class="text-6xl mb-6 text-rose-400"><i class="fa-solid fa-link-slash"></i></div>
+                                <h3 class="text-2xl font-bold text-rose-300 mb-4">协议：CP模型缺陷</h3>
+                                <p class="text-base text-gray-300 leading-relaxed">ZK Leader重选举<br>Stop The World<br>= <span class="text-rose-400 font-bold">集群假死</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 3: 客户端优化 -->
+            <section class="slide-client" data-background-gradient="linear-gradient(135deg, #064e3b 0%, #065f46 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title">🛡️ 客户端优化：减负</h2>
+                    <div class="slide-content w-full px-10">
+                        <div class="flex justify-between items-center gap-10 w-full mb-12 fragment fade-in">
+                            <div class="glass-panel p-8 flex-1 opacity-50 grayscale transform scale-95">
+                                <div class="text-center mb-4 text-gray-400 text-xl">Old: 全量拉取</div>
+                                <div class="h-6 bg-gray-600 rounded-full w-full overflow-hidden">
+                                    <div class="h-full bg-red-500 w-full animate-pulse"></div>
+                                </div>
+                                <div class="text-sm mt-3 text-center">100% 流量消耗</div>
+                            </div>
+                            <i class="fa-solid fa-arrow-right text-5xl text-emerald-400 fragment fade-in"></i>
+                            <div class="glass-panel p-8 flex-1 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.2)] transform scale-105">
+                                <div class="text-center mb-4 text-emerald-300 font-bold text-xl">New: 增量同步 (Delta)</div>
+                                <div class="h-6 bg-gray-700 rounded-full w-full overflow-hidden">
+                                    <div class="h-full bg-emerald-500 w-[10%]"></div>
+                                </div>
+                                <div class="text-sm mt-3 text-center text-emerald-300">仅 10% 流量消耗</div>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-10 flex items-center gap-10 border-emerald-500/30 w-full fragment fade-up">
+                            <div class="text-7xl text-emerald-400"><i class="fa-solid fa-shield-halved"></i></div>
+                            <div class="text-left flex-1">
+                                <h3 class="text-3xl font-bold text-emerald-300 mb-3">本地缓存 (Local Cache)</h3>
+                                <p class="text-gray-300 text-lg leading-relaxed">即使注册中心全挂，业务依然可用。<br>这是高可用的<span class="text-emerald-400 font-bold">最后一道防线</span>。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 4: 服务端优化 -->
+            <section class="slide-server" data-background-gradient="linear-gradient(135deg, #172554 0%, #1e3a8a 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title">⚙️ 服务端优化：扩容与调优</h2>
+                    <div class="slide-content w-full px-4 flex-row items-stretch gap-10">
+                        <div class="glass-panel p-8 flex-1 flex flex-col fragment fade-right">
+                            <h3 class="text-2xl font-bold text-blue-300 mb-6 text-center">三级缓存架构</h3>
+                            <div class="flex flex-col gap-4 flex-1 justify-evenly">
+                                <div class="glass-panel bg-blue-500/20 p-4 text-center border-blue-400/50 text-lg">
+                                    <i class="fa-solid fa-pen-to-square mr-3"></i>写请求 -> 内存注册表
+                                </div>
+                                <div class="flex justify-center text-blue-300 text-xl"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="glass-panel bg-blue-400/10 p-4 text-center border-blue-400/30 text-lg">
+                                    <i class="fa-solid fa-rotate mr-3"></i>异步同步
+                                </div>
+                                <div class="flex justify-center text-blue-300 text-xl"><i class="fa-solid fa-arrow-down"></i></div>
+                                <div class="glass-panel bg-green-500/20 p-4 text-center border-green-400/50 text-lg">
+                                    <i class="fa-solid fa-eye mr-3"></i>读请求 -> 只读缓存
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-6 flex-1 justify-center">
+                            <div class="glass-panel p-10 flex items-center gap-8 fragment fade-left flex-1">
+                                <i class="fa-solid fa-file-zipper text-6xl text-blue-400"></i>
+                                <div>
+                                    <h3 class="text-2xl font-bold text-blue-300 mb-2">GZIP 压缩</h3>
+                                    <p class="text-base text-gray-400">JSON 数据体积减少 80%+</p>
+                                </div>
+                            </div>
+                            <div class="glass-panel p-10 flex items-center gap-8 fragment fade-left flex-1">
+                                <i class="fa-solid fa-scale-balanced text-6xl text-blue-400"></i>
+                                <div>
+                                    <h3 class="text-2xl font-bold text-blue-300 mb-2">AP > CP</h3>
+                                    <p class="text-base text-gray-400">选用 Nacos (Distro协议)<br>可用性优先于强一致性</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 5: 协议进化 -->
+            <section class="slide-protocol" data-background-gradient="linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title">🚀 协议进化：Nacos 2.0 的质变</h2>
+                    <div class="slide-content flex-row gap-16 px-4 w-full">
+                        <div class="glass-panel p-10 w-1/3 flex flex-col items-center opacity-60 fragment fade-in h-auto min-h-[400px] justify-center">
+                            <h3 class="text-3xl font-bold text-gray-400 mb-8">HTTP 1.x</h3>
+                            <div class="flex flex-col gap-3 w-full mb-8">
+                                <div class="h-1 bg-gray-500 w-full animate-pulse"></div>
+                                <div class="h-1 bg-transparent w-full"></div>
+                                <div class="h-1 bg-gray-500 w-full animate-pulse" style="animation-delay: 0.2s"></div>
+                                <div class="h-1 bg-transparent w-full"></div>
+                                <div class="h-1 bg-gray-500 w-full animate-pulse" style="animation-delay: 0.4s"></div>
+                            </div>
+                            <ul class="text-left text-lg text-gray-400 space-y-4">
+                                <li><i class="fa-solid fa-xmark text-red-500 mr-3"></i>短连接轮询</li>
+                                <li><i class="fa-solid fa-xmark text-red-500 mr-3"></i>大量无效请求</li>
+                                <li><i class="fa-solid fa-xmark text-red-500 mr-3"></i>30秒延迟</li>
+                            </ul>
+                        </div>
+                        <div class="glass-panel p-10 w-1/3 flex flex-col items-center border-violet-500 shadow-[0_0_60px_rgba(139,92,246,0.4)] transform scale-110 z-10 fragment zoom-in h-auto min-h-[450px] justify-center">
+                            <h3 class="text-4xl font-bold text-violet-300 mb-8">gRPC 长连接</h3>
+                            <div class="w-3 h-32 bg-gradient-to-b from-violet-400 to-fuchsia-500 rounded-full mb-8 shadow-[0_0_30px_rgba(167,139,250,0.8)]"></div>
+                            <ul class="text-left text-lg text-gray-100 space-y-4 font-medium">
+                                <li><i class="fa-solid fa-check text-green-400 mr-3"></i>持久化连接 (Stream)</li>
+                                <li><i class="fa-solid fa-check text-green-400 mr-3"></i>主动推送 (Push)</li>
+                                <li><i class="fa-solid fa-check text-green-400 mr-3"></i>毫秒级实时性</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 6: 架构演进 (Diagonal Stack - Fixed) -->
+            <section class="slide-arch" data-background-gradient="linear-gradient(135deg, #451a03 0%, #78350f 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title">🏗️ 架构级演进：爆炸半径控制</h2>
+                    <!-- 容器左移 (-translate-x-24) 以平衡卡片的右移，保持视觉居中 -->
+                    <div class="slide-content w-full flex flex-col items-center justify-center -translate-x-24">
+                        
+                        <!-- Card 1: 基准 -->
+                        <div class="glass-panel stacked-card p-8 flex items-center gap-10 w-[70%] z-10 fragment relative">
+                            <div class="text-5xl text-amber-400 font-bold opacity-80">01</div>
+                            <div class="flex-1">
+                                <h3 class="text-2xl font-bold text-amber-300 mb-3">逻辑隔离 (Namespace)</h3>
+                                <div class="flex justify-center gap-6 mt-4">
+                                    <div class="bg-amber-500/20 border border-amber-500/50 px-6 py-2 rounded-lg text-base">交易域</div>
+                                    <div class="bg-blue-500/20 border border-blue-500/50 px-6 py-2 rounded-lg text-base">物流域</div>
+                                    <div class="bg-purple-500/20 border border-purple-500/50 px-6 py-2 rounded-lg text-base">用户域</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: 使用 margin-left (ml-24) 实现物理右移，-mt-24 实现覆盖 -->
+                        <div class="glass-panel stacked-card p-8 flex items-center gap-10 w-[70%] z-20 -mt-24 ml-24 fragment relative" style="transition-delay: 100ms">
+                            <div class="text-5xl text-amber-400 font-bold opacity-80">02</div>
+                            <div class="flex-1">
+                                <h3 class="text-2xl font-bold text-amber-300 mb-3">物理集群拆分</h3>
+                                <p class="text-lg text-gray-300">不同业务线使用独立的注册中心集群，彻底隔绝故障。</p>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: 更大的 margin-left (ml-48) 实现进一步右移 -->
+                        <div class="glass-panel stacked-card p-8 flex items-center gap-10 w-[70%] z-30 -mt-24 ml-48 fragment relative" style="transition-delay: 200ms">
+                            <div class="text-5xl text-amber-400 font-bold opacity-80">03</div>
+                            <div class="flex-1">
+                                <h3 class="text-2xl font-bold text-amber-300 mb-3">单元化 (Set化)</h3>
+                                <p class="text-lg text-gray-300">超大规模场景，机房内闭环，跨单元走网关。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 7: 总结路线图 (Diagonal Stack - Fixed) -->
+            <section class="slide-summary" data-background-gradient="linear-gradient(135deg, #831843 0%, #be185d 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title">🎯 优化路线图总结</h2>
+                    <!-- 容器左移平衡 -->
+                    <div class="slide-content w-full flex flex-col items-center justify-center -translate-x-24">
+                        
+                        <!-- Step 3: 架构层 (Top) -->
+                        <div class="glass-panel stacked-card p-8 w-[70%] border-l-8 border-pink-400 z-10 fragment relative">
+                            <h3 class="text-2xl font-bold text-pink-300 mb-2"><i class="fa-solid fa-layer-group mr-3"></i>架构层</h3>
+                            <p class="text-lg text-gray-300">Namespace 隔离 / 物理拆分 / 单元化</p>
+                        </div>
+
+                        <!-- Step 2: 配置层 (Middle) -->
+                        <div class="glass-panel stacked-card p-8 w-[70%] border-l-8 border-pink-400 z-20 -mt-24 ml-24 fragment relative" style="transition-delay: 100ms">
+                            <h3 class="text-2xl font-bold text-pink-300 mb-2"><i class="fa-solid fa-sliders mr-3"></i>配置层</h3>
+                            <p class="text-lg text-gray-300">增量同步 / GZIP压缩 / 读写分离 / 本地缓存</p>
+                        </div>
+
+                        <!-- Step 1: 选型层 (Bottom) -->
+                        <div class="glass-panel stacked-card p-8 w-[70%] border-l-8 border-pink-400 z-30 -mt-24 ml-48 fragment relative" style="transition-delay: 200ms">
+                            <h3 class="text-2xl font-bold text-pink-300 mb-2"><i class="fa-solid fa-check-to-slot mr-3"></i>选型层</h3>
+                            <p class="text-lg text-gray-300">弃用 ZK -> 拥抱 Nacos 2.x (AP + gRPC)</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            width: 1280,
+            height: 720,
+            margin: 0.06,
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: false,
+            progress: false, // 已修改：关闭进度条
+            center: true,
+            hash: true,
+            slideNumber: false, // 已修改：关闭页码
+            transition: 'slide',
+            backgroundTransition: 'fade',
+            fragments: true
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分布式锁原理与实现-视觉看板</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #f0f4f8; /* A soft, eye-friendly blue-gray */
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    }
+    .card {
+      background-color: white;
+      border-radius: 1.5rem;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+      padding: 2rem;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+    }
+    .icon-circle {
+      width: 5rem;
+      height: 5rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    /* Animation for the stock decrement problem */
+    @keyframes stock-read {
+      0%, 30% { opacity: 1; transform: scale(1.1); }
+      100% { opacity: 0; transform: scale(0.8); }
+    }
+    @keyframes stock-write-fail {
+      0%, 30% { opacity: 0; }
+      70% { opacity: 1; color: #ef4444; }
+      100% { opacity: 1; color: #ef4444; }
+    }
+     @keyframes stock-write-correct {
+      0%, 70% { opacity: 0; }
+      100% { opacity: 1; color: #22c55e; }
+    }
+    .stock-read-anim { animation: stock-read 4s infinite ease-out; }
+    .stock-write-fail-anim { animation: stock-write-fail 4s infinite ease-out; }
+    .stock-write-correct-anim { animation: stock-write-correct 4s infinite ease-out; }
+    
+    .code-block {
+      background-color: #282c34;
+      color: #abb2bf;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-size: 0.9em;
+      overflow-x: auto;
+      border: 1px solid #3a404a;
+    }
+    .code-block .keyword { color: #c678dd; }
+    .code-block .string { color: #98c379; }
+    .code-block .comment { color: #5c6370; }
+    .code-block .number { color: #d19a66; }
+    .code-block .function { color: #61afef; }
+    .timeline {
+      position: relative;
+      padding-left: 2rem;
+      border-left: 4px solid #e2e8f0;
+    }
+    .timeline-item {
+      position: relative;
+      margin-bottom: 2rem;
+    }
+    .timeline-dot {
+      position: absolute;
+      left: -2.75rem;
+      top: 0;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background-color: white;
+      border: 4px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .solution-table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.95em;
+    }
+    .solution-table th, .solution-table td {
+      border: 1px solid #e2e8f0;
+      padding: 1rem;
+      text-align: left;
+    }
+    .solution-table th {
+      background-color: #f8fafc;
+      font-weight: bold;
+    }
+    .solution-table tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+
+<!-- === NEW: STICKY HEADER === -->
+  <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200 shadow-sm text-center py-4 px-6">
+    <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+      解锁Redis终极奥义：<span class="text-blue-600">10万QPS分布式锁</span>通关图
+    </h1>
+    <h2 class="text-sm md:text-base text-slate-600 font-semibold mt-2">
+      三大天坑：锁过期、锁丢失、CPU空转 &nbsp;|&nbsp; 三大神器：原子命令、看门狗、红锁 &nbsp;|&nbsp; 终极方案：Redis Cluster + Redisson
+    </h2>
+  </header>
+
+  <!-- Main Container -->
+  <main class="p-4 md:p-8">
+
+  <!-- Main Container -->
+  <div class="max-w-7xl mx-auto">
+
+    <!-- Section 1: The Problem with Single-Machine Locks -->
+    <div class="card mb-12">
+      <h2 class="text-center text-3xl md:text-4xl font-extrabold text-slate-800 mb-2">单机锁的“失效剧场”</h2>
+      <p class="text-center text-xl text-slate-500 mb-10">为什么 `synchronized` 在集群中会失灵？</p>
+      <div class="grid grid-cols-1 md:grid-cols-5 items-center gap-6">
+        <div class="md:col-span-2 flex flex-col items-center space-y-6">
+          <div class="flex items-center w-full bg-slate-100 p-3 rounded-lg"><i class="fas fa-server text-3xl text-blue-500"></i><div class="ml-4"><p class="font-bold text-lg">Tomcat 服务器 1</p><p class="text-sm text-slate-600"><i class="fas fa-lock mr-1"></i>自己的锁 (JVM 1)</p></div></div>
+          <div class="flex items-center w-full bg-slate-100 p-3 rounded-lg"><i class="fas fa-server text-3xl text-blue-500"></i><div class="ml-4"><p class="font-bold text-lg">Tomcat 服务器 2</p><p class="text-sm text-slate-600"><i class="fas fa-lock mr-1"></i>自己的锁 (JVM 2)</p></div></div>
+          <div class="flex items-center w-full bg-slate-100 p-3 rounded-lg"><i class="fas fa-server text-3xl text-blue-500"></i><div class="ml-4"><p class="font-bold text-lg">Tomcat 服务器 3</p><p class="text-sm text-slate-600"><i class="fas fa-lock mr-1"></i>自己的锁 (JVM 3)</p></div></div>
+        </div>
+        <div class="text-center text-4xl text-slate-400"><i class="fas fa-arrow-right-long"></i></div>
+        <div class="md:col-span-2 flex flex-col items-center justify-center bg-slate-50 p-6 rounded-2xl border-2 border-dashed">
+          <i class="fas fa-database text-6xl text-slate-500 mb-4"></i><p class="text-2xl font-bold text-slate-700">商品库存</p>
+          <div class="relative mt-4 text-6xl font-mono font-bold"><span class="text-slate-400">100</span><span class="absolute top-0 left-0 w-full text-center stock-read-anim text-blue-500">Read: 100</span><span class="absolute top-0 left-0 w-full text-center stock-write-fail-anim">99 <i class="fas fa-times-circle text-4xl ml-2"></i></span><span class="absolute top-0 left-0 w-full text-center stock-write-correct-anim">97 <i class="fas fa-check-circle text-4xl ml-2"></i></span></div>
+          <p class="mt-4 text-center text-lg"><span class="font-bold text-red-500">错误结果</span> vs <span class="font-bold text-green-500">正确结果</span></p><p class="text-center text-red-600 font-semibold mt-2">导致“超卖”！</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center text-5xl text-slate-400 my-10"><i class="fas fa-arrow-down-long"></i></div>
+
+    <!-- Section 2: The Essence -->
+    <div class="card mb-12 text-center">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-slate-800 mb-6">分布式锁的本质：共享一把“钥匙”</h2>
+      <div class="flex justify-center items-center gap-4 md:gap-8 flex-wrap"><i class="fas fa-server text-5xl text-slate-500"></i><i class="fas fa-server text-5xl text-slate-500"></i><i class="fas fa-server text-5xl text-slate-500"></i><i class="fas fa-arrow-right-long text-4xl text-slate-400 hidden md:block"></i><div class="bg-green-100 icon-circle mx-4"><i class="fas fa-key text-5xl text-green-600"></i></div><i class="fas fa-arrow-right-long text-4xl text-slate-400 hidden md:block"></i><i class="fas fa-door-closed text-6xl text-amber-600"></i></div>
+      <p class="text-xl text-slate-600 mt-6">让所有服务器的线程，遵守同一套“互斥规则”</p>
+    </div>
+
+    <div class="text-center text-5xl text-slate-400 my-10"><i class="fas fa-arrow-down-long"></i></div>
+
+    <!-- Section 3: Why Redis? -->
+    <div class="card mb-12">
+      <h2 class="text-center text-3xl md:text-4xl font-extrabold text-slate-800 mb-10">Redis：满足 3 个核心要求</h2>
+      <div class="grid md:grid-cols-3 gap-8 text-center">
+        <div class="bg-sky-50 p-6 rounded-2xl"><div class="icon-circle bg-sky-200 mx-auto mb-4"><i class="fas fa-user-lock text-4xl text-sky-700"></i></div><h3 class="text-2xl font-bold text-sky-800">互斥性</h3><p class="text-lg text-slate-600 mt-2">同一时间，只有一个线程能持有锁</p></div>
+        <div class="bg-emerald-50 p-6 rounded-2xl"><div class="icon-circle bg-emerald-200 mx-auto mb-4"><i class="fas fa-cubes-stacked text-4xl text-emerald-700"></i></div><h3 class="text-2xl font-bold text-emerald-800">高可用性</h3><p class="text-lg text-slate-600 mt-2">Redis 集群避免单点故障</p></div>
+        <div class="bg-purple-50 p-6 rounded-2xl"><div class="icon-circle bg-purple-200 mx-auto mb-4"><i class="fas fa-rocket text-4xl text-purple-700"></i></div><h3 class="text-2xl font-bold text-purple-800">高性能</h3><p class="text-lg text-slate-600 mt-2">单节点数万 QPS，不拖慢业务</p></div>
+      </div>
+    </div>
+    
+    <div class="text-center text-5xl text-slate-400 my-10"><i class="fas fa-arrow-down-long"></i></div>
+
+    <!-- Section 4: Implementation Steps -->
+    <h2 class="text-center text-4xl md:text-5xl font-extrabold text-slate-800 mb-6">自研锁实现：三步曲</h2>
+    
+    <!-- Step 1: Atomic Lock Acquisition -->
+    <div class="card mb-12">
+      <div class="flex items-center justify-center mb-6">
+        <div class="icon-circle bg-blue-100 h-16 w-16 mr-4"><p class="text-3xl font-bold text-blue-600">1</p></div>
+        <h3 class="text-3xl font-bold text-blue-800">第一步：原子化加锁 (SET ... NX PX)</h3>
+      </div>
+      <p class="text-center text-lg text-slate-500 mb-8">一条命令完成“加锁”和“设置过期”，保证原子性。</p>
+      <div class="bg-slate-100 p-6 rounded-2xl">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+              <div class="bg-white p-4 rounded-lg shadow"><i class="fas fa-key text-3xl text-amber-500 mb-2"></i><p class="font-bold">Key</p><p class="text-sm text-slate-600">锁粒度</p></div>
+              <div class="bg-white p-4 rounded-lg shadow"><i class="fas fa-id-card text-3xl text-green-500 mb-2"></i><p class="font-bold">Value</p><p class="text-sm text-slate-600">身份牌</p></div>
+              <div class="bg-white p-4 rounded-lg shadow"><i class="fas fa-not-equal text-3xl text-red-500 mb-2"></i><p class="font-bold">NX</p><p class="text-sm text-slate-600">互斥性</p></div>
+              <div class="bg-white p-4 rounded-lg shadow"><i class="fas fa-hourglass-half text-3xl text-purple-500 mb-2"></i><p class="font-bold">PX</p><p class="text-sm text-slate-600">防死锁</p></div>
+          </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Unique ID -->
+    <div class="card mb-12">
+      <div class="flex items-center justify-center mb-6">
+        <div class="icon-circle bg-green-100 h-16 w-16 mr-4"><p class="text-3xl font-bold text-green-600">2</p></div>
+        <h3 class="text-3xl font-bold text-green-800">关键一步：生成唯一的“钥匙牌” (Value)</h3>
+      </div>
+      <p class="text-center text-lg text-slate-500 mb-8">防止线程 A 误删线程 B 的锁，解锁时必须“对号入座”。</p>
+      <div class="flex flex-col md:flex-row items-center justify-center gap-4 text-2xl font-bold text-center">
+          <div class="flex items-center bg-green-50 p-4 rounded-lg"><i class="fas fa-server text-3xl text-green-700 mr-3"></i><span>服务器 IP</span></div>
+          <i class="fas fa-plus text-slate-400"></i>
+          <div class="flex items-center bg-green-50 p-4 rounded-lg"><i class="fas fa-microchip text-3xl text-green-700 mr-3"></i><span>进程 ID</span></div>
+          <i class="fas fa-plus text-slate-400"></i>
+          <div class="flex items-center bg-green-50 p-4 rounded-lg"><i class="fas fa-network-wired text-3xl text-green-700 mr-3"></i><span>线程 ID</span></div>
+          <i class="fas fa-arrow-right-long text-slate-400 mx-4"></i>
+          <div class="flex items-center bg-white p-4 rounded-lg border-2 border-green-500"><i class="fas fa-id-card text-3xl text-green-700 mr-3"></i><span>唯一标识 Value</span></div>
+      </div>
+    </div>
+    
+    <!-- Step 3: Atomic Unlock -->
+    <div class="card mb-12">
+      <div class="flex items-center justify-center mb-6">
+        <div class="icon-circle bg-red-100 h-16 w-16 mr-4"><p class="text-3xl font-bold text-red-600">3</p></div>
+        <h3 class="text-3xl font-bold text-red-800">最后一步：原子化解锁 (Lua 脚本)</h3>
+      </div>
+      <p class="text-center text-lg text-slate-500 mb-8">“判断锁归属”和“删除锁”必须是原子操作，否则会误删别人的锁！</p>
+      <div class="grid md:grid-cols-2 gap-8">
+          <div class="bg-red-50 p-6 rounded-2xl border-2 border-dashed border-red-300">
+              <h4 class="text-2xl font-bold text-red-600 text-center mb-4"><i class="fas fa-times-circle mr-2"></i>错误方式：GET + DEL</h4>
+              <ol class="space-y-3 text-slate-700">
+                  <li><span class="font-bold">线程A:</span> <code class="bg-red-200 px-1 rounded">GET lock</code> (判断是自己的锁)</li>
+                  <li class="text-center font-bold text-red-500 animate-pulse"><i class="fas fa-hourglass-end mr-2"></i>锁超时自动释放了！</li>
+                  <li><span class="font-bold">线程B:</span> <code class="bg-green-200 px-1 rounded">SET lock NX</code> (加锁成功)</li>
+                  <li><span class="font-bold">线程A:</span> <code class="bg-red-200 px-1 rounded">DEL lock</code> (执行删除，<span class="font-extrabold">误删了线程B的锁！</span>)</li>
+              </ol>
+          </div>
+          <div class="bg-green-50 p-6 rounded-2xl border-2 border-green-300">
+              <h4 class="text-2xl font-bold text-green-700 text-center mb-4"><i class="fas fa-shield-halved mr-2"></i>正确方式：Lua 脚本</h4>
+              <div class="flex justify-center items-center bg-slate-800 text-white p-4 rounded-lg">
+                  <i class="fas fa-box-open text-4xl text-green-400 mr-4"></i>
+                  <div><p class="font-bold text-lg">原子“保险箱”</p><p class="text-sm">判断 + 删除，一步到位</p></div>
+              </div>
+              <div class="code-block mt-4 text-sm">
+                <pre><code><span class="keyword">if</span> <span class="function">redis.call</span>(<span class="string">'GET'</span>, KEYS[1]) == ARGV[1] <span class="keyword">then</span>
+<span class="keyword">return</span> <span class="function">redis.call</span>(<span class="string">'DEL'</span>, KEYS[1])
+<span class="keyword">else</span>
+<span class="keyword">return</span> <span class="number">0</span>
+<span class="keyword">end</span></code></pre>
+              </div>
+          </div>
+      </div>
+    </div>
+
+    <div class="text-center text-5xl text-slate-400 my-10"><i class="fas fa-arrow-down-long"></i></div>
+
+    <!-- Section 5: Production Pitfalls -->
+    <h2 class="text-center text-4xl md:text-5xl font-extrabold text-slate-800 mb-10">生产环境的“天坑”与对策</h2>
+
+    <!-- Pitfall 1: Lock Expired but Business Not Done -->
+    <div class="card mb-12">
+      <div class="flex items-start mb-6">
+        <div class="icon-circle bg-orange-100 h-16 w-16 mr-4"><p class="text-3xl font-bold text-orange-600">坑1</p></div>
+        <div>
+          <h3 class="text-3xl font-bold text-orange-800">锁过期但业务没完成</h3>
+          <p class="text-lg text-slate-500">业务执行时间超过锁的过期时间，导致其他线程提前进入。</p>
+        </div>
+      </div>
+      <div class="grid md:grid-cols-2 gap-8 items-center">
+          <div>
+              <h4 class="font-bold text-xl text-red-600 mb-4 text-center">问题场景：并发执行</h4>
+              <div class="timeline">
+                  <div class="timeline-item"><div class="timeline-dot"><i class="fas fa-play text-blue-500"></i></div><p><span class="font-bold text-blue-600">线程 A</span> 加锁成功 (30s 过期)</p></div>
+                  <div class="timeline-item"><div class="timeline-dot"><i class="fas fa-cog fa-spin text-slate-500"></i></div><p><span class="font-bold text-blue-600">线程 A</span> 执行业务 (耗时 > 30s)</p></div>
+                  <div class="timeline-item"><div class="timeline-dot border-red-500"><i class="fas fa-hourglass-end text-red-500"></i></div><p class="font-bold text-red-600">锁自动过期释放！</p></div>
+                  <div class="timeline-item"><div class="timeline-dot border-green-500"><i class="fas fa-play text-green-500"></i></div><p><span class="font-bold text-green-600">线程 B</span> 加锁成功</p></div>
+                  <div class="timeline-item"><div class="timeline-dot border-red-500"><i class="fas fa-exclamation-triangle text-red-500"></i></div><p class="font-bold text-red-600">线程 A 和 B 并发执行，数据错乱！</p></div>
+              </div>
+          </div>
+          <div class="bg-green-50 p-6 rounded-2xl">
+              <h4 class="font-bold text-xl text-green-700 mb-4 text-center">解决方案：引入“看门狗”(Watchdog)</h4>
+              <div class="flex justify-center mb-4"><i class="fas fa-dog text-6xl text-green-600"></i><i class="fas fa-arrow-right-long text-3xl text-slate-400 mx-4 self-center"></i><i class="fas fa-clock-rotate-left text-6xl text-blue-500"></i></div>
+              <p class="text-center text-slate-600">启动一个后台线程，在业务执行期间，周期性地为锁“续命”。业务执行完毕，看门狗停止续期，然后释放锁。</p>
+              <div class="code-block mt-4 text-xs">
+                  <pre><code><span class="comment">// 启动看门狗线程</span>
+<span class="function">watchDogPool.submit</span>(() -> {
+<span class="keyword">while</span> (isBusinessRunning) {
+  <span class="comment">// 1. 休眠一段时间</span>
+  <span class="function">Thread.sleep</span>(renewInterval);
+  <span class="comment">// 2. 用 Lua 脚本原子性地给自己的锁续期</span>
+  <span class="function">jedis.eval</span>(renewScript, ...);
+}
+});</code></pre>
+              </div>
+          </div>
+      </div>
+    </div>
+
+    <!-- Pitfall 2: Master-Slave Failover -->
+<div class="card mb-12">
+      <div class="flex items-start mb-6">
+        <div class="icon-circle bg-red-100 h-16 w-16 mr-4"><p class="text-3xl font-bold text-red-600">坑2</p></div>
+        <div>
+          <h3 class="text-3xl font-bold text-red-800">主从切换，导致锁丢失</h3>
+          <p class="text-lg text-slate-500">主节点加锁后宕机，锁信息未同步到从节点，导致新主节点上可以重复加锁。</p>
+        </div>
+      </div>
+      
+      <div class="bg-red-50 p-6 rounded-2xl mb-8">
+          <h4 class="font-bold text-xl text-red-600 mb-4 text-center">问题场景：真实电商惨案</h4>
+          <div class="flex flex-col md:flex-row items-center gap-4 text-lg">
+              <div class="text-center"><p class="font-bold">1. 线程A加锁</p><i class="fas fa-server text-4xl text-blue-600"></i><p>Master</p><i class="fas fa-lock text-yellow-500"></i></div>
+              <div class="text-slate-400 text-3xl animate-pulse"><i class="fas fa-arrow-right-long"></i></div>
+              <div class="text-center"><p class="font-bold">2. 同步延迟</p><i class="fas fa-server text-4xl text-slate-400"></i><p>Slave</p><i class="fas fa-question text-gray-400"></i></div>
+              <div class="text-slate-400 text-3xl"><i class="fas fa-arrow-right-long"></i></div>
+              <div class="text-center"><p class="font-bold text-red-600">3. Master宕机</p><i class="fas fa-server text-4xl text-red-600 fa-fade"></i><p class="text-red-600">CRASH!</p><i class="fas fa-skull-crossbones text-red-600"></i></div>
+              <div class="text-slate-400 text-3xl"><i class="fas fa-arrow-right-long"></i></div>
+              <div class="text-center"><p class="font-bold">4. Slave变新主</p><i class="fas fa-server text-4xl text-green-600"></i><p>New Master</p><i class="fas fa-unlock text-gray-400"></i></div>
+              <div class="text-slate-400 text-3xl"><i class="fas fa-arrow-right-long"></i></div>
+              <div class="text-center"><p class="font-bold text-red-600">5. 线程B加锁成功</p><i class="fas fa-server text-4xl text-green-600"></i><p>New Master</p><i class="fas fa-lock text-yellow-500"></i></div>
+          </div>
+          <p class="text-center font-bold text-xl text-red-700 mt-4">结果：两个线程同时持有锁，5分钟内1200笔订单重复创建！</p>
+      </div>
+
+      <h4 class="font-bold text-xl text-center mb-6">解决方案：3 种方案按业务选择</h4>
+      <div class="overflow-x-auto">
+          <table class="solution-table">
+              <thead><tr><th>方案</th><th>核心逻辑</th><th>优点</th><th>缺点</th><th>适用场景</th></tr></thead>
+              <tbody>
+                  <tr>
+                      <td class="font-bold">主从延迟释放</td>
+                      <td>加锁后休眠100ms，等待同步</td>
+                      <td><i class="fas fa-check-circle text-green-500 mr-2"></i>实现简单，性能损耗低</td>
+                      <td><i class="fas fa-times-circle text-red-500 mr-2"></i>无法100%避免</td>
+                      <td>普通业务（商品库存）</td>
+                  </tr>
+                  <tr>
+                      <td class="font-bold">Redis Cluster 分片锁</td>
+                      <td>Key分片到不同节点，分散压力</td>
+                      <td><i class="fas fa-check-circle text-green-500 mr-2"></i>高可用，无锁丢失风险</td>
+                      <td><i class="fas fa-times-circle text-red-500 mr-2"></i>需处理跨分片锁</td>
+                      <td>高并发场景（秒杀）</td>
+                  </tr>
+                  <tr>
+                      <td class="font-bold">红锁 (Redlock)</td>
+                      <td>超过半数独立节点加锁成功</td>
+                      <td><i class="fas fa-check-circle text-green-500 mr-2"></i>强一致性</td>
+                      <td><i class="fas fa-times-circle text-red-500 mr-2"></i>运维成本高，性能低</td>
+                      <td>金融级场景（支付）</td>
+                  </tr>
+              </tbody>
+          </table>
+      </div>
+      <div class="mt-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded-r-lg">
+          <p><i class="fas fa-lightbulb mr-2"></i><span class="font-bold">避坑提示：</span>90% 的业务用 Redis Cluster 分片锁足够，不要盲目用红锁！</p>
+      </div>
+    </div>
+
+     <!-- Pitfall 3: Spin Lock causing High CPU -->
+    <div class="card mb-12">
+      <div class="flex items-start mb-6">
+        <div class="icon-circle bg-purple-100 h-16 w-16 mr-4"><p class="text-3xl font-bold text-purple-600">坑3</p></div>
+        <div>
+          <h3 class="text-3xl font-bold text-purple-800">自旋等待，导致 CPU 飙升</h3>
+          <p class="text-lg text-slate-500">加锁失败后，使用`while(true)`循环不断重试，造成CPU资源浪费。</p>
+        </div>
+      </div>
+      <div class="grid md:grid-cols-2 gap-8 items-center">
+          <div class="bg-red-50 p-6 rounded-2xl border-2 border-dashed border-red-300">
+              <h4 class="font-bold text-xl text-red-600 mb-4 text-center">问题：无效的“忙等”</h4>
+              <div class="flex justify-center items-center gap-4">
+                  <i class="fas fa-microchip text-6xl text-red-500"></i>
+                  <div class="text-center">
+                      <p class="text-5xl font-bold text-red-600 animate-pulse">100%</p>
+                      <p class="font-semibold text-slate-700">CPU 使用率</p>
+                  </div>
+              </div>
+              <div class="code-block mt-4 text-sm">
+                <pre><code><span class="comment">// 抢不到锁，就一直循环尝试</span>
+<span class="keyword">while</span> (!<span class="function">tryLock</span>(lockKey)) {
+<span class="comment">// CPU 空转，浪费资源</span>
+}</code></pre>
+              </div>
+          </div>
+          <div class="bg-green-50 p-6 rounded-2xl">
+              <h4 class="font-bold text-xl text-green-700 mb-4 text-center">解决方案：发布/订阅 (Pub/Sub)</h4>
+               <div class="space-y-3 text-lg text-slate-800">
+                  <div class="flex items-center gap-3"><span class="font-bold text-blue-600">线程B:</span><i class="fas fa-lock text-yellow-500"></i><span>加锁失败</span><i class="fas fa-arrow-right"></i><i class="fas fa-bed text-purple-500"></i><span>订阅并休眠</span></div>
+                  <div class="flex items-center gap-3"><span class="font-bold text-green-600">线程A:</span><i class="fas fa-unlock text-gray-400"></i><span>解锁</span><i class="fas fa-arrow-right"></i><i class="fas fa-bullhorn text-orange-500"></i><span>发布消息</span></div>
+                  <div class="flex items-center gap-3"><span class="font-bold text-blue-600">线程B:</span><i class="fas fa-bell text-orange-500"></i><span>收到消息被唤醒</span><i class="fas fa-arrow-right"></i><i class="fas fa-rotate-right"></i><span>重新尝试加锁</span></div>
+              </div>
+              <p class="text-center text-slate-600 mt-4">变“忙等”为“通知”，极大降低CPU消耗。再配合短暂的自旋作为兜底，防止消息丢失。</p>
+          </div>
+      </div>
+    </div>
+
+    <!-- Pitfall 4: Re-entrant Lock & Redisson -->
+    <div class="card mb-12">
+      <div class="flex items-start mb-6">
+        <div class="icon-circle bg-teal-100 h-16 w-16 mr-4"><p class="text-3xl font-bold text-teal-600">坑4</p></div>
+        <div>
+          <h3 class="text-3xl font-bold text-teal-800">自研可重入锁，逻辑复杂易出错</h3>
+          <p class="text-lg text-slate-500">自己实现可重入、公平锁、看门狗等高级功能，费时费力且容易出错。</p>
+        </div>
+      </div>
+      <div class="text-center my-8">
+          <i class="fas fa-arrow-down-long text-5xl text-slate-400"></i>
+          <h2 class="text-center text-4xl md:text-5xl font-extrabold text-slate-800 mt-4">终极解决方案：拥抱 Redisson</h2>
+          <p class="text-xl text-slate-600 mt-2">一个功能强大且生产级的 Redis Java 客户端</p>
+      </div>
+	  <h4 class="font-bold text-2xl text-center mb-6">Redisson 内置的核心功能：</h4>
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="bg-blue-50 p-4 rounded-lg"><i class="fas fa-layer-group text-3xl text-blue-500 mb-2"></i><h5 class="font-bold">可重入</h5><p class="text-sm text-slate-600">同一线程可重复加锁，不会死锁。</p></div>
+          <div class="bg-green-50 p-4 rounded-lg"><i class="fas fa-dog text-3xl text-green-500 mb-2"></i><h5 class="font-bold">看门狗</h5><p class="text-sm text-slate-600">自动续期，彻底解决锁过期问题。</p></div>
+          <div class="bg-orange-50 p-4 rounded-lg"><i class="fas fa-users text-3xl text-orange-500 mb-2"></i><h5 class="font-bold">公平锁</h5><p class="text-sm text-slate-600">默认按请求顺序分配锁，避免线程饥饿。</p></div>
+          <div class="bg-red-50 p-4 rounded-lg"><i class="fas fa-shield-halved text-3xl text-red-500 mb-2"></i><h5 class="font-bold">主从安全</h5><p class="text-sm text-slate-600">内置重试机制，解决主从切换锁丢失。</p></div>
+      </div>
+      
+      
+      <h3 class="text-2xl font-bold text-slate-700 mb-4">生产级代码范例</h3>
+      <div class="code-block mb-8">
+        <pre><code><span class="comment">// 1. 初始化 Redisson 客户端 (生产推荐 Cluster 模式)</span>
+<span class="class">Config</span> config = <span class="keyword">new</span> <span class="class">Config</span>();
+config.<span class="function">useClusterServers</span>()
+    .<span class="function">addNodeAddress</span>(
+        <span class="string">"redis://192.168.1.101:6379"</span>, <span class="string">"redis://192.168.1.102:6379"</span>,
+        <span class="string">"redis://192.168.1.103:6379"</span>, <span class="string">"redis://192.168.1.104:6379"</span>,
+        <span class="string">"redis://192.168.1.105:6379"</span>, <span class="string">"redis://192.168.1.106:6379"</span>
+    )
+    <span class="comment">// 集群状态扫描间隔，自动感知拓扑变化</span>
+    .<span class="function">setScanInterval</span>(<span class="number">2000</span>) 
+    <span class="comment">// 超高并发场景下，扩大公平锁竞争队列 (默认32)</span>
+    .<span class="function">setLockFairPoolSize</span>(<span class="number">64</span>);
+
+<span class="comment">// 2. 创建客户端 (Spring Boot 环境可通过 Starter 自动注入)</span>
+<span class="class">RedissonClient</span> redisson = <span class="class">Redisson</span>.<span class="function">create</span>(config);
+
+<span class="comment">// 3. 获取可重入锁 (锁Key按业务粒度设计)</span>
+<span class="class">RLock</span> lock = redisson.<span class="function">getLock</span>(<span class="string">"lock:order:20240520001"</span>);
+
+<span class="comment">// 4. 加锁 (默认30秒过期，自动启动看门狗续期)</span>
+lock.<span class="function">lock</span>();
+<span class="keyword">try</span> {
+  log.<span class="function">info</span>(<span class="string">"订单锁加锁成功，开始创建订单..."</span>);
+  <span class="function">createOrder</span>(<span class="number">20240520001</span>);
+  <span class="comment">// 子方法中再次加锁 (可重入特性，无需担心死锁)</span>
+  <span class="function">updateOrderStatus</span>(<span class="number">20240520001</span>);
+} <span class="keyword">catch</span> (<span class="class">Exception</span> e) {
+  log.<span class="function">error</span>(<span class="string">"订单处理异常，锁Key：{}"</span>, lock.<span class="function">getName</span>(), e);
+  <span class="keyword">throw</span> e;
+} <span class="keyword">finally</span> {
+  <span class="comment">// 5. 解锁 (自动处理重入计数，为0时才删锁)</span>
+  <span class="keyword">if</span> (lock.<span class="function">isHeldByCurrentThread</span>()) {
+      lock.<span class="function">unlock</span>();
+      log.<span class="function">info</span>(<span class="string">"订单处理完成，已释放锁"</span>);
+  }
+}</code></pre>
+      </div>
+
+      <h3 class="text-2xl font-bold text-slate-700 mb-6">Redisson 如何解决核心痛点？</h3>
+      <div class="grid md:grid-cols-2 gap-6">
+          <!-- Master-Slave Failover Safety -->
+          <div class="bg-red-50 p-6 rounded-2xl border border-red-200">
+              <div class="flex items-center mb-3">
+                  <i class="fas fa-shield-halved text-3xl text-red-500 mr-4"></i>
+                  <h4 class="font-bold text-xl text-red-800">解决主从锁丢失：自动重试</h4>
+              </div>
+              <p class="text-slate-600 mb-4">加锁后若主节点宕机，Redisson 能自动感知，并重新向新主节点发起加锁请求，从根本上避免“锁双持”。</p>
+              <div class="flex items-center justify-around text-center text-sm">
+                  <div><i class="fas fa-server text-3xl text-red-600 fa-fade"></i><p>Master 宕机</p></div>
+                  <i class="fas fa-arrow-right-long text-2xl text-slate-400"></i>
+                  <div><i class="fas fa-satellite-dish text-3xl text-blue-500"></i><p>感知拓扑变化</p></div>
+                  <i class="fas fa-arrow-right-long text-2xl text-slate-400"></i>
+                  <div><i class="fas fa-redo text-3xl text-green-500"></i><p>自动重试新主</p></div>
+              </div>
+          </div>
+
+          <!-- Fair Lock & High Concurrency -->
+          <div class="bg-orange-50 p-6 rounded-2xl border border-orange-200">
+              <div class="flex items-center mb-3">
+                  <i class="fas fa-users-gear text-3xl text-orange-500 mr-4"></i>
+                  <h4 class="font-bold text-xl text-orange-800">公平锁与高并发调优</h4>
+              </div>
+              <p class="text-slate-600 mb-4">默认采用公平锁，按请求顺序分配，避免线程饥饿。超高并发下可通过 `setLockFairPoolSize` 扩大竞争队列。</p>
+              <div class="flex items-center justify-around text-center text-sm">
+                  <div><i class="fas fa-shoe-prints text-3xl text-gray-400"></i><p>线程排队</p></div>
+                  <i class="fas fa-arrow-right-long text-2xl text-slate-400"></i>
+                  <div><i class="fas fa-person-circle-check text-3xl text-green-500"></i><p>依次获取锁</p></div>
+                  <i class="fas fa-arrow-right-long text-2xl text-slate-400"></i>
+                  <div><i class="fas fa-gauge-high text-3xl text-purple-500"></i><p>TPS > 5万? 调大队列</p></div>
+              </div>
+          </div>
+      </div>
+
+      <div class="mt-8 p-6 bg-yellow-100 border-l-8 border-yellow-500 text-yellow-900 rounded-r-lg">
+          <div class="flex">
+              <div class="mr-4">
+                  <i class="fas fa-exclamation-triangle text-4xl"></i>
+              </div>
+              <div>
+                  <h4 class="font-extrabold text-xl">生产环境避坑指南</h4>
+                  <p class="mt-1">不要为了追求所谓的极致性能而使用 **“不公平锁”** (`getFairLock`)。它可能导致某些线程长时间无法获取到锁（线程饥饿），给系统带来巨大的稳定性风险。在绝大多数场景下，Redisson 默认公平锁的性能损耗完全可以忽略不计。</p>
+              </div>
+          </div>
+      </div>
+
+      
+    </div>
+  
+   
+  </div>
+  </main>
+</body>
+</html>

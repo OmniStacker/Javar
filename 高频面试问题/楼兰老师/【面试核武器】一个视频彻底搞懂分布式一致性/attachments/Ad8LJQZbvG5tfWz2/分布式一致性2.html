@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分布式一致性通关指南 v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #111827;
+            color: #F9FAFB;
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            height: 100vh;
+        }
+        section {
+            height: 100vh;
+            width: 100vw;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 4rem;
+            box-sizing: border-box;
+            border-bottom: 1px solid #374151;
+        }
+        .fade-in {
+            animation: fadeIn 1.5s ease-in-out;
+        }
+        .fade-in-delay {
+            animation: fadeIn 2.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card {
+            background-color: #1F2937;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            border: 1px solid #374151;
+            transition: transform 0.3s, box-shadow 0.3s;
+            width: 100%;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .flow-arrow {
+            font-size: 2.5rem;
+            color: #6B7280;
+            margin: 0 1.5rem;
+            flex-shrink: 0;
+        }
+        .flow-box {
+            background-color: #374151;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-size: 1.125rem;
+            font-weight: 500;
+            min-width: 150px;
+        }
+         .section-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 3rem;
+            text-align: center;
+            letter-spacing: -0.025em;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+         }
+          @media (min-width: 768px) {
+            .section-title {
+              font-size: 4rem;
+            }
+          }
+    </style>
+</head>
+<body>
+
+    <!-- Section 1: Opening Page -->
+    <section class="justify-center items-center text-center">
+        <div class="fade-in">
+            <h1 class="text-6xl md:text-8xl font-black tracking-tight">
+                <span class="text-blue-400">面试官</span>：聊聊分布式一致性？
+            </h1>
+            <p class="mt-8 text-2xl md:text-3xl text-gray-300 max-w-4xl mx-auto">
+                看完这个视频，让你不再惊出冷汗，轻松拿下面试官。
+            </p>
+        </div>
+        <div class="absolute bottom-10 text-gray-500 fade-in-delay">
+            向下滚动，开始通关之旅
+        </div>
+    </section>
+
+    <!-- Section 2: What is Consistency -->
+    <section>
+        <h2 class="section-title">什么是分布式一致性？</h2>
+        <div class="grid md:grid-cols-2 gap-10 items-center w-full max-w-7xl">
+            <div class="card h-full">
+                <h3 class="text-3xl font-bold mb-6 text-blue-300">核心问题</h3>
+                <p class="text-xl mb-6">多个分散的服务器（节点），如何保证它们存储的数据副本都是一样的？</p>
+                <div class="flex justify-around items-center mt-8 p-4 bg-gray-900 rounded-lg">
+                    <div class="text-center">
+                        <i data-lucide="server-cog" class="w-24 h-24 text-green-400 mx-auto"></i>
+                        <p class="mt-2 text-lg">节点A: 库存=10</p>
+                    </div>
+                    <i data-lucide="arrow-left-right" class="w-16 h-16 text-red-500 mx-4"></i>
+                    <div class="text-center">
+                        <i data-lucide="server-off" class="w-24 h-24 text-red-400 mx-auto"></i>
+                        <p class="mt-2 text-lg">节点B: 库存=9 <span class="font-bold">(不一致!)</span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="card h-full">
+                <h3 class="text-3xl font-bold mb-6 text-blue-300">经典比喻：联营超市</h3>
+                <p class="text-xl mb-6">你和兄弟们合开超市，各自负责一个货架。必须确保大家的库存记录系统随时同步，不然顾客就会被搞蒙。</p>
+                 <div class="flex justify-around items-center mt-8 p-4 bg-gray-900 rounded-lg">
+                    <i data-lucide="user-round" class="w-20 h-20 text-yellow-400"></i>
+                    <i data-lucide="store" class="w-24 h-24 text-indigo-400 mx-4"></i>
+                    <i data-lucide="user-round" class="w-20 h-20 text-yellow-400"></i>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 3: Consistency Models -->
+    <section>
+        <h2 class="section-title">一致性模型</h2>
+        <div class="grid md:grid-cols-3 gap-8 w-full max-w-7xl">
+            <div class="card text-center flex flex-col justify-center items-center">
+                <i data-lucide="lock" class="w-24 h-24 mx-auto text-red-400 mb-6"></i>
+                <h3 class="text-3xl font-bold mb-4">强一致性</h3>
+                <p class="text-lg">最严格！任何更新后，所有节点必须立刻看到相同的新数据。金融级要求。</p>
+            </div>
+            <div class="card text-center flex flex-col justify-center items-center">
+                <i data-lucide="hourglass" class="w-24 h-24 mx-auto text-yellow-400 mb-6"></i>
+                <h3 class="text-3xl font-bold mb-4">弱一致性</h3>
+                <p class="text-lg">较宽松。允许节点数据存在短暂不一致，不保证何时一致。</p>
+            </div>
+            <div class="card text-center flex flex-col justify-center items-center">
+                <i data-lucide="check-check" class="w-24 h-24 mx-auto text-green-400 mb-6"></i>
+                <h3 class="text-3xl font-bold mb-4">最终一致性</h3>
+                <p class="text-lg">弱一致性的特例。保证数据“最终”会达到一致。是绝大多数系统的选择。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 4: 2PC (Two-Phase Commit) -->
+    <section>
+        <h2 class="section-title">方案一：二阶段提交 (2PC)</h2>
+        <div class="w-full max-w-6xl card">
+            <h3 class="text-2xl font-bold text-center mb-8">理想很丰满，现实很骨感</h3>
+            <div class="flex items-center justify-center mb-8">
+                <div class="flow-box bg-purple-600">协调者</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="text-center">
+                    <div class="flow-box">Phase 1: 投票</div>
+                    <p class="text-md text-gray-400 mt-2">"大家能提交吗？"</p>
+                </div>
+                 <div class="flow-arrow">&harr;</div>
+                <div class="flow-box bg-blue-600">参与者</div>
+            </div>
+            <div class="text-6xl text-center my-4 text-gray-600">&darr;</div>
+            <div class="flex items-center justify-center">
+                <div class="flow-box bg-purple-600">协调者</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="text-center">
+                    <div class="flow-box">Phase 2: 执行</div>
+                    <p class="text-md text-gray-400 mt-2">"都同意了，提交！"</p>
+                </div>
+                 <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box bg-blue-600">参与者</div>
+            </div>
+            <div class="mt-8 text-center text-red-400 font-semibold text-xl">
+                <i data-lucide="alert-triangle" class="inline-block w-6 h-6"></i> 缺点：同步阻塞，性能差；协调者单点故障问题致命。
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 5: 3PC (Three-Phase Commit) -->
+    <section>
+         <h2 class="section-title">方案二：三阶段提交 (3PC)</h2>
+        <div class="w-full max-w-7xl card">
+            <h3 class="text-2xl font-bold text-center mb-8">2PC的补丁版，但还是有漏洞</h3>
+            <div class="flex items-center justify-around">
+                <div class="text-center">
+                    <div class="flow-box">CanCommit</div>
+                    <p class="text-md text-gray-400 mt-2">"能提交吗？(预检查)"</p>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="text-center">
+                    <div class="flow-box">PreCommit</div>
+                    <p class="text-md text-gray-400 mt-2">"准备提交！(锁定资源)"</p>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="text-center">
+                    <div class="flow-box">DoCommit</div>
+                    <p class="text-md text-gray-400 mt-2">"执行提交！"</p>
+                </div>
+            </div>
+             <div class="mt-8 text-center text-yellow-400 font-semibold text-xl">
+                <i data-lucide="wrench" class="inline-block w-6 h-6"></i> 改进：减少了阻塞时间，引入超时机制。
+            </div>
+            <div class="mt-4 text-center text-red-400 font-semibold text-xl">
+                <i data-lucide="alert-triangle" class="inline-block w-6 h-6"></i> 缺点：依然没能完全解决数据不一致问题。
+            </div>
+        </div>
+    </section>
+    
+    <!-- Section 6: Paxos -->
+    <section>
+        <h2 class="section-title">方案三：Paxos 算法</h2>
+        <div class="w-full max-w-5xl card text-center">
+            <i data-lucide="award" class="w-28 h-28 mx-auto text-blue-400 mb-6"></i>
+            <h3 class="text-4xl font-bold mb-4">分布式一致性的“圣经”</h3>
+            <p class="text-xl mb-6">一个确保多节点对某个值达成一致的经典算法。分为 Prepare 和 Accept 两个阶段。</p>
+            <div class="mt-6 p-6 bg-gray-800 rounded-lg text-lg">
+                <p class="font-mono text-left">
+                    <span class="text-pink-400">Proposer</span>: "我提议一个值，编号是N，大家同意吗？"<br><br>
+                    <span class="text-green-400">Acceptor</span>: "只要你的编号够大，我就接受！"<br><br>
+                    <span class="text-red-400">Leaner</span>: "超过半数同意，结果就这么定了！"
+                </p>
+            </div>
+            <div class="mt-8 text-center text-orange-400 font-semibold text-xl">
+                <i data-lucide="brain-circuit" class="inline-block w-6 h-6"></i> 特点：理论完美，但极其复杂，难以理解和实现，人称“天书”。
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 7: Raft -->
+    <section>
+        <h2 class="section-title">方案四：Raft 算法</h2>
+        <div class="w-full max-w-7xl card">
+            <h3 class="text-3xl font-bold text-center mb-8">为了让世界更易理解的一致性算法</h3>
+            <div class="grid md:grid-cols-2 gap-10">
+                <div class="text-center p-6 bg-gray-800 rounded-lg">
+                    <h4 class="text-2xl font-bold mb-4 text-teal-300">1. 领导者选举 (Leader Election)</h4>
+                    <div class="flex justify-center items-center space-x-4">
+                        <div class="text-center">
+                            <i data-lucide="user-circle" class="w-16 h-16 mx-auto"></i>
+                            <p class="mt-2 text-lg">Follower</p>
+                        </div>
+                        <i data-lucide="arrow-right" class="w-8 h-8"></i>
+                        <div class="text-center">
+                            <i data-lucide="user-check" class="w-16 h-16 mx-auto text-yellow-400"></i>
+                            <p class="mt-2 text-lg">Candidate</p>
+                        </div>
+                        <i data-lucide="arrow-right" class="w-8 h-8"></i>
+                        <div class="text-center">
+                            <i data-lucide="crown" class="w-16 h-16 mx-auto text-blue-400"></i>
+                            <p class="mt-2 text-lg">Leader</p>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-md text-gray-400">节点间投票，选出唯一领导者。</p>
+                </div>
+                <div class="text-center p-6 bg-gray-800 rounded-lg">
+                    <h4 class="text-2xl font-bold mb-4 text-teal-300">2. 日志复制 (Log Replication)</h4>
+                     <div class="flex justify-center items-center space-x-4">
+                        <div class="text-center">
+                            <i data-lucide="file-pen-line" class="w-16 h-16 mx-auto text-blue-400"></i>
+                            <p class="mt-2 text-lg">Leader</p>
+                        </div>
+                        <div class="flex flex-col items-center">
+                          <p class="text-lg">复制日志</p>
+                          <i data-lucide="arrow-right" class="w-8 h-8"></i>
+                        </div>
+                        <div class="text-center">
+                            <i data-lucide="users" class="w-16 h-16 mx-auto"></i>
+                            <p class="mt-2 text-lg">Followers</p>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-md text-gray-400">所有写操作由Leader同步给Followers。</p>
+                </div>
+            </div>
+            <div class="mt-8 text-center text-green-400 font-semibold text-xl">
+                <i data-lucide="thumbs-up" class="inline-block w-6 h-6"></i> 优点：将问题分解，易于理解和实现。Etcd、RocketMQ等都在用。
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 8: How to Choose -->
+    <section>
+        <h2 class="section-title">面试追问：那该如何选择？</h2>
+        <div class="w-full max-w-7xl">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="card flex flex-col">
+                    <h3 class="text-2xl font-bold mb-4 text-center">1. 看业务需求</h3>
+                    <p class="text-lg flex-grow"><b class="text-red-400">金融支付？</b><br>必须强一致性，考虑Raft/Paxos。</p>
+                    <hr class="my-4 border-gray-600">
+                    <p class="text-lg flex-grow"><b class="text-green-400">用户信息、日志？</b><br>最终一致性就够了，实现更简单。</p>
+                </div>
+                <div class="card flex flex-col">
+                    <h3 class="text-2xl font-bold mb-4 text-center">2. 看系统规模</h3>
+                    <p class="text-lg flex-grow"><b class="text-blue-400">系统复杂、节点众多？</b><br>直接用成熟的开源方案！</p>
+                    <hr class="my-4 border-gray-600">
+                    <p class="text-lg flex-grow">例如：用 <b class="text-yellow-300">Zookeeper</b> 或 <b class="text-yellow-300">Etcd</b>，它们内置了ZAB/Raft算法。</p>
+                </div>
+                <div class="card flex flex-col">
+                    <h3 class="text-2xl font-bold mb-4 text-center">3. 站在巨人肩膀上</h3>
+                    <p class="text-lg flex-grow">研究开源项目是最好的学习方式。</p>
+                    <hr class="my-4 border-gray-600">
+                    <p class="text-lg flex-grow">不要重复造轮子，除非你想写一篇博士论文。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Section 9: Closing Page -->
+    <section class="text-center">
+        <div class="fade-in">
+            <h2 class="text-5xl md:text-6xl font-extrabold">总结</h2>
+            <p class="mt-6 text-2xl text-gray-300 max-w-5xl">从2PC到Raft，技术在演进，核心是解决不可靠网络和节点故障下的信任问题。</p>
+            <div class="mt-16 border-t-2 border-blue-400 w-32 mx-auto"></div>
+            <blockquote class="mt-16 text-4xl md:text-6xl font-bold italic text-white">
+            	在<span class="text-blue-300">不可靠</span>的世界里，找<span class="text-blue-300">可靠的平衡点</span>
+            </blockquote>
+        </div>
+         <div class="absolute bottom-10 text-gray-500">
+            
+        </div>
+    </section>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

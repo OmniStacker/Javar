@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口幂等性深度解析 Final</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #0c0a09;
+            color: #F9FAFB;
+            overflow: hidden;
+        }
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+            box-sizing: border-box;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+            opacity: 0;
+            transform: translateY(30px);
+            background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .slide.active {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .glow-text-title {
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(74, 222, 128, 0.3);
+        }
+        .glow-text-gold {
+            text-shadow: 0 0 15px rgba(250, 204, 21, 0.9), 0 0 25px rgba(234, 179, 8, 0.7), 0 0 55px rgba(217, 119, 6, 0.5);
+            animation: pulse-gold 3s infinite;
+        }
+        @keyframes pulse-gold {
+            0%, 100% { text-shadow: 0 0 15px rgba(250, 204, 21, 0.8), 0 0 25px rgba(234, 179, 8, 0.6); }
+            50% { text-shadow: 0 0 25px rgba(250, 204, 21, 1), 0 0 50px rgba(234, 179, 8, 0.9); }
+        }
+        .card {
+            position: relative;
+            background-color: rgba(20, 20, 30, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid transparent;
+            background-clip: padding-box;
+            transition: all 0.3s ease;
+            z-index: 1;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            z-index: -1;
+            margin: -1px;
+            border-radius: inherit;
+            background: linear-gradient(to bottom right, rgba(56, 189, 248, 0.3), rgba(16, 185, 129, 0.3));
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card:hover::before {
+            background: linear-gradient(to bottom right, rgba(56, 189, 248, 0.7), rgba(16, 185, 129, 0.7));
+        }
+        .arrow-down {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 24px solid transparent;
+            border-right: 24px solid transparent;
+            border-top: 24px solid rgba(255,255,255,0.7);
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translate(-50%, 0); }
+            40% { transform: translate(-50%, -20px); }
+            60% { transform: translate(-50%, -10px); }
+        }
+        .page-title-container {
+          width: 100%;
+          text-align: center;
+          margin-bottom: 4rem;
+          position: relative;
+        }
+        .page-title {
+          font-size: 4.5rem; /* Increased font size */
+          font-weight: 900;
+          color: #fff;
+          text-shadow: 0 0 10px rgba(255,255,255,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 1.5rem;
+        }
+        .page-title-container::after {
+          content: '';
+          position: absolute;
+          bottom: -1rem;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 40%;
+          height: 4px;
+          background: linear-gradient(90deg, rgba(56, 189, 248,0) 0%, rgba(56, 189, 248,1) 50%, rgba(56, 189, 248,0) 100%);
+          filter: blur(3px);
+        }
+        .page-title svg {
+          width: 60px; /* Increased icon size */
+          height: 60px;
+          flex-shrink: 0;
+          stroke: #6ee7b7;
+          filter: drop-shadow(0 0 5px #6ee7b7);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: 开场页 -->
+    <div id="slide-0" class="slide active" style="background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);">
+        <div class="text-center">
+            <h1 class="text-7xl md:text-9xl font-black mb-6 glow-text-title">征服幂等性</h1>
+            <p class="text-3xl md:text-4xl text-gray-300 mb-20">从应对面试到构建高可用系统的思维跃迁</p>
+        </div>
+        <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+            <div class="card p-8 rounded-xl">
+                <h3 class="text-3xl font-bold mb-4 text-indigo-400">你将获得什么？</h3>
+                <p class="text-2xl text-gray-300">8种工业级幂等性解决方案，从单体到分布式架构，一次性全面掌握。</p>
+            </div>
+            <div class="card p-8 rounded-xl">
+                <h3 class="text-3xl font-bold mb-4 text-emerald-400">为何它如此重要？</h3>
+                <p class="text-2xl text-gray-300">这不仅是面试高频题，更是区分初级与资深工程师的核心能力，是系统稳定性的基石。</p>
+            </div>
+            <div class="card p-8 rounded-xl">
+                <h3 class="text-3xl font-bold mb-4 text-sky-400">核心思维模型</h3>
+                <p class="text-2xl text-gray-300">学会从点、线、面系统化思考，让你在任何技术挑战面前都能游刃有余。</p>
+            </div>
+        </div>
+        <div class="arrow-down"></div>
+    </div>
+
+    <!-- Slide 2: 介绍 -->
+    <div id="slide-1" class="slide">
+        <div class="w-full max-w-7xl text-center">
+            <div class="page-title-container">
+              <h2 class="page-title">幂等性：锦上添花 vs. 生死存亡</h2>
+            </div>
+            <p class="text-4xl leading-relaxed text-gray-200 mb-16">
+                它是<span class="font-bold text-green-400">高手</span>与<span class="font-bold text-red-400">新手</span>的思维分水岭，是衡量系统可靠性的关键指标。
+            </p>
+            <div class="flex flex-col md:flex-row gap-10 text-left text-2xl">
+                <div class="flex-1 card p-10 rounded-lg">
+                    <h3 class="font-bold text-3xl mb-4 text-red-400">新手的困境</h3>
+                    <p>只知其一，不知其二。面对问题时，依赖零散的“知识点”和“代码片段”，缺乏系统性，容易在复杂场景下踩坑。</p>
+                </div>
+                <div class="flex-1 card p-10 rounded-lg">
+                    <h3 class="font-bold text-3xl mb-4 text-green-400">高手的视角</h3>
+                    <p>从架构层面出发，综合评估业务场景、性能损耗与维护成本，选择最恰当的策略组合，构建坚不可摧的系统。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 技术方案模板 -->
+    <div id="slide-2" class="slide">
+        <div class="w-full max-w-7xl">
+            <div class="page-title-container">
+              <h2 class="page-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                  查询 + 插入 <span class="text-red-500/80">(错误示范)</span>
+              </h2>
+            </div>
+            <div class="card w-full p-10 rounded-xl mb-10">
+                <h3 class="text-4xl font-bold mb-4 text-sky-400">具体方案</h3>
+                <p class="text-3xl">最朴素的想法：先 `SELECT` 查一下数据是否存在，如果不存在，再执行 `INSERT` 操作。</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-3xl">
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-green-400">优势</h3>
+                    <p>无。逻辑看似简单，但实则是高并发场景下的致命陷阱。</p>
+                </div>
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-red-400">局限性</h3>
+                    <p>存在致命的并发安全问题，多个请求可能同时通过检查，导致数据重复插入。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="slide-3" class="slide">
+        <div class="w-full max-w-7xl">
+            <div class="page-title-container">
+              <h2 class="page-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  悲观锁
+              </h2>
+            </div>
+            <div class="card w-full p-10 rounded-xl mb-10">
+                <h3 class="text-4xl font-bold mb-4 text-sky-400">具体方案</h3>
+                <p class="text-3xl">在查询时就利用数据库行锁，锁住数据，防止其他事务操作。例如：`SELECT ... FOR UPDATE`</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-3xl">
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-green-400">优势</h3>
+                    <p>简单粗暴，能绝对保证数据安全，有效防止并发下的数据冲突。</p>
+                </div>
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-red-400">局限性</h3>
+                    <p>性能杀手！将高效的并行处理强行变为低效的串行排队，在高并发场景下会造成大量请求阻塞。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="slide-4" class="slide">
+        <div class="w-full max-w-7xl">
+            <div class="page-title-container">
+              <h2 class="page-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12c0-2.2-1.8-4-4-4s-4 1.8-4 4 1.8 4 4 4 4-1.8 4-4Z"/><path d="M4 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4Z"/><path d="m10.2 15.4.4-.4.4.4"/><path d="m13.8 8.6-.4.4-.4-.4"/></svg>
+                  乐观锁
+              </h2>
+            </div>
+            <div class="card w-full p-10 rounded-xl mb-10">
+                <h3 class="text-4xl font-bold mb-4 text-sky-400">具体方案</h3>
+                <p class="text-3xl">增加 `version` 字段，更新时验证版本号。`UPDATE ... SET version = version + 1 WHERE id = ? AND version = ?`</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-3xl">
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-green-400">优势</h3>
+                    <p>性能极高，不产生实际的锁竞争，是一种非常优雅的无锁并发控制手段。</p>
+                </div>
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-red-400">局限性</h3>
+                    <p>需额外修改表结构。主要防止更新操作的重复，对于防止插入操作的重复无能为力。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="slide-5" class="slide">
+        <div class="w-full max-w-7xl">
+            <div class="page-title-container">
+              <h2 class="page-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+                  唯一索引
+              </h2>
+            </div>
+            <div class="card w-full p-10 rounded-xl mb-10">
+                <h3 class="text-4xl font-bold mb-4 text-sky-400">具体方案</h3>
+                <p class="text-3xl">利用数据库的唯一约束。给订单号、流水号等天然唯一的字段加上 `UNIQUE KEY`。</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-3xl">
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-green-400">优势</h3>
+                    <p>最高效、最可靠的防重手段。由数据库层面保证唯一性，代码实现简单、性能极佳。</p>
+                </div>
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-red-400">局限性</h3>
+                    <p>需要业务上有明确的唯一标识。在分库分表的架构下，全局唯一索引的实现会变得复杂。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="slide-6" class="slide">
+        <div class="w-full max-w-7xl">
+            <div class="page-title-container">
+              <h2 class="page-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M5 20h14"/><path d="M6 20h12v-9a4 4 0 0 0-4-4H10a4 4 0 0 0-4 4v9Z"/></svg>
+                  防重表
+              </h2>
+            </div>
+            <div class="card w-full p-10 rounded-xl mb-10">
+                <h3 class="text-4xl font-bold mb-4 text-sky-400">具体方案</h3>
+                <p class="text-3xl">建立一张独立的防重表，仅包含唯一业务ID，并设置唯一索引。通过 `INSERT` 这张表来判断是否重复。</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-3xl">
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-green-400">优势</h3>
+                    <p>将防重逻辑与业务逻辑解耦，不侵入主业务表，方案灵活，可复用性强。</p>
+                </div>
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-red-400">局限性</h3>
+                    <p>增加了一次数据库 `INSERT` 操作，会带来额外的性能开销和数据一致性维护成本。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="slide-7" class="slide">
+        <div class="w-full max-w-7xl">
+            <div class="page-title-container">
+              <h2 class="page-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M12 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2"/><path d="m10 11 2 2 2-2"/></svg>
+                  状态机
+              </h2>
+            </div>
+            <div class="card w-full p-10 rounded-xl mb-10">
+                <h3 class="text-4xl font-bold mb-4 text-sky-400">具体方案</h3>
+                <p class="text-3xl">利用业务状态的单向流转特性。`UPDATE ... SET status='PAID' WHERE id=? AND status='UNPAID'`</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-3xl">
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-green-400">优势</h3>
+                    <p>与业务逻辑结合紧密，实现非常自然且优雅，代码可读性好，不易出错。</p>
+                </div>
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-red-400">局限性</h3>
+                    <p>适用场景有限，仅适用于那些具有明确、单向状态流转的业务流程。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="slide-8" class="slide">
+        <div class="w-full max-w-7xl">
+            <div class="page-title-container">
+              <h2 class="page-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13H2a9 9 0 0 0 18 0h-2a7 7 0 0 1-7 7Z"/><path d="M12 4a4 4 0 0 0-4 4h8a4 4 0 0 0-4-4Z"/></svg>
+                分布式锁
+              </h2>
+            </div>
+            <div class="card w-full p-10 rounded-xl mb-10">
+                <h3 class="text-4xl font-bold mb-4 text-sky-400">具体方案</h3>
+                <p class="text-3xl">利用 Redis 的 `SETNX` 命令。`SET lock:order:xxx '1' NX EX 60`，原子性地尝试获取一个全局唯一的锁。</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-3xl">
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-green-400">优势</h3>
+                    <p>分布式环境下的标准解法，通用性强，是解决跨服务、跨节点幂等问题的核心利器。</p>
+                </div>
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-red-400">局限性</h3>
+                    <p>引入了外部依赖 (如Redis)，增加了系统复杂度和潜在的故障点。锁的可靠性需要精细设计。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="slide-9" class="slide">
+        <div class="w-full max-w-7xl">
+            <div class="page-title-container">
+              <h2 class="page-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+                  Token 令牌
+              </h2>
+            </div>
+            <div class="card w-full p-10 rounded-xl mb-10">
+                <h3 class="text-4xl font-bold mb-4 text-sky-400">具体方案</h3>
+                <p class="text-3xl">前端在进入页面时先获取一次性令牌，提交时携带。后端通过原子操作（如 Redis `DEL`）校验并销毁令牌。</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-3xl">
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-green-400">优势</h3>
+                    <p>方案灵活，将防重前置到网关或代码层，能有效防止用户重复点击、网络重试等多种场景。</p>
+                </div>
+                <div class="card p-10 rounded-xl">
+                    <h3 class="text-4xl font-bold mb-4 text-red-400">局限性</h3>
+                    <p>需要前后端配合改造，一次业务操作需要两次网络请求（获取、使用），增加了交互复杂性。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 10: 总结页 -->
+    <div id="slide-10" class="slide">
+        <div class="w-full max-w-7xl text-center">
+            <div class="page-title-container">
+                <h2 class="page-title">总结与升华</h2>
+            </div>
+            <div class="text-left text-3xl space-y-10">
+                <div class="card p-8 rounded-lg">
+                    <h3 class="text-4xl font-bold mb-4 text-sky-400">技术总结</h3>
+                    <p>今天，我们一次性掌握了8种幂等方案。它们与具体语言无关，是通用的设计思想，体现的是工程师面对具体问题时，<span class="text-yellow-400">系统化的分析和权衡能力</span>。</p>
+                </div>
+                <div class="card p-8 rounded-lg">
+                    <h3 class="text-4xl font-bold mb-4 text-teal-400">思维模型</h3>
+                    <p>从<span class="text-yellow-400">点</span>(单一方案)到<span class="text-yellow-400">线</span>(业务流程)再到<span class="text-yellow-400">面</span>(系统架构)，这种层层递进的思考方式，才是你应对一切复杂技术挑战的核心竞争力。</p>
+                </div>
+                <div class="mt-16 py-10 px-4 rounded-2xl bg-black/30">
+                    <p class="text-5xl font-bold glow-text-gold">精通招式，可立于不败；洞悉思维，方能无往不利。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                if (i === index) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') {
+                currentSlide = (currentSlide + 1) % totalSlides;
+                showSlide(currentSlide);
+            } else if (e.key === 'ArrowUp') {
+                currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+                showSlide(currentSlide);
+            }
+        });
+
+        showSlide(currentSlide);
+    </script>
+
+</body>
+</html>

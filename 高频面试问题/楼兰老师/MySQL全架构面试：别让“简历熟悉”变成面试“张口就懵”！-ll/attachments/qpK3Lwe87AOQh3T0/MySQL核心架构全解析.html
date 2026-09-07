@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>MySQL核心架构全解析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+        /* 自定义动画：展开/折叠过渡 */
+        .collapse-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .collapse-content.active {
+            max-height: 2000px;
+            transition: max-height 0.5s ease-in;
+        }
+        /* 箭头图标过渡 */
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+        .toggle-icon.active {
+            transform: rotate(90deg);
+        }
+        /* 模块卡片hover效果 */
+        .module-card {
+            transition: all 0.3s ease;
+        }
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        /* 架构图节点样式统一 */
+        .arch-node {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            margin: 0.3rem;
+        }
+    </style>
+</head>
+<body class="bg-white p-8 font-sans">
+    <!-- 标题部分 -->
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-blue-800 mb-2">MySQL核心架构全解析</h1>
+        <p class="text-xl text-gray-600">从基础架构到高可用，全面掌握数据库核心机制</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- 1. 基础架构模块 -->
+        <div class="module-card bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+            <div class="flex justify-between items-center cursor-pointer toggle-header" data-target="architecture-content">
+                <h2 class="text-2xl font-bold text-blue-700 flex items-center">
+                    <i class="fa fa-cubes mr-3 text-blue-500"></i>基础架构
+                </h2>
+                <i class="fa fa-angle-right text-xl text-gray-500 toggle-icon"></i>
+            </div>
+            <div id="architecture-content" class="collapse-content mt-4 text-gray-700">
+                <!-- 架构流程图 -->
+                <div class="flex flex-col items-center space-y-3 mb-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 w-full text-center arch-node">客户端</div>
+                    <i class="fa fa-arrow-down text-blue-500"></i>
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg px-4 py-2 w-full text-center font-semibold arch-node">连接层（Connectors & Connections）</div>
+                    <i class="fa fa-arrow-down text-purple-500"></i>
+                    <div class="bg-green-50 border border-green-200 rounded-lg px-4 py-2 w-full text-center font-semibold arch-node">服务层（SQL Interface/Parser/Optimizer）</div>
+                    <i class="fa fa-arrow-down text-green-500"></i>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-2 w-full text-center font-semibold arch-node">存储引擎层（InnoDB/MyISAM等）</div>
+                    <i class="fa fa-arrow-down text-yellow-500"></i>
+                    <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-2 w-full text-center arch-node">文件系统</div>
+                </div>
+                <ul class="list-disc list-inside space-y-2 text-sm">
+                    <li>连接层：负责客户端连接与认证</li>
+                    <li>服务层：SQL解析、优化、执行计划生成</li>
+                    <li>存储引擎：数据存储与提取的具体实现</li>
+                    <li>核心组件：查询缓存（8.0后移除）、执行器、日志系统</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 2. 存储引擎模块 -->
+        <div class="module-card bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+            <div class="flex justify-between items-center cursor-pointer toggle-header" data-target="engine-content">
+                <h2 class="text-2xl font-bold text-blue-700 flex items-center">
+                    <i class="fa fa-database mr-3 text-blue-500"></i>存储引擎
+                </h2>
+                <i class="fa fa-angle-right text-xl text-gray-500 toggle-icon"></i>
+            </div>
+            <div id="engine-content" class="collapse-content mt-4 text-gray-700">
+                <!-- InnoDB -->
+                <div class="mb-4 border-b border-gray-100 pb-4">
+                    <h3 class="text-xl font-semibold text-blue-700 mb-2 flex items-center">
+                        <i class="fa fa-shield mr-2 text-blue-500"></i>InnoDB
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="bg-green-50 rounded p-2"><span class="font-semibold">特性：</span>MVCC、支持事务、行锁、聚簇索引</div>
+                        <div class="bg-blue-50 rounded p-2"><span class="font-semibold">适用：</span>高并发写操作、事务场景</div>
+                    </div>
+                </div>
+                <!-- MyISAM -->
+                <div class="mb-4 border-b border-gray-100 pb-4">
+                    <h3 class="text-xl font-semibold text-orange-700 mb-2 flex items-center">
+                        <i class="fa fa-file-text mr-2 text-orange-500"></i>MyISAM
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="bg-green-50 rounded p-2"><span class="font-semibold">特性：</span>全文索引、表级锁、压缩表</div>
+                        <div class="bg-blue-50 rounded p-2"><span class="font-semibold">适用：</span>只读场景、报表分析</div>
+                    </div>
+                </div>
+                <!-- 其他引擎 -->
+                <div>
+                    <h3 class="text-xl font-semibold text-purple-700 mb-2 flex items-center">
+                        <i class="fa fa-th mr-2 text-purple-500"></i>其他引擎
+                    </h3>
+                    <ul class="list-disc list-inside space-y-1 text-sm">
+                        <li>Memory：内存存储，适合临时表</li>
+                        <li>CSV：纯文本格式，适合数据交换</li>
+                        <li>Archive：高压缩比，适合归档数据</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 索引机制模块 -->
+        <div class="module-card bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+            <div class="flex justify-between items-center cursor-pointer toggle-header" data-target="index-content">
+                <h2 class="text-2xl font-bold text-blue-700 flex items-center">
+                    <i class="fa fa-search mr-3 text-blue-500"></i>索引机制
+                </h2>
+                <i class="fa fa-angle-right text-xl text-gray-500 toggle-icon"></i>
+            </div>
+            <div id="index-content" class="collapse-content mt-4 text-gray-700">
+                <!-- 索引类型 -->
+                <div class="mb-4 border-b border-gray-100 pb-4">
+                    <h3 class="text-xl font-semibold text-green-700 mb-2 flex items-center">
+                        <i class="fa fa-list-alt mr-2 text-green-500"></i>索引类型
+                    </h3>
+                    <ul class="list-disc list-inside space-y-1 text-sm">
+                        <li>主键索引：唯一标识，InnoDB为聚簇索引</li>
+                        <li>二级索引：非主键字段，需回表查询</li>
+                        <li>联合索引：多字段组合，遵循最左前缀原则</li>
+                        <li>全文索引：支持文本内容搜索</li>
+                    </ul>
+                </div>
+                <!-- B+树结构 -->
+                <div>
+                    <h3 class="text-xl font-semibold text-purple-700 mb-2 flex items-center">
+                        <i class="fa fa-sitemap mr-2 text-purple-500"></i>B+树索引
+                    </h3>
+                    <div class="flex flex-col items-center mb-3">
+                        <div class="bg-purple-100 border border-purple-300 arch-node w-3/4">根节点（索引项+指针）</div>
+                        <i class="fa fa-arrow-down text-purple-500"></i>
+                        <div class="bg-purple-100 border border-purple-300 arch-node w-3/4">枝节点（索引项+指针）</div>
+                        <i class="fa fa-arrow-down text-purple-500"></i>
+                        <div class="bg-purple-100 border border-purple-300 arch-node w-3/4">叶节点（索引项+数据/主键）</div>
+                    </div>
+                    <p class="text-sm text-gray-600">特性：平衡性好、查询效率稳定、支持范围查询</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 事务与隔离级别模块 -->
+        <div class="module-card bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+            <div class="flex justify-between items-center cursor-pointer toggle-header" data-target="transaction-content">
+                <h2 class="text-2xl font-bold text-blue-700 flex items-center">
+                    <i class="fa fa-exchange mr-3 text-blue-500"></i>事务机制
+                </h2>
+                <i class="fa fa-angle-right text-xl text-gray-500 toggle-icon"></i>
+            </div>
+            <div id="transaction-content" class="collapse-content mt-4 text-gray-700">
+                <!-- ACID特性 -->
+                <div class="mb-4 border-b border-gray-100 pb-4">
+                    <h3 class="text-xl font-semibold text-blue-700 mb-2 flex items-center">
+                        <i class="fa fa-check-square-o mr-2 text-blue-500"></i>ACID特性
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="bg-blue-50 rounded p-2"><span class="font-semibold">原子性(A)：</span>事务不可分割</div>
+                        <div class="bg-blue-50 rounded p-2"><span class="font-semibold">一致性(C)：</span>数据状态一致</div>
+                        <div class="bg-blue-50 rounded p-2"><span class="font-semibold">隔离性(I)：</span>并发互不干扰</div>
+                        <div class="bg-blue-50 rounded p-2"><span class="font-semibold">持久性(D)：</span>提交后不丢失</div>
+                    </div>
+                </div>
+                <!-- 隔离级别 -->
+                <div>
+                    <h3 class="text-xl font-semibold text-green-700 mb-2 flex items-center">
+                        <i class="fa fa-shield mr-2 text-green-500"></i>隔离级别
+                    </h3>
+                    <ul class="list-disc list-inside space-y-1 text-sm">
+                        <li>读未提交：可能产生脏读</li>
+                        <li>读已提交：避免脏读，可能不可重复读</li>
+                        <li>可重复读：避免不可重复读，可能幻读（InnoDB已解决）</li>
+                        <li>串行化：完全隔离，性能低</li>
+                    </ul>
+                    <p class="text-xs text-gray-500 mt-2">默认级别：InnoDB为可重复读</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. 日志系统模块 -->
+        <div class="module-card bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+            <div class="flex justify-between items-center cursor-pointer toggle-header" data-target="log-content">
+                <h2 class="text-2xl font-bold text-blue-700 flex items-center">
+                    <i class="fa fa-file-text mr-3 text-blue-500"></i>日志系统
+                </h2>
+                <i class="fa fa-angle-right text-xl text-gray-500 toggle-icon"></i>
+            </div>
+            <div id="log-content" class="collapse-content mt-4 text-gray-700 space-y-4">
+                <!-- Redo Log -->
+                <div class="border-b border-gray-100 pb-3">
+                    <h3 class="text-xl font-semibold text-red-700 mb-2 flex items-center">
+                        <i class="fa fa-refresh mr-2 text-red-500"></i>Redo Log
+                    </h3>
+                    <p class="text-sm">确保事务持久性，记录数据页修改，循环写入</p>
+                    <p class="text-xs text-gray-500 mt-1">关键机制：WAL（Write-Ahead Logging）</p>
+                </div>
+                <!-- Undo Log -->
+                <div class="border-b border-gray-100 pb-3">
+                    <h3 class="text-xl font-semibold text-green-700 mb-2 flex items-center">
+                        <i class="fa fa-undo mr-2 text-green-500"></i>Undo Log
+                    </h3>
+                    <p class="text-sm">实现事务回滚和MVCC，记录数据修改前状态</p>
+                </div>
+                <!-- Binlog -->
+                <div>
+                    <h3 class="text-xl font-semibold text-purple-700 mb-2 flex items-center">
+                        <i class="fa fa-database mr-2 text-purple-500"></i>Binlog
+                    </h3>
+                    <p class="text-sm">记录所有写操作，用于主从复制和数据恢复</p>
+                    <div class="text-xs text-gray-500 mt-1">格式：STATEMENT/ROW/MIXED</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. 高可用架构模块 -->
+        <div class="module-card bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+            <div class="flex justify-between items-center cursor-pointer toggle-header" data-target="ha-content">
+                <h2 class="text-2xl font-bold text-blue-700 flex items-center">
+                    <i class="fa fa-server mr-3 text-blue-500"></i>高可用架构
+                </h2>
+                <i class="fa fa-angle-right text-xl text-gray-500 toggle-icon"></i>
+            </div>
+            <div id="ha-content" class="collapse-content mt-4 text-gray-700 space-y-6">
+                <!-- 主从复制 -->
+                <div class="border-b border-gray-100 pb-4">
+                    <h3 class="text-xl font-semibold text-orange-700 mb-3 flex items-center">
+                        <i class="fa fa-exchange mr-2 text-orange-500"></i>1. 主从复制
+                    </h3>
+                    <div class="flex flex-col items-center mb-3">
+                        <div class="bg-orange-100 border-2 border-orange-500 arch-node">主库（写+Binlog）</div>
+                        <i class="fa fa-arrow-down text-orange-500"></i>
+                        <div class="bg-gray-100 border border-gray-400 arch-node">从库1（读+中继日志）</div>
+                        <div class="bg-gray-100 border border-gray-400 arch-node">从库2（读+中继日志）</div>
+                    </div>
+                    <p class="text-sm text-gray-600">原理：基于Binlog的异步数据同步，实现读写分离</p>
+                </div>
+
+                <!-- MGR集群 -->
+                <div class="border-b border-gray-100 pb-4">
+                    <h3 class="text-xl font-semibold text-purple-700 mb-3 flex items-center">
+                        <i class="fa fa-sitemap mr-2 text-purple-500"></i>2. MGR集群
+                    </h3>
+                    <div class="flex flex-col items-center mb-3">
+                        <div class="flex justify-around w-full">
+                            <div class="bg-purple-100 border-2 border-purple-500 arch-node">节点1（主）</div>
+                            <div class="bg-purple-100 border-2 border-purple-500 arch-node">节点2（备）</div>
+                            <div class="bg-purple-100 border-2 border-purple-500 arch-node">节点3（备）</div>
+                        </div>
+                        <i class="fa fa-refresh text-purple-500 mt-2"></i>
+                        <p class="text-xs text-purple-500">组复制协议同步</p>
+                    </div>
+                    <p class="text-sm text-gray-600">特性：自动故障转移、强一致性、多主模式支持</p>
+                </div>
+
+                <!-- 分库分表 -->
+                <div>
+                    <h3 class="text-xl font-semibold text-blue-700 mb-3 flex items-center">
+                        <i class="fa fa-th-large mr-2 text-blue-500"></i>3. 分库分表
+                    </h3>
+                    <div class="flex flex-col items-center mb-3">
+                        <div class="bg-blue-100 border-2 border-blue-500 arch-node w-full">应用层</div>
+                        <i class="fa fa-arrow-down text-blue-500"></i>
+                        <div class="bg-blue-100 border-2 border-blue-500 arch-node w-full">中间件（ShardingSphere）</div>
+                        <i class="fa fa-arrow-down text-blue-500"></i>
+                        <div class="flex justify-around w-full">
+                            <div class="bg-gray-100 border border-gray-400 arch-node">分库1</div>
+                            <div class="bg-gray-100 border border-gray-400 arch-node">分库2</div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">策略：水平分片（按数据行）、垂直分片（按业务模块）</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 点击展开/折叠逻辑
+        document.querySelectorAll('.toggle-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const targetId = header.getAttribute('data-target');
+                const content = document.getElementById(targetId);
+                const icon = header.querySelector('.toggle-icon');
+                
+                // 切换内容显示/隐藏
+                content.classList.toggle('active');
+                // 切换箭头方向
+                icon.classList.toggle('active');
+            });
+        });
+
+        // 初始化：默认展开第一个模块
+        window.addEventListener('load', () => {
+            const firstHeader = document.querySelector('.toggle-header');
+            firstHeader.click();
+        });
+    </script>
+</body>
+</html>

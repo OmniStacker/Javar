@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GC选型面试杀招 - 完整白板讲稿（最终版）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+    <style>
+        body { 
+            font-family: "Microsoft YaHei", sans-serif; 
+            background: #f8f9fa; 
+            margin: 0; 
+            padding: 20px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .slide-container { 
+            width: 1280px; 
+            height: 720px; 
+            position: relative; 
+            overflow: hidden; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+            margin-bottom: 60px; /* 为底部导航留出空间 */
+        }
+        .slide { 
+            width: 100%; 
+            height: 100%; 
+            padding: 30px 40px; 
+            box-sizing: border-box; 
+            background: white; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            display: none; /* 默认隐藏所有slide */
+            overflow: hidden; 
+        }
+        .slide.active { 
+            display: block; /* 只有active的slide显示 */
+        }
+        /* 导航控件移至整个页面底部 */
+        .nav-container { 
+            position: fixed; 
+            bottom: 20px; 
+            left: 0; 
+            right: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 20px; 
+            z-index: 999; /* 确保导航在最上层 */
+        }
+        .nav-btn { 
+            width: 80px; 
+            height: 45px; 
+            border-radius: 25px; 
+            background: #165DFF; 
+            color: white; 
+            border: none; 
+            font-size: 18px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: background 0.3s; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            outline: none;
+        }
+        .nav-btn:hover { 
+            background: #0f48c9; 
+        }
+        .nav-btn:disabled { 
+            background: #ccc; 
+            cursor: not-allowed; 
+            box-shadow: none;
+        }
+        .nav-indicators { 
+            display: flex; 
+            gap: 12px; 
+        }
+        .nav-dot { 
+            width: 14px; 
+            height: 14px; 
+            border-radius: 50%; 
+            background: #E8F3FF; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            border: 2px solid transparent;
+        }
+        .nav-dot:hover { 
+            background: #c9d9ff; 
+        }
+        .nav-dot.active { 
+            background: #165DFF; 
+            border-color: #165DFF;
+        }
+        .code { 
+            font-family: "Consolas", monospace; 
+            font-size: 13px; 
+            background: #f5f5f5; 
+            padding: 8px; 
+            border-radius: 8px; 
+            overflow-x: auto; 
+            border: 1px solid #eee; 
+            line-height: 1.4; 
+        }
+        .card { 
+            background: #f9fafe; 
+            border-radius: 12px; 
+            padding: 16px; 
+            border: 1px solid #E8F3FF; 
+        }
+        .highlight { 
+            color: #165DFF; 
+            font-weight: bold; 
+        }
+        .warning { 
+            color: #FF7D00; 
+            font-weight: bold; 
+        }
+        .success { 
+            color: #36CFC9; 
+            font-weight: bold; 
+        }
+        /* 确保内容垂直居中的通用类 */
+        .content-center {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- 内容框居中显示 -->
+    <div class="slide-container">
+        <!-- 第1页：封面 -->
+        <div class="slide active" data-index="0">
+            <div class="content-center text-center">
+                <div class="w-full bg-[#E8F3FF] rounded-2xl p-8 mb-8">
+                    <h1 class="text-5xl font-bold text-[#165DFF] mb-4">面试杀招：GC选型不用死记硬背</h1>
+                    <p class="text-2xl text-[#333]">抛开机器配置，只看业务特性！</p>
+                </div>
+                <div class="w-3/4 bg-white border-2 border-[#165DFF] rounded-2xl p-6 mx-auto">
+                    <p class="text-3xl font-semibold text-[#333]">面试官灵魂拷问：</p>
+                    <p class="text-4xl font-bold text-[#FF7D00] mt-4">“结合你的业务，到底怎么选垃圾回收器？”</p>
+                </div>
+                <div class="mt-8 text-xl text-gray-500">
+                    高级工程师 vs 初级工程师的核心差距：业务→技术的翻译能力
+                </div>
+            </div>
+        </div>
+
+        <!-- 第2页：面试官考核意图 -->
+        <div class="slide" data-index="1">
+            <div class="content-center">
+                <h2 class="text-3xl font-bold text-[#165DFF] mb-6">核心考核意图：不是“参数背诵机”，而是“业务决策者”</h2>
+                <div class="flex flex-1 gap-6">
+                    <!-- 左侧逻辑链 -->
+                    <div class="w-1/2 card flex flex-col justify-center">
+                        <p class="text-2xl font-semibold text-[#333] mb-6">核心逻辑链：</p>
+                        <div class="flex flex-col items-center gap-4">
+                            <div class="w-64 h-20 bg-[#165DFF] text-white rounded-xl flex items-center justify-center text-2xl font-bold">
+                                业务特性
+                            </div>
+                            <div class="text-4xl text-gray-400">↓</div>
+                            <div class="w-64 h-20 bg-[#FF7D00] text-white rounded-xl flex items-center justify-center text-2xl font-bold">
+                                核心诉求
+                            </div>
+                            <div class="text-4xl text-gray-400">↓</div>
+                            <div class="w-64 h-20 bg-[#36CFC9] text-white rounded-xl flex items-center justify-center text-2xl font-bold">
+                                GC选型
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 右侧GC设计目标 -->
+                    <div class="w-1/2 card">
+                        <p class="text-2xl font-semibold text-[#333] mb-6">3大GC的核心设计目标：</p>
+                        <div class="space-y-6 text-xl">
+                            <div class="p-4 bg-white rounded-lg shadow-sm">
+                                <p class="highlight">Parallel GC（并行GC）：</p>
+                                <p class="text-gray-700 mt-2">追求<span class="warning">高吞吐量</span> → 单位时间处理最多任务，允许短停顿（200ms+）</p>
+                            </div>
+                            <div class="p-4 bg-white rounded-lg shadow-sm">
+                                <p class="highlight">G1 GC（垃圾优先）：</p>
+                                <p class="text-gray-700 mt-2">追求<span class="warning">低延迟</span> → 响应时间稳定，控制停顿在50ms内</p>
+                            </div>
+                            <div class="p-4 bg-white rounded-lg shadow-sm">
+                                <p class="highlight">ZGC（新一代GC）：</p>
+                                <p class="text-gray-700 mt-2">追求<span class="warning">高并发低停顿</span> → 毫秒级停顿（<10ms），支撑高QPS</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第3页：3大核心场景选型总览 -->
+        <div class="slide" data-index="2">
+            <div class="content-center">
+                <h2 class="text-3xl font-bold text-[#165DFF] mb-6 text-center">场景→诉求→选型 对应表（面试直接背）</h2>
+                <div class="flex-1 grid grid-cols-3 gap-6">
+                    <!-- 场景1 -->
+                    <div class="card flex flex-col items-center text-center">
+                        <div class="w-20 h-20 bg-[#FF7D00] text-white rounded-full flex items-center justify-center text-3xl font-bold mb-4">1</div>
+                        <h3 class="text-2xl font-bold text-[#333] mb-3">批处理/数据同步</h3>
+                        <p class="text-gray-600 mb-4 text-base">每天凌晨跑数、报表生成、数据迁移</p>
+                        <div class="w-full bg-white p-3 rounded-lg mb-3">
+                            <p class="text-lg">诉求：<span class="warning">高吞吐</span></p>
+                        </div>
+                        <div class="w-full bg-white p-3 rounded-lg">
+                            <p class="text-lg">选型：<span class="highlight">Parallel GC</span></p>
+                        </div>
+                        <p class="text-gray-500 mt-4">停顿容忍：200ms+</p>
+                    </div>
+                    <!-- 场景2 -->
+                    <div class="card flex flex-col items-center text-center">
+                        <div class="w-20 h-20 bg-[#165DFF] text-white rounded-full flex items-center justify-center text-3xl font-bold mb-4">2</div>
+                        <h3 class="text-2xl font-bold text-[#333] mb-3">支付/实时接口</h3>
+                        <p class="text-gray-600 mb-4 text-base">电商支付、金融交易、实时查询接口</p>
+                        <div class="w-full bg-white p-3 rounded-lg mb-3">
+                            <p class="text-lg">诉求：<span class="warning">低延迟</span></p>
+                        </div>
+                        <div class="w-full bg-white p-3 rounded-lg">
+                            <p class="text-lg">选型：<span class="highlight">G1 GC</span></p>
+                        </div>
+                        <p class="text-gray-500 mt-4">停顿要求：<50ms</p>
+                    </div>
+                    <!-- 场景3 -->
+                    <div class="card flex flex-col items-center text-center">
+                        <div class="w-20 h-20 bg-[#36CFC9] text-white rounded-full flex items-center justify-center text-3xl font-bold mb-4">3</div>
+                        <h3 class="text-2xl font-bold text-[#333] mb-3">秒杀/高并发API</h3>
+                        <p class="text-gray-600 mb-4 text-base">电商秒杀、直播互动、高频下单接口</p>
+                        <div class="w-full bg-white p-3 rounded-lg mb-3">
+                            <p class="text-lg">诉求：<span class="warning">高并发低停顿</span></p>
+                        </div>
+                        <div class="w-full bg-white p-3 rounded-lg">
+                            <p class="text-lg">选型：<span class="highlight">ZGC</span></p>
+                        </div>
+                        <p class="text-gray-500 mt-4">停顿要求：<10ms</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第4页：场景1 - 高吞吐（Parallel GC） -->
+        <div class="slide" data-index="3">
+            <div class="content-center">
+                <div class="flex items-center gap-4 mb-4">
+                    <span class="bg-[#FF7D00] text-white text-xl font-bold px-4 py-1 rounded-full">场景1</span>
+                    <h2 class="text-3xl font-bold text-[#333]">高吞吐优先：批处理/数据同步/报表生成</h2>
+                </div>
+                <div class="flex flex-1 gap-6">
+                    <!-- 左侧：业务+代码 -->
+                    <div class="w-1/2 flex flex-col gap-4">
+                        <div class="card flex-1">
+                            <h3 class="text-xl font-bold text-[#165DFF] mb-3">业务核心信息</h3>
+                            <ul class="space-y-2 text-lg text-gray-700">
+                                <li>• 数据量：1000万+条</li>
+                                <li>• 对象特征：批量创建、批量回收（短生命周期）</li>
+                                <li>• 核心诉求：总处理时间越短越好</li>
+                                <li>• 痛点：用G1会因增量回收耗CPU，降低吞吐</li>
+                            </ul>
+                        </div>
+                        <div class="card flex-1">
+                            <h3 class="text-xl font-bold text-[#165DFF] mb-3">核心代码（简化版）</h3>
+                            <div class="code">
+// 批量创建1000万短生命周期对象<br>
+List<UserData> dataList = new ArrayList<>(10_000_000);<br>
+for (int i = 0; i < 10_000_000; i++) {<br>
+&nbsp;&nbsp;dataList.add(new UserData("用户" + i, 18+i%30, "余额" + (i%10000)));<br>
+}<br>
+// 批量处理：数据转换、入库<br>
+processData(dataList);<br>
+// 释放引用，让GC批量回收<br>
+dataList.clear();
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 右侧：原理+优势 -->
+                    <div class="w-1/2 card flex flex-col">
+                        <h3 class="text-xl font-bold text-[#165DFF] mb-3">Parallel GC 工作原理</h3>
+                        <div class="flex-1 flex flex-col items-center justify-center mb-4">
+                            <div class="w-full bg-white p-3 rounded-lg mb-3">
+                                <p class="text-lg font-semibold">新生代：Parallel Scavenge</p>
+                                <p class="text-gray-600 text-sm">多线程并行标记+清理，无并发开销</p>
+                            </div>
+                            <div class="text-3xl text-gray-400">↓</div>
+                            <div class="w-full bg-white p-3 rounded-lg mt-3">
+                                <p class="text-lg font-semibold">老年代：Parallel Old</p>
+                                <p class="text-gray-600 text-sm">多线程并行Full GC，最大化CPU利用率</p>
+                            </div>
+                        </div>
+                        <div class="bg-[#E8F3FF] p-3 rounded-lg">
+                            <h4 class="text-lg font-bold text-[#165DFF] mb-2">核心优势</h4>
+                            <p class="text-gray-700">1. 利用多CPU核心，回收效率最高</p>
+                            <p class="text-gray-700">2. 无并发回收的CPU消耗，总吞吐最优</p>
+                            <p class="text-gray-700">3. 配置简单，无需复杂调优</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第5页：场景2 - 低延迟（G1 GC） -->
+        <div class="slide" data-index="4">
+            <div class="content-center">
+                <div class="flex items-center gap-4 mb-4">
+                    <span class="bg-[#165DFF] text-white text-xl font-bold px-4 py-1 rounded-full">场景2</span>
+                    <h2 class="text-3xl font-bold text-[#333]">低延迟优先：支付/金融交易/实时接口</h2>
+                </div>
+                <div class="flex flex-1 gap-6">
+                    <!-- 左侧：原理+优势 -->
+                    <div class="w-1/2 card flex flex-col">
+                        <h3 class="text-xl font-bold text-[#165DFF] mb-3">G1 GC 工作原理</h3>
+                        <div class="flex-1 flex flex-col items-center justify-center mb-4">
+                            <div class="w-full bg-white p-3 rounded-lg mb-2">
+                                <p class="text-lg font-semibold">1. 堆内存划分为多个Region（2MB-32MB）</p>
+                                <p class="text-gray-600 text-sm">新生代、老年代不再物理隔离</p>
+                            </div>
+                            <div class="w-full bg-white p-3 rounded-lg mb-2">
+                                <p class="text-lg font-semibold">2. Young GC：回收新生代Region</p>
+                                <p class="text-gray-600 text-sm">快速回收短生命周期对象</p>
+                            </div>
+                            <div class="w-full bg-white p-3 rounded-lg mb-2">
+                                <p class="text-lg font-semibold">3. Mixed GC：增量回收老年代Region</p>
+                                <p class="text-gray-600 text-sm">优先回收垃圾多的Region，控制停顿时间</p>
+                            </div>
+                        </div>
+                        <div class="bg-[#E8F3FF] p-3 rounded-lg">
+                            <h4 class="text-lg font-bold text-[#165DFF] mb-2">核心优势</h4>
+                            <p class="text-gray-700">1. 停顿时间可预测（默认<200ms，可调至<50ms）</p>
+                            <p class="text-gray-700">2. 平衡吞吐和延迟，适合高并发接口</p>
+                        </div>
+                    </div>
+                    <!-- 右侧：业务+代码 -->
+                    <div class="w-1/2 flex flex-col gap-4">
+                        <div class="card flex-1">
+                            <h3 class="text-xl font-bold text-[#165DFF] mb-3">业务核心信息</h3>
+                            <ul class="space-y-2 text-lg text-gray-700">
+                                <li>• QPS：1000+ 每秒</li>
+                                <li>• 对象特征：每个请求创建多个临时对象（校验、订单、日志）</li>
+                                <li>• 核心诉求：响应时间稳定（<50ms）</li>
+                                <li>• 痛点：用Parallel会触发长Full GC，导致接口超时</li>
+                            </ul>
+                        </div>
+                        <div class="card flex-1">
+                            <h3 class="text-xl font-bold text-[#165DFF] mb-3">核心代码（简化版）</h3>
+                            <div class="code">
+// 支付接口：每个请求创建临时对象<br>
+@PostMapping("/api/pay")<br>
+public PayResponse doPayment(@RequestBody PayRequest req) {<br>
+&nbsp;&nbsp;// 1. 参数校验（临时对象）<br>
+&nbsp;&nbsp;ValidateResult validate = validateRequest(req);<br>
+&nbsp;&nbsp;if (!validate.isSuccess()) return 参数错误;<br>
+&nbsp;&nbsp;// 2. 创建订单/支付记录（临时对象）<br>
+&nbsp;&nbsp;PayResult result = processPayment(req);<br>
+&nbsp;&nbsp;// 3. 异步日志（临时对象）<br>
+&nbsp;&nbsp;CompletableFuture.runAsync(() -> logPayment(result));<br>
+&nbsp;&nbsp;return new PayResponse(result.isSuccess());<br>
+}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第6页：场景3 - 高并发低停顿（ZGC）【修复显示不全】 -->
+        <div class="slide" data-index="5">
+            <div class="content-center">
+                <div class="flex items-center gap-4 mb-4">
+                    <span class="bg-[#36CFC9] text-white text-xl font-bold px-4 py-1 rounded-full">场景3</span>
+                    <h2 class="text-3xl font-bold text-[#333]">高并发低停顿：秒杀/直播互动/高频API</h2>
+                </div>
+                <div class="flex flex-1 gap-5">
+                    <!-- 左侧：业务+代码 -->
+                    <div class="w-1/2 flex flex-col gap-4">
+                        <div class="card flex-1">
+                            <h3 class="text-xl font-bold text-[#165DFF] mb-2">业务核心信息</h3>
+                            <ul class="space-y-1.5 text-base text-gray-700">
+                                <li>• 峰值QPS：1万+ 每秒</li>
+                                <li>• 对象特征：海量短生命周期对象（请求、临时订单、缓存Key）</li>
+                                <li>• 核心诉求：极致低停顿（<10ms）</li>
+                                <li>• 痛点：G1的Mixed GC仍有50ms+停顿，导致抢购异常</li>
+                            </ul>
+                        </div>
+                        <div class="card flex-1">
+                            <h3 class="text-xl font-bold text-[#165DFF] mb-2">核心代码（简化版）</h3>
+                            <div class="code text-xs">
+// 秒杀接口：海量短生命周期对象<br>
+@PostMapping("/api/seckill")<br>
+public SecKillResponse seckill(@RequestBody SecKillReq req) {<br>
+&nbsp;&nbsp;// 临时缓存Key<br>
+&nbsp;&nbsp;String cacheKey = "seckill:user:" + req.getUserId();<br>
+&nbsp;&nbsp;if (boughtCache.containsKey(cacheKey)) return 重复抢购;<br>
+&nbsp;&nbsp;// 高并发扣减库存<br>
+&nbsp;&nbsp;int remain = stock.decrementAndGet();<br>
+&nbsp;&nbsp;if (remain < 0) return 库存售罄;<br>
+&nbsp;&nbsp;// 创建临时订单对象<br>
+&nbsp;&nbsp;SecKillOrder order = new SecKillOrder(UUID.randomUUID().toString());<br>
+&nbsp;&nbsp;// 异步保存（对象后续回收）<br>
+&nbsp;&nbsp;asyncSaveOrder(order);<br>
+&nbsp;&nbsp;return 抢购成功;<br>
+}
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 右侧：原理+优势 -->
+                    <div class="w-1/2 card flex flex-col">
+                        <h3 class="text-xl font-bold text-[#165DFF] mb-2">ZGC 工作原理（核心：并发回收）</h3>
+                        <div class="flex-1 flex flex-col items-center justify-center mb-3">
+                            <div class="w-full bg-white p-2 rounded-lg mb-1.5 text-center text-sm">
+                                <p class="font-semibold">初始标记（<1ms）</p>
+                                <p class="text-gray-500 text-xs">仅标记根对象</p>
+                            </div>
+                            <div class="w-full bg-white p-2 rounded-lg mb-1.5 text-center text-sm">
+                                <p class="font-semibold">并发标记（不暂停应用）</p>
+                                <p class="text-gray-500 text-xs">遍历所有可达对象</p>
+                            </div>
+                            <div class="w-full bg-white p-2 rounded-lg mb-1.5 text-center text-sm">
+                                <p class="font-semibold">重新标记（<1ms）</p>
+                                <p class="text-gray-500 text-xs">修正并发标记遗漏</p>
+                            </div>
+                            <div class="w-full bg-white p-2 rounded-lg mb-1.5 text-center text-sm">
+                                <p class="font-semibold">并发清理+重定位（不暂停）</p>
+                                <p class="text-gray-500 text-xs">回收垃圾+移动存活对象</p>
+                            </div>
+                        </div>
+                        <div class="bg-[#E8F3FF] p-3 rounded-lg">
+                            <h4 class="text-base font-bold text-[#165DFF] mb-1.5">核心优势</h4>
+                            <p class="text-gray-700 text-sm">1. 停顿时间稳定在1ms左右，<10ms</p>
+                            <p class="text-gray-700 text-sm">2. 支持TB级堆内存，高并发下无压力</p>
+                            <p class="text-gray-700 text-sm">3. 基于着色指针+读屏障，无需STW长时间停顿</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第7页：GC选型3步决策法（总结） -->
+        <div class="slide" data-index="6">
+            <div class="content-center text-center">
+                <h2 class="text-3xl font-bold text-[#165DFF] mb-8">面试直接套用：GC选型3步决策法</h2>
+                <div class="w-5/6 h-3/4 flex flex-col items-center justify-center bg-[#E8F3FF] rounded-2xl p-6 mx-auto">
+                    <!-- 步骤1 -->
+                    <div class="w-full flex items-center gap-4 mb-8">
+                        <div class="w-20 h-20 bg-[#165DFF] text-white rounded-full flex items-center justify-center text-3xl font-bold">1</div>
+                        <div class="flex-1 bg-white p-4 rounded-xl shadow-sm">
+                            <h3 class="text-xl font-bold text-[#333] mb-1">抓核心诉求（最关键）</h3>
+                            <p class="text-lg text-gray-700">→ 业务是要<span class="warning">高吞吐</span>、<span class="warning">低延迟</span>还是<span class="warning">高并发低停顿</span>？</p>
+                        </div>
+                    </div>
+                    <!-- 步骤2 -->
+                    <div class="w-full flex items-center gap-4 mb-8">
+                        <div class="w-20 h-20 bg-[#165DFF] text-white rounded-full flex items-center justify-center text-3xl font-bold">2</div>
+                        <div class="flex-1 bg-white p-4 rounded-xl shadow-sm">
+                            <h3 class="text-xl font-bold text-[#333] mb-1">辅助判断对象生命周期</h3>
+                            <p class="text-lg text-gray-700">→ 短对象多：G1/ZGC更高效 | 长对象多：Parallel更省CPU</p>
+                        </div>
+                    </div>
+                    <!-- 步骤3 -->
+                    <div class="w-full flex items-center gap-4">
+                        <div class="w-20 h-20 bg-[#165DFF] text-white rounded-full flex items-center justify-center text-3xl font-bold">3</div>
+                        <div class="flex-1 bg-white p-4 rounded-xl shadow-sm">
+                            <h3 class="text-xl font-bold text-[#333] mb-1">匹配GC选型</h3>
+                            <p class="text-lg text-gray-700">→ 高吞吐→Parallel | 低延迟→G1 | 高并发低停顿→ZGC</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 text-lg text-gray-600">
+                    记住：面试官要的不是“选对”，而是“说清为什么这么选”
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导航控件放在整个页面底部，按钮改为中文 -->
+    <div class="nav-container">
+        <button class="nav-btn" id="prevBtn">上一页</button>
+        <div class="nav-indicators" id="navIndicators">
+            <span class="nav-dot active" data-index="0"></span>
+            <span class="nav-dot" data-index="1"></span>
+            <span class="nav-dot" data-index="2"></span>
+            <span class="nav-dot" data-index="3"></span>
+            <span class="nav-dot" data-index="4"></span>
+            <span class="nav-dot" data-index="5"></span>
+            <span class="nav-dot" data-index="6"></span>
+        </div>
+        <button class="nav-btn" id="nextBtn">下一页</button>
+    </div>
+
+    <script>
+        // 等待DOM完全加载后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            const slides = document.querySelectorAll('.slide');
+            const dots = document.querySelectorAll('.nav-dot');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            let currentIndex = 0;
+            const totalSlides = slides.length; // 7页
+
+            // 更新幻灯片显示
+            function updateSlide() {
+                // 隐藏所有幻灯片
+                slides.forEach(slide => {
+                    slide.classList.remove('active');
+                });
+                // 显示当前幻灯片
+                slides[currentIndex].classList.add('active');
+                
+                // 更新导航点
+                dots.forEach((dot, index) => {
+                    if (index === currentIndex) {
+                        dot.classList.add('active');
+                    } else {
+                        dot.classList.remove('active');
+                    }
+                });
+                
+                // 控制按钮状态
+                prevBtn.disabled = currentIndex === 0;
+                nextBtn.disabled = currentIndex === totalSlides - 1;
+                
+                // 可选：添加过渡效果
+                slides[currentIndex].style.opacity = '0';
+                setTimeout(() => {
+                    slides[currentIndex].style.opacity = '1';
+                }, 50);
+            }
+
+            // 下一页
+            nextBtn.addEventListener('click', function() {
+                if (currentIndex < totalSlides - 1) {
+                    currentIndex++;
+                    updateSlide();
+                }
+            });
+
+            // 上一页
+            prevBtn.addEventListener('click', function() {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateSlide();
+                }
+            });
+
+            // 点击导航点切换
+            dots.forEach((dot, index) => {
+                dot.addEventListener('click', function() {
+                    currentIndex = index;
+                    updateSlide();
+                });
+            });
+
+            // 键盘控制
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowRight') {
+                    if (currentIndex < totalSlides - 1) {
+                        currentIndex++;
+                        updateSlide();
+                    }
+                } else if (e.key === 'ArrowLeft') {
+                    if (currentIndex > 0) {
+                        currentIndex--;
+                        updateSlide();
+                    }
+                }
+            });
+
+            // 初始化显示第一页
+            updateSlide();
+        });
+    </script>
+</body>
+</html>

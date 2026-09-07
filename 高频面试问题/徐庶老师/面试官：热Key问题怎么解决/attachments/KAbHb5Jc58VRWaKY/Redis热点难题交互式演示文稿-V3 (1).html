@@ -1,0 +1,439 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redis热点问题解析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f2f5;
+        }
+        #presentation-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+        .slide {
+            width: 100%;
+            height: 100%;
+            flex-shrink: 0;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 40px;
+            box-sizing: border-box;
+        }
+        .slide-subtitle {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            background-color: #1a73e8;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Animation for flowing requests */
+        @keyframes flow {
+            from { stroke-dashoffset: 1000; }
+            to { stroke-dashoffset: 0; }
+        }
+        .request-flow {
+            stroke-dasharray: 20 15;
+            animation: flow 30s linear infinite;
+        }
+        @keyframes slow-flow {
+            from { stroke-dashoffset: 200; }
+            to { stroke-dashoffset: 0; }
+        }
+        .slow-flow {
+             stroke-dasharray: 10 5;
+             animation: slow-flow 2s linear infinite;
+        }
+        
+        /* Shake animation for database */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake {
+            animation: shake 0.8s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+
+<div id="presentation-container">
+    <!-- Slide 1: Title -->
+    <div class="slide">
+        <div class="flex flex-col items-center justify-center text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="200px" viewBox="0 0 128 128"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.9-11.5 3.8-17.3 1S13 98.1 6.3 94.9c-3.3-1.6-5-2.9-5-4.2V78s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c0 1.3-1.5 2.7-4.9 4.4z"></path><path fill="#D82C20" d="M121.8 80.5C115.1 84 80.4 98.2 73 102.1c-7.4 3.9-11.5 3.8-17.3 1-5.8-2.8-42.7-17.7-49.4-20.9C-.3 79-.5 76.8 6 74.3c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 72.5C115.1 76 80.4 90.2 73 94.1c-7.4 3.8-11.5 3.8-17.3 1C49.9 92.3 13 77.4 6.3 74.2c-3.3-1.6-5-2.9-5-4.2V57.3s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9V68c0 1.3-1.5 2.7-4.9 4.5z"></path><path fill="#D82C20" d="M121.8 59.8c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 79.6 13 64.7 6.3 61.5s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 51c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 70.9 13 56 6.3 52.8c-3.3-1.6-5.1-2.9-5.1-4.2V35.9s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c.1 1.3-1.4 2.6-4.8 4.4z"></path><path fill="#D82C20" d="M121.8 38.3C115.1 41.8 80.4 56 73 59.9c-7.4 3.8-11.5 3.8-17.3 1S13 43.3 6.3 40.1s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.8z"></path><path fill="#fff" d="M80.4 26.1l-10.8 1.2-2.5 5.8-3.9-6.5-12.5-1.1 9.3-3.4-2.8-5.2 8.8 3.4 8.2-2.7L72 23zM66.5 54.5l-20.3-8.4 29.1-4.4z"></path><ellipse fill="#fff" cx="38.4" cy="35.4" rx="15.5" ry="6"></ellipse><path fill="#7A0C00" d="M93.3 27.7l17.2 6.8-17.2 6.8z"></path><path fill="#AD2115" d="M74.3 35.3l19-7.6v13.6l-1.9.8z"></path></svg>
+             
+            <h2 class="text-6xl font-bold  mt-2 tracking-tight">Redis<span class="text-[#DC382D]">热Key</span>问题</h2> 
+        </div>
+    </div>
+
+    <!-- Slide 2: Normal Redis Flow -->
+    <div class="slide"> 
+        <div class="w-full h-full flex flex-col items-center justify-center"> 
+            <div class="flex justify-around w-full items-center">
+                <!-- Clients -->
+                <div class="flex flex-col gap-8">
+                     <svg class="w-24 h-24 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                     <svg class="w-24 h-24 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                     <svg class="w-24 h-24 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                     <p class="text-center font-bold text-gray-500">海量用户</p>
+                </div>
+
+                <!-- Arrows -->
+                <svg class="w-[60%] h-[400px]" viewBox="0 0 800 400">
+                    <!-- Paths -->
+                    <path id="p1" d="M 50 50 Q 400 50, 700 100" stroke="#cccccc" stroke-width="3" fill="none" class="request-flow" style="animation-delay: 0s;"/>
+                    <path id="p2" d="M 50 200 Q 400 200, 700 200" stroke="#cccccc" stroke-width="3" fill="none" class="request-flow" style="animation-delay: 0.5s;"/>
+                    <path id="p3" d="M 50 350 Q 400 350, 700 300" stroke="#cccccc" stroke-width="3" fill="none" class="request-flow" style="animation-delay: 1s;"/>
+                    <!-- Animated dots -->
+                    <circle r="8" fill="#4285F4"><animateMotion dur="4s" repeatCount="indefinite" path="M 50 50 Q 400 50, 700 100" /></circle>
+                    <circle r="8" fill="#34A853"><animateMotion dur="4s" repeatCount="indefinite" path="M 50 200 Q 400 200, 700 200" begin="0.5s"/></circle>
+                    <circle r="8" fill="#FBBC05"><animateMotion dur="4s" repeatCount="indefinite" path="M 50 350 Q 400 350, 700 300" begin="1s"/></circle>
+                </svg>
+
+                <!-- Redis Nodes -->
+                <div class="flex flex-col gap-6 items-center">
+                    <div class="flex items-center gap-4 p-4 border-2 border-gray-300 rounded-lg bg-gray-100">
+                        <svg class="w-16 h-16 text-gray-600" width="70px" viewBox="0 0 128 128"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.9-11.5 3.8-17.3 1S13 98.1 6.3 94.9c-3.3-1.6-5-2.9-5-4.2V78s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c0 1.3-1.5 2.7-4.9 4.4z"></path><path fill="#D82C20" d="M121.8 80.5C115.1 84 80.4 98.2 73 102.1c-7.4 3.9-11.5 3.8-17.3 1-5.8-2.8-42.7-17.7-49.4-20.9C-.3 79-.5 76.8 6 74.3c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 72.5C115.1 76 80.4 90.2 73 94.1c-7.4 3.8-11.5 3.8-17.3 1C49.9 92.3 13 77.4 6.3 74.2c-3.3-1.6-5-2.9-5-4.2V57.3s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9V68c0 1.3-1.5 2.7-4.9 4.5z"></path><path fill="#D82C20" d="M121.8 59.8c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 79.6 13 64.7 6.3 61.5s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 51c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 70.9 13 56 6.3 52.8c-3.3-1.6-5.1-2.9-5.1-4.2V35.9s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c.1 1.3-1.4 2.6-4.8 4.4z"></path><path fill="#D82C20" d="M121.8 38.3C115.1 41.8 80.4 56 73 59.9c-7.4 3.8-11.5 3.8-17.3 1S13 43.3 6.3 40.1s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.8z"></path><path fill="#fff" d="M80.4 26.1l-10.8 1.2-2.5 5.8-3.9-6.5-12.5-1.1 9.3-3.4-2.8-5.2 8.8 3.4 8.2-2.7L72 23zM66.5 54.5l-20.3-8.4 29.1-4.4z"></path><ellipse fill="#fff" cx="38.4" cy="35.4" rx="15.5" ry="6"></ellipse><path fill="#7A0C00" d="M93.3 27.7l17.2 6.8-17.2 6.8z"></path><path fill="#AD2115" d="M74.3 35.3l19-7.6v13.6l-1.9.8z"></path></svg>
+                        <span class="font-bold text-lg">Redis节点1</span>
+                    </div>
+                     <div class="flex items-center gap-4 p-4 border-2 border-gray-300 rounded-lg bg-gray-100">
+                        <svg class="w-16 h-16 text-gray-600" width="70px" viewBox="0 0 128 128"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.9-11.5 3.8-17.3 1S13 98.1 6.3 94.9c-3.3-1.6-5-2.9-5-4.2V78s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c0 1.3-1.5 2.7-4.9 4.4z"></path><path fill="#D82C20" d="M121.8 80.5C115.1 84 80.4 98.2 73 102.1c-7.4 3.9-11.5 3.8-17.3 1-5.8-2.8-42.7-17.7-49.4-20.9C-.3 79-.5 76.8 6 74.3c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 72.5C115.1 76 80.4 90.2 73 94.1c-7.4 3.8-11.5 3.8-17.3 1C49.9 92.3 13 77.4 6.3 74.2c-3.3-1.6-5-2.9-5-4.2V57.3s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9V68c0 1.3-1.5 2.7-4.9 4.5z"></path><path fill="#D82C20" d="M121.8 59.8c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 79.6 13 64.7 6.3 61.5s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 51c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 70.9 13 56 6.3 52.8c-3.3-1.6-5.1-2.9-5.1-4.2V35.9s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c.1 1.3-1.4 2.6-4.8 4.4z"></path><path fill="#D82C20" d="M121.8 38.3C115.1 41.8 80.4 56 73 59.9c-7.4 3.8-11.5 3.8-17.3 1S13 43.3 6.3 40.1s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.8z"></path><path fill="#fff" d="M80.4 26.1l-10.8 1.2-2.5 5.8-3.9-6.5-12.5-1.1 9.3-3.4-2.8-5.2 8.8 3.4 8.2-2.7L72 23zM66.5 54.5l-20.3-8.4 29.1-4.4z"></path><ellipse fill="#fff" cx="38.4" cy="35.4" rx="15.5" ry="6"></ellipse><path fill="#7A0C00" d="M93.3 27.7l17.2 6.8-17.2 6.8z"></path><path fill="#AD2115" d="M74.3 35.3l19-7.6v13.6l-1.9.8z"></path></svg>
+                        <span class="font-bold text-lg">Redis节点2</span>
+                    </div>
+                     <div class="flex items-center gap-4 p-4 border-2 border-gray-300 rounded-lg bg-gray-100">
+                        <svg class="w-16 h-16 text-gray-600" width="70px" viewBox="0 0 128 128"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.9-11.5 3.8-17.3 1S13 98.1 6.3 94.9c-3.3-1.6-5-2.9-5-4.2V78s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c0 1.3-1.5 2.7-4.9 4.4z"></path><path fill="#D82C20" d="M121.8 80.5C115.1 84 80.4 98.2 73 102.1c-7.4 3.9-11.5 3.8-17.3 1-5.8-2.8-42.7-17.7-49.4-20.9C-.3 79-.5 76.8 6 74.3c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 72.5C115.1 76 80.4 90.2 73 94.1c-7.4 3.8-11.5 3.8-17.3 1C49.9 92.3 13 77.4 6.3 74.2c-3.3-1.6-5-2.9-5-4.2V57.3s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9V68c0 1.3-1.5 2.7-4.9 4.5z"></path><path fill="#D82C20" d="M121.8 59.8c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 79.6 13 64.7 6.3 61.5s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 51c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 70.9 13 56 6.3 52.8c-3.3-1.6-5.1-2.9-5.1-4.2V35.9s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c.1 1.3-1.4 2.6-4.8 4.4z"></path><path fill="#D82C20" d="M121.8 38.3C115.1 41.8 80.4 56 73 59.9c-7.4 3.8-11.5 3.8-17.3 1S13 43.3 6.3 40.1s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.8z"></path><path fill="#fff" d="M80.4 26.1l-10.8 1.2-2.5 5.8-3.9-6.5-12.5-1.1 9.3-3.4-2.8-5.2 8.8 3.4 8.2-2.7L72 23zM66.5 54.5l-20.3-8.4 29.1-4.4z"></path><ellipse fill="#fff" cx="38.4" cy="35.4" rx="15.5" ry="6"></ellipse><path fill="#7A0C00" d="M93.3 27.7l17.2 6.8-17.2 6.8z"></path><path fill="#AD2115" d="M74.3 35.3l19-7.6v13.6l-1.9.8z"></path></svg>
+                        <span class="font-bold text-lg">Redis节点3</span>
+                    </div>
+                    <p class="text-center font-bold text-gray-500">Key均匀分散</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 3: Hot Key Problem -->
+    <div class="slide"> 
+         <div class="w-full h-full flex flex-col items-center justify-center"> 
+            <div class="flex justify-around w-full items-center">
+                <!-- Clients -->
+                <div class="flex flex-col gap-8">
+                     <svg class="w-24 h-24 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                     <svg class="w-24 h-24 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                     <svg class="w-24 h-24 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                     <p class="text-center font-bold text-gray-500">海量用户抢购<br/>同一商品</p>
+                </div>
+
+                <!-- Arrows -->
+                <svg class="w-[60%] h-[400px]" viewBox="0 0 800 400">
+                    <!-- Paths -->
+                    <path d="M 50 50 Q 400 150, 700 200" stroke="#cccccc" stroke-width="3" fill="none" class="slow-flow" />
+                    <path d="M 50 200 Q 400 200, 700 200" stroke="#cccccc" stroke-width="3" fill="none" class="slow-flow" />
+                    <path d="M 50 350 Q 400 250, 700 200" stroke="#cccccc" stroke-width="3" fill="none" class="slow-flow" />
+                    <!-- Animated dots -->
+                    <circle r="8" fill="#EA4335"><animateMotion dur="2s" repeatCount="indefinite" path="M 50 50 Q 400 150, 700 200" /></circle>
+                    <circle r="8" fill="#EA4335"><animateMotion dur="2s" repeatCount="indefinite" path="M 50 200 Q 400 200, 700 200" begin="0.2s"/></circle>
+                    <circle r="8" fill="#EA4335"><animateMotion dur="2s" repeatCount="indefinite" path="M 50 350 Q 400 250, 700 200" begin="0.4s"/></circle>
+                </svg>
+
+                <!-- Redis Nodes -->
+                <div class="flex flex-col gap-6 items-center">
+                    <div class="flex items-center gap-4 p-4 border-2 border-gray-300 rounded-lg bg-gray-100 opacity-40">
+                        <svg class="w-16 h-16 text-gray-600" width="70px" viewBox="0 0 128 128"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.9-11.5 3.8-17.3 1S13 98.1 6.3 94.9c-3.3-1.6-5-2.9-5-4.2V78s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c0 1.3-1.5 2.7-4.9 4.4z"></path><path fill="#D82C20" d="M121.8 80.5C115.1 84 80.4 98.2 73 102.1c-7.4 3.9-11.5 3.8-17.3 1-5.8-2.8-42.7-17.7-49.4-20.9C-.3 79-.5 76.8 6 74.3c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 72.5C115.1 76 80.4 90.2 73 94.1c-7.4 3.8-11.5 3.8-17.3 1C49.9 92.3 13 77.4 6.3 74.2c-3.3-1.6-5-2.9-5-4.2V57.3s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9V68c0 1.3-1.5 2.7-4.9 4.5z"></path><path fill="#D82C20" d="M121.8 59.8c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 79.6 13 64.7 6.3 61.5s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 51c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 70.9 13 56 6.3 52.8c-3.3-1.6-5.1-2.9-5.1-4.2V35.9s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c.1 1.3-1.4 2.6-4.8 4.4z"></path><path fill="#D82C20" d="M121.8 38.3C115.1 41.8 80.4 56 73 59.9c-7.4 3.8-11.5 3.8-17.3 1S13 43.3 6.3 40.1s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.8z"></path><path fill="#fff" d="M80.4 26.1l-10.8 1.2-2.5 5.8-3.9-6.5-12.5-1.1 9.3-3.4-2.8-5.2 8.8 3.4 8.2-2.7L72 23zM66.5 54.5l-20.3-8.4 29.1-4.4z"></path><ellipse fill="#fff" cx="38.4" cy="35.4" rx="15.5" ry="6"></ellipse><path fill="#7A0C00" d="M93.3 27.7l17.2 6.8-17.2 6.8z"></path><path fill="#AD2115" d="M74.3 35.3l19-7.6v13.6l-1.9.8z"></path></svg>
+                        <span class="font-bold text-lg">节点1(空闲)</span>
+                    </div>
+                     <div class="relative flex items-center gap-4 p-4 border-2 border-red-500 rounded-lg bg-red-100 animate-pulse">
+                        <div class="absolute -top-4 -right-4 bg-red-500 text-white text-sm font-bold px-2 py-1 rounded-full animate-bounce">
+                          HOT
+                        </div>
+                        <svg class="w-16 h-16 text-gray-600" width="70px" viewBox="0 0 128 128"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.9-11.5 3.8-17.3 1S13 98.1 6.3 94.9c-3.3-1.6-5-2.9-5-4.2V78s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c0 1.3-1.5 2.7-4.9 4.4z"></path><path fill="#D82C20" d="M121.8 80.5C115.1 84 80.4 98.2 73 102.1c-7.4 3.9-11.5 3.8-17.3 1-5.8-2.8-42.7-17.7-49.4-20.9C-.3 79-.5 76.8 6 74.3c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 72.5C115.1 76 80.4 90.2 73 94.1c-7.4 3.8-11.5 3.8-17.3 1C49.9 92.3 13 77.4 6.3 74.2c-3.3-1.6-5-2.9-5-4.2V57.3s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9V68c0 1.3-1.5 2.7-4.9 4.5z"></path><path fill="#D82C20" d="M121.8 59.8c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 79.6 13 64.7 6.3 61.5s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 51c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 70.9 13 56 6.3 52.8c-3.3-1.6-5.1-2.9-5.1-4.2V35.9s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c.1 1.3-1.4 2.6-4.8 4.4z"></path><path fill="#D82C20" d="M121.8 38.3C115.1 41.8 80.4 56 73 59.9c-7.4 3.8-11.5 3.8-17.3 1S13 43.3 6.3 40.1s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.8z"></path><path fill="#fff" d="M80.4 26.1l-10.8 1.2-2.5 5.8-3.9-6.5-12.5-1.1 9.3-3.4-2.8-5.2 8.8 3.4 8.2-2.7L72 23zM66.5 54.5l-20.3-8.4 29.1-4.4z"></path><ellipse fill="#fff" cx="38.4" cy="35.4" rx="15.5" ry="6"></ellipse><path fill="#7A0C00" d="M93.3 27.7l17.2 6.8-17.2 6.8z"></path><path fill="#AD2115" d="M74.3 35.3l19-7.6v13.6l-1.9.8z"></path></svg>
+                        <span class="font-bold text-lg text-red-800">节点2(超载)</span>
+                    </div>
+                     <div class="flex items-center gap-4 p-4 border-2 border-gray-300 rounded-lg bg-gray-100 opacity-40">
+                        <svg class="w-16 h-16 text-gray-600" width="70px" viewBox="0 0 128 128"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.9-11.5 3.8-17.3 1S13 98.1 6.3 94.9c-3.3-1.6-5-2.9-5-4.2V78s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c0 1.3-1.5 2.7-4.9 4.4z"></path><path fill="#D82C20" d="M121.8 80.5C115.1 84 80.4 98.2 73 102.1c-7.4 3.9-11.5 3.8-17.3 1-5.8-2.8-42.7-17.7-49.4-20.9C-.3 79-.5 76.8 6 74.3c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 72.5C115.1 76 80.4 90.2 73 94.1c-7.4 3.8-11.5 3.8-17.3 1C49.9 92.3 13 77.4 6.3 74.2c-3.3-1.6-5-2.9-5-4.2V57.3s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9V68c0 1.3-1.5 2.7-4.9 4.5z"></path><path fill="#D82C20" d="M121.8 59.8c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 79.6 13 64.7 6.3 61.5s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 51c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 70.9 13 56 6.3 52.8c-3.3-1.6-5.1-2.9-5.1-4.2V35.9s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c.1 1.3-1.4 2.6-4.8 4.4z"></path><path fill="#D82C20" d="M121.8 38.3C115.1 41.8 80.4 56 73 59.9c-7.4 3.8-11.5 3.8-17.3 1S13 43.3 6.3 40.1s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.8z"></path><path fill="#fff" d="M80.4 26.1l-10.8 1.2-2.5 5.8-3.9-6.5-12.5-1.1 9.3-3.4-2.8-5.2 8.8 3.4 8.2-2.7L72 23zM66.5 54.5l-20.3-8.4 29.1-4.4z"></path><ellipse fill="#fff" cx="38.4" cy="35.4" rx="15.5" ry="6"></ellipse><path fill="#7A0C00" d="M93.3 27.7l17.2 6.8-17.2 6.8z"></path><path fill="#AD2115" d="M74.3 35.3l19-7.6v13.6l-1.9.8z"></path></svg>
+                        <span class="font-bold text-lg">节点3(空闲)</span>
+                    </div>
+                    <p class="text-center font-bold text-red-500">stock:product:888</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Cache Breakdown -->
+    <div class="slide"> 
+        <div class="w-full h-full flex flex-col items-center justify-center">
+            <h2 class="text-4xl font-bold mb-12 text-gray-700">热点Key失效（节点宕机），海量请求瞬间压垮数据库！</h2>
+            <div class="w-full flex justify-center items-center gap-12">
+                <!-- Step 1: Users -->
+                <div class="flex flex-col items-center gap-4">
+                    <svg class="w-24 h-24 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p class="font-bold text-lg">海量请求</p>
+                </div>
+                        
+                <svg class="w-[70%] h-[400px]" viewBox="0 0 1000 400">
+                    <defs>
+                        <g id="failed-redis">
+                           <path d="M250,150 l100,100 M350,150 l-100,100" stroke="#EF4444" stroke-width="15" stroke-linecap="round"/>
+                           <g opacity="0.3">
+                                <rect x="250" y="150" width="100" height="100" fill="#FECACA" rx="10"/>
+                                <svg x="265" y="165" width="70px" height="70px" viewBox="0 0 130 130"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.9-11.5 3.8-17.3 1S13 98.1 6.3 94.9c-3.3-1.6-5-2.9-5-4.2V78s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c0 1.3-1.5 2.7-4.9 4.4z"></path><path fill="#D82C20" d="M121.8 80.5C115.1 84 80.4 98.2 73 102.1c-7.4 3.9-11.5 3.8-17.3 1-5.8-2.8-42.7-17.7-49.4-20.9C-.3 79-.5 76.8 6 74.3c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 72.5C115.1 76 80.4 90.2 73 94.1c-7.4 3.8-11.5 3.8-17.3 1C49.9 92.3 13 77.4 6.3 74.2c-3.3-1.6-5-2.9-5-4.2V57.3s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9V68c0 1.3-1.5 2.7-4.9 4.5z"></path><path fill="#D82C20" d="M121.8 59.8c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 79.6 13 64.7 6.3 61.5s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 51c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 70.9 13 56 6.3 52.8c-3.3-1.6-5.1-2.9-5.1-4.2V35.9s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c.1 1.3-1.4 2.6-4.8 4.4z"></path><path fill="#D82C20" d="M121.8 38.3C115.1 41.8 80.4 56 73 59.9c-7.4 3.8-11.5 3.8-17.3 1S13 43.3 6.3 40.1s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.8z"></path><path fill="#fff" d="M80.4 26.1l-10.8 1.2-2.5 5.8-3.9-6.5-12.5-1.1 9.3-3.4-2.8-5.2 8.8 3.4 8.2-2.7L72 23zM66.5 54.5l-20.3-8.4 29.1-4.4z"></path><ellipse fill="#fff" cx="38.4" cy="35.4" rx="15.5" ry="6"></ellipse><path fill="#7A0C00" d="M93.3 27.7l17.2 6.8-17.2 6.8z"></path><path fill="#AD2115" d="M74.3 35.3l19-7.6v13.6l-1.9.8z"></path></svg>
+                
+                           </g>
+                        </g>
+                        <path id="path-to-db" d="M 50 200 C 300 100, 500 300, 780 200" stroke="#fca5a5" stroke-width="3" fill="none" class="slow-flow" />
+                    </defs>
+                    
+                    <!-- Flow to DB -->
+                    <use href="#path-to-db" />
+                    <use href="#path-to-db" style="animation-delay: 0.2s;"/>
+                    <use href="#path-to-db" style="animation-delay: 0.4s;"/>
+                    
+                    <circle r="8" fill="#DC2626"><animateMotion dur="2.5s" repeatCount="indefinite" path="M 50 200 C 300 100, 500 300, 780 200" begin="0s"/></circle>
+                    <circle r="8" fill="#DC2626"><animateMotion dur="2.5s" repeatCount="indefinite" path="M 50 200 C 300 100, 500 300, 780 200" begin="0.2s"/></circle>
+                    <circle r="8" fill="#DC2626"><animateMotion dur="2.5s" repeatCount="indefinite" path="M 50 200 C 300 100, 500 300, 780 200" begin="0.4s"/></circle>
+
+                    <!-- Redis and DB nodes -->
+                    <foreignObject x="220" y="100" width="160" height="160">
+                        <div class="text-center font-bold text-red-500">
+                            <p>1. Redis节点</p>
+                            <p>过载宕机</p>
+                        </div>
+                    </foreignObject>
+                    <use href="#failed-redis"/>
+
+                    <foreignObject x="750" y="150" width="150" height="150">
+                        <div class="shake flex flex-col items-center gap-2 p-4 border-4 border-red-500 bg-red-100 rounded-lg">
+                             <svg class="w-16 h-16 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                            <p class="text-lg font-bold text-red-800">数据库</p>
+                        </div>
+                    </foreignObject>
+                     <foreignObject x="720" y="270" width="200" height="100">
+                         <div class="text-center font-bold text-red-500">
+                            <p>2. 流量穿透</p>
+                            <p>3. 数据库崩溃</p>
+                        </div>
+                    </foreignObject>
+
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Key Sharding -->
+    <div class="slide"> 
+        <div class="w-full h-full flex flex-col items-center justify-center">
+            <h2 class="text-4xl font-bold mb-8 text-gray-700">热点分散</h2>
+            <div class="w-full flex justify-between items-center bg-gray-50 p-8 rounded-2xl">
+                 <!-- Logic -->
+                 <div class="flex flex-col items-center w-1/3">
+                    <div class="p-4 bg-red-100 border-2 border-red-300 rounded-lg">
+                        <p class="text-xl font-bold text-red-600">热点Key</p>
+                        <code class="text-lg">stock:product:888</code>
+                    </div>
+                    <svg class="w-12 h-24 text-gray-400" viewBox="0 0 24 48"><path d="M12 2v44m-8-8l8 8 8-8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div class="p-4 bg-blue-100 border-2 border-blue-300 rounded-lg">
+                        <p class="text-xl font-bold text-blue-600">访问方式</p>
+                        <code class="text-lg">key_userId%节点数<br/>key_orderId%节点数<br>...</code>
+                    </div>
+                 </div>
+                 <!-- Arrows -->
+                 <svg class="w-1/3 h-[300px]" viewBox="0 0 300 300">
+                    <path d="M 20 150 C 100 50, 150 50, 250 50" stroke="#cccccc" stroke-width="2" fill="none" class="slow-flow" />
+                    <path d="M 20 150 C 100 150, 150 150, 250 150" stroke="#cccccc" stroke-width="2" fill="none" class="slow-flow" />
+                    <path d="M 20 150 C 100 250, 150 250, 250 250" stroke="#cccccc" stroke-width="2" fill="none" class="slow-flow" />
+                    <circle r="6" fill="#4285F4"><animateMotion dur="2s" repeatCount="indefinite" path="M 20 150 C 100 50, 150 50, 250 50" /></circle>
+                    <circle r="6" fill="#34A853"><animateMotion dur="2s" repeatCount="indefinite" path="M 20 150 C 100 150, 150 150, 250 150" begin="0.3s"/></circle>
+                    <circle r="6" fill="#FBBC05"><animateMotion dur="2s" repeatCount="indefinite" path="M 20 150 C 100 250, 150 250, 250 250" begin="0.6s"/></circle>
+                 </svg>
+                 <!-- Sub-keys -->
+                 <div class="flex flex-col gap-6 items-start w-1/3">
+                    <div class="p-3 bg-green-100 border-2 border-green-300 rounded-lg">
+                        <code class="text-lg">stock:product:888_1 (Node1)</code>
+                    </div>
+                     <div class="p-3 bg-green-100 border-2 border-green-300 rounded-lg">
+                        <code class="text-lg">stock:product:888_2 (Node2)</code>
+                    </div>
+                     <div class="p-3 bg-green-100 border-2 border-green-300 rounded-lg">
+                        <code class="text-lg">...</code>
+                    </div>
+                     <div class="p-3 bg-green-100 border-2 border-green-300 rounded-lg">
+                        <code class="text-lg">stock:product:888_N (Node3)</code>
+                    </div>
+                 </div>
+            </div>
+            <p class="mt-8 text-2xl text-gray-500">优点：简单有效，直接分摊写压力。缺点：突发热点key会措手不及</p>
+        </div>
+    </div>
+    
+    <!-- Slide 6: Local Cache -->
+    <div class="slide"> 
+        <div class="w-full h-full flex flex-col items-center justify-center">
+             <h2 class="text-4xl font-bold mb-16 text-gray-700">应用层本地缓存</h2>
+             <div class="w-full max-w-7xl mx-auto flex justify-between items-center relative bg-gray-50/50 p-8 rounded-2xl">
+                
+                <!-- Animated Lines SVG in the background -->
+                <svg class="absolute w-full h-full top-0 left-0" viewBox="0 0 1200 400">
+                    <!-- Green dashed line for cache hit -->
+                    <path d="M480 200 C 550 120, 650 120, 750 140" stroke="#34D39A" stroke-width="5" fill="none" stroke-dasharray="15 10"/>
+                    <circle r="8" fill="#10B981"><animateMotion dur="2.5s" repeatCount="indefinite" path="M480 200 C 550 120, 650 120, 750 140" /></circle>
+                    
+                    <!-- Yellow dashed line for cache miss -->
+                    <path d="M480 200 C 580 280, 680 280, 950 200" stroke="#FBBF24" stroke-width="5" fill="none" stroke-dasharray="15 10"/>
+                    <circle r="8" fill="#F59E0B"><animateMotion dur="3s" repeatCount="indefinite" path="M480 200 C 580 280, 680 280, 950 200" /></circle>
+                </svg>
+    
+                <!-- 1. Read Request -->
+                <div class="z-10">
+                    <p class="text-2xl font-bold text-gray-600">读请求</p>
+                </div>
+    
+                <!-- 2. Application Server -->
+                <div class="z-10 flex items-center gap-4 p-8 border-4 border-blue-300 rounded-2xl bg-blue-100">
+                     <svg class="w-24 h-24 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                     <div class="text-center">
+                         <p class="text-2xl font-bold text-blue-800">应用服务</p>
+                         <div class="mt-4 p-4 bg-green-200 border-2 border-green-400 rounded-lg">
+                             <p class="text-xl font-bold text-green-800">本地缓存</p>
+                             <p class="text-sm text-green-600">(Caffeine/Guava)</p>
+                         </div>
+                     </div>
+                 </div>
+    
+                <!-- 3. Hit/Miss Percentage -->
+                <div class="z-10 flex flex-col space-y-24">
+                     <div>
+                        <p class="text-2xl font-bold text-green-500">99%</p>
+                        <p class="text-lg text-gray-500">本地命中</p>
+                     </div>
+                     <div>
+                        <p class="text-2xl font-bold text-yellow-500">1%</p>
+                        <p class="text-lg text-gray-500">穿透到Redis</p>
+                     </div>
+                </div>
+    
+                <!-- 4. Redis Server -->
+                 <div class="z-10 flex items-center gap-4 p-4 border-2 border-gray-300 rounded-lg bg-gray-100">
+                    <svg class="w-20 h-20 text-gray-600"  viewBox="40 40 140 140"><g transform="translate(50,50)"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.9-11.5 3.8-17.3 1S13 98.1 6.3 94.9c-3.3-1.6-5-2.9-5-4.2V78s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c0 1.3-1.5 2.7-4.9 4.4z"></path><path fill="#D82C20" d="M121.8 80.5C115.1 84 80.4 98.2 73 102.1c-7.4 3.9-11.5 3.8-17.3 1-5.8-2.8-42.7-17.7-49.4-20.9C-.3 79-.5 76.8 6 74.3c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 72.5C115.1 76 80.4 90.2 73 94.1c-7.4 3.8-11.5 3.8-17.3 1C49.9 92.3 13 77.4 6.3 74.2c-3.3-1.6-5-2.9-5-4.2V57.3s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9V68c0 1.3-1.5 2.7-4.9 4.5z"></path><path fill="#D82C20" d="M121.8 59.8c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 79.6 13 64.7 6.3 61.5s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"></path><path fill="#A41E11" d="M121.8 51c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 70.9 13 56 6.3 52.8c-3.3-1.6-5.1-2.9-5.1-4.2V35.9s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c.1 1.3-1.4 2.6-4.8 4.4z"></path><path fill="#D82C20" d="M121.8 38.3C115.1 41.8 80.4 56 73 59.9c-7.4 3.8-11.5 3.8-17.3 1S13 43.3 6.3 40.1s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.8z"></path><path fill="#fff" d="M80.4 26.1l-10.8 1.2-2.5 5.8-3.9-6.5-12.5-1.1 9.3-3.4-2.8-5.2 8.8 3.4 8.2-2.7L72 23zM66.5 54.5l-20.3-8.4 29.1-4.4z"></path><ellipse fill="#fff" cx="38.4" cy="35.4" rx="15.5" ry="6"></ellipse><path fill="#7A0C00" d="M93.3 27.7l17.2 6.8-17.2 6.8z"></path><path fill="#AD2115" d="M74.3 35.3l19-7.6v13.6l-1.9.8z"></path></g></svg>
+                     <span class="font-bold text-xl">Redis</span>
+                 </div>
+            </div>
+        </div>
+    </div>
+    
+     <!-- Slide 7: Summary -->
+    <div class="slide"> 
+        <div class="w-full h-full flex flex-col items-center justify-center">
+            <h2 class="text-5xl font-bold mb-16 text-gray-700">结合多种策略，构建稳固的秒杀系统</h2>
+            <div class="w-full flex justify-around items-start">
+                <!-- Read Path -->
+                <div class="w-2/5 p-8 bg-green-50 border-2 border-green-200 rounded-2xl text-center">
+                    <h3 class="text-4xl font-bold text-green-700 mb-6">读请求 ➔ 本地缓存</h3>
+                    <svg class="w-full" viewBox="0 0 300 150">
+                        <text x="10" y="75" font-size="20" fill="#34d399">读请求</text>
+                        <rect x="100" y="40" width="180" height="70" rx="10" fill="#d1fae5" />
+                        <text x="135" y="70" font-size="16" font-weight="bold" fill="#065f46">应用服务</text>
+                        <rect x="140" y="80" width="100" height="25" rx="5" fill="#6ee7b7" />
+                        <text x="160" y="97" font-size="12" fill="#047857">本地缓存</v>
+                        <path d="M 70 75 L 100 75" stroke="#34d399" stroke-width="2" fill="none"/>
+                        <circle r="4" fill="#10B981"><animateMotion dur="2s" repeatCount="indefinite" path="M 70 75 L 100 75" /></circle>
+                    </svg>
+                    <p class="mt-4 text-xl text-green-600">利用内存极致性能，拦截99%的查询流量，响应速度最快。</p>
+                </div>
+                <!-- Write Path -->
+                 <div class="w-2/5 p-8 bg-blue-50 border-2 border-blue-200 rounded-2xl text-center">
+                    <h3 class="text-4xl font-bold text-blue-700 mb-6">写请求 ➔ 热点分散</h3>
+                    <svg class="w-full" viewBox="0 0 300 150">
+                         <text x="10" y="75" font-size="20" fill="#60a5fa">写请求</text>
+                         <path d="M 70 75 L 110 75" stroke="#60a5fa" stroke-width="2" fill="none"/>
+                         <path d="M 110 75 L 160 40" stroke="#60a5fa" stroke-width="2" fill="none"/>
+                         <path d="M 110 75 L 160 75" stroke="#60a5fa" stroke-width="2" fill="none"/>
+                         <path d="M 110 75 L 160 110" stroke="#60a5fa" stroke-width="2" fill="none"/>
+                         
+                         <rect x="160" y="30" width="120" height="20" rx="5" fill="#dbeafe" />
+                         <text x="170" y="45" fill="#1e40af">Key_1 (Node1)</text>
+                         <rect x="160" y="65" width="120" height="20" rx="5" fill="#dbeafe" />
+                         <text x="170" y="80" fill="#1e40af">Key_2 (Node2)</text>
+                         <rect x="160" y="100" width="120" height="20" rx="5" fill="#dbeafe" />
+                         <text x="170" y="115" fill="#1e40af">Key_3 (Node3)</text>
+                         <circle r="4" fill="#3B82F6"><animateMotion dur="2s" repeatCount="indefinite" path="M 70 75 L 110 75 L 160 40" /></circle>
+                    </svg>
+                    <p class="mt-4 text-xl text-blue-600">将扣库存等写操作压力分散到不同节点，避免单点过载。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const container = document.getElementById('presentation-container');
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let currentSlide = 0;
+
+    function goToSlide(slideNumber) {
+        if (slideNumber < 0) {
+            slideNumber = 0;
+        }
+        if (slideNumber >= totalSlides) {
+            slideNumber = totalSlides - 1;
+        }
+        currentSlide = slideNumber;
+        container.style.transform = `translateX(-${currentSlide * 100}%)`;
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') {
+            goToSlide(currentSlide + 1);
+        } else if (e.key === 'ArrowLeft') {
+            goToSlide(currentSlide - 1);
+        }
+    });
+</script>
+
+<script>window.parent.postMessage({ action: "ready" }, "*"); 
+ 
+window.console = new Proxy(console, {
+  get(target, prop) {
+    if (['log', 'warn', 'error'].includes(prop)) {
+      return new Proxy(target[prop], {
+        apply(fn, thisArg, args) {
+          fn.apply(thisArg, args);
+          window.parent.postMessage({ action: 'console', 
+            type: prop, 
+            args: args.map((arg) => {
+              try {
+                return JSON.stringify(arg).replace(/^["']|["']$/g, '');
+              } catch (e) {
+                return arg;
+              }
+            }) 
+          }, '*');
+        }
+      });
+    }
+    return target[prop];
+  }
+});
+</script></body>
+</html>

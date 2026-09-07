@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redis 部署模式深度解析</title>
+    <style>
+        :root {
+            --primary-color: #DC382D;
+            --background-color: #f8f9fa;
+            --text-color: #333;
+            --slide-bg-color: #ffffff;
+            --border-color: #dee2e6;
+            --box-bg-color: #e9ecef;
+            --arrow-color: #555;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            height: 100%;
+            overflow: hidden;
+        }
+        .presentation-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        .slide {
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: flex-start; /* Changed: Move content to top */
+            align-items: center;
+            padding: 60px 40px 40px; /* Changed: Adjust padding */
+            box-sizing: border-box;
+            background-color: var(--slide-bg-color);
+            text-align: center;
+            animation: fadeIn 0.8s;
+            position: absolute;
+        }
+        .slide.active {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .slide-title {
+            font-size: 3em;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .slide-subtitle {
+            font-size: 1.2em;
+            color: #555;
+            margin-bottom: 40px; /* Changed: Increased margin */
+            max-width: 80%;
+        }
+        .main-title {
+            font-size: 3.5em;
+            font-weight: bold;
+        }
+        #slide-1 .slide-subtitle {
+            font-size: 1.5em;
+            margin-bottom: 40px;
+        }
+        .content-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: stretch; /* Changed: Stretch children to fill height */
+            gap: 60px; /* Changed: Increased gap */
+            width: 95%; /* Changed: Made wider */
+            flex-grow: 1; /* Changed: Allow wrapper to fill space */
+        }
+        .diagram {
+            flex: 2.5; /* Changed: Made diagram wider */
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            background-color: #fdfdfd;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        .points {
+            flex: 1;
+            text-align: left;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0 20px;
+            background-color: #fdfdfd;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .points h3 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 5px;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .points ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .points li {
+            margin-bottom: 15px;
+            font-size: 1.05em; /* Adjusted font size */
+            line-height: 1.5;
+        }
+        .points li:last-child {
+            margin-bottom: 0;
+        }
+        .points li strong {
+            display: inline-block;
+            width: 60px;
+            text-align: center;
+            margin-right: 10px;
+            border-radius: 5px;
+            padding: 2px 5px;
+            color: white;
+        }
+        .pros strong { background-color: #28a745; }
+        .cons strong { background-color: #dc3545; }
+
+        /* Diagram specific styles */
+        .d-box {
+            background-color: var(--box-bg-color);
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px 25px;
+            font-weight: bold;
+            position: relative;
+            z-index: 10;
+            transform: scale(1.1); /* Slightly larger boxes */
+        }
+        .d-box.master { border-color: #007bff; border-width: 2px; }
+        .d-box.slave { border-color: #17a2b8; }
+        .d-box.sentinel { border-color: #ffc107; padding: 10px 15px; }
+        .d-box.client { background-color: #d1e7dd; }
+        .d-cluster { display: flex; gap: 40px; align-items: center; } /* Increased gap */
+        .d-arrow {
+            position: relative;
+            color: var(--arrow-color);
+            font-size: 2em; /* Larger arrow */
+            font-weight: bold;
+        }
+        .d-arrow::after {
+            content: attr(data-label);
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7em;
+            font-weight: normal;
+            white-space: nowrap;
+            background: #fdfdfd;
+            padding: 0 5px;
+        }
+        .d-arrow.right { transform: rotate(0); } 
+        .d-arrow.down { transform: rotate(90deg); padding: 0 10px; }
+        .d-arrow.up { transform: rotate(-90deg); }
+        
+        .hash-ring {
+            width: 250px;
+            height: 250px;
+            border: 5px solid #007bff;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-style: italic;
+            color: #666;
+        }
+        .ring-node {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--primary-color);
+            border-radius: 50%;
+        }
+        .ring-node:nth-child(1) { transform: rotate(45deg) translate(125px) rotate(-45deg); }
+        .ring-node:nth-child(2) { transform: rotate(135deg) translate(125px) rotate(-135deg); }
+        .ring-node:nth-child(3) { transform: rotate(225deg) translate(125px) rotate(-225deg); }
+        .ring-node:nth-child(4) { transform: rotate(315deg) translate(125px) rotate(-315deg); }
+
+        .slot-bar {
+            width: 100%;
+            display: flex;
+            height: 30px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .slot-segment {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 0.8em;
+        }
+
+        .gossip-lines {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0; left: 0;
+        }
+        .gossip-lines line {
+            stroke: #ffc107;
+            stroke-width: 1.5;
+            stroke-dasharray: 4;
+        }
+        .footer {
+          position: absolute;
+          bottom: 10px;
+          right: 20px;
+          font-size: 0.8em;
+          color: #aaa;
+        }
+        .page-number {
+          position: absolute;
+          bottom: 10px;
+          left: 20px;
+          font-size: 0.9em;
+          color: #aaa;
+          background-color: rgba(0,0,0,0.05);
+          padding: 5px 10px;
+          border-radius: 5px;
+        }
+        #redis-logo {
+            animation: breathe 3s ease-in-out infinite;
+        }
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="presentation-container">
+
+        <!-- Slide 1: Title -->
+        <div class="slide active" id="slide-1" style="justify-content:center;">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" width="200px" viewBox="0 0 128 128"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.9-11.5 3.8-17.3 1S13 98.1 6.3 94.9c-3.3-1.6-5-2.9-5-4.2V78s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c0 1.3-1.5 2.7-4.9 4.4z"/><path fill="#D82C20" d="M121.8 80.5C115.1 84 80.4 98.2 73 102.1c-7.4 3.9-11.5 3.8-17.3 1-5.8-2.8-42.7-17.7-49.4-20.9C-.3 79-.5 76.8 6 74.3c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"/><path fill="#A41E11" d="M121.8 72.5C115.1 76 80.4 90.2 73 94.1c-7.4 3.8-11.5 3.8-17.3 1C49.9 92.3 13 77.4 6.3 74.2c-3.3-1.6-5-2.9-5-4.2V57.3s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9V68c0 1.3-1.5 2.7-4.9 4.5z"/><path fill="#D82C20" d="M121.8 59.8c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 79.6 13 64.7 6.3 61.5s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.9z"/><path fill="#A41E11" d="M121.8 51c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3 1C49.9 70.9 13 56 6.3 52.8c-3.3-1.6-5.1-2.9-5.1-4.2V35.9s48-10.5 55.8-13.2c7.8-2.8 10.4-2.9 17-.5s46.1 9.5 52.6 11.9v12.5c.1 1.3-1.4 2.6-4.8 4.4z"/><path fill="#D82C20" d="M121.8 38.3C115.1 41.8 80.4 56 73 59.9c-7.4 3.8-11.5 3.8-17.3 1S13 43.3 6.3 40.1s-6.8-5.4-.3-7.9c6.5-2.6 43.2-17 51-19.7 7.8-2.8 10.4-2.9 17-.5s41.1 16.1 47.6 18.5c6.7 2.4 6.9 4.4.2 7.8z"/><path fill="#fff" d="M80.4 26.1l-10.8 1.2-2.5 5.8-3.9-6.5-12.5-1.1 9.3-3.4-2.8-5.2 8.8 3.4 8.2-2.7L72 23zM66.5 54.5l-20.3-8.4 29.1-4.4z"/><ellipse fill="#fff" cx="38.4" cy="35.4" rx="15.5" ry="6"/><path fill="#7A0C00" d="M93.3 27.7l17.2 6.8-17.2 6.8z"/><path fill="#AD2115" d="M74.3 35.3l19-7.6v13.6l-1.9.8z"/></svg>
+            <h1 class="slide-title main-title">面试官：聊聊Redis部署模式？</h1>
+            <p class="slide-subtitle">怎么保证高可用？</p>
+        </div>
+
+        <!-- Slide 2: Single Instance -->
+        <div class="slide" id="slide-2">
+            <h2 class="slide-title">1. 单实例模式 (Single Instance)</h2>
+            <p class="slide-subtitle">最简单、最基础的部署方式，一切开始的地方</p>
+            <div class="content-wrapper">
+                <div class="diagram">
+                    <div class="d-cluster">
+                        <div class="d-box client">Client</div>
+                        <div class="d-arrow right" data-label="读/写">➔</div>
+                        <div class="d-box">Redis Server<br>(Single Process)</div>
+                    </div>
+                </div>
+                <div class="points">
+                    <h3>要点</h3>
+                    <ul>
+                        <li class="pros"><strong>优点</strong>简单（部署、配置、维护）。</li>
+                        <li class="cons"><strong>缺点</strong>无高可用，服务器宕机则服务完全不可用。</li>
+                        <li class="cons"><strong>缺点</strong>内存大小受限于单个服务器。</li>
+                        <li class="cons"><strong>风险</strong>数据有丢失风险（RDB/AOF也无法完全避免）。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Master-Slave + Sentinel -->
+        <div class="slide" id="slide-3">
+            <h2 class="slide-title">2. 主从 + 哨兵 (Master-Slave + Sentinel)</h2>
+            <p class="slide-subtitle">高可用性的基石，实现自动故障转移</p>
+            <div class="content-wrapper">
+                <div class="diagram" style="position: relative; width: 100%; overflow: hidden;">
+                    <!-- Nodes -->
+                    <div class="d-box client" style="position: absolute; top: 50%; left: 40px; transform: translateY(-50%);">Client</div>
+                    <div class="d-box master" style="position: absolute; top: 25%; left: 50%; transform: translateX(-50%);">Master</div>
+                    <div class="d-box slave" style="position: absolute; top: 75%; left: 40%; transform: translate(-50%, -50%);">Slave 1</div>
+                    <div class="d-box slave" style="position: absolute; top: 75%; left: 60%; transform: translate(-50%, -50%);">Slave 2</div>
+                    
+                    <div style="position: absolute; top: 50%; right: 40px; transform: translateY(-50%); text-align: center;">
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <div class="d-box sentinel">S1</div>
+                            <div class="d-box sentinel">S2</div>
+                            <div class="d-box sentinel">S3</div>
+                        </div>
+                        <div style="font-size: 0.9em; margin-top: 10px; color: #666;">Sentinel<br>Cluster</div>
+                    </div>
+
+                    <!-- SVG for lines and arrows -->
+                    <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;">
+                        <defs>
+                            <marker id="arrowhead-thick" markerWidth="12" markerHeight="8" refX="0" refY="4" orient="auto">
+                                <polygon points="0 0, 12 4, 0 8" fill="#555" />
+                            </marker>
+                            <marker id="arrowhead-dashed-thick" markerWidth="12" markerHeight="8" refX="0" refY="4" orient="auto">
+                                <polygon points="0 0, 12 4, 0 8" fill="#ffc107" />
+                            </marker>
+                        </defs>
+                        <!-- Client to Master (Write) -->
+                        <line x1="150" y1="50%" x2="calc(50% - 70px)" y2="30%" stroke="#007bff" stroke-width="2.5" marker-end="url(#arrowhead-thick)" />
+                        <text x="30%" y="42%" fill="#007bff" font-size="14" font-weight="bold">写</text>
+                        
+                        <!-- Client to Slaves (Read) -->
+                        <line x1="150" y1="50%" x2="calc(40% - 60px)" y2="70%" stroke="#17a2b8" stroke-width="2.5" marker-end="url(#arrowhead-thick)" />
+                        <text x="30%" y="65%" fill="#17a2b8" font-size="14" font-weight="bold">读</text>
+
+                        <!-- Master to Slaves (Replication) -->
+                        <line x1="50%" y1="calc(25% + 50px)" x2="40%" y2="calc(75% - 40px)" stroke="#f56c6c" stroke-width="2.5" marker-end="url(#arrowhead-thick)" />
+                        <line x1="50%" y1="calc(25% + 50px)" x2="60%" y2="calc(75% - 40px)" stroke="#f56c6c" stroke-width="2.5" marker-end="url(#arrowhead-thick)" />
+                        <text x="48%" y="55%" fill="#f56c6c" font-size="14" font-weight="bold" transform="rotate(90, 350, 225)">同步</text>
+                        
+                        <!-- Sentinels Monitoring -->
+                        <line x1="calc(100% - 110px)" y1="calc(50% - 60px)" x2="calc(50% + 70px)" y2="30%" stroke="#ffc107" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead-dashed-thick)"/>
+                        <line x1="calc(100% - 110px)" y1="50%" x2="calc(40% + 70px)" y2="calc(75% - 15px)" stroke="#ffc107" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead-dashed-thick)"/>
+                         <text x="70%" y="40%" fill="#ffc107" font-size="14" font-weight="bold">监控</text>
+                    </svg>
+                </div>
+                <div class="points">
+                    <h3>要点</h3>
+                    <ul>
+                        <li class="pros"><strong>优点</strong>通过数据备份和自动主从切换，保障高可用。</li>
+                        <li class="pros"><strong>优点</strong>读写分离，从节点可分担读请求，提升性能。</li>
+                        <li class="cons"><strong>缺点</strong>写操作仍然存在单点瓶颈。</li>
+                        <li class="cons"><strong>缺点</strong>无法解决海量数据存储问题。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Redis Cluster -->
+        <div class="slide" id="slide-4">
+            <h2 class="slide-title">3. Redis Cluster</h2>
+            <p class="slide-subtitle">官方推荐的分布式解决方案，去中心化设计</p>
+            <div class="content-wrapper">
+                <div class="diagram" style="flex-direction: column; justify-content: space-around; position: relative;">
+                    <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 10px;">客户端可连接任意节点，自动路由</div>
+                    <div class="d-box client" style="margin-bottom: 20px;">Client</div>
+                    <div style="display: flex; justify-content: space-around; width: 100%; position: relative; z-index: 10;">
+                        <div class="d-box master">M1<br>(0-5460)</div>
+                        <div class="d-box master">M2<br>(5461-10922)</div>
+                        <div class="d-box master">M3<br>(10923-16383)</div>
+                    </div>
+                    <svg class="gossip-lines" z-index="5">
+                        <line x1="25%" y1="60%" x2="50%" y2="60%" />
+                        <line x1="50%" y1="60%" x2="75%" y2="60%" />
+                        <line x1="25%" y1="60%" x2="75%" y2="60%" style="transform: translateY(-5px);" />
+                    </svg>
+                    <div style="font-style: italic; color: #ffc107; margin-top: 10px;">Gossip Protocol for node communication</div>
+                    <div class="slot-bar">
+                        <div class="slot-segment" style="background-color: #007bff;">Slots 0-5460</div>
+                        <div class="slot-segment" style="background-color: #28a745;">Slots 5461-10922</div>
+                        <div class="slot-segment" style="background-color: #dc3545;">Slots 10923-16383</div>
+                    </div>
+                </div>
+                <div class="points">
+                    <h3>要点</h3>
+                    <ul>
+                        <li class="pros"><strong>优点</strong>去中心化，无代理瓶颈，官方方案。</li>
+                        <li class="pros"><strong>优点</strong>数据按slot分布，扩缩容方便，高可用。</li>
+                        <li class="cons"><strong>缺点</strong>Gossip协议有一定网络开销。</li>
+                        <li class="cons"><strong>缺点</strong>批量操作（如mget/mset）在跨slot时支持有限。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW Slide 5: Cluster Internals -->
+        <div class="slide" id="slide-5">
+            <h2 class="slide-title">4. Cluster 核心机制</h2>
+            <p class="slide-subtitle">深入理解去中心化 & 告别哨兵的原理</p>
+            <div class="content-wrapper">
+                <div class="diagram" style="flex-direction: column; justify-content: space-around; gap: 30px;">
+                    <!-- Top Part: MOVED Redirection -->
+                    <div style="width:100%; text-align:center; border: 2px dashed var(--border-color); border-radius: 8px; padding: 15px;">
+                        <h4 style="margin:0 0 15px 0; color: var(--primary-color);">客户端路由: MOVED重定向</h4>
+                        <div style="display: flex; justify-content: space-around; align-items: center; width: 100%;">
+                            <div class="d-box client">Client</div>
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <div class="d-arrow right" data-label="1. SET key (slot:8888)"></div>
+                                <div style="font-size: 0.9em; margin-top: 5px;">(本地缓存: slot 8888 -> M1)</div>
+                            </div>
+                            <div class="d-box master">M1</div>
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <div class="d-arrow left" data-label="2. MOVED 8888 M2_IP:Port"></div>
+                                <div style="font-size: 0.9em; margin-top: 5px; color: #dc3545;">(槽已迁移)</div>
+                            </div>
+                            <div class="d-box master">M2</div>
+                        </div>
+                         <div style="margin-top: 15px; font-weight: bold; font-size: 1.1em;">
+                            Client ➔ <span style="text-decoration: line-through;">M1</span> ➔ M2 (并更新本地路由缓存)
+                        </div>
+                    </div>
+
+                    <!-- Bottom Part: Failure Detection -->
+                    <div style="width:100%; text-align:center; border: 2px dashed var(--border-color); border-radius: 8px; padding: 15px;">
+                        <h4 style="margin:0 0 15px 0; color: var(--primary-color);">故障转移: Gossip协议 & 选举</h4>
+                         <div style="display: flex; justify-content: space-around; align-items: center; width: 100%;">
+                             <div class="d-box master" style="border-color: #dc3545; text-decoration: line-through;">M1 (Fail)</div>
+                             <div class="d-box slave">S1 (Slave of M1)</div>
+                             <div class="d-box master">M2</div>
+                             <div class="d-box master">M3</div>
+                         </div>
+                         <div style="margin-top: 15px; font-style: italic; color: #666; line-height: 1.5;">
+                             1. M2通过Gossip发现M1疑似下线 (PFAIL).<br/>
+                             2. M2向其他节点广播此信息，收集到足够确认后将M1标记为下线 (FAIL).<br/>
+                             3. S1发起选举，获得多数Master投票后，晋升为新Master.
+                         </div>
+                    </div>
+                </div>
+                <div class="points">
+                    <h3>核心机制</h3>
+                    <ul>
+                        <li><strong>去中心化路由</strong>
+                            <p style="font-size: 0.9em; margin: 5px 0 0 0; padding-left: 10px; border-left: 2px solid #eee;">客户端可向任意节点发请求。若目标Slot不在此节点，则收到`MOVED`重定向响应，告知正确节点地址。客户端会缓存该映射，实现自动路由。</p>
+                        </li>
+                        <li><strong>Gossip协议</strong>
+                            <p style="font-size: 0.9em; margin: 5px 0 0 0; padding-left: 10px; border-left: 2px solid #eee;">节点间持续交换PING/PONG包，携带各自状态和对其他节点状态的认知。这种“闲聊”机制使集群状态信息快速传播，实现最终一致。</p>
+                        </li>
+                        <li><strong>故障发现与转移</strong>
+                            <p style="font-size: 0.9em; margin: 5px 0 0 0; padding-left: 10px; border-left: 2px solid #eee;">节点通过Gossip发现某节点失联(PFAIL)，当多数主节点都认为其失联时，状态变为FAIL。其从节点将发起选举，获得多数选票后晋升为新的主节点，接管Slot。</p>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div> 
+         
+
+        <!-- Slide 7: Summary -->
+        <div class="slide" id="slide-7" style="justify-content:center;">
+            <h2 class="slide-title">总结：如何选择？</h2>
+            <p class="slide-subtitle">没有最好的架构，只有最适合的场景</p>
+            <table style="width: 90%; border-collapse: collapse; font-size: 1.1em;">
+                <thead style="background-color: var(--primary-color); color: white;">
+                    <tr>
+                        <th style="padding: 15px;">架构模式</th>
+                        <th style="padding: 15px;">高可用</th>
+                        <th style="padding: 15px;">可扩展性</th> 
+                        <th style="padding: 15px;">适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background-color: #fff;">
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">单实例</td>
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">无</td>
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">差</td> 
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">开发测试、小型应用</td>
+                    </tr>
+                    <tr style="background-color: #f8f9fa;">
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">主从+哨兵</td>
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">高</td>
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">读扩展</td> 
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">数据量不大、读多写少</td>
+                    </tr>
+                    <tr style="background-color: #fff;">
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">Redis Cluster</td>
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">高</td>
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">高</td> 
+                        <td style="border: 1px solid var(--border-color); padding: 12px;">海量数据、高并发、官方推荐</td>
+                    </tr> 
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Navigation and Footer -->
+        <div class="footer">Redis Deployment Architectures</div>
+        <div class="page-number"></div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+        const pageNumberEl = document.querySelector('.page-number');
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === index);
+            });
+            if(pageNumberEl) {
+                pageNumberEl.textContent = `${index + 1} / ${slides.length}`;
+            }
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                nextSlide();
+            } else if (event.key === 'ArrowLeft') {
+                prevSlide();
+            }
+        });
+
+        // Initialize first slide
+        showSlide(currentSlide);
+    });
+    </script>
+</body>
+</html>

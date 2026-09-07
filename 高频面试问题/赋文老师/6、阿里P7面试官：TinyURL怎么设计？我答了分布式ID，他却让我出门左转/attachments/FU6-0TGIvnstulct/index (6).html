@@ -1,0 +1,317 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>【专家版】短链接系统设计讲稿</title>
+<style>
+  /* --- 基础和科技感背景 --- */
+  :root {
+    --bg-color: #0c111d;
+    --text-primary: #e0e6f0;
+    --text-secondary: #8a99b5;
+    --accent-blue: #3b82f6;
+    --accent-green: #22c55e;
+    --accent-red: #ef4444;
+    --accent-yellow: #f59e0b;
+    --border-color: #374151;
+  }
+  body, html {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    display: flex; justify-content: center; align-items: center;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0),
+      radial-gradient(circle at 25px 25px, rgba(255,255,255,0.05) 1px, transparent 0);
+    background-size: 50px 50px;
+  }
+
+  /* --- 幻灯片容器 --- */
+  #presentation {
+    width: 90%; height: 90%; max-width: 1200px; max-height: 800px;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    position: relative;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    background-color: rgba(12, 17, 29, 0.7);
+  }
+
+  /* --- 幻灯片通用 --- */
+  .slide {
+    width: 100%; height: 100%;
+    display: none; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center;
+    padding: 30px; box-sizing: border-box;
+    animation: fadeIn 0.6s ease-out;
+  }
+  .slide.active { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* --- 导航 --- */
+  .navigation {
+    position: absolute; bottom: 20px; left: 50%;
+    transform: translateX(-50%); display: flex; align-items: center; gap: 15px;
+  }
+  .nav-btn {
+    background: none; border: 1px solid var(--border-color); color: var(--text-secondary);
+    padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.3s;
+  }
+  .nav-btn:hover { background-color: var(--border-color); color: var(--text-primary); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  #page-counter { color: #6b7280; font-size: 16px; min-width: 60px; text-align: center; }
+  
+  /* --- 讲稿内容元素 --- */
+  .title { font-size: 52px; color: var(--text-primary); margin: 0; text-shadow: 0 0 10px var(--accent-blue); }
+  .subtitle { font-size: 28px; color: var(--text-secondary); margin-top: 15px; font-weight: 300;}
+  .whiteboard {
+    background-color: rgba(0,0,0,0.2);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 30px;
+    width: 85%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  .diagram-box { font-family: 'SF Mono', 'Courier New', monospace; font-size: 22px; line-height: 1.6; }
+  .arrow { font-size: 36px; color: var(--accent-blue); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+  .icon { font-size: 60px; line-height: 1; }
+  .red { color: var(--accent-red); }
+  .green { color: var(--accent-green); }
+  .yellow { color: var(--accent-yellow); }
+  .blue { color: var(--accent-blue); }
+
+  /* 动画 & 特殊布局 */
+  .two-panel { display: flex; flex-direction: row; justify-content: space-around; width: 100%; gap: 20px; }
+  .panel { flex: 1; border: 1px dashed var(--border-color); border-radius: 8px; padding: 20px; }
+  .stagger-in > * { animation: fadeIn 0.5s ease-out both; }
+  .stagger-in > *:nth-child(1) { animation-delay: 0.1s; }
+  .stagger-in > *:nth-child(2) { animation-delay: 0.3s; }
+  .stagger-in > *:nth-child(3) { animation-delay: 0.5s; }
+  .code-block {
+    background-color: #020617; color: #a5b4fc; font-size: 16px;
+    padding: 15px; border-radius: 8px; text-align: left; white-space: pre; width: 80%;
+  }
+
+  /* 最终架构图专用 */
+  .arch-diagram { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; font-size: 14px; width: 95%; text-align: center; }
+  .arch-box { border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; min-height: 50px; display: flex; justify-content: center; align-items: center; }
+  .arch-arrow { display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--text-secondary); }
+  .arch-box.lb { border-color: var(--accent-blue); box-shadow: 0 0 10px var(--accent-blue); grid-column: 1 / -1; }
+  .arch-box.app { border-color: var(--accent-yellow); }
+  .arch-box.cache { border-color: var(--accent-green); }
+  .arch-box.db-master { border-color: var(--accent-red); }
+  .arch-box.db-slave { border-color: var(--accent-blue); }
+
+</style>
+</head>
+<body>
+
+<div id="presentation">
+  <!-- 1. 开场 -->
+  <div class="slide active">
+    <h1 class="title">设计一个【短链接】系统</h1>
+    <p class="subtitle">面试官想考察的，绝不止是代码！</p>
+  </div>
+
+  <!-- 2. 问题拆解 -->
+  <div class="slide">
+    <h2 class="subtitle" style="margin-bottom: 30px;">表面需求 vs 真实考验</h2>
+    <div class="whiteboard two-panel">
+      <div class="panel">
+        <div style="font-size: 24px;">表面：长短转换</div>
+        <div class="diagram-box" style="margin-top: 20px;">
+          <span style="word-break: break-all; font-size: 16px;">https://a-very-long-url...</span>
+          <div class="arrow">⬇️</div>
+          <span>http://t.cn/XyZ123</span>
+        </div>
+      </div>
+      <div class="panel stagger-in">
+        <div style="font-size: 24px;">内核：灵魂三问</div>
+        <div style="margin-top: 20px; font-size: 20px;">🆔 <span class="blue">唯一性 & 扩展性</span></div>
+        <div style="margin-top: 15px; font-size: 20px;">⚡️ <span class="yellow">高性能 & 高并发</span></div>
+        <div style="margin-top: 15px; font-size: 20px;">🛡️ <span class="green">高可用 & 不宕机</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 唯一性方案对比 -->
+  <div class="slide">
+    <h2 class="subtitle">第一关：ID从哪来？</h2>
+    <div class="whiteboard two-panel">
+      <div class="panel">
+        <h3><span class="red">❌ 错误示范：哈希碰撞</span></h3>
+        <div class="diagram-box">
+          <span>URL 1 ↘️</span><br>
+          <span class="red" style="font-size: 28px; font-weight: bold;">HASH-XYZ 💥</span><br>
+          <span>URL 2 ↗️</span>
+        </div>
+        <p style="font-size:16px; color:var(--text-secondary)">亿级数据下，碰撞是必然！</p>
+      </div>
+      <div class="panel">
+        <h3><span class="green">✅ 正确解法：全局唯一ID</span></h3>
+        <div class="diagram-box">
+          <span>ID: 87654321 ➡️ [Base62] ➡️ "Abc12D"</span><br>
+          <span>ID: 87654322 ➡️ [Base62] ➡️ "Abc12E"</span>
+        </div>
+        <p style="font-size:16px; color:var(--text-secondary)">绝对唯一，永不重复！</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 全局ID方案对比 -->
+  <div class="slide">
+    <h2 class="subtitle">如何生成【全局唯一ID】？</h2>
+    <div class="whiteboard two-panel">
+      <div class="panel">
+        <h3><span class="red">❌ 单点数据库</span></h3>
+        <div class="diagram-box">
+          <span>APP 1 ↘️</span><br>
+          <span>APP 2 → [ <span class="red">DB 💥</span> ]</span><br>
+          <span>APP 3 ↗️</span>
+        </div>
+        <p style="font-size:16px; color:var(--text-secondary)">性能瓶颈，可用性灾难！</p>
+      </div>
+      <div class="panel">
+        <h3><span class="green">✅ 雪花算法 (Snowflake)</span></h3>
+        <div class="diagram-box">
+          <span class="green">[ 时间戳 | 机器ID | 序列号 ]</span><br>
+          <span>APP 1 → ID 1</span><br>
+          <span>APP 2 → ID 2</span>
+        </div>
+        <p style="font-size:16px; color:var(--text-secondary)">分布式生成，各自为战！</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 5. 核心代码 -->
+  <div class="slide">
+    <h2 class="subtitle">能写出这段代码，面试官会给你加分</h2>
+      <div class="code-block">
+<span style="color: #818cf8;">public static String</span> <span style="color: #c4b5fd;">toBase62</span>(<span style="color: #a5b4fc;">long</span> id) {
+  StringBuilder sb = <span style="color: #818cf8;">new</span> StringBuilder();
+  <span style="color: #818cf8;">while</span> (id > 0) {
+    <span style="color: #fde047;">// 核心：取余 + 查表</span>
+    sb.append(CHARS[(<span style="color: #a5b4fc;">int</span>) (id % 62)]);
+    id /= 62;
+  }
+  <span style="color: #818cf8;">return</span> sb.reverse().toString();
+}
+      </div>
+  </div>
+
+  <!-- 6. 性能核心：缓存 -->
+  <div class="slide">
+    <h2 class="subtitle">第二关：如何扛住【高并发读】？</h2>
+    <div class="whiteboard">
+        <div class="icon">🧠</div>
+        <h2>核心思想：引入缓存（Redis）</h2>
+        <div class="diagram-box" style="font-size: 20px;">
+            <span>请求 ➡️ [ <span class="green">Redis?</span> ] ─╮</span><br>
+            <span>    <span class="green">命中 ✅ (99%)</span> ───╯</span><br>
+            <span>    <span class="red">未命中 ❌</span> ─→ [ DB ] ─→ 写回Redis</span>
+        </div>
+    </div>
+  </div>
+
+  <!-- 7. 缓存穿透问题 -->
+  <div class="slide">
+    <h2 class="subtitle">进阶考验：如何防止【缓存穿透】？</h2>
+    <div class="whiteboard">
+      <div class="icon">👿</div>
+      <h3>黑客用不存在的Key疯狂攻击</h3>
+      <div class="diagram-box red">
+        <span>请求 ➡️ [ Redis (Miss) ] ➡️ [ DB (Miss) ]</span><br>
+        <span>请求 ➡️ [ Redis (Miss) ] ➡️ [ DB (Miss) ]</span><br>
+        <span>请求 ➡️ [ Redis (Miss) ] ➡️ [ DB (Miss) ] ➡️ <span style="font-size: 30px;">🔥</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. 缓存穿透解决 -->
+  <div class="slide">
+    <h2 class="subtitle">解决方案：【缓存空值】</h2>
+    <div class="whiteboard">
+      <div class="icon">🛡️</div>
+      <h3>查不到？把“空”也缓存起来！</h3>
+      <div class="diagram-box">
+        <span>首次请求 ➡️ DB(Miss) ➡️ 在Redis缓存 <span class="yellow">"NULL"</span></span><br>
+        <br>
+        <span>后续攻击 ➡️ [ Redis (<span class="yellow">Hit "NULL"</span>) ] ➡️ <span class="green">直接返回 🛑</span></span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 9. 最终架构图 -->
+  <div class="slide">
+    <h2 class="subtitle">最终答案：完整高可用架构</h2>
+    <div class="whiteboard arch-diagram">
+      <div class="arch-box lb">负载均衡 (Nginx)</div>
+      <div class="arch-arrow">⬇️</div><div class="arch-arrow">⬇️</div><div class="arch-arrow">⬇️</div>
+      <div class="arch-box app">服务A</div>
+      <div class="arch-box app">服务B</div>
+      <div class="arch-box app">服务C</div>
+      <div class="arch-arrow">↘️</div><div class="arch-arrow">⬇️</div><div class="arch-arrow">↙️</div>
+      <div class="arch-box cache" style="grid-column: 1 / -1;">Redis 缓存集群 (读/防穿透)</div>
+      <div class="arch-arrow" style="grid-column: 1 / -1;">⬇️ <span style="font-size: 12px; margin-left: 5px;">(未命中)</span></div>
+      <div class="arch-box db-master" style="grid-column: 1 / 2;">DB 主库 (写)</div>
+      <div class="arch-arrow" style="grid-column: 2 / 3;">↔️ <span style="font-size: 12px;">同步</span></div>
+      <div class="arch-box db-slave" style="grid-column: 3 / 4;">DB 从库 (读)</div>
+    </div>
+  </div>
+
+  <!-- 10. 总结 -->
+  <div class="slide">
+    <h1 class="title">你学会了吗？</h1>
+    <div class="whiteboard stagger-in" style="width: 70%;">
+      <p><span class="green">✅ 雪花算法</span>：解决分布式唯一ID</p>
+      <p><span class="green">✅ Redis缓存</span>：扛住高并发读</p>
+      <p><span class="green">✅ 缓存空值</span>：防止缓存穿透</p>
+      <p><span class="green">✅ 读写分离</span>：数据库高可用</p>
+    </div>
+    <p class="subtitle" style="margin-top: 40px;">点赞收藏，面试不慌！</p>
+  </div>
+
+  <!-- 导航 -->
+  <div class="navigation">
+    <button id="prev-btn" class="nav-btn">◀ 上一页</button>
+    <div id="page-counter">1 / 10</div>
+    <button id="next-btn" class="nav-btn">下一页 ▶</button>
+  </div>
+
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const pageCounter = document.getElementById('page-counter');
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  let currentSlide = 0;
+  const totalSlides = slides.length;
+
+  function updateView() {
+    slides.forEach((slide, index) => slide.classList.toggle('active', index === currentSlide));
+    pageCounter.textContent = `${currentSlide + 1} / ${totalSlides}`;
+    prevBtn.disabled = currentSlide === 0;
+    nextBtn.disabled = currentSlide === totalSlides - 1;
+  }
+
+  prevBtn.addEventListener('click', () => { if (currentSlide > 0) { currentSlide--; updateView(); } });
+  nextBtn.addEventListener('click', () => { if (currentSlide < totalSlides - 1) { currentSlide++; updateView(); } });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') prevBtn.click();
+    else if (e.key === 'ArrowRight') nextBtn.click();
+  });
+  updateView();
+</script>
+
+</body>
+</html>

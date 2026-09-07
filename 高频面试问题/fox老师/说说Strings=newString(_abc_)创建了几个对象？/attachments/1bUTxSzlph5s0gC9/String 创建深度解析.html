@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>解密 String s = new String("abc")</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #111827; /* bg-gray-900 */
+            color: #d1d5db; /* text-gray-300 */
+        }
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background-color: rgba(17, 24, 39, 0.85); /* bg-gray-900 with opacity */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .section-card {
+            background-color: #1f2937; /* bg-gray-800 */
+            border: 1px solid #374151; /* border-gray-700 */
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .memory-area {
+            border: 2px dashed #4b5563; /* border-gray-600 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            min-height: 200px;
+        }
+        .object-box {
+            background-color: #374151; /* bg-gray-700 */
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            border: 1px solid #4b5563; /* border-gray-600 */
+            position: relative;
+        }
+         .object-box.heap-obj { border-color: #34d399; /* border-emerald-400 */ }
+         .object-box.permgen-obj { border-color: #fbbf24; /* border-amber-400 */ }
+         .object-box.scp-obj { border-color: #60a5fa; /* border-blue-400 */ }
+
+        .arrow {
+            position: absolute;
+            font-size: 2rem;
+            color: #9ca3af; /* text-gray-400 */
+        }
+        .highlight {
+            color: #f87171; /* text-red-400 */
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="font-sans">
+
+    <header class="sticky-header py-4 px-8 shadow-lg border-b border-gray-700">
+        <h1 class="text-3xl font-bold text-center text-sky-400">
+            解密 `String s = new String("abc")`：它到底创建了几个对象？
+        </h1>
+        <div class="text-center text-gray-400 mt-2">
+            <p class="text-lg">面试官的经典陷阱：对象数量与存储位置的演变</p>
+            <p class="text-md font-mono">关键转折：永久代 vs. 堆 | 共享 vs. 复制</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-8 max-w-6xl">
+
+        <!-- JDK 6 and before -->
+        <section id="jdk6" class="section-card">
+            <h2 class="text-2xl font-bold mb-4 text-amber-400">1. JDK 6 及之前：永久代（PermGen）的时代</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Case 1: Constant pool empty -->
+                <div>
+                    <h3 class="text-xl font-semibold mb-3 text-white">场景一：常量池中没有 "abc"</h3>
+                    <p class="mb-4">首次执行，会创建 <span class="text-2xl font-bold text-red-500">2</span> 个对象。</p>
+                    <div class="flex gap-4">
+                        <div class="w-1/2 memory-area">
+                            <h4 class="text-center font-bold text-amber-300">永久代 (PermGen)</h4>
+                            <div class="mt-4 object-box permgen-obj">
+                                <div class="text-xs absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-400 text-black px-2 rounded-full">Step 1</div>
+                                "abc" 对象<br>(在常量池中)
+                                <div class="text-xs text-gray-400 mt-1">char[] value</div>
+                            </div>
+                        </div>
+                        <div class="w-1/2 memory-area">
+                            <h4 class="text-center font-bold text-emerald-300">Java 堆 (Heap)</h4>
+                            <div class="mt-4 object-box heap-obj">
+                                <div class="text-xs absolute -top-2 left-1/2 -translate-x-1/2 bg-emerald-400 text-black px-2 rounded-full">Step 2</div>
+                                new String 对象
+                                <div class="text-xs text-gray-400 mt-1">char[] value (引用)</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-sm">➡️ <span class="font-bold">流程</span>：先在永久代的字符串常量池创建 "abc" 对象，然后在堆中创建 `new String` 对象，该对象内部的 `value` 数组<span class="highlight">引用</span>常量池中对象的 `value` 数组。</p>
+                </div>
+                <!-- Case 2: Constant pool has "abc" -->
+                <div>
+                    <h3 class="text-xl font-semibold mb-3 text-white">场景二：常量池中已有 "abc"</h3>
+                    <p class="mb-4">后续执行，仅创建 <span class="text-2xl font-bold text-green-500">1</span> 个对象。</p>
+                    <div class="flex gap-4">
+                        <div class="w-1/2 memory-area flex items-center justify-center">
+                            <h4 class="text-center font-bold text-amber-300">永久代 (PermGen)<br/><span class="text-sm text-gray-400">(已有"abc")</span></h4>
+                        </div>
+                        <div class="w-1/2 memory-area">
+                            <h4 class="text-center font-bold text-emerald-300">Java 堆 (Heap)</h4>
+                            <div class="mt-4 object-box heap-obj">
+                                <div class="text-xs absolute -top-2 left-1/2 -translate-x-1/2 bg-emerald-400 text-black px-2 rounded-full">Only Step</div>
+                                new String 对象
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-sm">➡️ <span class="font-bold">流程</span>：因为常量池中已有 "abc"，所以只会在堆中创建 `new String` 对象。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- JDK 7 & 8 -->
+        <section id="jdk7-8" class="section-card">
+            <h2 class="text-2xl font-bold mb-4 text-blue-400">2. JDK 7 / 8：常量池移入堆</h2>
+            <p class="text-sm mb-4 text-gray-400">最大的变化：字符串常量池（SCP）从永久代移到了Java堆内部。</p>
+            <div class="memory-area">
+                <h4 class="text-center font-bold text-emerald-300">Java 堆 (Heap)</h4>
+                <div class="grid md:grid-cols-2 gap-8 mt-4">
+                    <!-- Case 1 -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 text-white">场景一：常量池中没有 "abc" (创建 <span class="text-xl font-bold text-red-500">2</span> 个对象)</h3>
+                        <div class="flex gap-4">
+                            <div class="w-1/2 border border-dashed border-blue-400 p-2 rounded">
+                                <h5 class="text-center text-blue-300 text-sm">常量池区域</h5>
+                                <div class="mt-2 object-box scp-obj">"abc" 对象</div>
+                            </div>
+                            <div class="w-1/2 border border-dashed border-gray-500 p-2 rounded">
+                                <h5 class="text-center text-gray-400 text-sm">普通对象区</h5>
+                                <div class="mt-2 object-box heap-obj">new String 对象</div>
+                            </div>
+                        </div>
+                        <p class="mt-4 text-sm">➡️ <span class="font-bold">流程</span>：两个对象都在堆里。一个在常量池区域，一个在普通区域。依然<span class="highlight">共享</span>底层数组。</p>
+                    </div>
+                    <!-- Case 2 -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 text-white">场景二：常量池中已有 "abc" (创建 <span class="text-xl font-bold text-green-500">1</span> 个对象)</h3>
+                        <div class="flex gap-4">
+                            <div class="w-1/2 border border-dashed border-blue-400 p-2 rounded flex items-center justify-center">
+                                <h5 class="text-center text-blue-300 text-sm">常量池区域<br/><span class="text-xs text-gray-400">(已有"abc")</span></h5>
+                            </div>
+                            <div class="w-1/2 border border-dashed border-gray-500 p-2 rounded">
+                                <h5 class="text-center text-gray-400 text-sm">普通对象区</h5>
+                                <div class="mt-2 object-box heap-obj">new String 对象</div>
+                            </div>
+                        </div>
+                         <p class="mt-4 text-sm">➡️ <span class="font-bold">流程</span>：仅在堆的普通区域创建 `new String` 对象。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- JDK 9+ -->
+        <section id="jdk9" class="section-card">
+            <h2 class="text-2xl font-bold mb-4 text-fuchsia-400">3. JDK 9+：字符串压缩与数组复制（重要转折！）</h2>
+            <p class="text-sm mb-4 text-gray-400">底层实现从 `char[]` 变为 `byte[]`（字符串压缩）。更重要的是，`new String("...")` 不再共享数组！</p>
+            <div class="memory-area">
+                <h4 class="text-center font-bold text-emerald-300">Java 堆 (Heap)</h4>
+                <div class="mt-4">
+                    <h3 class="text-lg font-semibold mb-3 text-white">场景：常量池中没有 "abc" (创建 <span class="text-xl font-bold text-red-500">2</span> 个对象)</h3>
+                    <div class="flex justify-center gap-8">
+                        <div class="w-1/3 border border-dashed border-blue-400 p-2 rounded">
+                            <h5 class="text-center text-blue-300 text-sm">常量池区域</h5>
+                            <div class="mt-2 object-box scp-obj">
+                                "abc" 对象
+                                <div class="mt-1 p-2 bg-slate-900 rounded">byte[] A</div>
+                            </div>
+                        </div>
+                        <div class="w-1/3 border border-dashed border-gray-500 p-2 rounded">
+                            <h5 class="text-center text-gray-400 text-sm">普通对象区</h5>
+                            <div class="mt-2 object-box heap-obj">
+                                new String 对象
+                                <div class="mt-1 p-2 bg-slate-900 rounded">byte[] B <span class="text-red-400 font-bold">(复制品)</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-center text-lg">➡️ <span class="font-bold">核心变化</span>：堆中的 `new String` 对象不再共享常量池对象的底层数组，而是<span class="text-2xl highlight">复制</span>一份全新的 `byte[]` 数组！</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bonus: intern() -->
+        <section id="intern" class="section-card">
+            <h2 class="text-2xl font-bold mb-4 text-cyan-400">彩蛋：`intern()` 方法的经典案例</h2>
+            <p class="text-sm mb-4 text-gray-400">让我们通过一个经典例子，看看 `intern()` 如何在堆和常量池之间建立联系。</p>
+            <pre class="bg-gray-900 p-4 rounded-md text-sm mb-4 font-mono"><code><span class="text-gray-400">// 1. 在常量池中创建 "abc" 对象</span>
+String s1 = "abc";
+<span class="text-gray-400">// 2. 在堆中创建新对象，此时常量池中 "abc" 已存在</span>
+String s2 = new String("abc");
+<span class="text-gray-400">// 3. s2.intern() 发现常量池已有 "abc"，返回其引用</span>
+String s3 = s2.intern();
+
+System.out.println(s1 == s2); <span class="text-red-400">// false (一个在常量池，一个在堆)</span>
+System.out.println(s1 == s3); <span class="text-green-400">// true (都指向常量池)</span>
+            </code></pre>
+            <div class="memory-area p-4">
+                <h4 class="text-center font-bold text-emerald-300 mb-4">Java 堆 (Heap) 内存布局</h4>
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- SCP Area -->
+                    <div class="border border-dashed border-blue-400 p-4 rounded-lg flex flex-col items-center justify-between">
+                        <div class="object-box scp-obj w-40 mt-4">
+                            "abc" 对象
+                        </div>
+                        <div class="flex gap-8 mt-4">
+                            <div class="text-center">
+                                <svg class="mx-auto text-cyan-300" width="24" height="30" viewBox="0 0 24 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="30" x2="12" y2="2"></line><polyline points="5 9 12 2 19 9"></polyline></svg>
+                                <p class="font-mono text-cyan-300">s1</p>
+                            </div>
+                            <div class="text-center">
+                                <svg class="mx-auto text-cyan-300" width="24" height="30" viewBox="0 0 24 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="30" x2="12" y2="2"></line><polyline points="5 9 12 2 19 9"></polyline></svg>
+                                <p class="font-mono text-cyan-300">s3</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Ordinary Heap Area -->
+                    <div class="border border-dashed border-gray-500 p-4 rounded-lg flex flex-col items-center justify-between">
+                        <div class="object-box heap-obj w-40 mt-4">
+                            new String 对象
+                        </div>
+                         <div class="flex gap-8 mt-4">
+                            <div class="text-center">
+                                <svg class="mx-auto text-emerald-300" width="24" height="30" viewBox="0 0 24 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="30" x2="12" y2="2"></line><polyline points="5 9 12 2 19 9"></polyline></svg>
+                                <p class="font-mono text-emerald-300">s2</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                     <p class="text-lg">➡️ <span class="font-bold">结论</span>：`s1` 和 `s3` 指向<span class="text-blue-400">同一个常量池对象</span>，而 `s2` 指向<span class="text-gray-400">独立的堆对象</span>。</p>
+                     <p class="text-md mt-2">`s2.intern()`的逻辑是：检查常量池，若存在内容相同的字符串，则返回<span class="highlight">池中对象的引用</span>；否则，在池中创建该字符串并返回其引用。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary -->
+        <!-- Summary Table Section -->
+<section id="summary-table" class="section-card">
+    <h2 class="text-2xl font-bold mb-4 text-cyan-400">终极总结：面试回答速查表</h2>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full border border-gray-700 border-collapse">
+            <thead class="bg-gray-800 text-gray-200">
+                <tr>
+                    <th class="p-4 border-b border-gray-600 text-left text-lg">JDK 版本</th>
+                    <th class="p-4 border-b border-gray-600 text-left text-lg">场景一：常量池中 <span class="text-red-400">没有</span> "abc"</th>
+                    <th class="p-4 border-b border-gray-600 text-left text-lg">场景二：常量池中 <span class="text-green-400">已有</span> "abc"</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-300">
+                <!-- JDK 6 Row -->
+                <tr class="bg-gray-900 hover:bg-gray-800/50">
+                    <td class="p-4 border-b border-gray-700 font-bold text-amber-400 align-top">JDK 6</td>
+                    <td class="p-4 border-b border-gray-700 align-top">
+                        <p class="font-bold text-xl text-red-400">2 个对象</p>
+                        <ul class="list-disc list-inside mt-2 text-sm text-gray-400 space-y-1">
+                            <li><span class="font-semibold text-amber-300">永久代：</span>创建 "abc" 对象</li>
+                            <li><span class="font-semibold text-emerald-300">堆内存：</span>创建 `new String` 对象</li>
+                        </ul>
+                    </td>
+                    <td class="p-4 border-b border-gray-700 align-top">
+                        <p class="font-bold text-xl text-green-400">1 个对象</p>
+                         <ul class="list-disc list-inside mt-2 text-sm text-gray-400">
+                            <li><span class="font-semibold text-emerald-300">堆内存：</span>创建 `new String` 对象</li>
+                        </ul>
+                    </td>
+                </tr>
+
+                <!-- JDK 7/8 Row -->
+                <tr class="bg-gray-900 hover:bg-gray-800/50">
+                    <td class="p-4 border-b border-gray-700 font-bold text-blue-400 align-top">JDK 7 / 8</td>
+                    <td class="p-4 border-b border-gray-700 align-top">
+                        <p class="font-bold text-xl text-red-400">2 个对象</p>
+                        <p class="text-xs text-gray-500">(全部在堆内)</p>
+                        <ul class="list-disc list-inside mt-2 text-sm text-gray-400 space-y-1">
+                            <li><span class="font-semibold text-blue-300">常量池区：</span>创建 "abc" 对象</li>
+                            <li><span class="font-semibold text-gray-400">普通对象区：</span>创建 `new String` 对象</li>
+                        </ul>
+                    </td>
+                    <td class="p-4 border-b border-gray-700 align-top">
+                        <p class="font-bold text-xl text-green-400">1 个对象</p>
+                        <ul class="list-disc list-inside mt-2 text-sm text-gray-400">
+                            <li><span class="font-semibold text-gray-400">普通对象区：</span>创建 `new String` 对象</li>
+                        </ul>
+                    </td>
+                </tr>
+
+                <!-- JDK 9+ Row -->
+                <tr class="bg-gray-900 hover:bg-gray-800/50">
+                    <td class="p-4 border-b border-gray-700 font-bold text-fuchsia-400 align-top">JDK 9+</td>
+                    <td class="p-4 border-b border-gray-700 align-top">
+                        <p class="font-bold text-xl text-red-400">2个 String + 2个 byte[]</p>
+                        <p class="text-xs text-gray-500">(数组不再共享)</p>
+                        <ul class="list-disc list-inside mt-2 text-sm text-gray-400 space-y-1">
+                            <li><span class="font-semibold text-blue-300">常量池区：</span>1个 String + 1个 `byte[]`</li>
+                            <li><span class="font-semibold text-gray-400">普通对象区：</span>1个 String + 1个 <span class="highlight">新复制</span>的 `byte[]`</li>
+                        </ul>
+                    </td>
+                    <td class="p-4 border-b border-gray-700 align-top">
+                        <p class="font-bold text-xl text-green-400">1个 String + 1个 byte[]</p>
+                         <ul class="list-disc list-inside mt-2 text-sm text-gray-400">
+                            <li><span class="font-semibold text-gray-400">普通对象区：</span>创建 `new String` 对象并为其<span class="highlight">复制</span>一个新的 `byte[]`</li>
+                        </ul>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="text-center mt-4 text-xs text-gray-500">
+        核心转折点：JDK 7 将常量池移入堆；JDK 9 改变了底层数组的实现和共享机制。
+    </p>
+</section>
+
+    </main>
+
+</body>
+</html>

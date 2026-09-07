@@ -1,0 +1,58 @@
+# Redis Zset 底层设计：为什么选择跳表而非 B+ 树？
+
+![1765459673697-55558454-1601-490d-a752-9e502076111d.png](./img/AZPiRNpZpjrN85KU/1765459673697-55558454-1601-490d-a752-9e502076111d-137345.png)
+
+<font style="color:rgb(38, 38, 38);">在数据库领域，B+ 树几乎是索引的代名词。MySQL、Oracle 等主流关系型数据库都坚定地选择它作为底层数据结构。然而，作为内存数据库霸主的 Redis，在其核心数据类型 Zset（有序集合）中，却出人意料地选择了</font>**<font style="color:rgb(38, 38, 38);">跳表（SkipList）</font>**<font style="color:rgb(38, 38, 38);">。</font>
+
+<font style="color:rgb(38, 38, 38);">这是为什么？是 Redis 作者 Antirez 另辟蹊径，还是由于内存场景下的特殊权衡？</font>
+
+### <font style="color:rgb(38, 38, 38);">1. 结构本质：概率平衡的艺术</font>
+![1765459770253-d6aeaa88-fd2b-4ce0-8fe1-c2884259e073.png](./img/AZPiRNpZpjrN85KU/1765459770253-d6aeaa88-fd2b-4ce0-8fe1-c2884259e073-615396.png)
+
+<font style="color:rgb(38, 38, 38);">如上图所示，跳表并非某种复杂的树形结构，而是一种</font>**<font style="color:rgb(38, 38, 38);">多层链表</font>**<font style="color:rgb(38, 38, 38);">。</font>
+
+<font style="color:rgb(38, 38, 38);">文字不再赘述图中显而易见的“多层索引”形态，我们需要理解其背后的</font>**<font style="color:rgb(38, 38, 38);">概率哲学</font>**<font style="color:rgb(38, 38, 38);">：</font>
+
++ **<font style="color:rgb(38, 38, 38);">O(log n) 的由来</font>**<font style="color:rgb(38, 38, 38);">：不同于平衡树通过严格的旋转来维持平衡，跳表通过“抛硬币”的方式决定新节点的高度。这种随机性在数据量足够大时，数学上保证了查找效率趋近于 O(log n)。</font>
++ **<font style="color:rgb(38, 38, 38);">无需重平衡</font>**<font style="color:rgb(38, 38, 38);">：当你向图中插入一个新节点时，只需修改相邻节点的指针，而不需要像红黑树那样进行全局的颜色翻转或旋转。这种“局部性”是它轻量化的根源。</font>
+
+### <font style="color:rgb(38, 38, 38);">2. 对手的强大：磁盘王者的逻辑</font>
+![1765459781489-c9a11c9b-991f-463a-a5f6-5db5fc200566.png](./img/AZPiRNpZpjrN85KU/1765459781489-c9a11c9b-991f-463a-a5f6-5db5fc200566-140289.png)
+
+<font style="color:rgb(38, 38, 38);">B+ 树之所以成为数据库的标准答案，核心在于</font>**<font style="color:rgb(38, 38, 38);">磁盘 I/O</font>**<font style="color:rgb(38, 38, 38);">。</font>
+
++ **<font style="color:rgb(38, 38, 38);">页对齐（Page Aligned）</font>**<font style="color:rgb(38, 38, 38);">：请注意图中 B+ 树的节点被设计得非常宽（矮胖）。这是为了让一个节点的大小（如 16KB）刚好填满一个磁盘页。</font>
++ **<font style="color:rgb(38, 38, 38);">一次 I/O，海量索引</font>**<font style="color:rgb(38, 38, 38);">：在磁盘场景下，读取一次磁盘的代价极其昂贵。B+ 树的设计目标是**“让每一次 I/O 读取都尽可能包含更多的索引信息”**，从而降低树的高度，减少磁盘寻道次数。</font>
+
+### <font style="color:rgb(38, 38, 38);">3. 核心冲突：内存场景下的规则重写</font>
+![1765459811060-78491aee-7edf-4937-8db9-6aea9c46c22e.png](./img/AZPiRNpZpjrN85KU/1765459811060-78491aee-7edf-4937-8db9-6aea9c46c22e-492214.png)
+
+<font style="color:rgb(38, 38, 38);">这是 Redis 放弃 B+ 树的最根本原因：</font>**<font style="color:rgb(38, 38, 38);">场景变了，瓶颈也变了。</font>**
+
++ **<font style="color:rgb(38, 38, 38);">B+ 树优势失效</font>**<font style="color:rgb(38, 38, 38);">：在纯内存场景下（Redis），所有数据都在 RAM 中，不存在磁盘 I/O 的高昂开销。此时，B+ 树为了“减少磁盘读取”而设计的复杂页管理机制，反而成了累赘。</font>
++ **<font style="color:rgb(38, 38, 38);">CPU 缓存友好性</font>**<font style="color:rgb(38, 38, 38);">：跳表的结构更简单，节点更紧凑。在内存中遍历时，跳表能更好地利用 CPU Cache，而 B+ 树复杂的节点结构可能会导致更多的 Cache Miss。</font>
++ **<font style="color:rgb(38, 38, 38);">指针跳转 vs 复杂计算</font>**<font style="color:rgb(38, 38, 38);">：在内存中，指针跳转（跳表）的开销远小于解析 B+ 树复杂节点结构的 CPU 开销。</font>
+
+### <font style="color:rgb(38, 38, 38);">4. 工程视角：维护成本与并发优势</font>
+![1765459819524-875a86d2-22b2-4a62-b1df-05a81b4fdd4c.png](./img/AZPiRNpZpjrN85KU/1765459819524-875a86d2-22b2-4a62-b1df-05a81b4fdd4c-943137.png)
+
+<font style="color:rgb(38, 38, 38);">除了性能，</font>**<font style="color:rgb(38, 38, 38);">工程实现的复杂度</font>**<font style="color:rgb(38, 38, 38);">往往被理论分析所忽视，但它对开源项目至关重要。</font>
+
++ **<font style="color:rgb(38, 38, 38);">200行 vs 1000行</font>**<font style="color:rgb(38, 38, 38);">：跳表的插入和删除操作仅涉及局部指针更新，逻辑极其简单。而 B+ 树在节点分裂（Split）和合并（Merge）时，可能引发连锁反应，甚至波及根节点。</font>
++ **<font style="color:rgb(38, 38, 38);">并发控制</font>**<font style="color:rgb(38, 38, 38);">：</font>
+    - **<font style="color:rgb(38, 38, 38);">跳表</font>**<font style="color:rgb(38, 38, 38);">：由于更新只影响局部，实现无锁（Lock-free）或细粒度锁非常容易。</font>
+    - **<font style="color:rgb(38, 38, 38);">B+ 树</font>**<font style="color:rgb(38, 38, 38);">：一旦触发节点分裂，需要锁定整条路径甚至全树，这在多核高并发时代是致命的性能杀手。</font>
+
+### <font style="color:rgb(38, 38, 38);">5. 总结：架构设计的核心是权衡 (Trade-off)</font>
+![1765459830738-bc1e5d7f-f0d4-4dc7-b3d9-ab42939a4bd8.png](./img/AZPiRNpZpjrN85KU/1765459830738-bc1e5d7f-f0d4-4dc7-b3d9-ab42939a4bd8-412818.png)
+
+<font style="color:rgb(38, 38, 38);">Redis 选择跳表，并不是因为跳表在算法理论上比 B+ 树更强，而是因为它在</font>**<font style="color:rgb(38, 38, 38);">内存场景</font>**<font style="color:rgb(38, 38, 38);">下做到了</font>**<font style="color:rgb(38, 38, 38);">收益与成本的最佳平衡</font>**<font style="color:rgb(38, 38, 38);">：</font>
+
+1. **<font style="color:rgb(38, 38, 38);">性能不输</font>**<font style="color:rgb(38, 38, 38);">：同样的 O(log n) 效率。</font>
+2. **<font style="color:rgb(38, 38, 38);">实现更轻</font>**<font style="color:rgb(38, 38, 38);">：200 行代码 vs 1000 行代码，Bug 率直线下降。</font>
+3. **<font style="color:rgb(38, 38, 38);">并发更强</font>**<font style="color:rgb(38, 38, 38);">：没有复杂的树平衡锁竞争。</font>
+
+
+
+> 更新: 2025-12-12 13:45:18  
+> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vnel6ecscdmq78su>

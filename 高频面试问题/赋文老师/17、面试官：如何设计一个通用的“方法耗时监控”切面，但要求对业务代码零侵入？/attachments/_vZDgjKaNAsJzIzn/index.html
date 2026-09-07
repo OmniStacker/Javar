@@ -1,0 +1,1394 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>零侵入监控系统 - 从面试题到生产实践</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #f8f9fa;
+  overflow: hidden;
+  color: #2c3e50;
+}
+
+.container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.slide {
+  display: none;
+  flex: 1;
+  padding: 40px 60px 20px;
+  overflow-y: auto;
+}
+
+.slide.active {
+  display: block;
+  animation: fadeIn 0.4s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+h1 {
+  font-size: 40px;
+  color: #1e40af;
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 30px;
+  color: #1e40af;
+  margin-bottom: 24px;
+  border-bottom: 3px solid #1e40af;
+  padding-bottom: 10px;
+}
+
+h3 {
+  font-size: 20px;
+  color: #2c3e50;
+  margin: 20px 0 14px;
+  font-weight: 600;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 18px;
+  color: #64748b;
+  margin-bottom: 32px;
+}
+
+/* 场景卡片 */
+.scenario-card {
+  background: #fee;
+  border-left: 5px solid #dc2626;
+  padding: 24px 28px;
+  border-radius: 8px;
+  margin: 24px 0;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.scenario-card strong {
+  color: #dc2626;
+  font-size: 18px;
+}
+
+/* 对比容器 */
+.compare-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin: 28px 0;
+}
+
+.compare-box {
+  background: white;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 3px solid #e5e7eb;
+}
+
+.compare-box.wrong {
+  border-color: #dc2626;
+}
+
+.compare-box.correct {
+  border-color: #059669;
+}
+
+.compare-header {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.compare-header.wrong {
+  color: #dc2626;
+  border-bottom-color: #dc2626;
+}
+
+.compare-header.correct {
+  color: #059669;
+  border-bottom-color: #059669;
+}
+
+/* 代码块 */
+.code-block {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 18px 20px;
+  border-radius: 8px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 16px 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.code-comment {
+  color: #94a3b8;
+}
+
+/* 标签 */
+.tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.tag {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tag.bad {
+  background: #fee;
+  color: #dc2626;
+}
+
+.tag.good {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.tag.info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* 流程图 */
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 32px 0;
+  padding: 28px 24px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.flow-step {
+  flex: 1;
+  text-align: center;
+  padding: 18px 12px;
+  background: #1e40af;
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flow-arrow {
+  font-size: 24px;
+  color: #1e40af;
+  font-weight: bold;
+}
+
+/* 特性网格 */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin: 28px 0;
+}
+
+.feature-card {
+  background: white;
+  padding: 24px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-top: 4px solid #1e40af;
+}
+
+.feature-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.feature-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1e40af;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.feature-desc {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* 问题卡片 */
+.question-card {
+  background: #fef3c7;
+  border-left: 5px solid #f59e0b;
+  padding: 20px 28px;
+  border-radius: 8px;
+  margin: 24px 0;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.question-card strong {
+  color: #92400e;
+}
+
+.answer-card {
+  background: #d1fae5;
+  border-left: 5px solid #059669;
+  padding: 20px 24px;
+  border-radius: 8px;
+  margin: 16px 0;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* 对比表格 */
+.comparison-table {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 28px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.comparison-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.comparison-table th {
+  background: #1e40af;
+  color: white;
+  padding: 14px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.comparison-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.comparison-table tr:last-child td {
+  border-bottom: none;
+}
+
+.comparison-table tr:hover {
+  background: #f8fafc;
+}
+
+/* 高亮框 */
+.highlight-box {
+  background: #dbeafe;
+  border-left: 5px solid #1e40af;
+  padding: 18px 24px;
+  border-radius: 8px;
+  margin: 24px 0;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.highlight-box strong {
+  color: #1e40af;
+}
+
+/* 步骤容器 */
+.steps-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin: 28px 0;
+}
+
+.step-card {
+  background: white;
+  padding: 24px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-top: 4px solid #1e40af;
+}
+
+.step-number {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  background: #1e40af;
+  color: white;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 32px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.step-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1e40af;
+  margin-bottom: 12px;
+}
+
+.step-content {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+/* 架构图 */
+.architecture-diagram {
+  background: white;
+  padding: 28px;
+  border-radius: 10px;
+  margin: 28px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.arch-layer {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.arch-box {
+  flex: 1;
+  padding: 18px 16px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.arch-box.primary {
+  background: #1e40af;
+  color: white;
+}
+
+.arch-box.secondary {
+  background: #64748b;
+  color: white;
+}
+
+.arch-box small {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+/* 总结网格 */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin: 28px 0;
+}
+
+.summary-card {
+  background: white;
+  padding: 28px 24px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-top: 5px solid #1e40af;
+}
+
+.summary-level {
+  font-size: 19px;
+  font-weight: 700;
+  color: #1e40af;
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.summary-content {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #2c3e50;
+}
+
+.summary-content ul {
+  list-style: none;
+  padding: 0;
+}
+
+.summary-content li {
+  margin-bottom: 10px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.summary-content li:before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #1e40af;
+  font-weight: bold;
+}
+
+.key-point {
+  background: #fef3c7;
+  padding: 20px 28px;
+  border-radius: 10px;
+  margin: 28px 0;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+  color: #2c3e50;
+  border: 2px solid #f59e0b;
+}
+
+/* 导航栏 */
+.navigation {
+  height: 65px;
+  background: white;
+  border-top: 2px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 60px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.nav-info {
+  font-size: 15px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.nav-btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #1e40af;
+  color: white;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: #1e3a8a;
+  transform: translateY(-2px);
+}
+
+.nav-btn:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 两列布局 */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin: 24px 0;
+}
+
+.content-box {
+  background: white;
+  padding: 24px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.list-simple {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+.list-simple li {
+  padding: 8px 0 8px 24px;
+  position: relative;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #2c3e50;
+}
+
+.list-simple li:before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #059669;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- 第1页：封面 -->
+  <div class="slide active" id="slide-1">
+    <h1>⚡ 零侵入监控系统</h1>
+    <div class="subtitle">从面试题到生产级实现</div>
+    
+    <div class="scenario-card">
+      <strong>凌晨 3 点的生产事故</strong><br><br>
+      "订单接口从 200ms 飙到 3 秒！快查！"<br>
+      监控平台只能看到接口总耗时，无法定位具体瓶颈...<br>
+      <strong>是数据库查询慢？第三方调用超时？还是业务逻辑性能问题？</strong>
+    </div>
+
+    <div class="compare-container">
+      <div class="compare-box wrong">
+        <div class="compare-header wrong">❌ 侵入式（不推荐）</div>
+        <div class="code-block">long start = System.currentTimeMillis();
+try {
+    <span class="code-comment">// 业务逻辑</span>
+} finally {
+    long cost = System...() - start;
+    log.info("cost: " + cost);
+}</div>
+        <div class="tag-group">
+          <span class="tag bad">几百个方法都要改</span>
+          <span class="tag bad">监控与业务耦合</span>
+        </div>
+      </div>
+
+      <div class="compare-box correct">
+        <div class="compare-header correct">✅ 零侵入（推荐）</div>
+        <div class="code-block">@Monitor("创建订单")
+public Order createOrder(...) {
+    <span class="code-comment">// 纯业务逻辑</span>
+    <span class="code-comment">// 不写任何监控代码</span>
+    return order;
+}</div>
+        <div class="tag-group">
+          <span class="tag good">只加一个注解</span>
+          <span class="tag good">自动统计上报</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box">
+      <strong>面试官考察的核心：</strong>不只是"会用 AOP"，而是如何设计<strong>生产级、零侵入、高可用</strong>的监控系统
+    </div>
+  </div>
+
+  <!-- 第2页：面试官的真实意图 -->
+  <div class="slide" id="slide-2">
+    <h2>🎯 面试官的真实意图</h2>
+    
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <div class="feature-title">理解"零侵入"</div>
+        <div class="feature-desc">不是少侵入，而是业务代码完全感知不到监控逻辑的存在</div>
+      </div>
+      
+      <div class="feature-card">
+        <div class="feature-icon">⚙️</div>
+        <div class="feature-title">掌握 AOP 边界</div>
+        <div class="feature-desc">清楚 Spring AOP 的局限性，知道什么时候用字节码增强</div>
+      </div>
+      
+      <div class="feature-card">
+        <div class="feature-icon">🚀</div>
+        <div class="feature-title">工程化思维</div>
+        <div class="feature-desc">不只是"能跑"，还要考虑性能、异常、动态配置、告警</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 36px;">什么是真正的"零侵入"？</h3>
+    
+    <div class="compare-container">
+      <div class="compare-box wrong">
+        <div class="compare-header wrong">❌ 错误理解：少侵入</div>
+        <div class="code-block">public Order createOrder(...) {
+    MonitorUtil.start();
+    try {
+        <span class="code-comment">// 业务逻辑</span>
+    } finally {
+        MonitorUtil.end();
+    }
+}</div>
+        <div style="margin-top: 16px; font-size: 13px; color: #64748b;">
+          业务方法感知到监控存在<br>
+          每个方法都要手动调用
+        </div>
+      </div>
+
+      <div class="compare-box correct">
+        <div class="compare-header correct">✅ 正确理解：完全零侵入</div>
+        <div class="code-block">@Monitor("创建订单")
+public Order createOrder(OrderRequest request) {
+    Order order = new Order();
+    orderRepo.save(order);
+    return order;
+}</div>
+        <div style="margin-top: 16px; font-size: 13px; color: #64748b;">
+          业务代码完全感知不到监控<br>
+          监控逻辑在切面统一处理<br>
+          可随时动态开关
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box" style="margin-top: 28px;">
+      通过 <strong>AOP（面向切面编程）</strong> 或 <strong>字节码增强</strong>，在方法执行前后自动插入监控逻辑
+    </div>
+  </div>
+
+  <!-- 第3页：第一层回答 -->
+  <div class="slide" id="slide-3">
+    <h2>📝 第一层回答：Spring AOP（及格线）</h2>
+    
+    <div class="steps-container">
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-title">定义注解</div>
+        <div class="code-block">@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Monitor {
+    String value() default "";
+}</div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-title">编写切面</div>
+        <div class="code-block">@Aspect
+@Component
+public class MonitorAspect {
+    
+    @Around("@annotation(monitor)")
+    public Object monitor(
+        ProceedingJoinPoint joinPoint,
+        Monitor monitor
+    ) throws Throwable {
+        long start = System...();
+        try {
+            return joinPoint.proceed();
+        } finally {
+            long duration = ...;
+            log.info("took {}ms", duration);
+        }
+    }
+}</div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <div class="step-title">使用注解</div>
+        <div class="code-block">@Service
+public class OrderService {
+    
+    @Monitor("创建订单")
+    public OrderDTO createOrder(
+        OrderRequest request
+    ) {
+        <span class="code-comment">// 纯业务逻辑</span>
+        return orderDTO;
+    }
+}</div>
+      </div>
+    </div>
+
+    <div class="flow-diagram">
+      <div class="flow-step">调用<br>方法</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">AOP<br>拦截</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">记录<br>开始时间</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">执行<br>业务方法</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">计算<br>耗时</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">上报<br>监控</div>
+    </div>
+
+    <div class="question-card">
+      <strong>面试官追问：</strong><br><br>
+      1️⃣ 如果要监控 static 方法、第三方 jar 包，AOP 能生效吗？<br>
+      2️⃣ 高并发下直接 log.info，会不会拖垮 I/O？<br>
+      3️⃣ 监控代码抛异常了，会不会影响业务？
+    </div>
+  </div>
+
+  <!-- 第4页：AOP 的局限性 -->
+  <div class="slide" id="slide-4">
+    <h2>⚠️ Spring AOP 的局限性</h2>
+    
+    <div class="comparison-table">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 25%;">场景</th>
+            <th style="width: 20%;">Spring AOP</th>
+            <th style="width: 20%;">能否生效</th>
+            <th style="width: 35%;">原因</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Spring Bean 的 public 方法</td>
+            <td>✅ 支持</td>
+            <td style="color: #059669; font-weight: 600;">能生效</td>
+            <td>基于代理机制</td>
+          </tr>
+          <tr>
+            <td>private 方法</td>
+            <td>❌ 不支持</td>
+            <td style="color: #dc2626; font-weight: 600;">不生效</td>
+            <td>代理无法拦截私有方法</td>
+          </tr>
+          <tr>
+            <td>static 方法</td>
+            <td>❌ 不支持</td>
+            <td style="color: #dc2626; font-weight: 600;">不生效</td>
+            <td>静态方法不属于实例</td>
+          </tr>
+          <tr>
+            <td>final 方法</td>
+            <td>❌ 不支持</td>
+            <td style="color: #dc2626; font-weight: 600;">不生效</td>
+            <td>无法被子类重写</td>
+          </tr>
+          <tr>
+            <td>第三方 jar 包</td>
+            <td>❌ 不支持</td>
+            <td style="color: #dc2626; font-weight: 600;">不生效</td>
+            <td>不是 Spring Bean</td>
+          </tr>
+          <tr>
+            <td>工具类静态方法</td>
+            <td>❌ 不支持</td>
+            <td style="color: #dc2626; font-weight: 600;">不生效</td>
+            <td>不在 Spring 容器中</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="highlight-box">
+      <strong>解决方案：</strong>对于 Spring AOP 无法覆盖的场景，需要使用 <strong>Java Agent + 字节码增强</strong>
+    </div>
+
+    <div class="architecture-diagram">
+      <h3 style="text-align: center; margin-bottom: 24px; color: #1e40af;">技术选型决策树</h3>
+      <div class="arch-layer">
+        <div class="arch-box primary">
+          <strong style="font-size: 16px;">业务方法监控</strong><br>
+          <small>→ Spring AOP<br>覆盖 90% 场景</small>
+        </div>
+        <div class="arch-box secondary">
+          <strong style="font-size: 16px;">第三方库 / 工具类</strong><br>
+          <small>→ Java Agent<br>字节码增强</small>
+        </div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-box primary" style="flex: 1;">
+          <strong style="font-size: 16px;">生产级 APM 系统</strong><br>
+          <small>两者结合：AOP 监控业务层 + Agent 监控基础组件</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 第5页：Java Agent -->
+  <div class="slide" id="slide-5">
+    <h2>🔧 Java Agent + 字节码增强</h2>
+    
+    <div class="answer-card">
+      <strong>什么是 Java Agent？</strong><br>
+      JVM 提供的一种机制，允许在<strong>类加载时</strong>或<strong>运行时</strong>修改字节码，实现无侵入的监控和增强
+    </div>
+
+    <div class="steps-container" style="margin-top: 32px;">
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-title">Agent 入口类</div>
+        <div class="code-block">public class MonitorAgent {
+    
+    public static void premain(
+        String args,
+        Instrumentation inst) {
+        
+        new AgentBuilder.Default()
+            .type(any())
+            .transform((builder, ...) ->
+                builder.method(
+                    isAnnotatedWith(
+                        named("Monitor")))
+                .intercept(
+                    MethodDelegation.to(
+                        MonitorInterceptor.class))
+            ).installOn(inst);
+    }
+}</div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-title">拦截器</div>
+        <div class="code-block">public class MonitorInterceptor {
+    
+    @RuntimeType
+    public static Object intercept(
+        @SuperCall Callable<?> zuper,
+        @Origin Method method
+    ) throws Exception {
+        
+        long start = System.nanoTime();
+        try {
+            return zuper.call();
+        } finally {
+            long duration = ...;
+            reportAsync(method, duration);
+        }
+    }
+}</div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <div class="step-title">启动应用</div>
+        <div class="code-block">java -javaagent:monitor-agent.jar \
+     -jar your-app.jar
+
+
+
+
+<span class="code-comment"># Agent 会在类加载时
+# 自动修改字节码
+# 注入监控逻辑</span></div>
+      </div>
+    </div>
+
+    <div class="comparison-table" style="margin-top: 32px;">
+      <table>
+        <thead>
+          <tr>
+            <th>对比维度</th>
+            <th>Spring AOP</th>
+            <th>Java Agent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>适用范围</strong></td>
+            <td>仅 Spring Bean</td>
+            <td>所有类（包括第三方）</td>
+          </tr>
+          <tr>
+            <td><strong>能否拦截 static</strong></td>
+            <td>❌ 不能</td>
+            <td>✅ 可以</td>
+          </tr>
+          <tr>
+            <td><strong>能否拦截 private</strong></td>
+            <td>❌ 不能</td>
+            <td>✅ 可以</td>
+          </tr>
+          <tr>
+            <td><strong>性能开销</strong></td>
+            <td>较小（代理）</td>
+            <td>极小（直接修改字节码）</td>
+          </tr>
+          <tr>
+            <td><strong>实现复杂度</strong></td>
+            <td>低</td>
+            <td>中等</td>
+          </tr>
+          <tr>
+            <td><strong>典型应用</strong></td>
+            <td>业务方法监控</td>
+            <td>APM（SkyWalking）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 第6页：异步上报 -->
+  <div class="slide" id="slide-6">
+    <h2>🚀 性能优化 1：异步上报</h2>
+    
+    <div class="question-card">
+      <strong>问题：</strong>在切面里直接 log.info 或同步调用监控 API，高并发下会<strong>拖垮 I/O、阻塞业务线程</strong>
+    </div>
+
+    <div class="architecture-diagram">
+      <h3 style="text-align: center; margin-bottom: 24px; color: #1e40af;">异步上报架构</h3>
+      <div class="arch-layer">
+        <div class="arch-box primary">切面层<br><small>扔到队列</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="arch-box secondary">内存队列<br><small>10000 容量</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="arch-box primary">异步消费<br><small>批量发送</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="arch-box secondary">监控平台<br><small>Prometheus</small></div>
+      </div>
+    </div>
+
+    <div class="compare-container" style="margin-top: 32px;">
+      <div class="compare-box wrong">
+        <div class="compare-header wrong">❌ 同步上报（性能差）</div>
+        <div class="code-block">finally {
+    long duration = System...() - start;
+    
+    <span class="code-comment">// 同步调用，阻塞业务线程</span>
+    httpClient.post("/metrics", data);
+    
+    <span class="code-comment">// 如果监控平台挂了，业务也挂</span>
+}</div>
+      </div>
+
+      <div class="compare-box correct">
+        <div class="compare-header correct">✅ 异步上报（推荐）</div>
+        <div class="code-block">finally {
+    long duration = System...() - start;
+    
+    <span class="code-comment">// 异步扔到队列，立即返回</span>
+    collector.reportAsync(data);
+    
+    <span class="code-comment">// 队列满了直接丢弃，不阻塞</span>
+}</div>
+      </div>
+    </div>
+
+    <div class="content-box" style="margin-top: 24px;">
+      <h3 style="margin-top: 0;">MonitorCollector 实现</h3>
+      <div class="code-block">@Component
+public class MonitorCollector {
+    
+    private final BlockingQueue&lt;MonitorData&gt; queue = 
+            new LinkedBlockingQueue&lt;&gt;(10000);
+    
+    public void reportAsync(MonitorData data) {
+        queue.offer(data);  <span class="code-comment">// 队列满了直接丢弃</span>
+    }
+    
+    @Scheduled(fixedRate = 1000)  <span class="code-comment">// 每秒执行一次</span>
+    private void flush() {
+        List&lt;MonitorData&gt; batch = new ArrayList&lt;&gt;();
+        queue.drainTo(batch, 500);  <span class="code-comment">// 批量取出</span>
+        
+        if (!batch.isEmpty()) {
+            sendToMonitoringSystem(batch);
+        }
+    }
+}</div>
+    </div>
+
+    <div class="highlight-box">
+      <strong>核心原则：</strong>宁可丢监控数据，也不能拖累业务！队列满了直接丢弃，绝不阻塞等待
+    </div>
+  </div>
+
+  <!-- 第7页：采样策略 -->
+  <div class="slide" id="slide-7">
+    <h2>🎯 性能优化 2：采样策略</h2>
+    
+    <div class="scenario-card">
+      <strong>场景：</strong>对于每秒调用上万次的超高频方法（如缓存读取），全量监控意义不大，还会产生海量数据
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">固定比例采样</div>
+        <div class="feature-desc">只监控 1% 的请求<br>统计学上已足够准确</div>
+        <div class="code-block" style="margin-top: 16px; text-align: left;">boolean shouldSample = 
+    ThreadLocalRandom.current()
+        .nextInt(100) < 1;</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">⏱️</div>
+        <div class="feature-title">慢请求全量</div>
+        <div class="feature-desc">超过阈值的请求 100% 监控<br>快速请求采样</div>
+        <div class="code-block" style="margin-top: 16px; text-align: left;">if (duration > 1000) {
+    report(data);
+} else if (sample()) {
+    report(data);
+}</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🎚️</div>
+        <div class="feature-title">动态调整</div>
+        <div class="feature-desc">根据 QPS 自动调整采样率<br>避免数据爆炸</div>
+        <div class="code-block" style="margin-top: 16px; text-align: left;">if (qps > 10000) {
+    sampleRate = 0.1%;
+} else if (qps > 1000) {
+    sampleRate = 1%;
+}</div>
+      </div>
+    </div>
+
+    <div class="comparison-table" style="margin-top: 32px;">
+      <table>
+        <thead>
+          <tr>
+            <th>方法类型</th>
+            <th>QPS</th>
+            <th>采样率</th>
+            <th>数据量/秒</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>缓存读取（超高频）</td>
+            <td>50,000</td>
+            <td>0.1%</td>
+            <td style="color: #059669; font-weight: 600;">50 条</td>
+          </tr>
+          <tr>
+            <td>普通查询（高频）</td>
+            <td>5,000</td>
+            <td>1%</td>
+            <td style="color: #059669; font-weight: 600;">50 条</td>
+          </tr>
+          <tr>
+            <td>核心业务（中频）</td>
+            <td>500</td>
+            <td>10%</td>
+            <td style="color: #059669; font-weight: 600;">50 条</td>
+          </tr>
+          <tr>
+            <td>低频操作</td>
+            <td>10</td>
+            <td>100%</td>
+            <td style="color: #059669; font-weight: 600;">10 条</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="highlight-box">
+      <strong>优势：</strong>在保证监控有效性的前提下，将数据量降低 <strong>99%</strong>，大幅减少存储和传输成本
+    </div>
+  </div>
+
+  <!-- 第8页：异常隔离 -->
+  <div class="slide" id="slide-8">
+    <h2>🛡️ 异常隔离：监控不能拖累业务</h2>
+    
+    <div class="question-card">
+      <strong>致命问题：</strong>如果监控代码自己抛出异常（网络超时、序列化失败等），会不会导致业务方法执行失败？
+    </div>
+
+    <div class="content-box" style="margin-top: 28px;">
+      <h3 style="margin-top: 0;">完整的异常隔离实现</h3>
+      <div class="code-block">@Around("@annotation(monitor)")
+public Object monitorMethod(ProceedingJoinPoint joinPoint, Monitor monitor) 
+        throws Throwable {
+    long startTime = System.nanoTime();
+    Throwable businessException = null;
+    
+    try {
+        return joinPoint.proceed();  <span class="code-comment">// 执行业务方法</span>
+        
+    } catch (Throwable e) {
+        businessException = e;
+        throw e;  <span class="code-comment">// ⚠️ 必须继续抛出，不能吞掉业务异常！</span>
+        
+    } finally {
+        try {
+            <span class="code-comment">// ✅ 监控逻辑全部包在 try-catch 里</span>
+            long duration = TimeUnit.NANOSECONDS.toMillis(
+                System.nanoTime() - startTime);
+            
+            collector.reportAsync(MonitorData.builder()
+                .methodName(joinPoint.getSignature().toShortString())
+                .duration(duration)
+                .success(businessException == null)
+                .build());
+                
+        } catch (Throwable monitorException) {
+            <span class="code-comment">// ✅ 监控出错，只记录日志，绝不影响业务</span>
+            log.error("Monitor failed", monitorException);
+        }
+    }
+}</div>
+    </div>
+
+    <div class="feature-grid" style="margin-top: 32px;">
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">防护 1：业务异常隔离</div>
+        <div class="feature-desc">业务方法抛的异常，必须原样抛出，不能被监控逻辑吞掉</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <div class="feature-title">防护 2：监控异常隔离</div>
+        <div class="feature-desc">监控代码的异常，必须全部捕获，只记日志，不向上传播</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-title">防护 3：队列防护</div>
+        <div class="feature-desc">队列满了直接丢弃监控数据，绝不阻塞业务线程</div>
+      </div>
+    </div>
+
+    <div class="highlight-box" style="margin-top: 28px;">
+      <strong>核心原则：</strong>监控代码的任何异常，都不能传播到业务层<br>
+      <strong>宁可不监控，也不能影响业务稳定性！</strong>
+    </div>
+  </div>
+
+  <!-- 第9页：生产级特性 -->
+  <div class="slide" id="slide-9">
+    <h2>⭐ 生产级特性：从"能用"到"好用"</h2>
+    
+    <div class="steps-container">
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-title">动态配置</div>
+        <div class="step-content">
+          通过配置中心（Nacos/Apollo）<strong>热更新</strong>监控开关，无需重启服务
+        </div>
+        <div class="code-block" style="margin-top: 16px;"># Nacos 配置
+monitor.enabled: true
+monitor.methods:
+  - OrderService.createOrder
+  - PaymentService.pay
+  
+<span class="code-comment"># 修改配置立即生效</span></div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-title">阈值告警</div>
+        <div class="step-content">
+          方法耗时超过阈值时，自动发送钉钉/邮件/短信告警
+        </div>
+        <div class="code-block" style="margin-top: 16px;">@Monitor(
+    value = "创建订单",
+    thresholdMs = 1000
+)
+public Order createOrder(...) {
+    <span class="code-comment">// 超过 1 秒自动告警</span>
+}</div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <div class="step-title">监控平台集成</div>
+        <div class="step-content">
+          与 Prometheus、Grafana、SkyWalking 无缝对接
+        </div>
+        <div class="code-block" style="margin-top: 16px;">Timer.builder("method.time")
+    .tag("method", methodName)
+    .tag("status", success)
+    .register(meterRegistry)
+    .record(duration);</div>
+      </div>
+    </div>
+
+    <div class="architecture-diagram" style="margin-top: 32px;">
+      <h3 style="text-align: center; margin-bottom: 24px; color: #1e40af;">完整监控链路</h3>
+      <div class="arch-layer">
+        <div class="arch-box primary">业务方法<br><small>@Monitor</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="arch-box secondary">AOP 切面<br><small>采集耗时</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="arch-box primary">异步队列<br><small>批量缓存</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="arch-box secondary">Prometheus<br><small>时序存储</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="arch-box primary">Grafana<br><small>可视化</small></div>
+      </div>
+    </div>
+
+    <div class="key-point" style="margin-top: 28px;">
+      🎯 这才是生产级方案：不只是监控，还要考虑<strong>动态配置、告警、集成、可观测性</strong>
+    </div>
+  </div>
+
+  <!-- 第10页：总结 -->
+  <div class="slide" id="slide-10">
+    <h2>🎯 总结：面试回答的三个层次</h2>
+    
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-level">第一层：及格线</div>
+        <div class="summary-content">
+          <ul>
+            <li>会用 Spring AOP</li>
+            <li>定义 @Monitor 注解</li>
+            <li>写 @Around 切面</li>
+            <li>计算耗时并打印日志</li>
+          </ul>
+          <div class="tag info" style="margin-top: 18px; display: inline-block;">Demo 级别</div>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-level">第二层：优秀水平</div>
+        <div class="summary-content">
+          <ul>
+            <li>异步上报（队列+批量）</li>
+            <li>异常隔离（失败不影响业务）</li>
+            <li>性能优化（采样策略）</li>
+            <li>字节码增强（Agent 兜底）</li>
+          </ul>
+          <div class="tag" style="background: #fef3c7; color: #92400e; margin-top: 18px; display: inline-block;">工程化思维</div>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-level">第三层：卓越水平</div>
+        <div class="summary-content">
+          <ul>
+            <li>动态配置（Nacos 热更新）</li>
+            <li>阈值告警（钉钉/邮件）</li>
+            <li>平台集成（Prometheus/Grafana）</li>
+            <li>全链路追踪（SkyWalking）</li>
+          </ul>
+          <div class="tag good" style="margin-top: 18px; display: inline-block;">生产级方案</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="architecture-diagram" style="margin-top: 36px;">
+      <h3 style="text-align: center; margin-bottom: 24px; color: #1e40af;">核心记忆点</h3>
+      <div class="arch-layer">
+        <div class="arch-box primary">
+          <strong>零侵入</strong><br>
+          <small>业务代码完全感知不到监控</small>
+        </div>
+        <div class="arch-box secondary">
+          <strong>AOP + Agent</strong><br>
+          <small>AOP 监控业务，Agent 兜底</small>
+        </div>
+        <div class="arch-box primary">
+          <strong>异常隔离</strong><br>
+          <small>监控失败不能影响业务</small>
+        </div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-box secondary">
+          <strong>异步上报</strong><br>
+          <small>队列+批量，不阻塞业务</small>
+        </div>
+        <div class="arch-box primary">
+          <strong>动态配置</strong><br>
+          <small>支持热更新，无需重启</small>
+        </div>
+        <div class="arch-box secondary">
+          <strong>监控集成</strong><br>
+          <small>Prometheus + Grafana</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="key-point" style="margin-top: 32px; font-size: 18px;">
+      🏆 掌握这套方案，面试官会对你刮目相看！<br>
+      <span style="font-size: 14px; margin-top: 10px; display: block; font-weight: 400;">从"能用"到"好用"，这才是生产级工程师的技术深度</span>
+    </div>
+  </div>
+
+  <!-- 导航栏 -->
+  <div class="navigation">
+    <div class="nav-info">
+      <span id="current-page">1</span> / 10
+    </div>
+    <div class="nav-buttons">
+      <button class="nav-btn" id="prev-btn" onclick="prevSlide()">← 上一页</button>
+      <button class="nav-btn" id="next-btn" onclick="nextSlide()">下一页 →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentSlide = 1;
+const totalSlides = 10;
+
+function updateSlide() {
+  document.querySelectorAll('.slide').forEach(slide => {
+    slide.classList.remove('active');
+  });
+  
+  document.getElementById(`slide-${currentSlide}`).classList.add('active');
+  document.getElementById('current-page').textContent = currentSlide;
+  
+  document.getElementById('prev-btn').disabled = (currentSlide === 1);
+  document.getElementById('next-btn').disabled = (currentSlide === totalSlides);
+  
+  document.getElementById(`slide-${currentSlide}`).scrollTop = 0;
+}
+
+function nextSlide() {
+  if (currentSlide < totalSlides) {
+    currentSlide++;
+    updateSlide();
+  }
+}
+
+function prevSlide() {
+  if (currentSlide > 1) {
+    currentSlide--;
+    updateSlide();
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight' || e.key === ' ') {
+    e.preventDefault();
+    nextSlide();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    prevSlide();
+  }
+});
+
+updateSlide();
+</script>
+
+</body>
+</html>

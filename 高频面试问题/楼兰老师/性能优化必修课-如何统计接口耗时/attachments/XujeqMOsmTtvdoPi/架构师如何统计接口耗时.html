@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>统计接口耗时的6种方法</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      overflow: hidden;
+      background: #0a0a0a;
+    }
+
+    .slide {
+      width: 100vw;
+      height: 100vh;
+      display: none;
+      position: relative;
+      padding: 60px;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    }
+
+    .slide.active {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.6s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+
+    /* 开场页 */
+    #slide1 {
+      background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #slide1::before {
+      content: '';
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 50px 50px;
+      animation: moveGrid 20s linear infinite;
+    }
+
+    @keyframes moveGrid {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(50px, 50px); }
+    }
+
+    .hero-title {
+      font-size: 130px;
+      font-weight: 900;
+      color: white;
+      text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      margin-bottom: 50px;
+      z-index: 1;
+      animation: pulse 2s ease-in-out infinite;
+      letter-spacing: 5px;
+    }
+
+    .hero-subtitle {
+      font-size: 52px;
+      color: rgba(255,255,255,0.85);
+      margin-bottom: 70px;
+      z-index: 1;
+    }
+
+    .tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 25px;
+      justify-content: center;
+      max-width: 1400px;
+      z-index: 1;
+    }
+
+    .tag {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      padding: 25px 50px;
+      border-radius: 50px;
+      color: white;
+      font-size: 32px;
+      font-weight: 600;
+      border: 2px solid rgba(255,255,255,0.3);
+      transition: all 0.3s ease;
+    }
+
+    .tag:hover {
+      background: rgba(255,255,255,0.25);
+      transform: translateY(-5px);
+    }
+
+    /* 为什么重要页面 */
+    #slide2 {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+
+    .section-title {
+      font-size: 85px;
+      font-weight: 900;
+      color: white;
+      margin-bottom: 80px;
+      text-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    }
+
+    .importance-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 45px;
+      width: 100%;
+      max-width: 1700px;
+    }
+
+    .importance-card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 30px;
+      padding: 65px 45px;
+      text-align: center;
+      border: 3px solid rgba(255,255,255,0.25);
+      transition: all 0.3s ease;
+    }
+
+    .importance-card:hover {
+      transform: translateY(-10px);
+      background: rgba(255,255,255,0.15);
+    }
+
+    .card-icon {
+      font-size: 110px;
+      margin-bottom: 35px;
+    }
+
+    .card-title {
+      font-size: 46px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 25px;
+    }
+
+    .card-desc {
+      font-size: 30px;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.6;
+    }
+
+    /* 方法页面通用样式 - 上下结构 */
+    .method-slide {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      padding: 40px 80px !important;
+    }
+
+    .method-header {
+      text-align: center;
+      margin-bottom: 35px;
+    }
+
+    .method-number {
+      font-size: 70px;
+      font-weight: 900;
+      color: rgba(255,255,255,0.4);
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+
+    .method-name {
+      font-size: 75px;
+      font-weight: 900;
+      color: white;
+      text-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .method-content {
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      border-radius: 30px;
+      padding: 45px 55px;
+      border: 3px solid rgba(255,255,255,0.25);
+      width: 100%;
+      max-width: 1700px;
+      display: flex;
+      gap: 45px;
+      max-height: calc(100vh - 300px);
+      overflow: hidden;
+    }
+
+    .method-left-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .method-right-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .feature-list {
+      list-style: none;
+      margin-bottom: 25px;
+    }
+
+    .feature-list li {
+      font-size: 24px;
+      color: white;
+      margin-bottom: 18px;
+      padding-left: 45px;
+      position: relative;
+      line-height: 1.5;
+      font-weight: 400;
+    }
+
+    .feature-list li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      font-size: 36px;
+      font-weight: 900;
+      color: #FFD700;
+    }
+
+    .pros-cons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+    }
+
+    .pros, .cons {
+      background: rgba(255,255,255,0.08);
+      padding: 28px;
+      border-radius: 18px;
+    }
+
+    .pros h3, .cons h3 {
+      font-size: 36px;
+      margin-bottom: 15px;
+      color: white;
+    }
+
+    .pros h3::before {
+      content: '👍 ';
+    }
+
+    .cons h3::before {
+      content: '⚠️ ';
+    }
+
+    .pros p, .cons p {
+      font-size: 24px;
+      color: white;
+      line-height: 1.5;
+      font-weight: 400;
+    }
+
+    /* 流程图样式 */
+    .flow-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .flow-step {
+      background: rgba(255,255,255,0.15);
+      padding: 22px 40px;
+      border-radius: 18px;
+      font-size: 32px;
+      color: white;
+      font-weight: 600;
+      border: 2px solid rgba(255,255,255,0.3);
+      min-width: 420px;
+      text-align: center;
+    }
+
+    .flow-arrow {
+      font-size: 45px;
+      color: #FFD700;
+    }
+
+    /* 不同方法的配色 - 都改为深色 */
+    #slide3 { background: linear-gradient(135deg, #232526 0%, #414345 100%); }
+    #slide4 { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); }
+    #slide5 { background: linear-gradient(135deg, #1a2a6c 0%, #b21f1f 50%, #fdbb2d 100%); }
+    #slide6 { background: linear-gradient(135deg, #134e5e 0%, #71b280 100%); }
+    #slide7 { background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); }
+    #slide8 { background: linear-gradient(135deg, #141e30 0%, #243b55 100%); }
+
+    /* 总结页面 */
+    #slide9 {
+      background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+      padding: 45px 80px !important;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 35px;
+      width: 100%;
+      max-width: 1700px;
+      max-height: calc(100vh - 280px);
+    }
+
+    .summary-card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 25px;
+      padding: 35px 40px;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+
+    .summary-card h3 {
+      font-size: 38px;
+      color: #FFD700;
+      margin-bottom: 20px;
+    }
+
+    .summary-card ul {
+      list-style: none;
+    }
+
+    .summary-card li {
+      font-size: 26px;
+      color: white;
+      margin-bottom: 15px;
+      padding-left: 38px;
+      position: relative;
+      line-height: 1.4;
+    }
+
+    .summary-card li::before {
+      content: '▸';
+      position: absolute;
+      left: 0;
+      color: #FFD700;
+      font-size: 30px;
+    }
+
+    /* 结尾页面 */
+    #slide10 {
+      background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
+    }
+
+    .quote-container {
+      max-width: 1300px;
+      text-align: center;
+      padding: 70px 80px;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      border-radius: 40px;
+      border: 3px solid rgba(255,255,255,0.3);
+    }
+
+    .quote-icon {
+      font-size: 100px;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 35px;
+    }
+
+    .quote-text {
+      font-size: 62px;
+      font-weight: 700;
+      color: white;
+      line-height: 1.6;
+      margin-bottom: 45px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .quote-author {
+      font-size: 40px;
+      color: rgba(255,255,255,0.75);
+      font-style: italic;
+    }
+
+    /* 导航提示 */
+    .nav-hint {
+      position: fixed;
+      bottom: 40px;
+      right: 40px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      padding: 20px 35px;
+      border-radius: 50px;
+      color: white;
+      font-size: 26px;
+      border: 2px solid rgba(255,255,255,0.3);
+      z-index: 1000;
+    }
+
+    .page-indicator {
+      position: fixed;
+      bottom: 40px;
+      left: 40px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      padding: 20px 35px;
+      border-radius: 50px;
+      color: white;
+      font-size: 30px;
+      font-weight: 700;
+      border: 2px solid rgba(255,255,255,0.3);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <!-- 开场页 -->
+  <div class="slide active" id="slide1">
+    <div class="hero-title">性能优化必修课</div>
+    <div class="hero-subtitle">掌握接口耗时统计的6种实战方法</div>
+    <div class="tags-container">
+      <div class="tag">📊 从基础到高级</div>
+      <div class="tag">🎯 图文并茂讲解</div>
+      <div class="tag">💡 实战经验分享</div>
+      <div class="tag">🚀 生产环境适用</div>
+      <div class="tag">⚡ 性能优化利器</div>
+    </div>
+  </div>
+
+  <!-- 为什么重要 -->
+  <div class="slide" id="slide2">
+    <div class="section-title">为什么要统计接口耗时？</div>
+    <div class="importance-grid">
+      <div class="importance-card">
+        <div class="card-icon">🎯</div>
+        <div class="card-title">性能优化基石</div>
+        <div class="card-desc">没有耗时数据，优化就像盲人摸象，无法定位瓶颈</div>
+      </div>
+      <div class="importance-card">
+        <div class="card-icon">🔔</div>
+        <div class="card-title">监控告警源头</div>
+        <div class="card-desc">通过耗时趋势提前发现系统异常，如慢SQL、资源竞争</div>
+      </div>
+      <div class="importance-card">
+        <div class="card-icon">😊</div>
+        <div class="card-title">用户体验晴雨表</div>
+        <div class="card-desc">响应时间直接影响用户满意度，毫秒级延迟都可能造成流失</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 方法1 -->
+  <div class="slide method-slide" id="slide3">
+    <div class="method-header">
+      <div class="method-number">方法 01</div>
+      <div class="method-name">System.currentTimeMillis()</div>
+    </div>
+    <div class="method-content">
+      <div class="method-left-content">
+        <div class="flow-diagram">
+          <div class="flow-step">记录开始时间 startTime</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">执行业务逻辑</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">记录结束时间 endTime</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">计算耗时 = endTime - startTime</div>
+        </div>
+      </div>
+      <div class="method-right-content">
+        <ul class="feature-list">
+          <li>最基础直接的计时方法</li>
+          <li>返回毫秒级时间戳</li>
+          <li>适合快速调试和本地测试</li>
+          <li>无需任何第三方依赖</li>
+        </ul>
+        <div class="pros-cons">
+          <div class="pros">
+            <h3>优点</h3>
+            <p>简单易用、快速有效、零依赖</p>
+          </div>
+          <div class="cons">
+            <h3>缺点</h3>
+            <p>精度有限、受系统时间影响、代码侵入性强</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 方法2 -->
+  <div class="slide method-slide" id="slide4">
+    <div class="method-header">
+      <div class="method-number">方法 02</div>
+      <div class="method-name">System.nanoTime()</div>
+    </div>
+    <div class="method-content">
+      <div class="method-left-content">
+        <div class="flow-diagram">
+          <div class="flow-step">记录纳秒级开始时间</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">执行高精度操作</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">记录纳秒级结束时间</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">计算差值并转换单位</div>
+        </div>
+      </div>
+      <div class="method-right-content">
+        <ul class="feature-list">
+          <li>提供纳秒级高精度测量</li>
+          <li>专门用于时间间隔计算</li>
+          <li>不受系统时间调整影响</li>
+          <li>适合算法性能优化场景</li>
+        </ul>
+        <div class="pros-cons">
+          <div class="pros">
+            <h3>优点</h3>
+            <p>纳秒级精度、不受时钟同步影响</p>
+          </div>
+          <div class="cons">
+            <h3>缺点</h3>
+            <p>需要单位转换、仍有代码侵入性</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 方法3 -->
+  <div class="slide method-slide" id="slide5">
+    <div class="method-header">
+      <div class="method-number">方法 03</div>
+      <div class="method-name">Spring AOP 切面</div>
+    </div>
+    <div class="method-content">
+      <div class="method-left-content">
+        <div class="flow-diagram">
+          <div class="flow-step">定义 @TimeCost 注解</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">编写切面拦截逻辑</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">在方法上添加注解</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">自动统计耗时</div>
+        </div>
+      </div>
+      <div class="method-right-content">
+        <ul class="feature-list">
+          <li>面向切面编程，关注点分离</li>
+          <li>通过注解标记需要统计的方法</li>
+          <li>动态代理自动拦截执行</li>
+          <li>业务代码完全零侵入</li>
+        </ul>
+        <div class="pros-cons">
+          <div class="pros">
+            <h3>优点</h3>
+            <p>无侵入、解耦优雅、统一管理</p>
+          </div>
+          <div class="cons">
+            <h3>缺点</h3>
+            <p>仅限Spring Bean、有代理开销</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 方法4 -->
+  <div class="slide method-slide" id="slide6">
+    <div class="method-header">
+      <div class="method-number">方法 04</div>
+      <div class="method-name">拦截器 Interceptor</div>
+    </div>
+    <div class="method-content">
+      <div class="method-left-content">
+        <div class="flow-diagram">
+          <div class="flow-step">preHandle 记录开始时间</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">Controller 执行</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">视图渲染</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">afterCompletion 计算耗时</div>
+        </div>
+      </div>
+      <div class="method-right-content">
+        <ul class="feature-list">
+          <li>Spring MVC 专用拦截机制</li>
+          <li>拦截 Controller 层所有请求</li>
+          <li>可获取 HTTP 上下文信息</li>
+          <li>统计包含视图渲染时间</li>
+        </ul>
+        <div class="pros-cons">
+          <div class="pros">
+            <h3>优点</h3>
+            <p>Web优化、获取请求详情、轻量高效</p>
+          </div>
+          <div class="cons">
+            <h3>缺点</h3>
+            <p>仅限Web请求、包括渲染时间</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 方法5 -->
+  <div class="slide method-slide" id="slide7">
+    <div class="method-header">
+      <div class="method-number">方法 05</div>
+      <div class="method-name">过滤器 Servlet Filter</div>
+    </div>
+    <div class="method-content">
+      <div class="method-left-content">
+        <div class="flow-diagram">
+          <div class="flow-step">Filter 开始记录时间</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">过滤器链执行</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">拦截器 + Controller</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">Filter 计算总耗时</div>
+        </div>
+      </div>
+      <div class="method-right-content">
+        <ul class="feature-list">
+          <li>Servlet 规范标准组件</li>
+          <li>位于请求处理链最外层</li>
+          <li>统计完整请求生命周期</li>
+          <li>兼容所有 Java Web 容器</li>
+        </ul>
+        <div class="pros-cons">
+          <div class="pros">
+            <h3>优点</h3>
+            <p>底层全链路、标准兼容、高效稳定</p>
+          </div>
+          <div class="cons">
+            <h3>缺点</h3>
+            <p>包含所有过滤器时间、粒度较粗</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 方法6 -->
+  <div class="slide method-slide" id="slide8">
+    <div class="method-header">
+      <div class="method-number">方法 06</div>
+      <div class="method-name">Micrometer & APM 工具</div>
+    </div>
+    <div class="method-content">
+      <div class="method-left-content">
+        <div class="flow-diagram">
+          <div class="flow-step">集成 Micrometer 依赖</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">自动采集指标数据</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">暴露 Prometheus 端点</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step">Grafana 可视化展示</div>
+        </div>
+      </div>
+      <div class="method-right-content">
+        <ul class="feature-list">
+          <li>生产级专业监控工具</li>
+          <li>支持分布式链路追踪</li>
+          <li>提供聚合统计与可视化</li>
+          <li>对接 Prometheus/SkyWalking</li>
+        </ul>
+        <div class="pros-cons">
+          <div class="pros">
+            <h3>优点</h3>
+            <p>低开销、分布式支持、功能丰富</p>
+          </div>
+          <div class="cons">
+            <h3>缺点</h3>
+            <p>配置复杂、需要基础设施支持</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 总结页面 -->
+  <div class="slide" id="slide9">
+    <div class="section-title">方法对比与选择原则</div>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <h3>🎯 场景选择</h3>
+        <ul>
+          <li>开发测试：AOP 或拦截器</li>
+          <li>生产环境：Micrometer/APM</li>
+          <li>高精度：nanoTime</li>
+          <li>全链路：Filter</li>
+        </ul>
+      </div>
+      <div class="summary-card">
+        <h3>💡 最佳实践</h3>
+        <ul>
+          <li>只统计关键接口</li>
+          <li>结合日志和指标</li>
+          <li>设置耗时告警</li>
+          <li>优先无侵入方案</li>
+        </ul>
+      </div>
+      <div class="summary-card">
+        <h3>⚡ 性能考量</h3>
+        <ul>
+          <li>避免过度统计</li>
+          <li>注意代理开销</li>
+          <li>异步记录数据</li>
+          <li>控制采样率</li>
+        </ul>
+      </div>
+      <div class="summary-card">
+        <h3>🔧 工具推荐</h3>
+        <ul>
+          <li>中小项目：Micrometer</li>
+          <li>大型分布式：SkyWalking</li>
+          <li>可视化：Grafana</li>
+          <li>告警：AlertManager</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结尾金句 -->
+  <div class="slide" id="slide10">
+    <div class="quote-container">
+      <div class="quote-icon">"</div>
+      <div class="quote-text">
+        度量是改进的开始<br>
+        优化是卓越的阶梯
+      </div>
+      <div class="quote-author">—— 持续观察，持续进步</div>
+    </div>
+  </div>
+
+  <!-- 导航提示 -->
+  <div class="nav-hint">↑↓ 切换页面</div>
+  <div class="page-indicator"><span id="current-page">1</span> / 10</div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const pageIndicator = document.getElementById('current-page');
+
+    function showSlide(index) {
+      slides.forEach(slide => slide.classList.remove('active'));
+      slides[index].classList.add('active');
+      pageIndicator.textContent = index + 1;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        currentSlide = (currentSlide + 1) % totalSlides;
+        showSlide(currentSlide);
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+        showSlide(currentSlide);
+      }
+    });
+
+    // 触摸支持
+    let touchStartY = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+    });
+
+    document.addEventListener('touchend', (e) => {
+      const touchEndY = e.changedTouches[0].clientY;
+      const diff = touchStartY - touchEndY;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) {
+          currentSlide = (currentSlide + 1) % totalSlides;
+        } else {
+          currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+        }
+        showSlide(currentSlide);
+      }
+    });
+  </script>
+</body>
+</html>

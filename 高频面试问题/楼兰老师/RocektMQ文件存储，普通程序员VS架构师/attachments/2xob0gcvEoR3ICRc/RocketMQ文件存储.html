@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RocketMQ 架构师之路</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --primary-color: #03dac6;
+            --secondary-color: #bb86fc;
+            --text-color: #e0e0e0;
+            --border-color: #333;
+            --arrow-color: #555;
+            --red-color: #cf6679;
+            --green-color: #66bb6a;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        .section {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            border-bottom: 2px solid var(--border-color);
+            box-sizing: border-box;
+            position: relative;
+            text-align: center;
+        }
+        .section h1 {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            animation: fadeInDown 1s;
+        }
+        .section h2 {
+            font-size: 2rem;
+            color: var(--text-color);
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            width: 90%;
+            max-width: 1200px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .card h3 {
+            font-size: 1.8rem;
+            color: var(--secondary-color);
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        .comparison {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            align-items: flex-start;
+        }
+        .column {
+            width: 45%;
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        .column h4 {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .box {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin: 5px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .pro-con {
+            margin-top: 20px;
+        }
+        .pro-con span {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            margin: 5px;
+            font-size: 0.9rem;
+        }
+        .pro { background-color: rgba(102, 187, 106, 0.2); color: var(--green-color); }
+        .con { background-color: rgba(207, 102, 121, 0.2); color: var(--red-color); }
+
+        /* NEW Placeholder Box Style */
+        .placeholder-box {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 250px;
+            width: 100%;
+            margin: 20px 0;
+            background-color: rgba(0,0,0,0.2);
+            color: var(--arrow-color);
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+
+        /* Opening Section */
+        #opening .grid {
+            align-items: center;
+        }
+        #opening .vs {
+            font-size: 6rem;
+            color: var(--red-color);
+            font-weight: bold;
+            align-self: center;
+            justify-self: center;
+            animation: pulse 1.5s infinite;
+        }
+
+        /* HA Section */
+        #ha-evolution .timeline {
+            display: flex;
+            justify-content: space-between;
+            width: 95%;
+            max-width: 1400px;
+            align-items: stretch; /* Changed to stretch */
+            position: relative;
+        }
+        #ha-evolution .timeline::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 5%;
+            right: 5%;
+            height: 4px;
+            background-color: var(--border-color);
+            transform: translateY(-50%);
+            z-index: -1;
+        }
+        #ha-evolution .ha-step {
+            width: 30%;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            display: flex; /* Added */
+            flex-direction: column; /* Added */
+        }
+        #ha-evolution .ha-step h4 {
+            color: var(--secondary-color);
+            font-size: 1.3rem;
+        }
+        /* Smaller placeholder for HA section */
+        #ha-evolution .placeholder-box {
+            min-height: 150px;
+            font-size: 1.1rem;
+            flex-grow: 1; /* Added */
+        }
+
+        /* Closing Section */
+        #closing {
+            background: linear-gradient(45deg, #1e133b, #3c1053);
+        }
+        #closing .quote {
+            font-size: 1.8rem;
+            margin: 30px 0;
+            font-style: italic;
+            max-width: 800px;
+            color: var(--primary-color);
+            border-left: 4px solid var(--secondary-color);
+            padding-left: 20px;
+        }
+        #closing .final-image {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 40px;
+        }
+        #closing .final-image span {
+            font-size: 5rem;
+        }
+        #closing .final-image .arrow-transform {
+            font-size: 4rem;
+            color: var(--green-color);
+        }
+        #closing .author {
+            margin-top: 50px;
+            font-size: 2rem;
+            color: var(--text-color);
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @media (max-width: 768px) {
+            .grid, .comparison, .timeline {
+                grid-template-columns: 1fr;
+                flex-direction: column;
+                gap: 20px;
+                width: 100%;
+            }
+            .column, .ha-step {
+                width: 100%;
+                box-sizing: border-box;
+            }
+            #opening .vs {
+                transform: rotate(90deg);
+                margin: 20px 0;
+            }
+            #closing .final-image {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. 开场页 (No Change) -->
+    <section id="opening" class="section">
+        <h1>RocketMQ面试：<span style="color: var(--secondary-color);">普通程序员</span> vs <span style="color: var(--primary-color);">架构师</span></h1>
+        <div class="grid" style="grid-template-columns: 1fr auto 1fr;">
+            <div class="card">
+                <h3>普通程序员 👨‍💻</h3>
+                <div class="icon">🧠</div>
+                <p>线性思维 / 背诵记忆</p>
+                <div class="box">CommitLog</div>
+                <div class="box">ConsumeQueue</div>
+                <div class="box">IndexFile</div>
+            </div>
+            <div class="vs">VS</div>
+            <div class="card">
+                <h3>架构师 🧑‍🚀</h3>
+                <div class="icon">💡</div>
+                <p>体系化思考 / 洞察本质</p>
+                <div class="box" style="border-color: var(--primary-color);">权衡</div>
+                <div class="box" style="border-color: var(--primary-color);">演进</div>
+                <div class="box" style="border-color: var(--primary-color);">场景</div>
+            </div>
+        </div>
+        <h2>你的回答，停留在哪个层次？</h2>
+    </section>
+
+    <!-- 2. RocketMQ核心文件存储 (REPLACED WITH PLACEHOLDER) -->
+    <section id="file-structure" class="section">
+        <h1>第一问：文件存储结构 (The What)</h1>
+        <div class="placeholder-box" style="width: 80%; max-width: 1000px; min-height: 400px;">
+            <img src="./r1.png" width=100%/>
+        </div>
+        <h2 style="margin-top: 40px;">核心思想：<span style="color: var(--primary-color);">数据</span> 与 <span style="color: var(--secondary-color);">索引</span> 分离</h2>
+    </section>
+
+    <!-- 3. 设计哲学之争: Kafka vs RocketMQ (REPLACED WITH PLACEHOLDERS) -->
+    <section id="philosophy" class="section">
+        <h1>第二问：设计哲学 (The Why)</h1>
+        <div class="comparison">
+            <div class="column">
+                <h4>Kafka: 物理隔离</h4>
+                <div class="placeholder-box">
+                    <img src="./r2.png" height="500px"/>
+                </div>
+                <div class="pro-con">
+                    <span class="pro">✓ 模型简单</span>
+                    <span class="con">✗ 海量小文件</span>
+                    <span class="con">✗ 随机写性能差</span>
+                </div>
+            </div>
+            <div class="column">
+                <h4>RocketMQ: 聚合写入</h4>
+                <div class="placeholder-box">
+                    <img src="./r3.png" height="500px"/>
+                </div>
+                <div class="pro-con">
+                    <span class="pro">✓ 极致顺序写</span>
+                    <span class="pro">✓ Topic数量友好</span>
+                    <span class="con">✗ 多一次索引IO</span>
+                </div>
+            </div>
+        </div>
+        <h2 style="margin-top: 40px;">最终目的：架构的 <span style="font-size: 3rem; color: var(--primary-color);">权衡</span></h2>
+    </section>
+
+    <!-- 4. 高可用演进之路 (REPLACED WITH PLACEHOLDERS) -->
+    <section id="ha-evolution" class="section">
+        <h1>第三问：高可用演进 (The How)</h1>
+        <div class="timeline">
+            <div class="ha-step">
+                <h4>主从模式</h4>
+                <div class="placeholder-box"><img src="./r4.png" height="200px"/></div>
+                <p style="margin-top: auto;">主挂从不切</p>
+                <div class="pro-con">
+                    <span class="pro">✓ 结构简单</span>
+                    <span class="con">✗ 无自动容灾</span>
+                </div>
+            </div>
+            <div class="ha-step">
+                <h4>Dledger (4.x)</h4>
+                <div class="placeholder-box"><img src="./r5.png" height="200px"/></div>
+                <p style="margin-top: auto;">Raft协议，强同步</p>
+                <div class="pro-con">
+                    <span class="pro">✓ 数据不丢</span>
+                    <span class="con">✗ 性能差</span>
+                    <span class="con">✗ 日志不兼容</span>
+                </div>
+            </div>
+            <div class="ha-step">
+                <h4>Controller (5.x)</h4>
+                <div class="placeholder-box"><img src="./r6.png" height="200px"/></div>
+                <p style="margin-top: auto;">控制面/数据面解耦</p>
+                <div class="pro-con">
+                    <span class="pro">✓ 高性能</span>
+                    <span class="pro">✓ 自动容灾</span>
+                    <span class="pro">✓ 兼容</span>
+                </div>
+            </div>
+        </div>
+        <h2 style="margin-top: 40px;">核心思想：<span style="font-size: 3rem; color: var(--primary-color);">解耦</span></h2>
+    </section>
+
+    <!-- 5. 总结页 (No Change) -->
+    <section id="closing" class="section">
+    	<div class="quote" style="border-color: var(--primary-color); color: var(--text-color);">
+            RocketMQ的每一次进化，都不是简单的技术堆砌，而是一次次深刻的<span style="color: var(--secondary-color);">场景分析</span>和<span style="color: var(--secondary-color);">架构权衡</span>。
+        </div>
+        <div class="quote">
+            技术面试，不是考察你背了多少，<br />而是看你能不能透过现象，看到架构设计背后的 <span style="color: var(--secondary-color);">思考</span> 和 <span style="color: var(--secondary-color);">取舍</span>。
+        </div>
+        <div class="quote" style="border-color: var(--primary-color); color: var(--text-color);">
+            死记硬背只能让你停在原地，而理解了这些思考过程，才能让你真正脱颖而出。
+        </div>
+    </section>
+</body>
+</html>

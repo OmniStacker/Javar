@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>库存超卖解决方案视觉看板 (网格版)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="https://unpkg.com/lucide-static@latest/ro/lucide.js"></script>
+  <style>
+    body {
+      background-color: #111827;
+      color: #F3F4F6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    }
+    .sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      background-color: rgba(17, 24, 39, 0.85);
+      border-bottom: 1px solid #374151;
+    }
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 2rem;
+      padding: 2rem;
+    }
+    .layer-card {
+      display: flex;
+      flex-direction: column;
+      background-color: #1F2937;
+      border: 1px solid #4B5563;
+      border-radius: 1.5rem;
+      padding: 2rem;
+      transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .layer-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+    }
+    .layer-title {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 800;
+      color: #E5E7EB;
+    }
+    .layer-subtitle {
+      text-align: center;
+      font-size: 1.25rem;
+      color: #9CA3AF;
+      margin-top: 0.25rem;
+      margin-bottom: 2rem;
+      min-height: 3rem; 
+    }
+    .diagram-wrapper {
+      flex-grow: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 150px;
+    }
+    .diagram-box {
+      background-color: #374151;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 600;
+      border: 2px solid #4B5563;
+    }
+    .summary-grid {
+      margin-top: 2rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      font-size: 1.1rem;
+      text-align: center;
+    }
+    .summary-item {
+      background-color: #374151;
+      border-radius: 0.75rem;
+      padding: 0.75rem;
+      font-weight: 500;
+    }
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .grid-container {
+        grid-template-columns: 1fr;
+      }
+      .layer-title {
+        font-size: 1.75rem;
+      }
+      .layer-subtitle {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="sticky-header py-5 px-8">
+    <h1 class="text-4xl md:text-5xl font-extrabold text-center text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+      字节一面：库存超卖我只答了“加锁”...
+    </h1>
+    <p class="text-xl md:text-2xl text-center text-slate-300 mt-2 font-semibold">
+      7层方案｜性能 vs 一致性｜场景驱动｜技术权衡
+    </p>
+  </header>
+
+  <main class="grid-container">
+
+    <!-- Layer 1 -->
+    <div class="layer-card">
+      <h2 class="layer-title">1. 数据库无符号</h2>
+      <p class="layer-subtitle">最后的防线</p>
+      <div class="diagram-wrapper">
+        <div class="flex flex-col items-center gap-2">
+          <div class="flex items-center gap-2"><div class="diagram-box">库存: 1</div><div class="text-2xl text-gray-500">→</div><div class="diagram-box bg-sky-900/50 border-sky-500">UPDATE</div><div class="text-2xl text-gray-500">→</div><div class="diagram-box">库存: 0</div></div>
+          <p class="text-red-500 font-bold text-3xl my-2">🚫</p>
+          <div class="diagram-box bg-red-900/50 border-red-500">再次 UPDATE (失败)</div>
+        </div>
+      </div>
+      <div class="summary-grid"><div class="summary-item">👍 兜底保证</div><div class="summary-item">👎 被动防御</div></div>
+    </div>
+
+    <!-- Layer 2 -->
+    <div class="layer-card">
+      <h2 class="layer-title">2. 悲观锁</h2>
+      <p class="layer-subtitle">串行执行，性能杀手</p>
+      <div class="diagram-wrapper">
+          <div class="flex flex-col items-center gap-2">
+              <div class="flex gap-2"><div class="diagram-box bg-green-900/50 border-green-500">请求1</div><div class="diagram-box">请求2</div><div class="diagram-box">请求3</div></div>
+              <lucide-arrow-down class="w-10 h-10 text-slate-500 my-1"></lucide-arrow-down>
+              <div class="diagram-box text-lg"><lucide-lock class="inline-block w-5 h-5 mr-1 text-red-400"></lucide-lock>SELECT ... FOR UPDATE</div>
+          </div>
+      </div>
+      <div class="summary-grid"><div class="summary-item">👍 强一致性</div><div class="summary-item">👎 吞吐量极低</div></div>
+    </div>
+
+    <!-- Layer 3 -->
+    <div class="layer-card">
+      <h2 class="layer-title">3. 乐观锁 (CAS)</h2>
+      <p class="layer-subtitle">先斩后奏，冲突重试</p>
+      <div class="diagram-wrapper">
+        <div class="flex items-center gap-2">
+            <div><div class="diagram-box mb-2">请求A: 读V1</div><div class="diagram-box">请求B: 读V1</div></div>
+            <div class="text-2xl text-gray-500">→</div>
+            <div><div class="diagram-box mb-2 bg-green-900/50 border-green-500">A: 成功✅</div><div class="diagram-box bg-red-900/50 border-red-500">B: 失败❌</div></div>
+            <div class="text-2xl text-gray-500">→</div>
+            <div class="diagram-box"><lucide-refresh-cw class="inline w-5 h-5"></lucide-refresh-cw> B重试</div>
+        </div>
+      </div>
+      <div class="summary-grid"><div class="summary-item">👍 性能提升</div><div class="summary-item">👎 冲突时CPU空转</div></div>
+    </div>
+
+    <!-- Layer 4 -->
+    <div class="layer-card">
+      <h2 class="layer-title">4. Redis 队列</h2>
+      <p class="layer-subtitle">削峰填谷，异步处理</p>
+      <div class="diagram-wrapper">
+          <div class="flex items-center gap-3">
+              <div class="text-4xl">🌊</div><div class="text-2xl text-gray-500">→</div>
+              <div class="diagram-box text-blue-300 border-blue-400"><lucide-filter class="inline w-6 h-6"></lucide-filter> 队列</div><div class="text-2xl text-gray-500">→</div>
+              <div class="text-2xl">💧</div><div class="text-2xl text-gray-500">→</div>
+              <div class="diagram-box"><lucide-database class="inline w-6 h-6"></lucide-database></div>
+          </div>
+      </div>
+      <div class="summary-grid"><div class="summary-item">👍 扛瞬时流量</div><div class="summary-item">👎 逻辑复杂/有风险</div></div>
+    </div>
+    
+    <!-- Layer 5 -->
+    <div class="layer-card">
+      <h2 class="layer-title">5. Redis LUA 脚本</h2>
+      <p class="layer-subtitle">打包命令，保证原子</p>
+      <div class="diagram-wrapper">
+        <div class="flex items-center gap-4">
+            <div class="diagram-box border-dashed border-indigo-400 p-4"><p class="text-sm text-left text-slate-300">1. GET stock<br>2. IF stock > 0<br>3. &nbsp;&nbsp;DECR stock<br>4. END</p></div>
+            <div class="text-2xl text-gray-500">→</div>
+            <div class="diagram-box text-xl"><lucide-box-select class="inline w-8 h-8 text-indigo-300"></lucide-box-select> 原子</div>
+        </div>
+      </div>
+      <div class="summary-grid"><div class="summary-item">👍 Redis层面原子性</div><div class="summary-item">👎 脚本维护难</div></div>
+    </div>
+
+    <!-- Layer 6 -->
+    <div class="layer-card">
+      <h2 class="layer-title">6. 分布式锁</h2>
+      <p class="layer-subtitle">宁慢勿错，强一致</p>
+      <div class="diagram-wrapper">
+        <div class="flex flex-col items-center gap-3">
+          <div class="diagram-box bg-green-900/50 border-green-500">服务A <lucide-key-round class="inline-block w-4 h-4 text-rose-400"></lucide-key-round> → <lucide-database class="inline-block w-4 h-4"></lucide-database></div>
+          <div class="flex gap-2"><div class="diagram-box bg-red-900/50 border-red-500">服务B 🚫</div><div class="diagram-box bg-red-900/50 border-red-500">服务C 🚫</div></div>
+        </div>
+      </div>
+      <div class="summary-grid"><div class="summary-item">👍 分布式强一致</div><div class="summary-item">👎 性能瓶颈</div></div>
+    </div>
+
+    <!-- Layer 7 -->
+    <div class="layer-card">
+      <h2 class="layer-title">7. 分段锁</h2>
+      <p class="layer-subtitle">分而治之，并发倍增</p>
+      <div class="diagram-wrapper">
+        <div class="flex flex-col items-center gap-2">
+            <div class="diagram-box text-base">总库存 = 100</div>
+            <lucide-git-fork class="w-12 h-12 text-emerald-400 my-1"></lucide-git-fork>
+            <div class="grid grid-cols-3 gap-1"><div class="diagram-box text-xs">段1(10)</div><div class="diagram-box text-xs">段2(10)</div><div class="diagram-box text-xs">...</div></div>
+            <div class="flex gap-4 mt-2"><div class="diagram-box text-xs">请求A→段1</div><div class="diagram-box text-xs">请求B→段2</div></div>
+        </div>
+      </div>
+      <div class="summary-grid"><div class="summary-item">👍 并发能力倍增</div><div class="summary-item">👎 实现复杂/库存碎片</div></div>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="layer-card border-2 border-amber-400/50">
+      <h2 class="layer-title text-amber-300">8. 总结：没有银弹，只有取舍</h2>
+      <p class="layer-subtitle">技术选型的艺术</p>
+      <div class="diagram-wrapper">
+          <div class="w-full">
+              <!-- Balance Scale -->
+              <div class="flex justify-between items-end text-center text-lg font-bold">
+                  <div class="w-1/3 text-cyan-300">性能 / 并发</div>
+                  <div class="w-1/3 text-rose-300">一致性 / 简单性</div>
+              </div>
+              <div class="flex items-center h-2 bg-slate-500 rounded-full">
+                  <div class="w-1/2 h-full bg-gradient-to-r from-cyan-400 to-slate-500 rounded-l-full"></div>
+                  <div class="w-1/2 h-full bg-gradient-to-l from-rose-400 to-slate-500 rounded-r-full"></div>
+              </div>
+              <div class="flex justify-center">
+                  <div class="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-slate-500"></div>
+              </div>
+              <div class="flex justify-center mt-1">
+                  <div class="diagram-box bg-amber-900/50 border-amber-500 text-amber-300 text-lg">
+                      <lucide-compass class="inline-block w-6 h-6 mr-2"></lucide-compass>业务场景
+                  </div>
+              </div>
+          </div>
+      </div>
+      <div class="summary-grid grid-cols-1 mt-6">
+          <div class="summary-item bg-slate-600 text-slate-200">根据业务对性能、一致性和成本的要求，选择最适合的方案组合。</div>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>

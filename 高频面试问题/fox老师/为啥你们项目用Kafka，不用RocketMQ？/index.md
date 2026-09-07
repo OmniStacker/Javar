@@ -1,0 +1,58 @@
+# 为啥你们项目用 Kafka，不用 RocketMQ？
+
+### **<font style="color:rgba(0, 0, 0, 0.88);">一、 为什么选择 Kafka 而不是 RocketMQ？</font>**
+**<font style="color:rgba(0, 0, 0, 0.88);">（适用于大数据、日志采集、实时流处理场景）</font>**
+
+**<font style="color:rgba(0, 0, 0, 0.88);">核心论点：Kafka 是实时数据流的基石，为高吞吐、大规模数据管道而生。</font>**
+
+**<font style="color:rgba(0, 0, 0, 0.88);">满分回答结构：</font>**
+
+1. **<font style="color:rgba(0, 0, 0, 0.88);">肯定对方：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“RocketMQ 是非常优秀的消息中间件，特别是在业务消息领域。”</font>
+2. **<font style="color:rgba(0, 0, 0, 0.88);">锚定场景：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“但在我们的项目中，核心场景是【日志/用户行为事件/监控数据采集和传输】，其特征是数据量极大（日TB/PB级），但对单条消息的丢失不那么敏感，允许少量丢失。”</font>
+3. **<font style="color:rgba(0, 0, 0, 0.88);">分点阐述：</font>**
+    - **<font style="color:rgba(0, 0, 0, 0.88);">极致吞吐与可靠性权衡：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“Kafka 的</font>**<font style="color:rgba(0, 0, 0, 0.88);">顺序磁盘I/O</font>**<font style="color:rgba(0, 0, 0, 0.88);">和</font>**<font style="color:rgba(0, 0, 0, 0.88);">Zero-Copy</font>**<font style="color:rgba(0, 0, 0, 0.88);">技术使其在纯消息吞吐性能上达到了极致，这正是我们海量数据场景最看重的。虽然 RocketMQ 吞吐量也很高，但在我们的压测中，Kafka 的极限更高。”</font>
+    - **<font style="color:rgba(0, 0, 0, 0.88);">无缝的大数据生态集成：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“我们的数据最终要流入</font><font style="color:rgba(0, 0, 0, 0.88);"> </font>**<font style="color:rgba(0, 0, 0, 0.88);">Flink/Spark Streaming</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">做实时计算，或进入</font><font style="color:rgba(0, 0, 0, 0.88);"> </font>**<font style="color:rgba(0, 0, 0, 0.88);">数据湖/数据仓库（如 Iceberg, Hudi, ClickHouse）</font>**<font style="color:rgba(0, 0, 0, 0.88);">。Kafka 是大数据生态的</font>**<font style="color:rgba(0, 0, 0, 0.88);">事实标准</font>**<font style="color:rgba(0, 0, 0, 0.88);">，与这些组件的连接器（Connector）最丰富、最成熟，集成成本极低。”</font>
+    - **<font style="color:rgba(0, 0, 0, 0.88);">成熟的分布式与运维体系：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“Kafka 的架构设计简洁清晰（Leader/Follower），在跨机房复制等场景下有经过大规模验证的解决方案（如LinkedIn的Brooklin），社区异常活跃，对我们构建稳定的大数据管道至关重要。”</font>
+4. **<font style="color:rgba(0, 0, 0, 0.88);">总结：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“因此，对于我们的</font>**<font style="color:rgba(0, 0, 0, 0.88);">大数据管道</font>**<font style="color:rgba(0, 0, 0, 0.88);">场景，Kafka 在</font>**<font style="color:rgba(0, 0, 0, 0.88);">吞吐量、生态和成熟度</font>**<font style="color:rgba(0, 0, 0, 0.88);">上的优势是决定性的。”</font>
+
+### **<font style="color:rgba(0, 0, 0, 0.88);">二、 为什么选择 RocketMQ 而不是 Kafka？</font>**
+**<font style="color:rgba(0, 0, 0, 0.88);">（适用于电商、金融、交易等核心业务场景）</font>**
+
+**<font style="color:rgba(0, 0, 0, 0.88);">核心论点：RocketMQ 是业务消息的专家，为交易一致性、业务解耦和友好运维而生。</font>**
+
+**<font style="color:rgba(0, 0, 0, 0.88);">满分回答结构：</font>**
+
+1. **<font style="color:rgba(0, 0, 0, 0.88);">肯定对方：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“Kafka 无疑是消息领域吞吐量的王者，特别是在流处理方面。”</font>
+2. **<font style="color:rgba(0, 0, 0, 0.88);">锚定场景：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“但在我们的项目中，核心是【订单、支付、交易等核心业务】，消息必须保证</font>**<font style="color:rgba(0, 0, 0, 0.88);">绝对可靠不丢失</font>**<font style="color:rgba(0, 0, 0, 0.88);">，并且时常需要</font>**<font style="color:rgba(0, 0, 0, 0.88);">延时、事务等高级功能</font>**<font style="color:rgba(0, 0, 0, 0.88);">。”</font>
+3. **<font style="color:rgba(0, 0, 0, 0.88);">分点阐述：</font>**
+    - **<font style="color:rgba(0, 0, 0, 0.88);">开箱即用的高级消息特性：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“RocketMQ</font><font style="color:rgba(0, 0, 0, 0.88);"> </font>**<font style="color:rgba(0, 0, 0, 0.88);">原生支持事务消息</font>**<font style="color:rgba(0, 0, 0, 0.88);">，其‘半消息’机制与我们的下单扣减库存、发送优惠券等场景完美契合，开发成本低，心智负担小。同时，其</font>**<font style="color:rgba(0, 0, 0, 0.88);">延时消息</font>**<font style="color:rgba(0, 0, 0, 0.88);">功能也非常成熟，用于处理超时关单等场景，而Kafka需要自行实现。”</font>
+    - **<font style="color:rgba(0, 0, 0, 0.88);">Java技术栈的深度友好：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“我们团队技术栈以</font><font style="color:rgba(0, 0, 0, 0.88);"> </font>**<font style="color:rgba(0, 0, 0, 0.88);">Java 为主</font>**<font style="color:rgba(0, 0, 0, 0.88);">。RocketMQ 用 Java 开发，这意味着遇到疑难问题时，我们团队</font>**<font style="color:rgba(0, 0, 0, 0.88);">排查、阅读源码、定位问题的成本极低</font>**<font style="color:rgba(0, 0, 0, 0.88);">，甚至可以进行定制化开发。而 Kafka（Scala）在这方面门槛稍高。”</font>
+    - **<font style="color:rgba(0, 0, 0, 0.88);">无与伦比的运维友好度：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“RocketMQ 自带功能强大的</font>**<font style="color:rgba(0, 0, 0, 0.88);">控制台（Dashboard）</font>**<font style="color:rgba(0, 0, 0, 0.88);">，可以轻松查看消息轨迹、堆积情况、甚至</font>**<font style="color:rgba(0, 0, 0, 0.88);">在线查看和重发消息</font>**<font style="color:rgba(0, 0, 0, 0.88);">，这对业务排查和运维是巨大的福音。Kafka 的运维更偏向于使用命令行，对业务不透明。”</font>
+    - **<font style="color:rgba(0, 0, 0, 0.88);">消息堆积能力：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“在</font>**<font style="color:rgba(0, 0, 0, 0.88);">消息堆积</font>**<font style="color:rgba(0, 0, 0, 0.88);">方面，RocketMQ 的能力更强。Kafka 的堆积会严重影响性能，而 RocketMQ 在磁盘充足的情况下，能稳定堆积大量消息，这对于像‘双十一’这样流量波峰巨大的业务场景是至关重要的保障。”</font>
+4. **<font style="color:rgba(0, 0, 0, 0.88);">总结：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">“因此，对于我们的</font>**<font style="color:rgba(0, 0, 0, 0.88);">核心业务</font>**<font style="color:rgba(0, 0, 0, 0.88);">场景，RocketMQ 在</font>**<font style="color:rgba(0, 0, 0, 0.88);">消息可靠性、功能丰富度、运维友好度和源码可控性</font>**<font style="color:rgba(0, 0, 0, 0.88);">上的优势更符合我们的需求。”</font>
+
+### **<font style="color:rgba(0, 0, 0, 0.88);">三、 一张图总结核心差异</font>**
+| **<font style="color:rgba(0, 0, 0, 0.88);">维度</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">Kafka</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">RocketMQ</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">选型建议</font>** |
+| --- | --- | --- | --- |
+| **<font style="color:rgba(0, 0, 0, 0.88);">定位</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">实时数据流平台</font>**<font style="color:rgba(0, 0, 0, 0.88);">、日志管道</font> | **<font style="color:rgba(0, 0, 0, 0.88);">业务消息中间件</font>**<font style="color:rgba(0, 0, 0, 0.88);">、核心应用集成</font> | **<font style="color:rgba(0, 0, 0, 0.88);">数据用Kafka，业务用RocketMQ</font>** |
+| **<font style="color:rgba(0, 0, 0, 0.88);">吞吐量</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">极致吞吐</font>**<font style="color:rgba(0, 0, 0, 0.88);">，</font>**<font style="color:rgba(0, 0, 0, 0.88);">王者</font>** | <font style="color:rgba(0, 0, 0, 0.88);">非常高，但略逊于Kafka</font> | <font style="color:rgba(0, 0, 0, 0.88);">追求</font>**<font style="color:rgba(0, 0, 0, 0.88);">极限吞吐</font>**<font style="color:rgba(0, 0, 0, 0.88);">选Kafka</font> |
+| **<font style="color:rgba(0, 0, 0, 0.88);">生态</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">大数据生态王者</font>**<font style="color:rgba(0, 0, 0, 0.88);">（Flink, Spark）</font> | **<font style="color:rgba(0, 0, 0, 0.88);">微服务生态友好</font>**<font style="color:rgba(0, 0, 0, 0.88);">（Spring Cloud Alibaba, Dubbo）</font> | **<font style="color:rgba(0, 0, 0, 0.88);">对接大数据</font>**<font style="color:rgba(0, 0, 0, 0.88);">选Kafka，</font>**<font style="color:rgba(0, 0, 0, 0.88);">对接业务</font>**<font style="color:rgba(0, 0, 0, 0.88);">选RocketMQ</font> |
+| **<font style="color:rgba(0, 0, 0, 0.88);">高级功能</font>** | <font style="color:rgba(0, 0, 0, 0.88);">事务主要为流处理服务</font> | **<font style="color:rgba(0, 0, 0, 0.88);">原生事务消息、延时消息</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">需要事务、延时</font>**<font style="color:rgba(0, 0, 0, 0.88);">选RocketMQ</font> |
+| **<font style="color:rgba(0, 0, 0, 0.88);">消息可靠性</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">高</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">非常高</font>** | <font style="color:rgba(0, 0, 0, 0.88);">两者都很高，</font>**<font style="color:rgba(0, 0, 0, 0.88);">金融级</font>**<font style="color:rgba(0, 0, 0, 0.88);">可优先RocketMQ</font> |
+| **<font style="color:rgba(0, 0, 0, 0.88);">运维</font>** | <font style="color:rgba(0, 0, 0, 0.88);">命令行，</font>**<font style="color:rgba(0, 0, 0, 0.88);">对运维要求高</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">自带控制台，对业务友好</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">重视业务运维</font>**<font style="color:rgba(0, 0, 0, 0.88);">选RocketMQ</font> |
+| **<font style="color:rgba(0, 0, 0, 0.88);">语言/源码</font>** | <font style="color:rgba(0, 0, 0, 0.88);">Scala/Java，</font>**<font style="color:rgba(0, 0, 0, 0.88);">门槛较高</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">纯Java，对Java团队友好</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">Java团队</font>**<font style="color:rgba(0, 0, 0, 0.88);">想掌控源码选RocketMQ</font> |
+| **<font style="color:rgba(0, 0, 0, 0.88);">消息堆积</font>** | <font style="color:rgba(0, 0, 0, 0.88);">堆积会影响性能</font> | **<font style="color:rgba(0, 0, 0, 0.88);">堆积能力更强，更稳定</font>** | **<font style="color:rgba(0, 0, 0, 0.88);">预计有大量堆积</font>**<font style="color:rgba(0, 0, 0, 0.88);">场景选RocketMQ</font> |
+
+
+### **<font style="color:rgba(0, 0, 0, 0.88);">四、 面试技巧：如何回答才能得满分？</font>**
+1. **<font style="color:rgba(0, 0, 0, 0.88);">不要拉踩：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">不要说“Kafka更好”或“RocketMQ不行”，而要说“</font>**<font style="color:rgba(0, 0, 0, 0.88);">对于我们的XX场景，A的特性比B更合适</font>**<font style="color:rgba(0, 0, 0, 0.88);">”。</font>
+2. **<font style="color:rgba(0, 0, 0, 0.88);">体现思考过程：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">提到“我们当时</font>**<font style="color:rgba(0, 0, 0, 0.88);">压测</font>**<font style="color:rgba(0, 0, 0, 0.88);">过”、“我们</font>**<font style="color:rgba(0, 0, 0, 0.88);">评估</font>**<font style="color:rgba(0, 0, 0, 0.88);">了我们的业务形态”，这表明你的选择是经过深思熟虑的。</font>
+3. **<font style="color:rgba(0, 0, 0, 0.88);">主动展现视野：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">在回答的最后可以加一句：“当然，我们也深入了解了RocketMQ，它的事务消息设计非常精妙，如果未来有电商业务，我们会优先考虑它。” 这会让面试官觉得你技术视野开阔，而不是只守着自家的一亩三分地。</font>
+4. **<font style="color:rgba(0, 0, 0, 0.88);">反问对方：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">回答完后，可以反问：“想了解一下，咱们公司的技术选型是基于哪些考量呢？” 这会化被动为主动，展现你的沟通和思考能力。</font>
+
+**<font style="color:rgba(0, 0, 0, 0.88);">记住：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> 没有最好的技术，只有最合适的技术选型。你能清晰地说出“为什么合适”，就是最好的答案。</font>
+
+
+
+> 更新: 2025-09-28 19:49:13  
+> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hwh4ar9s0e4ke7vm>

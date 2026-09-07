@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>消息幂等（去重）如何解决？来看看这个方案！</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            50% { box-shadow: 0 0 20px 10px rgba(34, 197, 94, 0); }
+        }
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0); }
+        }
+        @keyframes jump {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #f1f5f9; }
+        .slide {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem 1.5rem;
+            border-bottom: 2px solid #334155;
+            opacity: 0;
+            animation: slide-in-up 0.8s ease-out forwards;
+        }
+        .content-panel {
+            background-color: rgba(30, 41, 59, 0.3);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 1200px;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+        .gradient-text {
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-sky { background-image: linear-gradient(to right, #38bdf8, #0ea5e9); }
+        .gradient-red { background-image: linear-gradient(to right, #f87171, #ef4444); }
+        .gradient-amber { background-image: linear-gradient(to right, #fbbf24, #f59e0b); }
+        .gradient-violet { background-image: linear-gradient(to right, #a78bfa, #8b5cf6); }
+        .gradient-teal { background-image: linear-gradient(to right, #2dd4bf, #14b8a6); }
+        .gradient-green { background-image: linear-gradient(to right, #4ade80, #22c55e); }
+
+        .diagram-node {
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            font-weight: 600;
+            border: 2px solid;
+            transition: transform 0.3s ease;
+        }
+        .diagram-node:hover { transform: scale(1.05); }
+        .diagram-node-good { background-color: #166534; border-color: #22c55e; color: #dcfce7; }
+        .diagram-node-bad { background-color: #991b1b; border-color: #ef4444; color: #fee2e2; }
+        .diagram-node-base { background-color: #1e3a8a; border-color: #3b82f6; color: #dbeafe; }
+        .diagram-node-alt { background-color: #581c87; border-color: #a855f7; color: #f3e8ff; }
+
+        .arrow { font-size: 2.5rem; color: #64748b; display: flex; align-items: center; justify-content: center; padding: 0 1rem; }
+        
+        .nav-dots { position: fixed; right: 1.5rem; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 1rem; z-index: 50; }
+        .nav-dot { width: 12px; height: 12px; background-color: #475569; border-radius: 9999px; transition: all 0.3s ease; }
+        .nav-dot:hover { background-color: #94a3b8; transform: scale(1.2); }
+        .nav-dot.active { background-color: #f1f5f9; transform: scale(1.5); }
+    </style>
+</head>
+<body class="bg-slate-900">
+
+    <div id="nav-container" class="nav-dots"></div>
+
+    <!-- Slide 1: Homepage -->
+    <section id="slide-1" class="slide">
+        <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-center gradient-text gradient-sky">消息幂等（去重）如何解决？</h1>
+        <h2 class="mt-4 text-3xl md:text-5xl font-semibold text-slate-300 text-center">来看看这个方案！</h2>
+        
+        <div class="mt-16 w-full max-w-4xl flex items-center justify-center gap-2 md:gap-4 opacity-0" style="animation: slide-in-up 1s ease-out 0.5s forwards;">
+            <div class="flex flex-col items-center gap-2">
+                <div class="diagram-node diagram-node-base flex items-center gap-3"><i class="fa-solid fa-truck text-2xl"></i><span class="hidden md:inline">消息投递</span></div>
+            </div>
+            <div class="arrow text-sky-400 font-black">&rarr;</div>
+            <div class="relative flex flex-col items-center gap-2">
+                <i class="fa-solid fa-clone text-4xl text-red-500 absolute -top-10" style="animation: jump 1.5s ease-in-out infinite;"></i>
+                <div class="diagram-node diagram-node-bad"><span class="hidden md:inline">重复消费</span></div>
+            </div>
+            <div class="arrow text-sky-400 font-black">&rarr;</div>
+            <div class="flex flex-col items-center gap-2">
+                <div class="diagram-node diagram-node-alt flex items-center gap-3"><i class="fa-solid fa-shield-halved text-2xl"></i><span class="hidden md:inline">幂等判断</span></div>
+            </div>
+            <div class="arrow text-sky-400 font-black">&rarr;</div>
+            <div class="flex flex-col items-center gap-2">
+                <div class="diagram-node diagram-node-good flex items-center gap-3"><i class="fa-solid fa-check-double text-2xl"></i><span class="hidden md:inline">唯一执行</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: The Problem -->
+    <section id="slide-2" class="slide">
+        <div class="content-panel border-red-500/30">
+            <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-red">问题的根源：At Least Once</h2>
+            <div class="flex flex-col md:flex-row items-center justify-center gap-8">
+                <div class="text-center">
+                    <i class="fa-solid fa-server text-6xl text-slate-400"></i>
+                    <p class="font-bold text-2xl mt-2">MQ Broker</p>
+                </div>
+                <div class="flex flex-col gap-4 items-center">
+                    <div class="font-mono font-bold text-xl">Message (ID: 123)</div>
+                    <i class="fa-solid fa-arrow-down-long text-4xl text-red-400"></i>
+                    <div class="font-mono font-bold text-xl">Message (ID: 123) <span class="text-red-400">(重试)</span></div>
+                </div>
+                <div class="text-center p-6 bg-slate-800 rounded-xl">
+                    <i class="fa-solid fa-microchip text-6xl text-blue-400"></i>
+                    <p class="font-bold text-2xl mt-2">消费者</p>
+                    <p class="mt-4 text-lg p-3 bg-red-900/50 rounded-lg border border-red-500/50">糟糕！确认ACK前重启了...</p>
+                </div>
+                <div class="arrow text-4xl">&rarr;</div>
+                <div class="text-center">
+                     <i class="fa-solid fa-circle-exclamation text-8xl text-red-500" style="animation: shake 2s infinite;"></i>
+                     <p class="font-bold text-2xl mt-2">重复扣减库存!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Slide 3: Simple Solution Fail -->
+    <section id="slide-3" class="slide">
+        <div class="content-panel border-amber-500/30">
+            <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-amber">简陋方案：高并发下的“竞态条件”</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <div class="text-center p-6 bg-slate-800 rounded-xl">
+                    <p class="font-bold text-2xl">线程A (消息M1)</p>
+                    <div class="mt-4 text-left space-y-3 font-mono text-lg">
+                        <p class="p-2 bg-slate-700 rounded">1. SELECT * WHERE id=X</p>
+                        <p class="p-2 bg-green-800 rounded font-bold">▶️ 结果: null</p>
+                        <p class="p-2 bg-slate-700 rounded">2. INSERT ... (执行业务)</p>
+                    </div>
+                </div>
+                <div class="text-center p-6 bg-slate-800 rounded-xl">
+                    <p class="font-bold text-2xl">线程B (消息M1-重复)</p>
+                    <div class="mt-4 text-left space-y-3 font-mono text-lg">
+                        <p class="p-2 bg-slate-700 rounded">1. SELECT * WHERE id=X</p>
+                        <p class="p-2 bg-green-800 rounded font-bold">▶️ 结果: null</p>
+                        <p class="p-2 bg-red-800 rounded font-bold" style="animation: pulse-red 1.5s infinite;">2. INSERT ... (重复执行!)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-8">
+                <i class="fa-solid fa-person-running text-5xl text-amber-400 mx-2"></i>
+                <i class="fa-solid fa-person-running text-5xl text-amber-400 mx-2"></i>
+                <p class="text-3xl font-bold mt-4">两条消息同时“穿透”了检查防线！</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: Pessimistic Lock -->
+    <section id="slide-4" class="slide">
+        <div class="content-panel border-violet-500/30">
+            <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-violet">方案一：悲观锁 (Select for Update)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <div class="text-center p-6 bg-slate-800 rounded-xl">
+                    <p class="font-bold text-2xl">线程A (消息M1)</p>
+                    <div class="mt-4 text-left space-y-3 font-mono text-lg">
+                        <p class="p-2 bg-violet-800 rounded flex items-center gap-2"><i class="fa-solid fa-lock"></i> SELECT ... FOR UPDATE</p>
+                        <p class="p-2 bg-green-800 rounded">▶️ 成功锁定，执行业务</p>
+                        <p class="p-2 bg-slate-700 rounded">COMMIT (释放锁)</p>
+                    </div>
+                </div>
+                <div class="text-center p-6 bg-slate-800 rounded-xl">
+                    <p class="font-bold text-2xl">线程B (消息M1-重复)</p>
+                    <div class="mt-4 text-left space-y-3 font-mono text-lg">
+                        <p class="p-2 bg-violet-800 rounded flex items-center gap-2"><i class="fa-solid fa-lock"></i> SELECT ... FOR UPDATE</p>
+                        <p class="p-2 bg-amber-800 rounded font-bold flex items-center gap-2"><i class="fa-solid fa-hourglass-half fa-spin"></i> 等待锁释放...</p>
+                        <p class="p-2 bg-sky-800 rounded">▶️ 获得锁, 发现已处理, 跳过</p>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-8 p-4 bg-red-900/50 rounded-lg">
+                <p class="text-2xl font-bold text-red-300"><i class="fa-solid fa-triangle-exclamation"></i> 缺点：锁住业务表，严重影响性能和吞吐量。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: Local Message Table -->
+    <section id="slide-5" class="slide">
+        <div class="content-panel border-sky-500/30">
+            <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-sky">方案二：本地消息表 + 事务</h2>
+            <div class="flex items-center justify-center gap-4">
+                <div class="text-3xl font-bold">消费请求</div>
+                <div class="arrow text-4xl">&rarr;</div>
+                <div class="p-6 border-4 border-dashed border-sky-400/50 rounded-2xl text-center">
+                    <h3 class="text-3xl font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-box-archive"></i> 同一数据库事务</h3>
+                    <div class="flex flex-col gap-4">
+                        <div class="diagram-node diagram-node-base">① 插入消息记录表</div>
+                        <div class="text-2xl font-black text-sky-300">+</div>
+                        <div class="diagram-node diagram-node-alt">② 更新业务表</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 text-xl">
+            <div class="p-4 bg-green-900/50 rounded-lg border border-green-500/50">
+                <h4 class="font-bold text-green-300 mb-2"><i class="fa-solid fa-circle-check"></i> 优点</h4>
+                <p>利用事务保证了“记录消费”和“执行业务”的原子性，实现了“Exactly Once”。</p>
+            </div>
+            <div class="p-4 bg-red-900/50 rounded-lg border border-red-500/50">
+                <h4 class="font-bold text-red-300 mb-2"><i class="fa-solid fa-circle-xmark"></i> 局限性</h4>
+                <p>强依赖单库事务，无法覆盖含RPC、跨库操作等复杂场景。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Slide 6: State Machine Solution -->
+<section id="slide-6" class="slide">
+    <div class="content-panel border-teal-500/30">
+        <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-teal">方案三：终极演进 - “状态机”幂等方案</h2>
+        <div class="bg-slate-800/50 p-6 rounded-xl">
+            <div class="grid grid-cols-3 gap-4 text-center items-start">
+                <!-- Column 1: New Message -->
+                <div>
+                    <h3 class="font-bold text-xl mb-4">① 新消息到达</h3>
+                    <div class="diagram-node diagram-node-base">查询幂等记录</div>
+                    <i class="fa-solid fa-arrow-down-long text-3xl text-teal-400 my-4"></i>
+                    <div class="diagram-node diagram-node-bad">无记录?</div>
+                    <i class="fa-solid fa-arrow-down-long text-3xl text-teal-400 my-4"></i>
+                    <div class="diagram-node diagram-node-good" style="animation: pulse-green 1.5s infinite;">插入(状态:消费中) + 设置超时</div>
+                    <i class="fa-solid fa-arrow-down-long text-3xl text-teal-400 my-4"></i>
+                    <div class="diagram-node diagram-node-alt">执行业务逻辑...</div>
+                </div>
+                <!-- Column 2: Duplicate Message -->
+                <div>
+                    <h3 class="font-bold text-xl mb-4">② 重复消息到达</h3>
+                    <div class="diagram-node diagram-node-base">查询幂等记录</div>
+                    <i class="fa-solid fa-arrow-down-long text-3xl text-teal-400 my-4"></i>
+                    <div class="flex justify-around">
+                        <div class="text-center">
+                            <div class="diagram-node diagram-node-bad">状态:消费中?</div>
+                            <i class="fa-solid fa-arrow-down-long text-3xl text-amber-400 my-4"></i>
+                            <div class="diagram-node bg-amber-800 border-amber-500 text-amber-200">延迟重试</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="diagram-node diagram-node-bad">状态:已完成?</div>
+                            <i class="fa-solid fa-arrow-down-long text-3xl text-green-400 my-4"></i>
+                            <div class="diagram-node diagram-node-good">直接ACK</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Column 3: After Execution -->
+                <div>
+                    <h3 class="font-bold text-xl mb-4">③ 业务执行后</h3>
+                    <div class="flex justify-around">
+                         <div class="text-center">
+                            <h4 class="font-semibold mb-2">成功</h4>
+                            <i class="fa-solid fa-arrow-down-long text-3xl text-green-400 my-4"></i>
+                            <div class="diagram-node diagram-node-good">更新状态:已完成</div>
+                        </div>
+                        <div class="text-center">
+                            <h4 class="font-semibold mb-2">失败</h4>
+                            <i class="fa-solid fa-arrow-down-long text-3xl text-red-400 my-4"></i>
+                            <div class="diagram-node diagram-node-bad">删除记录</div>
+                        </div>
+                    </div>
+                     <div class="mt-12 text-center p-3 bg-rose-900/50 border border-rose-400 rounded-lg">
+                        <h4 class="font-bold text-rose-300 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left"></i> 关键：超时机制</h4>
+                        <p class="text-sm">自动删除过期的“消费中”记录，防止死锁和消息丢失。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Slide 7: Storage Choice -->
+<section id="slide-7" class="slide">
+    <div class="content-panel border-slate-500/30">
+        <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-sky">方案四：存储媒介的选择</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- MySQL -->
+            <div class="bg-slate-800 p-6 rounded-xl border-2 border-blue-500/50">
+                <div class="text-center mb-4">
+                    <i class="fa-solid fa-database text-6xl text-blue-400"></i>
+                    <h3 class="text-3xl font-bold mt-2">MySQL</h3>
+                </div>
+                <div class="space-y-3 text-lg">
+                    <p class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-green-400 mt-1"></i> <strong class="text-green-300">优点:</strong> 数据可靠性、一致性高。</p>
+                    <p class="flex items-start gap-2"><i class="fa-solid fa-circle-xmark text-red-400 mt-1"></i> <strong class="text-red-300">缺点:</strong> 性能相对较低，实现超时TTL需额外开发定时任务。</p>
+                </div>
+            </div>
+            <!-- Redis -->
+            <div class="bg-slate-800 p-6 rounded-xl border-2 border-red-500/50">
+                <div class="text-center mb-4">
+                    <i class="fa-solid fa-fire text-6xl text-red-400"></i>
+                    <h3 class="text-3xl font-bold mt-2">Redis</h3>
+                </div>
+                <div class="space-y-3 text-lg">
+                    <p class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-green-400 mt-1"></i> <strong class="text-green-300">优点:</strong> 性能极高，原生支持TTL，完美契合超时需求。</p>
+                    <p class="flex items-start gap-2"><i class="fa-solid fa-circle-xmark text-red-400 mt-1"></i> <strong class="text-red-300">缺点:</strong> 数据可靠性相对较低，需业务自行权衡。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Slide 8: Is it a Silver Bullet? -->
+    <section id="slide-8" class="slide">
+        <div class="content-panel border-amber-500/40">
+            <h2 class="text-5xl md:text-6xl font-bold text-center mb-12 gradient-text gradient-amber">这套方案是“银弹”吗？</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div class="bg-green-900/30 p-8 rounded-2xl text-center">
+                    <h3 class="text-3xl font-bold text-green-300 mb-6">✅ 价值巨大：解决99%重复问题</h3>
+                    <i class="fa-solid fa-shield-virus text-9xl text-green-400" style="animation: pulse-green 1.5s infinite;"></i>
+                    <p class="mt-6 text-2xl">解耦、通用、高效</p>
+                </div>
+                <div class="bg-red-900/30 p-8 rounded-2xl">
+                    <h3 class="text-3xl font-bold text-red-300 mb-6 text-center">❌ 无法解决：中途失败的副作用</h3>
+                    <div class="space-y-4 text-xl font-mono">
+                        <div class="flex items-center gap-4"><span class="w-8 h-8 flex items-center justify-center bg-slate-700 rounded-full font-bold">1</span><span>锁库存(RPC)</span> <i class="fa-solid fa-check text-green-400"></i></div>
+                        <div class="flex items-center gap-4 text-red-400 font-extrabold"><i class="fa-solid fa-bolt-lightning text-3xl"></i><span>服务崩溃!</span></div>
+                        <div class="flex items-center gap-4"><span class="w-8 h-8 flex items-center justify-center bg-slate-700 rounded-full font-bold">1'</span><span>锁库存(RPC)</span> <i class="fa-solid fa-check text-red-400"></i><span class="text-red-400">(再次执行!)</span></div>
+                        <div class="flex items-center gap-4"><span class="w-8 h-8 flex items-center justify-center bg-slate-700 rounded-full font-bold">2'</span><span>插订单(DB)</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+<!-- Slide 9: Summary -->
+<section id="slide-9" class="slide">
+    <div class="content-panel border-green-500/30">
+        <h2 class="text-4xl md:text-5xl font-bold text-center mb-12 gradient-text gradient-green">总结：构建完整的幂等性“防御体系”</h2>
+        <div class="space-y-6 w-full">
+            <div class="p-4 bg-slate-800 rounded-lg flex items-center gap-4 text-2xl hover:bg-slate-700 transition-colors">
+                <span class="flex-shrink-0 w-12 h-12 rounded-full bg-green-800 text-green-300 flex items-center justify-center font-black text-3xl">1</span>
+                <p><strong class="text-green-400">核心:</strong> 采用“状态机”幂等方案，解决绝大部分问题。</p>
+            </div>
+            <div class="p-4 bg-slate-800 rounded-lg flex items-center gap-4 text-2xl hover:bg-slate-700 transition-colors">
+                <span class="flex-shrink-0 w-12 h-12 rounded-full bg-green-800 text-green-300 flex items-center justify-center font-black text-3xl">2</span>
+                <p><strong class="text-green-400">接口:</strong> 关键下游服务(RPC)自身也要实现幂等。</p>
+            </div>
+            <div class="p-4 bg-slate-800 rounded-lg flex items-center gap-4 text-2xl hover:bg-slate-700 transition-colors">
+                <span class="flex-shrink-0 w-12 h-12 rounded-full bg-green-800 text-green-300 flex items-center justify-center font-black text-3xl">3</span>
+                <p><strong class="text-green-400">补偿:</strong> 消费失败时，提供回滚/补偿机制。</p>
+            </div>
+            <div class="p-4 bg-slate-800 rounded-lg flex items-center gap-4 text-2xl hover:bg-slate-700 transition-colors">
+                <span class="flex-shrink-0 w-12 h-12 rounded-full bg-green-800 text-green-300 flex items-center justify-center font-black text-3xl">4</span>
+                <p><strong class="text-green-400">运维:</strong> 做好优雅停机与死信队列监控。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer class="text-center py-8 text-slate-400 font-semibold">
+    消息幂等（去重）如何解决？来看看这个方案！ | 百里
+</footer>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const sections = document.querySelectorAll('.slide');
+        const navContainer = document.getElementById('nav-container');
+        
+        // Create nav dots
+        sections.forEach((_, index) => {
+            const dot = document.createElement('a');
+            dot.href = `#slide-${index + 1}`;
+            dot.classList.add('nav-dot');
+            dot.dataset.index = index;
+            navContainer.appendChild(dot);
+        });
+
+        const navDots = document.querySelectorAll('.nav-dot');
+
+        // Intersection Observer to update active dot
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const index = Array.from(sections).indexOf(entry.target);
+                    navDots.forEach(dot => dot.classList.remove('active'));
+                    if(navDots[index]) {
+                        navDots[index].classList.add('active');
+                    }
+                }
+            });
+        }, { threshold: 0.5 });
+
+        sections.forEach(section => observer.observe(section));
+    });
+</script>
+</body>
+</html>

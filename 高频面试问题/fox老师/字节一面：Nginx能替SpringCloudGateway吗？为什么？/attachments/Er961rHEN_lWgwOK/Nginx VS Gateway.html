@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nginx vs Spring Cloud Gateway 可视化看板</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .slide {
+      min-height: 95vh;
+      border-bottom: 2px dashed #e2e8f0;
+      padding-top: 4rem;
+      padding-bottom: 4rem;
+      animation: fadeIn 0.8s ease-in-out;
+    }
+    .flow-line {
+      position: relative;
+      border-top: 3px dashed #9ca3af;
+    }
+    .flow-line::after {
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      content: "\f061"; /* fa-arrow-right */
+      position: absolute;
+      right: -10px;
+      top: -13px;
+      font-size: 1.5rem;
+      color: #9ca3af;
+    }
+    .code-block {
+      background-color: #2d3748;
+      color: #e2e8f0;
+      font-family: 'Courier New', Courier, monospace;
+      border-radius: 8px;
+      padding: 1rem;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+  <div class="container mx-auto px-4">
+
+    <!-- Slide 1: 标题 & 核心问题 -->
+    <section id="slide-1" class="slide flex flex-col justify-center items-center text-center">
+      <div class="mb-4 text-5xl font-extrabold">
+        <i class="fa-brands fa-nginx text-green-500"></i>
+        <span class="mx-4 text-slate-400">vs</span>
+        <i class="fa-solid fa-cloud text-blue-500"></i>
+      </div>
+      <h1 class="text-4xl md:text-6xl font-bold mb-4">Nginx 能替 Gateway 吗？</h1>
+      <p class="text-2xl text-slate-500">一张图讲透：定位、差异与最佳实践</p>
+      <div class="mt-20 text-2xl text-slate-400 animate-bounce">
+        <i class="fa-solid fa-angles-down"></i>
+      </div>
+    </section>
+
+    <!-- Slide 2: 角色定位类比 -->
+    <section id="slide-2" class="slide">
+      <h2 class="text-4xl font-bold text-center mb-16">核心破题：搞懂“定位”就不纠结</h2>
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <div class="text-center p-8 bg-white rounded-2xl shadow-xl">
+          <i class="fa-solid fa-building-shield text-8xl text-green-600 mb-6"></i>
+          <h3 class="text-3xl font-bold mb-2">保安 (Nginx)</h3>
+          <p class="text-lg text-slate-600">守好园区大门，管“南北向流量”</p>
+          <div class="mt-6 space-y-3 text-left">
+            <p class="flex items-center"><i class="fa-solid fa-circle-check text-green-500 w-6"></i><span class="font-bold">核心诉求：</span>稳、快、高并发</p>
+            <p class="flex items-center"><i class="fa-solid fa-shield-halved text-green-500 w-6"></i>挡黑客、抗DDoS</p>
+            <p class="flex items-center"><i class="fa-solid fa-network-wired text-green-500 w-6"></i>做负载均衡</p>
+          </div>
+        </div>
+        <div class="text-center p-8 bg-white rounded-2xl shadow-xl">
+          <i class="fa-solid fa-concierge-bell text-8xl text-blue-600 mb-6"></i>
+          <h3 class="text-3xl font-bold mb-2">管家 (Gateway)</h3>
+          <p class="text-lg text-slate-600">协调大楼内部，管“东西向流量”</p>
+          <div class="mt-6 space-y-3 text-left">
+            <p class="flex items-center"><i class="fa-solid fa-circle-check text-blue-500 w-6"></i><span class="font-bold">核心诉求：</span>灵活、精准、懂业务</p>
+            <p class="flex items-center"><i class="fa-solid fa-user-check text-blue-500 w-6"></i>做身份校验</p>
+            <p class="flex items-center"><i class="fa-solid fa-filter text-blue-500 w-6"></i>做精细流控</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 3: 场景PK 1 - 动态路由 -->
+    <section id="slide-3" class="slide">
+      <h2 class="text-4xl font-bold text-center mb-8">场景PK ①：动态路由 (服务扩容)</h2>
+      <p class="text-xl text-center text-slate-500 mb-16">“库存服务”从1台扩容到3台，会发生什么？</p>
+      <div class="grid md:grid-cols-2 gap-12">
+        <!-- Gateway -->
+        <div class="p-8 bg-white rounded-2xl shadow-xl border-t-8 border-blue-500">
+          <h3 class="text-2xl font-bold mb-6 text-center text-blue-600">Spring Cloud Gateway: 自动、无感知</h3>
+          <div class="flex flex-col items-center space-y-4">
+            <div class="flex items-center space-x-4">
+              <i class="fa-solid fa-cloud text-5xl text-blue-500"></i>
+              <div class="flow-line w-20"></div>
+              <i class="fa-solid fa-database text-5xl text-orange-500" title="Nacos/Eureka"></i>
+            </div>
+            <p class="text-sm text-slate-500 -mt-2">1. 实时拉取服务列表</p>
+            <i class="fa-solid fa-arrow-down text-3xl text-slate-400"></i>
+            <div class="w-full p-4 bg-slate-100 rounded-lg">
+              <p class="text-center font-semibold mb-2">服务实例列表</p>
+              <div class="flex justify-around">
+                <span class="text-green-600 font-mono"><i class="fa-solid fa-server"></i> 192.168.1.10</span>
+                <span class="text-green-600 font-mono"><i class="fa-solid fa-server"></i> 192.168.1.11 <span class="text-xs font-sans bg-green-200 text-green-800 px-1 rounded">新增</span></span>
+                <span class="text-green-600 font-mono"><i class="fa-solid fa-server"></i> 192.168.1.12 <span class="text-xs font-sans bg-green-200 text-green-800 px-1 rounded">新增</span></span>
+              </div>
+            </div>
+            <p class="text-sm text-slate-500 mt-2">2. 自动转发新流量</p>
+            <div class="text-center text-2xl font-bold text-green-600 mt-4"><i class="fa-solid fa-circle-check"></i> 零配置、零重启</div>
+          </div>
+        </div>
+        <!-- Nginx -->
+        <div class="p-8 bg-white rounded-2xl shadow-xl border-t-8 border-red-500">
+          <h3 class="text-2xl font-bold mb-6 text-center text-red-600">Nginx: 手动、高风险</h3>
+          <div class="flex flex-col items-center space-y-4">
+            <div class="flex items-center space-x-4">
+              <i class="fa-solid fa-user-edit text-5xl text-red-500"></i>
+              <div class="flow-line w-20"></div>
+              <i class="fa-solid fa-file-code text-5xl text-slate-700"></i>
+            </div>
+            <p class="text-sm text-slate-500 -mt-2">1. 手动修改配置文件</p>
+            <div class="w-full code-block">
+              <span class="text-yellow-400">upstream</span> stock_service {<br>
+              &nbsp;&nbsp;server 192.168.1.10;<br>
+              &nbsp;&nbsp;<span class="text-green-400">server 192.168.1.11;</span> <span class="text-gray-400"># add new</span><br>
+              &nbsp;&nbsp;<span class="text-green-400">server 192.168.1.12;</span> <span class="text-gray-400"># add new</span><br>
+              }
+            </div>
+            <p class="text-sm text-slate-500 mt-2">2. 执行 reload 使其生效</p>
+            <div class="w-full code-block text-center">
+              <span class="text-cyan-400">$</span> nginx -s reload
+            </div>
+            <div class="text-center text-2xl font-bold text-red-600 mt-4"><i class="fa-solid fa-triangle-exclamation"></i> 易出错、效率低</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 4: 场景PK 2 - 精细化流控 -->
+    <section id="slide-4" class="slide">
+      <h2 class="text-4xl font-bold text-center mb-8">场景PK ②：精细化流控</h2>
+      <p class="text-xl text-center text-slate-500 mb-16">需求：“VIP用户每秒100次，普通用户10次”</p>
+      <div class="grid md:grid-cols-2 gap-12">
+        <!-- Gateway -->
+        <div class="p-8 bg-white rounded-2xl shadow-xl border-t-8 border-blue-500">
+          <h3 class="text-2xl font-bold mb-6 text-center text-blue-600">Spring Cloud Gateway: 简单、贴合业务</h3>
+          <div class="space-y-6">
+            <div class="flex items-center">
+              <span class="text-lg font-bold w-24">请求</span>
+              <div class="flex-1 flow-line"></div>
+              <div class="text-center">
+                <i class="fa-brands fa-java text-6xl text-blue-500"></i>
+                <p class="font-bold">自定义 Filter</p>
+              </div>
+              <div class="flex-1 flow-line"></div>
+              <span class="text-lg font-bold w-24 text-right">响应</span>
+            </div>
+            <div class="code-block text-sm">
+              <span class="text-purple-400">class</span> <span class="text-green-400">AuthFilter</span> <span class="text-purple-400">implements</span> <span class="text-green-400">GlobalFilter</span> {<br>
+              &nbsp;&nbsp;<span class="text-gray-400">// 1. 获取用户身份 (VIP/Normal)</span><br>
+              &nbsp;&nbsp;<span class="text-gray-400">// 2. 调用 Sentinel/Resilience4j 限流</span><br>
+              &nbsp;&nbsp;<span class="text-gray-400">// 3. 业务逻辑清晰...</span><br>
+              }
+            </div>
+            <div class="text-center text-2xl font-bold text-green-600 mt-4"><i class="fa-solid fa-circle-check"></i> 工程师易维护</div>
+          </div>
+        </div>
+        <!-- Nginx -->
+        <div class="p-8 bg-white rounded-2xl shadow-xl border-t-8 border-red-500">
+          <h3 class="text-2xl font-bold mb-6 text-center text-red-600">Nginx: 复杂、性能损耗</h3>
+           <div class="space-y-6">
+            <div class="flex items-center">
+              <span class="text-lg font-bold w-24">请求</span>
+              <div class="flex-1 flow-line"></div>
+              <div class="text-center">
+                <i class="fa-solid fa-scroll text-6xl text-yellow-500"></i>
+                <p class="font-bold">Lua 脚本</p>
+              </div>
+              <div class="flex-1 flow-line"></div>
+              <span class="text-lg font-bold w-24 text-right">响应</span>
+            </div>
+            <div class="code-block text-sm">
+              <span class="text-blue-400">local</span> user_role = <span class="text-yellow-400">get_user_role</span>(ngx.req)<br>
+              <span class="text-purple-400">if</span> user_role == <span class="text-orange-400">"VIP"</span> <span class="text-purple-400">then</span><br>
+              &nbsp;&nbsp;<span class="text-gray-400">-- ... 复杂的限流逻辑 ...</span><br>
+              <span class="text-purple-400">else</span><br>
+              &nbsp;&nbsp;<span class="text-gray-400">-- ... 另一套限流逻辑 ...</span><br>
+              <span class="text-purple-400">end</span>
+            </div>
+            <div class="text-center text-2xl font-bold text-red-600 mt-4"><i class="fa-solid fa-triangle-exclamation"></i> 学习成本高，拖慢转发</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 5: 最佳实践 - 分层架构 -->
+    <section id="slide-5" class="slide flex flex-col justify-center">
+      <h2 class="text-4xl font-bold text-center mb-16">最佳实践：不是“二选一”，而是“强强联合”</h2>
+      <div class="w-full p-8 bg-white rounded-2xl shadow-2xl">
+        <div class="flex items-center justify-between space-x-4">
+          <!-- 外部请求 -->
+          <div class="flex flex-col items-center space-y-2 w-1/6">
+            <i class="fa-solid fa-mobile-screen-button text-4xl"></i>
+            <i class="fa-solid fa-computer text-4xl"></i>
+            <p class="font-bold text-center">外部请求</p>
+          </div>
+          
+          <div class="flex-1 flow-line"></div>
+
+          <!-- Nginx 层 -->
+          <div class="flex flex-col items-center p-6 bg-green-50 rounded-xl border-2 border-green-500 w-2/6">
+            <i class="fa-brands fa-nginx text-5xl text-green-600"></i>
+            <h3 class="text-xl font-bold mt-2">Nginx (流量防火墙)</h3>
+            <ul class="list-disc list-inside mt-2 text-sm text-slate-600 space-y-1">
+              <li>全局负载均衡</li>
+              <li>DDoS/CC 防护</li>
+              <li>静态资源缓存</li>
+              <li>SSL 卸载</li>
+            </ul>
+          </div>
+
+          <div class="flex-1 flow-line"></div>
+
+          <!-- Gateway 层 -->
+          <div class="flex flex-col items-center p-6 bg-blue-50 rounded-xl border-2 border-blue-500 w-2/6">
+            <i class="fa-solid fa-cloud text-5xl text-blue-600"></i>
+            <h3 class="text-xl font-bold mt-2">Gateway (业务总管)</h3>
+            <ul class="list-disc list-inside mt-2 text-sm text-slate-600 space-y-1">
+              <li>动态服务发现</li>
+              <li>身份认证 & 鉴权</li>
+              <li>精细化流控熔断</li>
+              <li>日志 & 监控</li>
+            </ul>
+          </div>
+          
+          <div class="flex-1 flow-line"></div>
+
+          <!-- 微服务层 -->
+          <div class="flex flex-col items-center space-y-4 w-1/6">
+            <i class="fa-solid fa-cubes text-4xl text-slate-700"></i>
+            <div class="flex space-x-2">
+              <i class="fa-solid fa-cube text-2xl text-slate-600" title="用户服务"></i>
+              <i class="fa-solid fa-cube text-2xl text-slate-600" title="订单服务"></i>
+              <i class="fa-solid fa-cube text-2xl text-slate-600" title="库存服务"></i>
+            </div>
+            <p class="font-bold text-center">微服务集群</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 6: 总结 -->
+    <section id="slide-6" class="slide flex flex-col justify-center items-center text-center">
+      <h2 class="text-4xl font-bold mb-8">面试高分回答逻辑</h2>
+      <div class="flex items-center space-x-8 text-2xl font-semibold">
+        <div class="p-6 bg-white rounded-lg shadow-lg">1. 定位 (保安 vs 管家)</div>
+        <i class="fa-solid fa-arrow-right text-slate-400"></i>
+        <div class="p-6 bg-white rounded-lg shadow-lg">2. 差异 (两大场景PK)</div>
+        <i class="fa-solid fa-arrow-right text-slate-400"></i>
+        <div class="p-6 bg-white rounded-lg shadow-lg">3. 实践 (分层架构)</div>
+      </div>
+      <div class="mt-12 text-3xl text-green-600 font-bold bg-green-100 p-4 rounded-xl">
+        <i class="fa-solid fa-lightbulb"></i> 结论：它们是“分工伙伴”，不是“竞争对手”
+      </div>
+    </section>
+
+  </div>
+
+</body>
+</html>

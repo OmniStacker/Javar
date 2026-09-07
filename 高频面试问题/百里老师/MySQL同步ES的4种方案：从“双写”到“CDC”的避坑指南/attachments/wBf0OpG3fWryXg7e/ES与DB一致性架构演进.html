@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ES与DB一致性架构演进</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&family=Noto+Sans+SC:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 全局字体与重置 */
+        .reveal { font-family: 'Noto Sans SC', 'Inter', system-ui, sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
+        
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none !important; letter-spacing: -0.02em; }
+        
+        /* 强制每页 Slide 占满高度 */
+        .reveal .slides > section {
+            height: 100% !important;
+            top: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 玻璃拟态核心类 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .glass-panel:hover {
+            transform: translateY(-5px) scale(1.02);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* 布局辅助 */
+        .slide-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 4rem 2rem 2rem 2rem; 
+            box-sizing: border-box;
+        }
+
+        .slide-title {
+            font-size: 3rem !important;
+            font-weight: 800 !important;
+            margin: 0 !important;
+            padding-bottom: 2rem !important;
+            flex-shrink: 0;
+            line-height: 1.1 !important;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            text-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* 动画关键帧 */
+        @keyframes flowRight {
+            0% { left: 0; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+        
+        @keyframes scan {
+            0% { top: 0%; opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0.5; }
+        }
+
+        @keyframes raceFast {
+            0% { left: -20%; opacity: 0; }
+            10% { opacity: 1; }
+            80% { left: 80%; opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+
+        @keyframes raceSlow {
+            0% { left: -20%; opacity: 0; }
+            30% { opacity: 1; }
+            90% { left: 60%; opacity: 1; } /* 跑得慢，没跑完 */
+            100% { left: 60%; opacity: 0; }
+        }
+
+        /* Start Hint Overlay */
+        #start-hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 99px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="start-hint">按空格键翻页</div>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: Cover -->
+            <section class="slide-cover" data-background-gradient="radial-gradient(circle at 30% 50%, #1e293b 0%, #0f172a 100%)">
+                <!-- 背景底纹 -->
+                <div class="absolute inset-0 z-0 opacity-10" 
+                     style="background-image: linear-gradient(rgba(99,102,241,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.1) 1px, transparent 1px); background-size: 40px 40px;">
+                </div>
+
+                <div class="slide-container relative z-10 h-full w-full flex flex-row items-center justify-between px-16">
+                    
+                    <!-- 左侧：标题 -->
+                    <div class="w-5/12 flex flex-col items-start text-left z-20">
+                        <div class="flex items-center gap-3 mb-6">
+                            <span class="px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded shadow-lg shadow-blue-500/50 animate-pulse">
+                                实战总结
+                            </span>
+                            <span class="text-gray-400 text-sm font-mono">// NO_BULLSHIT</span>
+                        </div>
+
+                        <h1 class="text-7xl font-black leading-tight text-white mb-4 drop-shadow-xl">
+                            MySQL 同步 ES
+                        </h1>
+                        <h2 class="text-6xl font-black leading-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-8">
+                            主流方案解析
+                        </h2>
+
+                        <p class="text-lg text-gray-300 border-l-4 border-blue-500 pl-6 leading-relaxed">
+                            从 <span class="text-red-400 font-bold">同步双写</span> 到 <span class="text-emerald-400 font-bold">CDC 实时监听</span><br>
+                            拆解 <span class="text-white font-bold">4</span> 种架构模式的优劣与演进
+                        </p>
+                    </div>
+
+                    <!-- 右侧：方案清单 -->
+                    <div class="w-7/12 h-full flex items-center justify-end relative perspective-1000">
+                        <div class="absolute right-20 top-1/2 transform -translate-y-1/2 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[80px]"></div>
+
+                        <div class="relative flex flex-col gap-5 transform rotate-y-[-10deg] rotate-x-[5deg] transition-transform duration-500 hover:rotate-0">
+                            
+                            <!-- Card 1 -->
+                            <div class="glass-panel w-[450px] p-5 flex items-center justify-between border-l-4 border-red-500 bg-red-900/10 group hover:translate-x-[-10px] transition-transform cursor-default">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded bg-red-500/20 flex items-center justify-center text-red-400 font-bold">1</div>
+                                    <div>
+                                        <div class="text-red-200 font-bold text-lg">同步双写</div>
+                                        <div class="text-red-400/60 text-xs">Synchronous Dual Write</div>
+                                    </div>
+                                </div>
+                                <div class="px-3 py-1 rounded bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30">耦合高 ❌</div>
+                            </div>
+
+                            <!-- Card 2 -->
+                            <div class="glass-panel w-[450px] p-5 flex items-center justify-between border-l-4 border-amber-500 bg-amber-900/10 group hover:translate-x-[-10px] transition-transform cursor-default ml-8">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold">2</div>
+                                    <div>
+                                        <div class="text-amber-200 font-bold text-lg">MQ 异步解耦</div>
+                                        <div class="text-amber-400/60 text-xs">Async Message Queue</div>
+                                    </div>
+                                </div>
+                                <div class="px-3 py-1 rounded bg-amber-500/20 text-amber-400 text-xs font-bold border border-amber-500/30">有延迟 ⚠️</div>
+                            </div>
+
+                            <!-- Card 3 -->
+                            <div class="glass-panel w-[450px] p-5 flex items-center justify-between border-l-4 border-emerald-500 bg-emerald-900/20 shadow-[0_0_30px_rgba(16,185,129,0.2)] group hover:translate-x-[-10px] transition-transform cursor-default ml-16 scale-105">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">3</div>
+                                    <div>
+                                        <div class="text-emerald-100 font-bold text-xl">CDC 监听 Binlog</div>
+                                        <div class="text-emerald-400/60 text-xs">Change Data Capture</div>
+                                    </div>
+                                </div>
+                                <div class="px-3 py-1 rounded bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30 animate-pulse">推荐 ✅</div>
+                            </div>
+
+                            <!-- Card 4 -->
+                            <div class="glass-panel w-[450px] p-5 flex items-center justify-between border-l-4 border-cyan-500 bg-cyan-900/10 group hover:translate-x-[-10px] transition-transform cursor-default ml-8 opacity-80">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded bg-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold">4</div>
+                                    <div>
+                                        <div class="text-cyan-200 font-bold text-lg">定时比对 (兜底)</div>
+                                        <div class="text-cyan-400/60 text-xs">T+1 Anti-Entropy</div>
+                                    </div>
+                                </div>
+                                <div class="px-3 py-1 rounded bg-cyan-500/20 text-cyan-400 text-xs font-bold border border-cyan-500/30">最终一致 🛡️</div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <style>.perspective-1000 { perspective: 1000px; }</style>
+            </section>
+
+            <!-- Slide 2: Dual Write (The Trap) -->
+            <section class="slide-dual-write" data-background-gradient="linear-gradient(135deg, #2a0a0a 0%, #1a0505 100%)">
+                <div class="absolute inset-0 opacity-5 pointer-events-none" style="background: repeating-linear-gradient(45deg, #ef4444, #ef4444 20px, transparent 20px, transparent 40px);"></div>
+                <div class="slide-container px-12 py-8 h-full flex flex-col justify-center">
+                    <div class="w-full text-left mb-8 relative z-10 flex-shrink-0 border-b border-red-500/30 pb-4">
+                        <div class="flex items-center gap-4 mb-1">
+                            <div class="w-10 h-10 rounded bg-red-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-red-600/50">1</div>
+                            <h2 class="text-4xl font-black text-white tracking-tight">同步双写 <span class="text-red-400 font-light text-2xl ml-2">The Naive Way</span></h2>
+                        </div>
+                        <p class="text-red-200/60 ml-14 text-base">最直观的写法，往往是最危险的陷阱</p>
+                    </div>
+                    <div class="flex items-stretch justify-between w-full gap-10 flex-1 min-h-0">
+                        <!-- Left: IDE Code -->
+                        <div class="w-6/12 flex flex-col fragment fade-right h-full">
+                            <div class="bg-[#2b2b2b] border border-[#555555] overflow-hidden shadow-2xl rounded-md flex-1 flex flex-col font-mono text-left relative group">
+                                <div class="bg-[#3c3f41] flex items-end border-b border-[#2b2b2b] flex-shrink-0 pt-2 px-2 h-9">
+                                    <div class="px-3 py-1.5 bg-[#2b2b2b] text-[#a9b7c6] text-xs flex items-center gap-2 border-t-2 border-red-500 rounded-t shadow-[-2px_0_5px_rgba(0,0,0,0.2)] min-w-[140px]">
+                                        <div class="w-4 h-4 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 text-[8px] font-bold">C</div>
+                                        <span class="font-sans">UserService.java</span>
+                                        <i class="fa-solid fa-xmark text-[10px] ml-auto opacity-50 hover:opacity-100 cursor-pointer"></i>
+                                    </div>
+                                </div>
+                                <div class="flex flex-1 relative overflow-hidden text-sm">
+                                    <div class="w-8 bg-[#313335] border-r border-[#414344] text-[#606366] text-right pr-2 pt-4 select-none flex-shrink-0 leading-6 font-mono">14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22</div>
+                                    <div class="flex-1 bg-[#2b2b2b] text-[#a9b7c6] pt-4 pl-4 leading-6 overflow-hidden font-mono">
+                                        <div><span class="text-[#bbb529]">@Transactional</span></div>
+                                        <div><span class="text-[#cc7832]">public void</span> <span class="text-[#ffc66d]">createUser</span>(User u) {</div>
+                                        <div class="pl-4 text-[#808080]">// 1. 写入 MySQL (快)</div>
+                                        <div class="pl-4">userMapper.insert(u);</div>
+                                        <div class="h-2"></div>
+                                        <div class="pl-4 text-[#808080]">// 2. 同步写入 ES (慢!)</div>
+                                        <div class="pl-4 relative w-fit">
+                                            <span class="text-[#9876aa]">esClient</span>.index(u);
+                                            <div class="absolute bottom-0 left-0 w-full h-[2px] bg-yellow-500 animate-[pulse_2s_infinite]"></div>
+                                            <i class="fa-solid fa-triangle-exclamation text-yellow-500 absolute -right-6 top-1 text-xs animate-pulse"></i>
+                                        </div>
+                                        <div class="absolute left-32 top-36 bg-[#3c3f41] border border-[#555555] p-3 rounded shadow-2xl z-50 w-64 animate-[fadeIn_1s_ease-out_1s_backwards]">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <i class="fa-solid fa-bolt text-yellow-500 text-xs"></i>
+                                                <span class="text-xs text-yellow-100 font-bold">Performance Critical</span>
+                                            </div>
+                                            <div class="text-[10px] text-gray-400 leading-tight">Network I/O inside transaction scope.<br><span class="text-red-400">Risk: Connection Pool Exhaustion</span></div>
+                                        </div>
+                                        <div>}</div>
+                                    </div>
+                                </div>
+                                <div class="bg-[#3c3f41] px-3 py-1 flex justify-between items-center text-[10px] text-gray-400 border-t border-[#2b2b2b] flex-shrink-0 select-none">
+                                    <div class="flex gap-4"><span><i class="fa-solid fa-code-branch mr-1"></i>master</span><span class="text-yellow-500"><i class="fa-solid fa-triangle-exclamation mr-1"></i>1 warning</span></div>
+                                    <div class="flex gap-4"><span>UTF-8</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Right: Pain Points -->
+                        <div class="w-6/12 flex flex-col gap-6 justify-center">
+                            <div class="glass-panel p-5 border-l-4 border-red-500 fragment fade-up flex flex-col justify-center bg-red-900/10 hover:bg-red-900/20 transition-colors">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded bg-red-500/20 flex items-center justify-center"><i class="fa-solid fa-stopwatch text-lg text-red-400"></i></div>
+                                        <h3 class="text-xl font-bold text-white">性能耦合</h3>
+                                    </div>
+                                    <span class="text-red-400 font-mono text-xs font-bold bg-red-500/10 px-2 py-1 rounded">RT: 250ms+</span>
+                                </div>
+                                <div class="w-full bg-gray-800 h-6 rounded-full flex overflow-hidden relative mb-1">
+                                    <div class="h-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white" style="width: 15%">DB</div>
+                                    <div class="h-full bg-gray-600 flex items-center justify-center text-[10px] font-bold text-gray-300" style="width: 10%">Net</div>
+                                    <div class="h-full bg-red-600 flex items-center justify-center text-[10px] font-bold text-white relative overflow-hidden" style="width: 75%">
+                                        <div class="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.15)_50%,rgba(255,255,255,0.15)_75%,transparent_75%,transparent)] bg-[length:1rem_1rem] animate-[progressStripe_1s_linear_infinite]"></div>
+                                        ES Indexing (Blocking)
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="glass-panel p-5 border-l-4 border-orange-500 fragment fade-up flex flex-col justify-center bg-orange-900/10 hover:bg-orange-900/20 transition-colors">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="w-8 h-8 rounded bg-orange-500/20 flex items-center justify-center"><i class="fa-solid fa-link-slash text-lg text-orange-400"></i></div>
+                                    <h3 class="text-xl font-bold text-white">分布式死结</h3>
+                                </div>
+                                <div class="flex items-center justify-between text-xs mb-4 px-2">
+                                    <div class="flex flex-col items-center gap-1"><i class="fa-solid fa-database text-blue-400 text-2xl"></i><span class="text-blue-200 font-mono">MySQL</span><span class="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px] border border-green-500/30">Commit ✅</span></div>
+                                    <div class="h-px bg-gray-600 flex-1 mx-4 relative border-t border-dashed border-gray-500"><i class="fa-solid fa-xmark text-red-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg"></i></div>
+                                    <div class="flex flex-col items-center gap-1"><i class="fa-solid fa-magnifying-glass text-orange-400 text-2xl"></i><span class="text-orange-200 font-mono">Elastic</span><span class="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px] border border-red-500/30 animate-pulse">Timeout ❌</span></div>
+                                </div>
+                                <div class="bg-orange-950/50 p-3 rounded border border-orange-500/30 text-orange-200 text-xs leading-relaxed"><i class="fa-solid fa-circle-question mr-1"></i><strong>灵魂拷问：</strong> 此时回滚 MySQL 吗？(业务已完成)<br>如果不回滚，数据就不一致了！</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 3: Async MQ (Consolidated & Fixed) -->
+            <section class="slide-async" data-background-gradient="linear-gradient(135deg, #172554 0%, #1e3a8a 100%)">
+                <div class="absolute inset-0 opacity-20 overflow-hidden pointer-events-none">
+                    <div class="absolute top-[20%] left-0 w-full h-[1px] bg-blue-400 blur-sm animate-[flowRight_2s_linear_infinite]"></div>
+                    <div class="absolute top-[40%] left-0 w-full h-[1px] bg-blue-400 blur-sm animate-[flowRight_3s_linear_infinite_0.5s]"></div>
+                    <div class="absolute top-[60%] left-0 w-full h-[1px] bg-blue-400 blur-sm animate-[flowRight_2.5s_linear_infinite_1s]"></div>
+                </div>
+                <div class="slide-container px-12 py-8 h-full flex flex-col justify-center">
+                    <div class="w-full text-left mb-8 relative z-10 flex-shrink-0 border-b border-blue-500/30 pb-4">
+                        <div class="flex items-center gap-4 mb-1">
+                            <div class="w-10 h-10 rounded bg-blue-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-600/50">2</div>
+                            <h2 class="text-4xl font-black text-white tracking-tight">异步解耦 <span class="text-blue-400 font-light text-2xl ml-2">The MQ Solution</span></h2>
+                        </div>
+                        <p class="text-blue-200/60 ml-14 text-base">性能提升了，但... 业务代码真的干净了吗？</p>
+                    </div>
+                    <div class="flex items-stretch justify-between w-full gap-10 flex-1 min-h-0">
+                        <!-- Left: Code -->
+                        <div class="w-6/12 flex flex-col fragment fade-right h-full">
+                            <div class="bg-[#2b2b2b] border border-[#555555] overflow-hidden shadow-2xl rounded-md flex-1 flex flex-col font-mono text-left relative group">
+                                <div class="bg-[#3c3f41] flex items-end border-b border-[#2b2b2b] flex-shrink-0 pt-2 px-2 h-9">
+                                    <div class="px-3 py-1.5 bg-[#2b2b2b] text-[#a9b7c6] text-xs flex items-center gap-2 border-t-2 border-blue-500 rounded-t shadow-[-2px_0_5px_rgba(0,0,0,0.2)] min-w-[140px]">
+                                        <div class="w-4 h-4 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 text-[8px] font-bold">C</div>
+                                        <span class="font-sans">UserService.java</span>
+                                    </div>
+                                </div>
+                                <div class="flex flex-1 relative overflow-hidden text-sm">
+                                    <div class="w-8 bg-[#313335] border-r border-[#414344] text-[#606366] text-right pr-2 pt-4 select-none flex-shrink-0 leading-6 font-mono">14<br>15<br>16<br>17<br>18<br>19<br>20<br>21</div>
+                                    <div class="flex-1 bg-[#2b2b2b] text-[#a9b7c6] pt-4 pl-4 leading-6 overflow-hidden font-mono">
+                                        <div><span class="text-[#bbb529]">@Transactional</span></div>
+                                        <div><span class="text-[#cc7832]">public void</span> <span class="text-[#ffc66d]">createUser</span>(User u) {</div>
+                                        <div class="pl-4 text-[#808080]">// 1. 写入 MySQL</div>
+                                        <div class="pl-4">userMapper.insert(u);</div>
+                                        <div class="h-2"></div>
+                                        <div class="pl-4 text-[#808080]">// 2. 发送消息 (快, ~5ms)</div>
+                                        <div class="pl-4"><span class="text-[#9876aa]">kafkaTemplate</span>.send(<span class="text-[#6a8759]">"users"</span>, u);</div>
+                                        <div class="pl-4 mt-2 p-2 bg-[#3c3f41] border-l-2 border-yellow-500 text-[10px] text-gray-400 italic opacity-80"><span class="text-yellow-500 font-bold">TODO:</span> What if DB commits but MQ fails?</div>
+                                        <div>}</div>
+                                    </div>
+                                </div>
+                                <div class="bg-[#3c3f41] px-3 py-1 flex justify-between items-center text-[10px] text-gray-400 border-t border-[#2b2b2b] flex-shrink-0">
+                                    <div class="flex gap-4"><span><i class="fa-solid fa-code-branch mr-1"></i>feature/async-mq</span><span class="text-blue-400"><i class="fa-solid fa-circle-info mr-1"></i>Refactored</span></div>
+                                    <span>UTF-8</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Right: Pros & Cons -->
+                        <div class="w-6/12 flex flex-col gap-6 justify-center">
+                            <div class="glass-panel p-5 border-l-4 border-blue-500 fragment fade-up flex flex-col justify-center bg-blue-900/10">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center"><i class="fa-solid fa-gauge-high text-lg text-blue-400"></i></div>
+                                        <h3 class="text-xl font-bold text-white">性能飞跃</h3>
+                                    </div>
+                                    <span class="text-blue-400 font-mono text-xs font-bold bg-blue-500/10 px-2 py-1 rounded">RT: 20ms</span>
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <div class="flex items-center gap-2 text-[10px] text-gray-400"><span class="w-12">Before:</span><div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden"><div class="h-full bg-red-500 w-[90%]"></div></div><span class="w-10 text-right">250ms</span></div>
+                                    <div class="flex items-center gap-2 text-[10px] text-white font-bold"><span class="w-12">After:</span><div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden"><div class="h-full bg-blue-500 w-[10%] animate-[pulse_2s_infinite]"></div></div><span class="w-10 text-right text-blue-400">25ms</span></div>
+                                </div>
+                            </div>
+                            <div class="glass-panel p-5 border-l-4 border-yellow-500 fragment fade-up flex flex-col justify-center bg-yellow-900/10">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="w-8 h-8 rounded bg-yellow-500/20 flex items-center justify-center"><i class="fa-solid fa-code text-lg text-yellow-400"></i></div>
+                                    <h3 class="text-xl font-bold text-white">依然具有侵入性</h3>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="bg-black/40 p-3 rounded border border-white/10 text-center flex flex-col items-center hover:bg-white/5 transition-colors">
+                                        <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mb-2 border border-gray-600 shadow-lg"><i class="fa-solid fa-puzzle-piece text-lg text-gray-200"></i></div>
+                                        <div class="text-xs font-bold text-gray-200">业务耦合</div>
+                                        <div class="text-[9px] text-gray-400 mt-1">混合了 MQ 逻辑</div>
+                                    </div>
+                                    <div class="bg-black/40 p-3 rounded border border-white/10 text-center flex flex-col items-center hover:bg-white/5 transition-colors">
+                                        <div class="w-10 h-10 rounded-full bg-yellow-900/50 flex items-center justify-center mb-2 border border-yellow-700 shadow-lg"><i class="fa-solid fa-bomb text-lg text-yellow-400"></i></div>
+                                        <div class="text-xs font-bold text-gray-200">一致性隐患</div>
+                                        <div class="text-[9px] text-gray-400 mt-1">DB成功 MQ失败?</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 4: CDC (The Gold Standard) -->
+            <section class="slide-cdc" data-background-gradient="linear-gradient(135deg, #064e3b 0%, #022c22 100%)">
+                <div class="absolute inset-0 opacity-10 font-mono text-[10px] leading-3 text-emerald-500 overflow-hidden select-none pointer-events-none">
+                    <div class="animate-[matrixFall_20s_linear_infinite]" style="writing-mode: vertical-rl; text-orientation: upright; width: 100%; display: flex; justify-content: space-around;">
+                        <span>101010101010101010101010</span><span>010101010101010101010101</span><span>111000111000111000111000</span><span>000111000111000111000111</span>
+                    </div>
+                </div>
+                <div class="slide-container px-8 py-6 h-full flex flex-col">
+                    <div class="w-full text-left mb-6 relative z-10 flex-shrink-0 flex justify-between items-end border-b border-emerald-500/30 pb-4">
+                        <div>
+                            <div class="flex items-center gap-4 mb-1">
+                                <div class="w-10 h-10 rounded bg-emerald-500 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-emerald-500/50">3</div>
+                                <h2 class="text-4xl font-black text-white tracking-tight">CDC 变更数据捕获 <span class="text-emerald-400 font-light text-2xl ml-2">The Gold Standard</span></h2>
+                            </div>
+                            <p class="text-emerald-200/60 ml-14 text-base">像“从库”一样思考，实现真正的零侵入</p>
+                        </div>
+                        <div class="bg-emerald-900/50 border border-emerald-500/30 px-4 py-2 rounded-lg backdrop-blur-sm shadow-lg">
+                            <i class="fa-solid fa-star text-yellow-400 mr-2 animate-[pulse_2s_infinite]"></i>
+                            <span class="text-emerald-100 font-bold text-sm">推荐方案</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-6 min-h-0">
+                        <!-- Step 1: Architecture -->
+                        <div class="fragment fade-in flex-[5.5] relative w-full flex items-center justify-around px-12 group">
+                            <div class="absolute inset-0 bg-white/5 rounded-2xl border border-white/10 shadow-inner overflow-hidden -z-10">
+                                <div class="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiNmZmYiLz48L3N2Zz4=')]"></div>
+                                <div class="absolute top-1/2 left-24 right-24 h-3 bg-emerald-900/40 rounded-full overflow-hidden">
+                                    <div class="w-full h-full bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent w-1/2 animate-[flowRight_2s_linear_infinite]"></div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-center gap-4 z-10 transform transition-transform hover:scale-105">
+                                <div class="w-32 h-32 glass-panel bg-blue-900/20 border-blue-500/50 flex flex-col items-center justify-center shadow-[0_0_40px_rgba(59,130,246,0.2)] rounded-xl">
+                                    <i class="fa-solid fa-database text-6xl text-blue-400 mb-2 filter drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]"></i>
+                                    <span class="text-sm font-bold text-blue-100">MySQL Master</span>
+                                </div>
+                                <div class="px-3 py-1 bg-blue-900/50 rounded-full border border-blue-500/30 text-xs text-blue-200">Source of Truth</div>
+                            </div>
+                            <div class="flex flex-col items-center gap-1 opacity-60"><span class="text-[10px] font-mono text-emerald-400">Binlog</span><i class="fa-solid fa-chevron-right text-2xl text-emerald-500 animate-[pulse_1s_infinite]"></i></div>
+                            <div class="flex flex-col items-center gap-4 z-10 relative">
+                                <div class="absolute -top-14 bg-white text-emerald-900 font-bold text-xs px-4 py-2 rounded-xl shadow-xl animate-bounce z-50 border-2 border-emerald-500">
+                                    🤫 嘘！我是 MySQL Slave...
+                                    <div class="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-b-2 border-r-2 border-emerald-500 rotate-45"></div>
+                                </div>
+                                <div class="w-40 h-40 glass-panel bg-emerald-600/20 border-emerald-400 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(16,185,129,0.4)] rounded-full relative">
+                                    <div class="absolute -right-2 -top-2 bg-emerald-500 p-2 rounded-full shadow-lg z-20"><i class="fa-solid fa-mask text-white text-xl"></i></div>
+                                    <i class="fa-solid fa-faucet-drip text-6xl text-emerald-400 mb-2"></i>
+                                    <span class="text-2xl font-black text-white tracking-widest">CANAL</span>
+                                </div>
+                                <div class="px-3 py-1 bg-emerald-900/50 rounded-full border border-emerald-500/30 text-xs text-emerald-200">Middleware</div>
+                            </div>
+                            <div class="flex flex-col items-center gap-1 opacity-60"><span class="text-[10px] font-mono text-emerald-400">JSON</span><i class="fa-solid fa-chevron-right text-2xl text-emerald-500 animate-[pulse_1s_infinite]"></i></div>
+                            <div class="flex flex-col items-center gap-4 z-10 transform transition-transform hover:scale-105">
+                                <div class="w-32 h-32 glass-panel bg-green-900/20 border-green-500/50 flex flex-col items-center justify-center shadow-[0_0_40px_rgba(34,197,94,0.2)] rounded-xl">
+                                    <i class="fa-brands fa-searchengin text-6xl text-green-400 mb-2 filter drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]"></i>
+                                    <span class="text-sm font-bold text-green-100">ES Index</span>
+                                </div>
+                                <div class="px-3 py-1 bg-green-900/50 rounded-full border border-green-500/30 text-xs text-green-200">Search Engine</div>
+                            </div>
+                        </div>
+                        <!-- Step 2: Code & Value -->
+                        <div class="flex-[4.5] flex gap-6 w-full min-h-0">
+                            <div class="fragment fade-up w-7/12 glass-panel p-0 border-l-4 border-emerald-500 flex flex-col overflow-hidden bg-[#2b2b2b] shadow-2xl">
+                                <div class="bg-[#3c3f41] flex items-end px-2 pt-2 border-b border-[#2b2b2b] select-none h-9 flex-shrink-0">
+                                    <div class="bg-[#2b2b2b] text-[#a9b7c6] text-xs px-3 py-1.5 rounded-t flex items-center gap-2 border-t-2 border-[#4da6ff] relative shadow-[-2px_0_5px_rgba(0,0,0,0.2)] min-w-[140px]">
+                                        <div class="w-4 h-4 bg-[#4da6ff]/20 rounded-full flex items-center justify-center text-[#4da6ff] text-[8px] font-bold">C</div>
+                                        <span class="font-sans">UserService.java</span>
+                                        <i class="fa-solid fa-xmark text-[10px] ml-auto opacity-50 hover:opacity-100 cursor-pointer"></i>
+                                    </div>
+                                    <div class="text-[#808080] text-xs px-3 py-1.5 flex items-center gap-2 opacity-70 hover:opacity-100 cursor-pointer border-b border-[#3c3f41]">
+                                        <i class="fa-brands fa-java text-orange-500 text-[10px]"></i>
+                                        <span class="font-sans">UserMapper.java</span>
+                                    </div>
+                                </div>
+                                <div class="bg-[#2b2b2b] text-[#a9b7c6] text-[9px] px-3 py-1 border-b border-[#323232] flex items-center gap-1 font-sans opacity-60 flex-shrink-0">
+                                    <span>src</span> <i class="fa-solid fa-angle-right text-[8px]"></i> <span>main</span> <i class="fa-solid fa-angle-right text-[8px]"></i> <span>java</span> <i class="fa-solid fa-angle-right text-[8px]"></i> <span>com.example.service</span> <i class="fa-solid fa-angle-right text-[8px]"></i> <span>UserService</span>
+                                </div>
+                                <div class="flex flex-1 relative overflow-hidden text-sm font-mono text-left">
+                                    <div class="w-8 bg-[#313335] border-r border-[#414344] text-[#606366] text-right pr-2 pt-3 select-none flex-shrink-0 leading-6">10<br>11<br>12<br>13<br>14<br>15</div>
+                                    <div class="flex-1 bg-[#2b2b2b] text-[#a9b7c6] pt-3 pl-4 leading-6 overflow-hidden">
+                                        <div class="absolute top-2 right-2 flex items-center gap-1 bg-green-900/30 px-2 py-1 rounded border border-green-500/30 z-10">
+                                            <i class="fa-solid fa-check text-green-400 text-xs"></i>
+                                            <span class="text-[10px] text-green-400">No Errors</span>
+                                        </div>
+                                        <div><span class="text-[#bbb529]">@Transactional</span></div>
+                                        <div><span class="text-[#cc7832]">public void</span> <span class="text-[#ffc66d]">createUser</span>(User user) {</div>
+                                        <div class="pl-4 text-[#808080] italic">// 纯粹的业务逻辑，无需关心 ES</div>
+                                        <div class="pl-4">userMapper.insert(user);</div>
+                                        <div class="pl-4 text-[#808080]">// No MQ code here!</div>
+                                        <div>}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="fragment fade-up w-5/12 flex flex-col gap-3">
+                                <div class="glass-panel p-4 flex items-center gap-5 border-l-4 border-emerald-400 flex-1 hover:bg-emerald-900/20 transition-all group">
+                                    <div class="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-link-slash text-2xl text-emerald-400"></i></div>
+                                    <div><div class="text-white font-bold text-lg">完全解耦</div><div class="text-sm text-emerald-200/60 mt-1">业务与搜索逻辑物理隔离</div></div>
+                                </div>
+                                <div class="glass-panel p-4 flex items-center gap-5 border-l-4 border-blue-400 flex-1 hover:bg-blue-900/20 transition-all group">
+                                    <div class="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-rotate-left text-2xl text-blue-400"></i></div>
+                                    <div><div class="text-white font-bold text-lg">断点续传</div><div class="text-sm text-blue-200/60 mt-1">自动记录 Binlog 位点，不丢数据</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 5: Ordering Deep Dive (Renumbered: Removed "4", treated as Challenge) -->
+            <section class="slide-order" data-background-gradient="linear-gradient(135deg, #2e1065 0%, #1e1b4b 100%)">
+                <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                    <i class="fa-solid fa-clock text-[300px] text-violet-500/5 absolute -top-20 -left-20 rotate-12"></i>
+                    <i class="fa-solid fa-hourglass-half text-[200px] text-violet-500/5 absolute bottom-10 right-10 -rotate-12"></i>
+                </div>
+                <div class="slide-container px-8 py-6 h-full flex flex-col">
+                    <div class="w-full text-left mb-8 relative z-10 flex-shrink-0 border-b border-violet-500/30 pb-4">
+                        <div class="flex items-center gap-4 mb-1">
+                            <!-- Changed Number to Icon to indicate "Deep Dive/Challenge" not "Scheme 4" -->
+                            <div class="w-10 h-10 rounded bg-violet-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-violet-600/50">
+                                <i class="fa-solid fa-microchip"></i>
+                            </div>
+                            <h2 class="text-4xl font-black text-white tracking-tight">
+                                技术难点：乱序处理 <span class="text-violet-400 font-light text-2xl ml-2">Ordering & Idempotency</span>
+                            </h2>
+                        </div>
+                        <p class="text-violet-200/60 ml-14 text-base">当“未来”比“过去”先到达，我们该怎么办？</p>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-8 min-h-0 justify-center">
+                        <div class="flex items-center justify-between relative h-48 w-full max-w-6xl mx-auto">
+                            <div class="relative w-1/3 h-full flex items-center">
+                                <div class="absolute inset-0 border-t-2 border-b-2 border-dashed border-violet-500/20"></div>
+                                <div class="absolute -top-6 left-0 text-xs text-violet-400 font-mono">MQ Consumer</div>
+                                <div class="absolute left-0 z-20 animate-[raceFast_4s_linear_infinite]">
+                                    <div class="w-16 h-16 glass-panel bg-violet-600 border-violet-400 flex flex-col items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.6)]">
+                                        <span class="text-2xl font-black text-white">V2</span>
+                                        <span class="text-[9px] text-violet-200">New</span>
+                                    </div>
+                                </div>
+                                <div class="absolute left-24 z-10 animate-[raceSlow_4s_linear_infinite] opacity-80">
+                                    <div class="w-16 h-16 glass-panel bg-gray-700 border-gray-500 flex flex-col items-center justify-center grayscale">
+                                        <span class="text-2xl font-black text-gray-300">V1</span>
+                                        <span class="text-[9px] text-gray-400">Old</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="relative w-1/6 h-full flex flex-col items-center justify-center z-30">
+                                <div class="w-24 h-24 bg-violet-900/80 rounded-full border-4 border-violet-500 flex items-center justify-center shadow-[0_0_40px_rgba(139,92,246,0.5)] relative">
+                                    <i class="fa-solid fa-shield-halved text-5xl text-violet-400"></i>
+                                    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-violet-400/30 to-transparent animate-[scan_2s_linear_infinite]"></div>
+                                </div>
+                                <div class="mt-3 px-3 py-1 bg-violet-900 rounded text-xs text-violet-200 font-mono border border-violet-500/50">Version Check</div>
+                            </div>
+                            <div class="relative w-1/3 h-full flex items-center justify-end">
+                                <div class="w-64 h-40 glass-panel bg-[#1e1e1e] border-l-4 border-green-500 flex flex-col p-4 shadow-2xl relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 bg-green-500/20 px-2 py-1 text-[10px] text-green-400 font-bold">ES Document</div>
+                                    <div class="flex-1 flex flex-col justify-center gap-2">
+                                        <div class="flex justify-between items-center border-b border-white/10 pb-2"><span class="text-gray-400 text-sm">Current Ver:</span><span class="text-2xl font-mono font-bold text-green-400">2</span></div>
+                                                                                <div class="text-xs text-gray-500 mt-1">
+                                            <i class="fa-solid fa-ban text-red-500 mr-1"></i>
+                                            Rejected V1 (Old Data)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="absolute top-1/2 left-1/3 right-1/3 h-[2px] bg-violet-800 -z-10"></div>
+                        </div>
+
+                        <!-- Code Area -->
+                        <div class="fragment fade-up w-full max-w-4xl mx-auto glass-panel p-0 border-l-4 border-violet-500 flex flex-col overflow-hidden bg-[#2b2b2b] shadow-2xl">
+                            <div class="bg-[#3c3f41] flex items-end px-2 pt-2 border-b border-[#2b2b2b] select-none h-9 flex-shrink-0">
+                                <div class="bg-[#2b2b2b] text-[#a9b7c6] text-xs px-3 py-1.5 rounded-t flex items-center gap-2 border-t-2 border-violet-500 relative shadow-[-2px_0_5px_rgba(0,0,0,0.2)] min-w-[140px]">
+                                    <div class="w-4 h-4 bg-violet-500/20 rounded-full flex items-center justify-center text-violet-400 text-[8px] font-bold">J</div>
+                                    <span class="font-sans">SyncService.java</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-1 relative overflow-hidden text-sm font-mono text-left">
+                                <div class="w-8 bg-[#313335] border-r border-[#414344] text-[#606366] text-right pr-2 pt-3 select-none flex-shrink-0 leading-6">42<br>43<br>44<br>45<br>46<br>47<br>48</div>
+                                <div class="flex-1 bg-[#2b2b2b] text-[#a9b7c6] pt-3 pl-4 leading-6 overflow-hidden">
+                                    <div class="text-[#808080]">// 乐观锁核心逻辑：只接受"未来"的数据</div>
+                                    <div><span class="text-[#cc7832]">long</span> currentVersion = es.getVersion(id);</div>
+                                    <div><span class="text-[#cc7832]">if</span> (msg.getVersion() > currentVersion) {</div>
+                                    <div class="pl-4"><span class="text-[#9876aa]">es</span>.upsert(doc); <span class="text-[#629755]">// ✅ 更新成功</span></div>
+                                    <div>} <span class="text-[#cc7832]">else</span> {</div>
+                                    <div class="pl-4"><span class="text-[#9876aa]">log</span>.warn(<span class="text-[#6a8759]">"Ignored stale data: v{}"</span>, msg.getVersion()); <span class="text-[#cc7832]">// 🛑 丢弃旧数据</span></div>
+                                    <div>}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 6: Anti-Entropy (Renumbered to 4) -->
+            <section class="slide-entropy" data-background-gradient="linear-gradient(135deg, #083344 0%, #0e7490 100%)">
+                <div class="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none"></div>
+                <div class="slide-container px-8 py-6 h-full flex flex-col">
+                    <div class="w-full text-left mb-8 relative z-10 flex-shrink-0 border-b border-cyan-500/30 pb-4">
+                        <div class="flex items-center gap-4 mb-1">
+                            <!-- Renumbered to 4 to match cover -->
+                            <div class="w-10 h-10 rounded bg-cyan-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-cyan-600/50">4</div>
+                            <h2 class="text-4xl font-black text-white tracking-tight">兜底方案：反熵机制 <span class="text-cyan-300 font-light text-2xl ml-2">Anti-Entropy</span></h2>
+                        </div>
+                        <p class="text-cyan-200/60 ml-14 text-base">T+1 全量比对，消灭一切数据噪音</p>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-8 min-h-0 justify-center">
+                        <!-- Visual Scanner -->
+                        <div class="relative w-full max-w-5xl mx-auto h-64 glass-panel bg-[#0c1a25] border-cyan-500/30 flex items-center justify-center overflow-hidden shadow-2xl group">
+                            <div class="absolute top-0 w-full h-[2px] bg-cyan-400 shadow-[0_0_40px_4px_#22d3ee] animate-[scan_4s_ease-in-out_infinite] z-20 opacity-80"></div>
+                            <div class="grid grid-cols-3 gap-8 w-full px-16 z-10 h-full items-center">
+                                <div class="flex flex-col gap-3">
+                                    <div class="text-center text-cyan-500 font-mono text-xs mb-2 tracking-widest">MYSQL (SOURCE)</div>
+                                    <div class="h-12 bg-cyan-900/20 border border-cyan-800 rounded flex items-center justify-between px-4 text-gray-400 font-mono text-sm"><span>ID:101</span> <span class="text-green-500">Active</span></div>
+                                    <div class="h-12 bg-cyan-900/20 border border-cyan-800 rounded flex items-center justify-between px-4 text-gray-400 font-mono text-sm relative overflow-hidden">
+                                        <span>ID:102</span> <span class="text-gray-500">Closed</span>
+                                        <div class="absolute inset-0 bg-cyan-400/10 animate-[pulse_4s_infinite]"></div>
+                                    </div>
+                                    <div class="h-12 bg-cyan-900/20 border border-cyan-800 rounded flex items-center justify-between px-4 text-gray-400 font-mono text-sm"><span>ID:103</span> <span class="text-green-500">Active</span></div>
+                                </div>
+                                <div class="flex flex-col items-center justify-center gap-6 h-full pt-6">
+                                    <i class="fa-solid fa-check text-green-500/50 text-xl"></i>
+                                    <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500 animate-[pulse_1s_infinite] shadow-[0_0_20px_rgba(239,68,68,0.4)]"><i class="fa-solid fa-triangle-exclamation text-red-500"></i></div>
+                                    <i class="fa-solid fa-check text-green-500/50 text-xl"></i>
+                                </div>
+                                <div class="flex flex-col gap-3">
+                                    <div class="text-center text-cyan-500 font-mono text-xs mb-2 tracking-widest">ELASTICSEARCH</div>
+                                    <div class="h-12 bg-cyan-900/20 border border-cyan-800 rounded flex items-center justify-between px-4 text-gray-400 font-mono text-sm"><span>ID:101</span> <span class="text-green-500">Active</span></div>
+                                    <div class="h-12 bg-red-900/10 border border-red-500/50 rounded flex items-center justify-between px-4 text-red-300 font-mono text-sm relative">
+                                        <span>ID:102</span> <span class="font-bold underline decoration-red-500">Active?</span>
+                                        <div class="absolute -right-2 -top-2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] text-white animate-bounce">!</div>
+                                    </div>
+                                    <div class="h-12 bg-cyan-900/20 border border-cyan-800 rounded flex items-center justify-between px-4 text-gray-400 font-mono text-sm"><span>ID:103</span> <span class="text-green-500">Active</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Code Area -->
+                        <div class="fragment fade-up w-full max-w-4xl mx-auto glass-panel p-0 border-l-4 border-cyan-500 flex flex-col overflow-hidden bg-[#2b2b2b] shadow-2xl">
+                            <div class="bg-[#3c3f41] flex items-end px-2 pt-2 border-b border-[#2b2b2b] select-none h-9 flex-shrink-0">
+                                <div class="bg-[#2b2b2b] text-[#a9b7c6] text-xs px-3 py-1.5 rounded-t flex items-center gap-2 border-t-2 border-cyan-500 relative shadow-[-2px_0_5px_rgba(0,0,0,0.2)] min-w-[140px]">
+                                    <div class="w-4 h-4 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 text-[8px] font-bold">K</div>
+                                    <span class="font-sans">NightlyCheckJob.kt</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-1 relative overflow-hidden text-sm font-mono text-left">
+                                <div class="w-8 bg-[#313335] border-r border-[#414344] text-[#606366] text-right pr-2 pt-3 select-none flex-shrink-0 leading-6">88<br>89<br>90<br>91<br>92<br>93</div>
+                                <div class="flex-1 bg-[#2b2b2b] text-[#a9b7c6] pt-3 pl-4 leading-6 overflow-hidden">
+                                    <div class="text-[#808080]">// 凌晨 3:00 执行：基于游标的全量比对</div>
+                                    <div><span class="text-[#cc7832]">fun</span> <span class="text-[#ffc66d]">repairMismatch</span>(source: Row, target: Doc) {</div>
+                                    <div class="pl-4"><span class="text-[#cc7832]">if</span> (source.hash != target.hash) {</div>
+                                    <div class="pl-8 text-[#808080]">// 发现不一致，强制覆盖</div>
+                                    <div class="pl-8"><span class="text-[#9876aa]">esClient</span>.index(source.toDoc())</div>
+                                    <div class="pl-8"><span class="text-[#9876aa]">alert</span>.send(<span class="text-[#6a8759]">"Fixed ID: ${source.id}"</span>)</div>
+                                    <div class="pl-4">}</div>
+                                    <div>}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 7: Summary -->
+            <section class="slide-summary" data-background-gradient="linear-gradient(135deg, #0f172a 0%, #1e293b 100%)">
+                <div class="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiNmZmYiLz48L3N2Zz4=')] animate-[twinkle_5s_infinite]"></div>
+                <div class="slide-container px-8 py-6 h-full flex flex-col items-center justify-center">
+                    <div class="text-center mb-12 relative z-10">
+                        <h2 class="text-5xl font-black text-white tracking-tight mb-4">核心价值总结 <span class="block text-xl font-light text-gray-400 mt-2 tracking-widest uppercase">Key Takeaways</span></h2>
+                        <div class="h-1 w-24 bg-gradient-to-r from-transparent via-blue-500 to-transparent mx-auto rounded-full"></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-8 w-full max-w-6xl">
+                        <div class="fragment fade-up group relative">
+                            <div class="absolute inset-0 bg-emerald-500/20 blur-xl rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                            <div class="glass-panel p-8 h-full flex flex-col items-center justify-center text-center border-t-4 border-emerald-500 bg-[#1a2e26]/40 hover:bg-[#1a2e26]/60 transition-all transform group-hover:-translate-y-2 duration-300">
+                                <div class="w-20 h-20 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6 border border-emerald-500/20 group-hover:rotate-12 transition-transform duration-300"><i class="fa-solid fa-bolt text-4xl text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]"></i></div>
+                                <h3 class="text-2xl font-bold text-white mb-3 group-hover:text-emerald-300 transition-colors">实时为主</h3>
+                                <p class="text-emerald-100/60 text-sm leading-relaxed"><span class="font-bold text-emerald-400">CDC + Kafka</span><br>毫秒级延迟<br>业务零侵入</p>
+                            </div>
+                        </div>
+                        <div class="fragment fade-up group relative" style="transition-delay: 100ms">
+                            <div class="absolute inset-0 bg-violet-500/20 blur-xl rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                            <div class="glass-panel p-8 h-full flex flex-col items-center justify-center text-center border-t-4 border-violet-500 bg-[#251b38]/40 hover:bg-[#251b38]/60 transition-all transform group-hover:-translate-y-2 duration-300">
+                                <div class="w-20 h-20 rounded-2xl bg-violet-500/10 flex items-center justify-center mb-6 border border-violet-500/20 group-hover:rotate-12 transition-transform duration-300"><i class="fa-solid fa-brain text-4xl text-violet-400 drop-shadow-[0_0_10px_rgba(167,139,250,0.5)]"></i></div>
+                                <h3 class="text-2xl font-bold text-white mb-3 group-hover:text-violet-300 transition-colors">逻辑闭环</h3>
+                                <p class="text-violet-100/60 text-sm leading-relaxed"><span class="font-bold text-violet-400">Version Control</span><br>完美解决乱序<br>幂等性保障</p>
+                            </div>
+                        </div>
+                        <div class="fragment fade-up group relative" style="transition-delay: 200ms">
+                            <div class="absolute inset-0 bg-cyan-500/20 blur-xl rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                            <div class="glass-panel p-8 h-full flex flex-col items-center justify-center text-center border-t-4 border-cyan-500 bg-[#162e38]/40 hover:bg-[#162e38]/60 transition-all transform group-hover:-translate-y-2 duration-300">
+                                <div class="w-20 h-20 rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-6 border border-cyan-500/20 group-hover:rotate-12 transition-transform duration-300"><i class="fa-solid fa-shield-halved text-4xl text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]"></i></div>
+                                <h3 class="text-2xl font-bold text-white mb-3 group-hover:text-cyan-300 transition-colors">离线为辅</h3>
+                                <p class="text-cyan-100/60 text-sm leading-relaxed"><span class="font-bold text-cyan-400">Anti-Entropy</span><br>T+1 全量对账<br>最终一致性兜底</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-16 fragment fade-in">
+                        <div class="px-8 py-3 rounded-full bg-white/5 border border-white/10 text-gray-300 font-mono text-sm flex items-center gap-3">
+                            <i class="fa-solid fa-terminal text-blue-400"></i>
+                            <span>Build systems that are <span class="text-white font-bold">Resilient</span>, not just Fast.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: false,
+            progress: false,
+            center: false,
+            hash: true,
+            transition: 'convex',
+            backgroundTransition: 'zoom',
+            fragments: true,
+            transitionSpeed: 'fast',
+        });
+
+        /* 自动招揽模式 */
+        (function() {
+            let autoPlayInterval;
+            const autoPlaySpeed = 3000;
+            let isAttractMode = true;
+
+            function startAttractMode() {
+                if (!isAttractMode) return;
+                Reveal.configure({ loop: true });
+                autoPlayInterval = setInterval(() => {
+                    Reveal.next();
+                }, autoPlaySpeed);
+            }
+
+            function stopAttractMode() {
+                if (!isAttractMode) return;
+                isAttractMode = false;
+                clearInterval(autoPlayInterval);
+                Reveal.slide(0);
+                Reveal.configure({ loop: false });
+                
+                const hint = document.getElementById('start-hint');
+                if(hint) {
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.remove(), 500);
+                }
+            }
+
+            window.addEventListener('keydown', stopAttractMode);
+            window.addEventListener('click', stopAttractMode);
+            
+            startAttractMode();
+        })();
+    </script>
+</body>
+</html>
+

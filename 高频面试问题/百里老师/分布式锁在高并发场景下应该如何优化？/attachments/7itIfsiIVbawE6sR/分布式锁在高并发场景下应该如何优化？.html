@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分布式锁在高并发场景下应该如何优化？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 仅保留基础的入场淡入动画，去除所有持续性的晃动和脉冲动画 */
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        
+        /* 移除了 hover 时的位移，保持完全静置，或者您可以选择保留 hover 效果 */
+        .diagram-node { background-color: rgba(30, 41, 59, 0.6); border: 2px solid #475569; border-radius: 1rem; padding: 1.5rem; transition: border-color 0.3s ease, box-shadow 0.3s ease; }
+        /* .diagram-node:hover { transform: translateY(-5px); }  <-- 已注释掉悬停浮动 */
+        
+        /* 移除了 infinite 动画 */
+        .diagram-node-good { border-color: #22c55e; }
+        .diagram-node-good:hover { box-shadow: 0 0 30px rgba(34, 197, 94, 0.3); }
+        
+        /* 移除了 infinite 动画 */
+        .diagram-node-bad { border-color: #ef4444; }
+        .diagram-node-bad:hover { box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); }
+
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .slide:last-of-type { border-bottom: none; }
+        
+        /* 移除了流动动画 */
+        .flow-right { opacity: 1; left: auto; }
+        .flow-left { opacity: 1; right: auto; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场 -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-200">
+                分布式锁在高并发场景下<br>应该如何<span class="gradient-text bg-gradient-to-r from-amber-400 to-orange-400">优化</span>？
+            </h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">从"竞争瓶颈"到"并发自由"的架构演进</h2>
+            <div class="content-panel mt-12 p-8 md:p-12 border-amber-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                    <div class="diagram-node border-red-500/50">
+                        <i class="fa-solid fa-lock text-5xl text-red-400 mb-4"></i>
+                        <h4 class="font-bold text-xl text-slate-200">锁竞争</h4>
+                        <p class="text-sm text-slate-400 mt-2">成千上万的线程争抢同一把锁</p>
+                    </div>
+                    <div class="diagram-node border-amber-500/50">
+                        <i class="fa-solid fa-fire text-5xl text-amber-400 mb-4"></i>
+                        <h4 class="font-bold text-xl text-slate-200">热点压力</h4>
+                        <p class="text-sm text-slate-400 mt-2">单一锁资源成为系统瓶颈</p>
+                    </div>
+                    <div class="diagram-node border-violet-500/50">
+                        <i class="fa-solid fa-server text-5xl text-violet-400 mb-4"></i>
+                        <h4 class="font-bold text-xl text-slate-200">服务可用性</h4>
+                        <p class="text-sm text-slate-400 mt-2">锁服务宕机导致业务阻塞</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 问题本质 - 单机 vs 分布式 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">问题的本质：从单机到分布式</h2>
+            <p class="mt-4 text-xl text-slate-400">网络开销与竞争加剧，让锁成为性能杀手。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-sky-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 左侧：单机锁 -->
+                    <div class="text-center">
+                        <h3 class="font-bold text-2xl text-green-300 mb-6">单机锁 (JVM内)</h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="diagram-node diagram-node-good w-48">
+                                <i class="fa-solid fa-microchip text-4xl text-green-300"></i>
+                                <h4 class="font-bold mt-2">JVM</h4>
+                            </div>
+                            <div class="flex justify-around w-full">
+                                <div class="text-sky-300"><i class="fa-solid fa-arrow-down text-2xl"></i><p class="text-xs mt-1">线程1</p></div>
+                                <div class="text-sky-300"><i class="fa-solid fa-arrow-down text-2xl"></i><p class="text-xs mt-1">线程2</p></div>
+                                <div class="text-sky-300"><i class="fa-solid fa-arrow-down text-2xl"></i><p class="text-xs mt-1">线程3</p></div>
+                            </div>
+                            <div class="diagram-node bg-green-900/30 border-green-500 w-48">
+                                <i class="fa-solid fa-lock text-3xl text-green-400"></i>
+                                <p class="text-sm mt-2 text-green-300">synchronized</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-slate-400 mt-4">✅ 低延迟，内存级操作</p>
+                    </div>
+
+                    <!-- 右侧：分布式锁 -->
+                    <div class="text-center">
+                        <h3 class="font-bold text-2xl text-red-300 mb-6">分布式锁 (跨JVM)</h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="flex justify-around w-full">
+                                <div class="diagram-node w-32">
+                                    <i class="fa-solid fa-server text-3xl text-slate-400"></i>
+                                    <p class="text-xs mt-1">服务1</p>
+                                </div>
+                                <div class="diagram-node w-32">
+                                    <i class="fa-solid fa-server text-3xl text-slate-400"></i>
+                                    <p class="text-xs mt-1">服务2</p>
+                                </div>
+                                <div class="diagram-node w-32">
+                                    <i class="fa-solid fa-server text-3xl text-slate-400"></i>
+                                    <p class="text-xs mt-1">服务3</p>
+                                </div>
+                            </div>
+                            <div class="text-red-400">
+                                <i class="fa-solid fa-arrow-down text-2xl"></i>
+                                <p class="text-xs mt-1 font-bold">网络请求</p>
+                            </div>
+                            <div class="diagram-node diagram-node-bad w-48">
+                                <i class="fa-solid fa-lock text-4xl text-red-400"></i>
+                                <h4 class="font-bold mt-2">Redis锁</h4>
+                            </div>
+                        </div>
+                        <p class="text-sm text-red-400 mt-4">⚠️ 网络延迟 + 竞争加剧</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: 漏斗效应 -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-5xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-500 to-pink-400">核心矛盾：锁竞争的"漏斗效应"</h2>
+            <p class="mt-4 text-xl text-slate-400">10,000个请求，只有1个能通过，其余全部阻塞或失败。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-rose-500/30">
+                <div class="flex flex-col items-center space-y-6">
+                    <!-- 顶部：大量请求 -->
+                    <div class="text-center">
+                        <h3 class="font-bold text-lg text-sky-300 mb-3">10,000 个并发请求</h3>
+                        <div class="grid grid-cols-10 gap-2">
+                            <i class="fa-solid fa-arrow-down text-sky-400 text-xl"></i>
+                            <i class="fa-solid fa-arrow-down text-sky-400 text-xl"></i>
+                            <i class="fa-solid fa-arrow-down text-sky-400 text-xl"></i>
+                            <i class="fa-solid fa-arrow-down text-sky-400 text-xl"></i>
+                            <i class="fa-solid fa-arrow-down text-sky-400 text-xl"></i>
+                            <i class="fa-solid fa-arrow-down text-sky-400 text-xl"></i>
+                            <i class="fa-solid fa-arrow-down text-sky-400 text-xl"></i>
+                            <i class="fa-solid fa-arrow-down text-sky-400 text-xl"></i>
+                            <i class="fa-solid fa-arrow-down text-sky-400 text-xl"></i>
+                            <i class="fa-solid fa-arrow-down text-sky-400 text-xl"></i>
+                        </div>
+                    </div>
+
+                    <!-- 中间：锁节点 -->
+                    <div class="diagram-node diagram-node-bad w-64 text-center">
+                        <i class="fa-solid fa-lock text-5xl text-red-400"></i>
+                        <h4 class="font-bold text-xl mt-3 text-red-300">分布式锁</h4>
+                        <p class="text-sm text-slate-400 mt-2">lock:resource:001</p>
+                    </div>
+
+                    <!-- 底部：只有1个通过 -->
+                    <div class="text-center">
+                        <i class="fa-solid fa-arrow-down text-green-400 text-3xl"></i>
+                        <h3 class="font-bold text-lg text-green-300 mt-3">只有 1 个请求成功</h3>
+                        <p class="text-sm text-slate-400 mt-2">其余 9,999 个请求被阻塞或失败</p>
+                    </div>
+
+                    <!-- 统计数据 -->
+                    <div class="grid grid-cols-2 gap-6 w-full mt-6">
+                        <div class="bg-red-900/20 p-4 rounded-lg border border-red-500/30">
+                            <h4 class="font-bold text-red-400">资源浪费</h4>
+                            <p class="text-3xl font-bold text-red-300 mt-2">99.99%</p>
+                        </div>
+                        <div class="bg-amber-900/20 p-4 rounded-lg border border-amber-500/30">
+                            <h4 class="font-bold text-amber-400">系统吞吐量</h4>
+                            <p class="text-3xl font-bold text-amber-300 mt-2">急剧下降</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 优化策略一 - 降低锁粒度 -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-teal-400 to-cyan-400">优化策略一：降低锁的粒度</h2>
+            <p class="mt-4 text-xl text-slate-400">从"全局大锁"到"资源独立锁"，并发度瞬间提升N倍。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-teal-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 左侧：优化前 -->
+                    <div class="text-center">
+                        <h3 class="font-bold text-2xl text-red-300 mb-6 flex items-center justify-center">
+                            <i class="fa-solid fa-xmark mr-3 text-red-400"></i>优化前：全局锁
+                        </h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="grid grid-cols-5 gap-2">
+                                <div class="diagram-node w-16 h-16 flex items-center justify-center text-xs">SKU1</div>
+                                <div class="diagram-node w-16 h-16 flex items-center justify-center text-xs">SKU2</div>
+                                <div class="diagram-node w-16 h-16 flex items-center justify-center text-xs">SKU3</div>
+                                <div class="diagram-node w-16 h-16 flex items-center justify-center text-xs">SKU4</div>
+                                <div class="diagram-node w-16 h-16 flex items-center justify-center text-xs">SKU5</div>
+                            </div>
+                            <div class="text-red-400">
+                                <i class="fa-solid fa-arrows-down-to-line text-3xl"></i>
+                            </div>
+                            <div class="diagram-node diagram-node-bad w-64">
+                                <i class="fa-solid fa-lock text-4xl text-red-400"></i>
+                                <p class="text-sm mt-2 font-mono text-red-300">lock:stock</p>
+                                <p class="text-xs text-slate-400 mt-1">(全局唯一锁)</p>
+                            </div>
+                        </div>
+                        <div class="bg-red-900/20 p-4 rounded-lg border border-red-500/30 mt-6">
+                            <p class="text-sm text-red-300"><i class="fa-solid fa-triangle-exclamation mr-2"></i>所有商品竞争同一把锁</p>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：优化后 -->
+                    <div class="text-center">
+                        <h3 class="font-bold text-2xl text-green-300 mb-6 flex items-center justify-center">
+                            <i class="fa-solid fa-check mr-3 text-green-400"></i>优化后：细粒度锁
+                        </h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="grid grid-cols-5 gap-2">
+                                <div class="flex flex-col items-center">
+                                    <div class="diagram-node w-16 h-16 flex items-center justify-center text-xs">SKU1</div>
+                                    <i class="fa-solid fa-arrow-down text-green-400 text-xl mt-1"></i>
+                                    <div class="diagram-node diagram-node-good w-16 h-12 flex items-center justify-center mt-1">
+                                        <i class="fa-solid fa-lock text-sm text-green-400"></i>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="diagram-node w-16 h-16 flex items-center justify-center text-xs">SKU2</div>
+                                    <i class="fa-solid fa-arrow-down text-green-400 text-xl mt-1"></i>
+                                    <div class="diagram-node diagram-node-good w-16 h-12 flex items-center justify-center mt-1">
+                                        <i class="fa-solid fa-lock text-sm text-green-400"></i>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="diagram-node w-16 h-16 flex items-center justify-center text-xs">SKU3</div>
+                                    <i class="fa-solid fa-arrow-down text-green-400 text-xl mt-1"></i>
+                                    <div class="diagram-node diagram-node-good w-16 h-12 flex items-center justify-center mt-1">
+                                        <i class="fa-solid fa-lock text-sm text-green-400"></i>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="diagram-node w-16 h-16 flex items-center justify-center text-xs">SKU4</div>
+                                    <i class="fa-solid fa-arrow-down text-green-400 text-xl mt-1"></i>
+                                    <div class="diagram-node diagram-node-good w-16 h-12 flex items-center justify-center mt-1">
+                                        <i class="fa-solid fa-lock text-sm text-green-400"></i>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="diagram-node w-16 h-16 flex items-center justify-center text-xs">SKU5</div>
+                                    <i class="fa-solid fa-arrow-down text-green-400 text-xl mt-1"></i>
+                                    <div class="diagram-node diagram-node-good w-16 h-12 flex items-center justify-center mt-1">
+                                        <i class="fa-solid fa-lock text-sm text-green-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-400 font-mono mt-4">lock:stock:sku_{id}</p>
+                        </div>
+                        <div class="bg-green-900/20 p-4 rounded-lg border border-green-500/30 mt-6">
+                            <p class="text-sm text-green-300"><i class="fa-solid fa-circle-check mr-2"></i>每个商品独立锁，并发度提升N倍</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 优化策略二 - 锁分段 -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-400 to-orange-400">优化策略二：锁分段 (Segmented Locks)</h2>
+            <p class="mt-4 text-xl text-slate-400">借鉴ConcurrentHashMap思想，将热点锁拆分为多个段，进一步分散压力。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-amber-500/30">
+                <div class="flex flex-col items-center space-y-6">
+                    <!-- 热点商品 -->
+                    <div class="diagram-node w-64 text-center border-amber-500">
+                        <i class="fa-solid fa-fire text-5xl text-amber-400"></i>
+                        <h4 class="font-bold text-xl mt-3">SKU_HOT (热点商品)</h4>
+                        <p class="text-sm text-slate-400 mt-2">单个锁压力巨大</p>
+                    </div>
+
+                    <i class="fa-solid fa-arrow-down text-3xl text-amber-400"></i>
+                    <p class="font-bold text-lg text-amber-300">通过哈希算法路由到不同的段</p>
+
+                    <!-- 分段锁 -->
+                    <div class="grid grid-cols-4 gap-4 w-full">
+                        <div class="diagram-node diagram-node-good text-center">
+                            <i class="fa-solid fa-lock text-3xl text-green-400"></i>
+                            <p class="text-xs font-mono mt-2">seg_1</p>
+                        </div>
+                        <div class="diagram-node diagram-node-good text-center">
+                            <i class="fa-solid fa-lock text-3xl text-green-400"></i>
+                            <p class="text-xs font-mono mt-2">seg_2</p>
+                        </div>
+                        <div class="diagram-node diagram-node-good text-center">
+                            <i class="fa-solid fa-lock text-3xl text-green-400"></i>
+                            <p class="text-xs font-mono mt-2">seg_3</p>
+                        </div>
+                        <div class="diagram-node diagram-node-good text-center">
+                            <i class="fa-solid fa-lock text-3xl text-green-400"></i>
+                            <p class="text-xs font-mono mt-2">seg_4</p>
+                        </div>
+                    </div>
+
+                    <!-- 代码示例 -->
+                    <div class="bg-slate-900/70 p-4 rounded-lg w-full text-left">
+                        <pre class="text-xs font-mono text-slate-300"><code>int segment = Math.abs(userId.hashCode()) % 16;
+String lockKey = "lock:stock:" + skuId + ":seg_" + segment;</code></pre>
+                    </div>
+
+                    <!-- 权衡说明 -->
+                    <div class="bg-yellow-900/20 p-4 rounded-lg border border-yellow-500/30 w-full">
+                        <h4 class="font-bold text-yellow-400 mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i>权衡</h4>
+                        <p class="text-sm text-slate-300">分段锁会牺牲一定的强一致性，需要在业务层做二次校验。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: 优化策略三 - 缩短持有时间 -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-400 to-purple-400">优化策略三：缩短锁的持有时间</h2>
+            <p class="mt-4 text-xl text-slate-400">精简临界区代码，让锁"来得快，去得也快"。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-violet-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 左侧：优化前 -->
+                    <div class="bg-red-900/20 p-6 rounded-xl border border-red-500/30">
+                        <h3 class="font-bold text-xl text-red-300 mb-4 flex items-center">
+                            <i class="fa-solid fa-xmark mr-3"></i>优化前：臃肿的临界区
+                        </h3>
+                        <div class="space-y-3 text-left text-sm">
+                            <div class="bg-slate-800/50 p-3 rounded">
+                                <p class="text-slate-400">1. 参数校验</p>
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded">
+                                <p class="text-slate-400">2. 准备数据</p>
+                            </div>
+                            <div class="bg-red-900/50 p-3 rounded border-2 border-red-500">
+                                <p class="font-bold text-red-300">🔒 lock.lock()</p>
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded ml-6">
+                                <p class="text-amber-300">3. 更新数据库 (核心)</p>
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded ml-6">
+                                <p class="text-slate-400">4. 发送通知</p>
+                            </div>
+                            <div class="bg-red-900/50 p-3 rounded border-2 border-red-500">
+                                <p class="font-bold text-red-300">🔓 lock.unlock()</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-red-400 mt-4"><i class="fa-solid fa-clock mr-2"></i>锁持有时间：~500ms</p>
+                    </div>
+
+                    <!-- 右侧：优化后 -->
+                    <div class="bg-green-900/20 p-6 rounded-xl border border-green-500/30">
+                        <h3 class="font-bold text-xl text-green-300 mb-4 flex items-center">
+                            <i class="fa-solid fa-check mr-3"></i>优化后：精简的临界区
+                        </h3>
+                        <div class="space-y-3 text-left text-sm">
+                            <div class="bg-slate-800/50 p-3 rounded">
+                                <p class="text-slate-400">1. 参数校验</p>
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded">
+                                <p class="text-slate-400">2. 准备数据</p>
+                            </div>
+                            <div class="bg-green-900/50 p-3 rounded border-2 border-green-500">
+                                <p class="font-bold text-green-300">🔒 lock.lock()</p>
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded ml-6">
+                                <p class="text-amber-300">3. 更新数据库 (核心)</p>
+                            </div>
+                            <div class="bg-green-900/50 p-3 rounded border-2 border-green-500">
+                                <p class="font-bold text-green-300">🔓 lock.unlock()</p>
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded">
+                                <p class="text-slate-400">4. 发送通知</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-green-400 mt-4"><i class="fa-solid fa-clock mr-2"></i>锁持有时间：~50ms (缩短10倍)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: 优化策略四 - 异步化处理 -->
+    <section id="slide7" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-emerald-400 to-green-400">优化策略四：异步化处理</h2>
+            <p class="mt-4 text-xl text-slate-400">利用消息队列削峰填谷，将同步变异步，从根本上降低锁竞争。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-green-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 左侧：同步模式 -->
+                    <div class="text-center">
+                        <h3 class="font-bold text-2xl text-red-300 mb-6">同步模式 (优化前)</h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="diagram-node w-48">
+                                <i class="fa-solid fa-user text-4xl text-sky-300"></i>
+                                <p class="text-sm mt-2">用户请求</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-red-400 text-3xl"></i>
+                            <div class="diagram-node diagram-node-bad w-48">
+                                <i class="fa-solid fa-lock text-4xl text-red-400"></i>
+                                <p class="text-sm mt-2">获取锁</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-red-400 text-3xl"></i>
+                            <div class="diagram-node w-48">
+                                <i class="fa-solid fa-database text-4xl text-amber-400"></i>
+                                <p class="text-sm mt-2">扣减库存</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-red-400 text-3xl"></i>
+                            <div class="diagram-node w-48">
+                                <i class="fa-solid fa-check-circle text-4xl text-slate-400"></i>
+                                <p class="text-sm mt-2">返回结果</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-red-400 mt-4"><i class="fa-solid fa-hourglass-half mr-2"></i>用户等待时间长，锁竞争激烈</p>
+                    </div>
+
+                    <!-- 右侧：异步模式 -->
+                    <div class="text-center">
+                        <h3 class="font-bold text-2xl text-green-300 mb-6">异步模式 (优化后)</h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="diagram-node w-48">
+                                <i class="fa-solid fa-user text-4xl text-sky-300"></i>
+                                <p class="text-sm mt-2">用户请求</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-green-400 text-3xl"></i>
+                            <div class="diagram-node diagram-node-good w-48">
+                                <i class="fa-brands fa-java text-4xl text-green-400"></i>
+                                <p class="text-sm mt-2">写入MQ</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-green-400 text-3xl"></i>
+                            <div class="diagram-node w-48 border-green-500">
+                                <i class="fa-solid fa-bolt text-4xl text-green-300"></i>
+                                <p class="text-sm mt-2">立即返回"排队中"</p>
+                            </div>
+                            <div class="mt-6 border-t-2 border-dashed border-slate-600 pt-4 w-full">
+                                <p class="text-xs text-slate-400 mb-3">后台异步处理</p>
+                                <div class="diagram-node w-48 mx-auto">
+                                    <i class="fa-solid fa-gears text-4xl text-violet-400"></i>
+                                    <p class="text-sm mt-2">MQ消费者 (可控并发)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-green-400 mt-4"><i class="fa-solid fa-rocket mr-2"></i>前端QPS提升100倍，锁竞争大幅降低</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 8: 优化策略五 - 乐观锁 -->
+    <section id="slide8" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-cyan-400 to-blue-400">优化策略五：乐观锁代替悲观锁</h2>
+            <p class="mt-4 text-xl text-slate-400">在冲突少的场景，用版本号机制实现无锁化，性能飞跃。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-cyan-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 左侧：悲观锁 -->
+                    <div class="text-center">
+                        <h3 class="font-bold text-2xl text-red-300 mb-6">悲观锁 (Pessimistic)</h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="diagram-node w-48 border-red-500">
+                                <i class="fa-solid fa-lock text-5xl text-red-400"></i>
+                                <p class="text-sm mt-3 font-bold text-red-300">先加锁</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-slate-400 text-2xl"></i>
+                            <div class="diagram-node w-48">
+                                <i class="fa-solid fa-pen-to-square text-4xl text-amber-400"></i>
+                                <p class="text-sm mt-2">执行操作</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-slate-400 text-2xl"></i>
+                            <div class="diagram-node w-48 border-red-500">
+                                <i class="fa-solid fa-unlock text-5xl text-red-400"></i>
+                                <p class="text-sm mt-3 font-bold text-red-300">释放锁</p>
+                            </div>
+                        </div>
+                        <div class="bg-red-900/20 p-4 rounded-lg border border-red-500/30 mt-6 text-left">
+                            <p class="text-sm text-slate-300"><i class="fa-solid fa-minus-circle mr-2 text-red-400"></i>假定总会冲突</p>
+                            <p class="text-sm text-slate-300 mt-2"><i class="fa-solid fa-minus-circle mr-2 text-red-400"></i>锁开销大</p>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：乐观锁 -->
+                    <div class="text-center">
+                        <h3 class="font-bold text-2xl text-green-300 mb-6">乐观锁 (Optimistic)</h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="diagram-node w-48 border-green-500">
+                                <i class="fa-solid fa-eye text-5xl text-green-400"></i>
+                                <p class="text-sm mt-3 font-bold text-green-300">读取数据 + 版本号</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-slate-400 text-2xl"></i>
+                            <div class="diagram-node w-48">
+                                <i class="fa-solid fa-pen-to-square text-4xl text-amber-400"></i>
+                                <p class="text-sm mt-2">执行操作</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-slate-400 text-2xl"></i>
+                            <div class="diagram-node w-48 border-green-500">
+                                <i class="fa-solid fa-code-compare text-5xl text-green-400"></i>
+                                <p class="text-sm mt-3 font-bold text-green-300">CAS更新 (比较版本号)</p>
+                            </div>
+                            <div class="flex gap-4 mt-3">
+                                <div class="text-green-400"><i class="fa-solid fa-check text-2xl"></i><p class="text-xs mt-1">成功</p></div>
+                                <div class="text-amber-400"><i class="fa-solid fa-rotate-right text-2xl"></i><p class="text-xs mt-1">失败重试</p></div>
+                            </div>
+                        </div>
+                        <div class="bg-green-900/20 p-4 rounded-lg border border-green-500/30 mt-6 text-left">
+                            <p class="text-sm text-slate-300"><i class="fa-solid fa-circle-check mr-2 text-green-400"></i>无锁化，性能极高</p>
+                            <p class="text-sm text-slate-300 mt-2"><i class="fa-solid fa-circle-check mr-2 text-green-400"></i>适合冲突少的场景</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 代码示例 -->
+                <div class="mt-6 bg-slate-900/70 p-4 rounded-lg text-left">
+                    <p class="text-xs text-slate-400 mb-2">SQL示例：</p>
+                    <pre class="text-xs font-mono text-green-300"><code>UPDATE stock SET quantity = quantity - 1, version = version + 1 
+WHERE sku_id = ? AND version = ?</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 9: 优化策略六 - Redis高可用 -->
+    <section id="slide9" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-400 to-red-400">架构优化：Redis集群的高可用陷阱</h2>
+            <p class="mt-4 text-xl text-slate-400">主从切换时的锁丢失风险，以及Redlock的权衡。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-rose-500/30">
+                <div class="flex flex-col items-center space-y-6">
+                    <h3 class="font-bold text-2xl text-amber-300">场景：主从切换导致锁丢失</h3>
+                    
+                    <!-- 时序图 -->
+                    <div class="w-full max-w-5xl">
+                        <div class="grid grid-cols-4 gap-4 text-center text-sm">
+                            <!-- 时间点1 -->
+                            <div class="flex flex-col items-center space-y-3">
+                                <div class="bg-slate-800/50 p-2 rounded text-xs text-slate-400">t1</div>
+                                <div class="diagram-node diagram-node-good w-32 h-24 flex flex-col items-center justify-center">
+                                    <i class="fa-solid fa-user text-2xl text-sky-300"></i>
+                                    <p class="text-xs mt-1">客户端A</p>
+                                </div>
+                                <i class="fa-solid fa-arrow-down text-green-400 text-xl"></i>
+                                <div class="diagram-node border-green-500 w-32 h-20 flex flex-col items-center justify-center">
+                                    <i class="fa-brands fa-redis text-2xl text-green-400"></i>
+                                    <p class="text-xs mt-1">Master</p>
+                                </div>
+                                <p class="text-xs text-green-300 font-bold">✓ 获取锁成功</p>
+                            </div>
+
+                            <!-- 时间点2 -->
+                            <div class="flex flex-col items-center space-y-3">
+                                <div class="bg-slate-800/50 p-2 rounded text-xs text-slate-400">t2</div>
+                                <div class="diagram-node w-32 h-24 flex flex-col items-center justify-center opacity-50">
+                                    <i class="fa-solid fa-hourglass-half text-2xl text-amber-400"></i>
+                                    <p class="text-xs mt-1">数据同步中</p>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-amber-400 text-xl"></i>
+                                <div class="diagram-node w-32 h-20 flex flex-col items-center justify-center">
+                                    <i class="fa-brands fa-redis text-2xl text-slate-400"></i>
+                                    <p class="text-xs mt-1">Slave</p>
+                                </div>
+                                <p class="text-xs text-amber-300">⚠️ 未同步完成</p>
+                            </div>
+
+                            <!-- 时间点3 -->
+                            <div class="flex flex-col items-center space-y-3">
+                                <div class="bg-slate-800/50 p-2 rounded text-xs text-slate-400">t3</div>
+                                <div class="diagram-node diagram-node-bad w-32 h-24 flex flex-col items-center justify-center">
+                                    <i class="fa-solid fa-explosion text-2xl text-red-400"></i>
+                                    <p class="text-xs mt-1">Master宕机</p>
+                                </div>
+                                <i class="fa-solid fa-arrow-down text-red-400 text-xl"></i>
+                                <div class="diagram-node border-amber-500 w-32 h-20 flex flex-col items-center justify-center">
+                                    <i class="fa-brands fa-redis text-2xl text-amber-400"></i>
+                                    <p class="text-xs mt-1">Slave → Master</p>
+                                </div>
+                                <p class="text-xs text-red-300 font-bold">✗ 锁数据丢失</p>
+                            </div>
+
+                            <!-- 时间点4 -->
+                            <div class="flex flex-col items-center space-y-3">
+                                <div class="bg-slate-800/50 p-2 rounded text-xs text-slate-400">t4</div>
+                                <div class="diagram-node w-32 h-24 flex flex-col items-center justify-center border-yellow-500">
+                                    <i class="fa-solid fa-user text-2xl text-yellow-300"></i>
+                                    <p class="text-xs mt-1">客户端B</p>
+                                </div>
+                                <i class="fa-solid fa-arrow-down text-yellow-400 text-xl"></i>
+                                <div class="diagram-node border-yellow-500 w-32 h-20 flex flex-col items-center justify-center">
+                                    <i class="fa-brands fa-redis text-2xl text-yellow-400"></i>
+                                    <p class="text-xs mt-1">新Master</p>
+                                </div>
+                                <p class="text-xs text-yellow-300 font-bold">⚠️ 再次获取锁</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 解决方案对比 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-8">
+                        <div class="bg-amber-900/20 p-6 rounded-xl border border-amber-500/30">
+                            <h4 class="font-bold text-xl text-amber-400 mb-3"><i class="fa-solid fa-shield-halved mr-2"></i>Redlock方案</h4>
+                            <p class="text-sm text-slate-300 mb-3">向N个独立Redis实例请求加锁，超过半数成功才算成功</p>
+                            <div class="space-y-2 text-sm">
+                                <p class="text-green-300"><i class="fa-solid fa-plus mr-2"></i>容错性更高</p>
+                                <p class="text-red-300"><i class="fa-solid fa-minus mr-2"></i>复杂度高，有争议</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-violet-900/20 p-6 rounded-xl border border-violet-500/30">
+                            <h4 class="font-bold text-xl text-violet-400 mb-3"><i class="fa-solid fa-tree mr-2"></i>ZooKeeper方案</h4>
+                            <p class="text-sm text-slate-300 mb-3">基于ZAB协议，顺序一致性模型</p>
+                            <div class="space-y-2 text-sm">
+                                <p class="text-green-300"><i class="fa-solid fa-plus mr-2"></i>一致性强，无锁丢失</p>
+                                <p class="text-red-300"><i class="fa-solid fa-minus mr-2"></i>性能较低，运维复杂</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 建议 -->
+                    <div class="bg-sky-900/20 p-6 rounded-xl border border-sky-500/30 w-full">
+                        <h4 class="font-bold text-lg text-sky-300 mb-3"><i class="fa-solid fa-lightbulb mr-2"></i>架构师建议</h4>
+                        <p class="text-sm text-slate-300">对于绝大多数业务，Redis Sentinel + 锁续期机制已足够。只有金融级场景才需要Redlock或ZooKeeper。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 10: 优化金字塔 -->
+    <section id="slide10" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-purple-400 to-indigo-400">优化的黄金法则：金字塔模型</h2>
+            <p class="mt-4 text-xl text-slate-400">从业务架构到技术细节，层层递进的优化思路。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-purple-500/30">
+                <div class="flex flex-col items-center space-y-0">
+                    <!-- 第5层：空间维度优化 -->
+                    <div class="w-full max-w-md">
+                        <div class="bg-gradient-to-r from-teal-500/30 to-cyan-500/30 p-4 rounded-t-xl border border-teal-500/50 text-center">
+                            <h4 class="font-bold text-lg text-teal-300">空间维度优化</h4>
+                            <p class="text-sm text-slate-300 mt-2">降低锁粒度、锁分段</p>
+                        </div>
+                    </div>
+
+                    <!-- 第4层：时间维度优化 -->
+                    <div class="w-full max-w-xl">
+                        <div class="bg-gradient-to-r from-violet-500/30 to-purple-500/30 p-4 border-x border-violet-500/50 text-center">
+                            <h4 class="font-bold text-lg text-violet-300">时间维度优化</h4>
+                            <p class="text-sm text-slate-300 mt-2">缩短持有时间、精简临界区</p>
+                        </div>
+                    </div>
+
+                    <!-- 第3层：锁模式优化 -->
+                    <div class="w-full max-w-2xl">
+                        <div class="bg-gradient-to-r from-cyan-500/30 to-blue-500/30 p-4 border-x border-cyan-500/50 text-center">
+                            <h4 class="font-bold text-lg text-cyan-300">锁模式优化</h4>
+                            <p class="text-sm text-slate-300 mt-2">乐观锁、读写锁、异步化</p>
+                        </div>
+                    </div>
+
+                    <!-- 第2层：锁服务高可用 -->
+                    <div class="w-full max-w-3xl">
+                        <div class="bg-gradient-to-r from-rose-500/30 to-red-500/30 p-5 border-x border-rose-500/50 text-center">
+                            <h4 class="font-bold text-xl text-rose-300">锁服务高可用</h4>
+                            <p class="text-sm text-slate-300 mt-2">Redis集群、Redlock、ZooKeeper</p>
+                        </div>
+                    </div>
+
+                    <!-- 第1层：业务架构重构 (最重要) -->
+                    <div class="w-full">
+                        <div class="bg-gradient-to-r from-amber-500/40 to-orange-500/40 p-6 rounded-b-xl border border-amber-500/60 text-center">
+                            <h4 class="font-bold text-2xl text-amber-200">业务架构重构</h4>
+                            <p class="text-base text-slate-200 mt-3">避免热点数据、最终一致性思维、限流降级</p>
+                            <p class="text-sm text-amber-300 mt-3 font-bold">💡 最底层，最重要，影响最大</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 核心原则 -->
+                <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-slate-800/40 p-4 rounded-lg border border-slate-600">
+                        <h5 class="font-bold text-green-300 mb-2">1. 能不加锁就不加锁</h5>
+                        <p class="text-xs text-slate-400">优先考虑乐观锁、异步化</p>
+                    </div>
+                    <div class="bg-slate-800/40 p-4 rounded-lg border border-slate-600">
+                        <h5 class="font-bold text-cyan-300 mb-2">2. 必须加锁时"又小又快"</h5>
+                        <p class="text-xs text-slate-400">降低粒度、缩短持有时间</p>
+                    </div>
+                    <div class="bg-slate-800/40 p-4 rounded-lg border border-slate-600">
+                        <h5 class="font-bold text-amber-300 mb-2">3. 架构优先于技术</h5>
+                        <p class="text-xs text-slate-400">业务层面重构往往更有效</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center py-8 text-slate-500">
+        分布式锁在高并发场景下应该如何优化？
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`;
+                navContainer.appendChild(dot);
+            });
+            const navDots = navContainer.querySelectorAll('a');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            slides.forEach(slide => { observer.observe(slide); });
+        });
+    </script>
+</body>
+</html>

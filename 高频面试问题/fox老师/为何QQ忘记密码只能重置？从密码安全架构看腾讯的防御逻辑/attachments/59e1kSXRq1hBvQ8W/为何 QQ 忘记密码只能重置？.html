@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>密码安全架构讲解图 (录制版)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding-top: 180px;
+        }
+        .sticky-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #001f3f;
+            color: white;
+            padding: 20px 0;
+            z-index: 1000;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            border-bottom: 5px solid #007BFF;
+        }
+        .main-title {
+            font-size: 2.8rem;
+            font-weight: bold;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+        .sub-title-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .sub-title {
+            font-size: 1.1rem;
+            background-color: #007BFF;
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+        .content-wrapper {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .section {
+            background-color: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        .section-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #eee;
+            display: flex;
+            align-items: center;
+        }
+        .title-icon {
+            font-size: 2.5rem;
+            margin-right: 15px;
+        }
+        .flow-chart {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .flow-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-width: 150px;
+        }
+        .flow-icon {
+            font-size: 5rem;
+            line-height: 1;
+        }
+        .flow-label {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #555;
+        }
+        .flow-value {
+            font-size: 1.1rem;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #eee;
+            padding: 5px 10px;
+            border-radius: 5px;
+            word-break: break-all;
+        }
+        .flow-arrow {
+            font-size: 4rem;
+            color: #888;
+            align-self: center;
+        }
+        .caption {
+            font-size: 1.25rem;
+            text-align: center;
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            line-height: 1.7;
+        }
+        .danger-bg { border: 3px solid #ff4d4f; background: #fff1f0; }
+        .warning-bg { border: 3px solid #faad14; background: #fffbe6; }
+        .safe-bg { border: 3px solid #52c41a; background: #f6ffed; }
+
+        .final-logic-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        .logic-box {
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .logic-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="sticky-header">
+        <h1 class="main-title">你的密码，连系统都不知道！</h1>
+        <div class="sub-title-container">
+            <span class="sub-title">明文 → 哈希 → 加盐</span>
+            <span class="sub-title">图解黑客攻击与防御</span>
+            <span class="sub-title">为什么只能重置?</span>
+        </div>
+    </header>
+
+    <main class="content-wrapper">
+
+        <!-- Section 1: Plain Text -->
+        <section class="section danger-bg">
+            <h2 class="section-title"><span class="title-icon">⚠️</span>危险的明文存储</h2>
+            <div class="flow-chart">
+                <div class="flow-item">
+                    <div class="flow-icon">👤</div>
+                    <div class="flow-label">用户输入</div>
+                    <div class="flow-value">"1314520"</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">🗄️</div>
+                    <div class="flow-label">数据库原文存储</div>
+                    <div class="flow-value">"1314520"</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">😈</div>
+                    <div class="flow-label">黑客盗取</div>
+                    <div class="flow-value">"1314520" 🎉</div>
+                </div>
+            </div>
+            <div class="caption">服务器直接保存密码原文，黑客一旦入侵，所有密码一览无余！</div>
+        </section>
+
+        <!-- Section 2: Hashing -->
+        <section class="section warning-bg">
+            <h2 class="section-title"><span class="title-icon">🌪️</span>魔法搅拌机 (哈希加密)</h2>
+            <div class="flow-chart">
+                <div class="flow-item">
+                    <div class="flow-icon">🔑</div>
+                    <div class="flow-label">原始密码</div>
+                    <div class="flow-value">"1314520"</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">🌪️</div>
+                    <div class="flow-label">哈希处理</div>
+                    <div class="flow-value">不可逆</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">🔒</div>
+                    <div class="flow-label">变成乱码</div>
+                    <div class="flow-value">4f3d7a...</div>
+                </div>
+            </div>
+            <div class="caption">密码被“搅拌”成不可逆的乱码再存入数据库。黑客就算偷走数据，也只得到一堆看不懂的“火星文”。</div>
+        </section>
+
+        <!-- Section 3: Rainbow Table Attack -->
+        <section class="section warning-bg">
+            <h2 class="section-title"><span class="title-icon">📖</span>黑客的反击 (彩虹表)</h2>
+            <div class="flow-chart">
+                <div class="flow-item">
+                    <div class="flow-icon">😈</div>
+                    <div class="flow-label">黑客拥有</div>
+                    <div class="flow-value">密码词典</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">🔍</div>
+                    <div class="flow-label">查找乱码 "e10adc..."</div>
+                    <div class="flow-value">来自常用密码 "123456"</div>
+                </div>
+                 <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">😭</div>
+                    <div class="flow-label">懒人密码被破解</div>
+                    <div class="flow-value">"123456"</div>
+                </div>
+            </div>
+            <div class="caption">黑客提前算好常用密码的“乱码”，做成一本词典。通过查词典，依然能破解简单的“懒人密码”。</div>
+        </section>
+
+        <!-- Section 4: Salting -->
+        <section class="section safe-bg">
+            <h2 class="section-title"><span class="title-icon">🛡️</span>终极防御 (加盐)</h2>
+            <div class="flow-chart">
+                <div class="flow-item">
+                    <div class="flow-icon">🔑</div>
+                    <div class="flow-label">密码</div>
+                    <div class="flow-value">"1314520"</div>
+                </div>
+                <div class="flow-arrow">+</div>
+                <div class="flow-item">
+                    <div class="flow-icon">🧂</div>
+                    <div class="flow-label">随机盐</div>
+                    <div class="flow-value">"%t7#k"</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">🌪️</div>
+                    <div class="flow-label">一起哈希</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-icon">🛡️</div>
+                    <div class="flow-label">独一无二的乱码</div>
+                    <div class="flow-value">7g8h9i...</div>
+                </div>
+            </div>
+            <div class="caption">在哈希前，给密码随机加上一把“盐”。每个人的“盐”都不同，黑客的词典彻底失效！</div>
+        </section>
+
+        <!-- Section 5: The Logic -->
+        <section class="section">
+            <h2 class="section-title"><span class="title-icon">💡</span>只验证，不窥探</h2>
+            <div class="final-logic-container">
+                <div class="logic-box" style="background: #f6ffed;">
+                    <h3 class="logic-title">✅ 登录验证 (成功)</h3>
+                    <div class="flow-chart" style="flex-direction: column; gap: 10px;">
+                        <div class="flow-value">输入: "1314520" + 🧂</div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-value">哈希后: "7g8h9i..."</div>
+                        <div class="flow-arrow">↓ <strong>等于</strong> ↓</div>
+                        <div class="flow-value">数据库存储: "7g8h9i..."</div>
+                    </div>
+                </div>
+                <div class="logic-box" style="background: #fff1f0;">
+                    <h3 class="logic-title">❌ 找回密码 (失败)</h3>
+                    <div class="flow-chart" style="flex-direction: column; gap: 10px;">
+                        <div class="flow-value">数据库存储: "7g8h9i..."</div>
+                        <div class="flow-arrow" style="font-size: 3rem; transform: rotate(90deg);">⇍</div>
+                        <div class="flow-label" style="font-size: 1.5rem;">无法逆向推导</div>
+                        <div class="flow-value" style="font-size: 2rem; background: none;">? ? ?</div>
+                    </div>
+                </div>
+            </div>
+            <div class="caption">系统只能正向验证你的密码是否正确，但永远无法从存储的乱码反推出你的原始密码。所以，忘记密码时，它只能让你重置一个新的。</div>
+        </section>
+
+    </main>
+
+</body>
+</html>

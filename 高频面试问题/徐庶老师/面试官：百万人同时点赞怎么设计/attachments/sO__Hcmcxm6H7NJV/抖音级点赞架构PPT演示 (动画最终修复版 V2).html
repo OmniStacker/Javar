@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抖音级点赞架构</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      overflow: hidden;
+      background: #1a1a1a;
+    }
+    
+    .slide-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .slide {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #1a1a1a;
+    }
+    
+    .slide.active {
+      opacity: 1;
+      transform: translateX(0);
+      z-index: 10;
+    }
+    
+    .slide.prev {
+      transform: translateX(-100%);
+    }
+    
+    /* 封面 */
+    .cover-icon { 
+      font-size: 200px; 
+      margin-bottom: 60px; 
+      animation: heartbeat 1.5s ease-in-out infinite; 
+      cursor: pointer; /* 添加手型光标 */
+      user-select: none; /* 防止双击选中文本 */
+    }
+    @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+    
+    /* 点击爱心的动画 */
+    @keyframes click-heartbeat {
+      0% { transform: scale(1.2); }
+      50% { 
+        transform: scale(1.5); 
+        text-shadow: 0 0 25px #ff6b6b, 0 0 45px rgba(255, 107, 107, 0.8);
+      }
+      100% { transform: scale(1.2); }
+    }
+    .cover-icon.clicked {
+      animation: click-heartbeat 0.4s ease-in-out;
+    }
+
+    .main-title { font-size: 80px; font-weight: 900; margin-bottom: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: fadeInUp 0.8s ease-out; }
+    .subtitle { font-size: 48px; color: #888; animation: fadeInUp 1s ease-out 0.3s backwards; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* 图标容器 */
+    .icon-container { position: relative; display: flex; justify-content: center; align-items: center; animation: slideInUp 0.8s ease-out backwards; width: 200px; height: 280px; }
+    @keyframes slideInUp { from { opacity: 0; transform: translateY(100px); } to { opacity: 1; transform: translateY(0); } }
+    .icon-label { position: absolute; top: -60px; left: 50%; transform: translateX(-50%); font-size: 42px; font-weight: 700; color: #fff; white-space: nowrap; }
+    .icon-desc { position: absolute; bottom: -50px; left: 50%; transform: translateX(-50%); font-size: 28px; font-weight: 500; color: #ffd700; white-space: nowrap; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 8px; }
+    
+    /* 3D Icons */
+    .cylinder { width: 200px; height: 280px; position: relative; }
+    .cylinder-top { width: 200px; height: 60px; border-radius: 50%; position: absolute; top: 0; left: 0; background: radial-gradient(ellipse at center, #4dabf7 0%, #339af0 100%); box-shadow: 0 8px 20px rgba(77, 171, 247, 0.5); }
+    .cylinder-body { width: 200px; height: 220px; position: absolute; top: 30px; left: 0; border-radius: 0 0 10px 10px; background: linear-gradient(to bottom, #4dabf7 0%, #339af0 50%, #1971c2 100%); box-shadow: -10px 0 30px rgba(0, 0, 0, 0.3), 10px 0 30px rgba(77, 171, 247, 0.3); }
+    .cylinder-bottom { width: 200px; height: 60px; border-radius: 50%; position: absolute; bottom: 0; left: 0; background: radial-gradient(ellipse at center, #1971c2 0%, #1864ab 100%); }
+    .icon-phone svg { width: 140px; height: 240px; filter: drop-shadow(0 10px 20px rgba(255, 107, 107, 0.4)); }
+    .icon-redis svg { width: 160px; height: 220px; filter: drop-shadow(0 0 25px rgba(81, 207, 102, 0.6)); }
+    .icon-kafka svg { width: 200px; height: 200px; filter: drop-shadow(0 10px 25px rgba(151, 117, 250, 0.5)); }
+    .icon-edge-node svg { width: 200px; height: 200px; filter: drop-shadow(0 0 25px rgba(34, 139, 230, 0.6)); animation: spin 20s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .icon-local-cache .server-box { width: 180px; height: 220px; background: linear-gradient(135deg, #868e96 0%, #495057 100%); border-radius: 15px; position: relative; transform-style: preserve-3d; transform: rotateY(-30deg) rotateX(15deg); box-shadow: -20px 20px 40px rgba(0,0,0,0.5); }
+    .server-box::before { content: ''; position: absolute; width: 20px; height: 100%; top: 0; left: -20px; background: #343a40; transform-origin: right; transform: rotateY(90deg); border-radius: 15px 0 0 15px; }
+    .server-box::after { content: ''; position: absolute; width: 100%; height: 20px; bottom: -20px; left: 0; background: #212529; transform-origin: top; transform: rotateX(-90deg); border-radius: 0 0 15px 15px; }
+    
+    /* 3D箭头 */
+    .arrow-3d { width: 150px; height: 80px; position: relative; animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
+    .arrow-3d svg { width: 100%; height: 100%; filter: drop-shadow(0 5px 15px rgba(255, 215, 0, 0.5)); }
+    
+    /* 流程布局 */
+    .flow-container { display: flex; align-items: center; justify-content: center; gap: 80px; width: 100%; max-width: 1600px; }
+    
+    /* 标题文字 */
+    .slide-title { font-size: 56px; font-weight: 700; color: #fff; margin-bottom: 80px; text-align: center; }
+    .slide-title .highlight { background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    
+    /* 问题/解决方案卡片 */
+    .info-box { animation: scaleIn 0.8s ease-out; max-width: 1200px; text-align: center; }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+    .info-title { font-size: 80px; font-weight: 900; margin-bottom: 40px; }
+    .problem-box .info-title { color: #ff6b6b; }
+    .solution-box .info-title { color: #4dabf7; }
+    .info-desc { font-size: 42px; color: #e0e0e0; line-height: 1.8; }
+    .info-metric { font-size: 90px; font-weight: 900; color: #ffd700; margin: 30px 0; text-shadow: 0 5px 20px rgba(255, 215, 0, 0.5); }
+    
+    /* 性能对比 */
+    .comparison-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px; width: 100%; max-width: 1400px; }
+    .comparison-card { background: rgba(255, 255, 255, 0.05); border: 3px solid #4dabf7; border-radius: 15px; padding: 35px; text-align: center; animation: scaleIn 0.8s ease-out backwards; transition: transform 0.3s; }
+    .comparison-card:hover { transform: scale(1.05); }
+    .comparison-stage { font-size: 28px; color: #888; margin-bottom: 20px; }
+    .comparison-qps { font-size: 56px; font-weight: 900; color: #ffd700; margin-bottom: 20px; text-shadow: 0 5px 20px rgba(255, 215, 0, 0.5); }
+    .comparison-desc { font-size: 24px; color: #fff; }
+
+    /* 完整链路 (横版) */
+    .flow-time-label { position: absolute; bottom: -110px; left: 50%; transform: translateX(-50%); font-size: 24px; font-weight: 700; color: #fff; border-radius: 8px; padding: 8px 15px; white-space: nowrap; }
+
+    /* 核心思想 */
+    .principles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; width: 100%; max-width: 1200px; }
+    .principle-card { background: linear-gradient(145deg, #2a2a2a, #1e1e1e); border-radius: 20px; padding: 40px; text-align: center; border: 2px solid #444; box-shadow: 10px 10px 30px rgba(0,0,0,0.5), -10px -10px 30px rgba(50,50,50,0.1); transition: all 0.3s ease; animation: scaleIn 0.6s ease-out backwards; }
+    .principle-card:hover { transform: translateY(-10px) scale(1.05); border-color: #9775fa; }
+    .principle-card:nth-of-type(1) { animation-delay: 0.1s; }
+    .principle-card:nth-of-type(2) { animation-delay: 0.2s; }
+    .principle-card:nth-of-type(3) { animation-delay: 0.3s; }
+    .principle-card:nth-of-type(4) { animation-delay: 0.4s; }
+    .principle-icon { height: 100px; margin-bottom: 25px; display: flex; justify-content: center; align-items: center; }
+    .principle-icon svg { width: 90px; height: 90px; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); }
+    .principle-card h3 { font-size: 36px; font-weight: 700; color: #fff; margin-bottom: 15px; }
+    .principle-card p { font-size: 24px; color: #aaa; }
+
+    /* 代码片段 */
+    .code-snippet { background: #2c2c2e; color: #e0e0e0; padding: 20px 30px; border-radius: 10px; font-family: 'SF Mono', 'Courier New', Courier, monospace; font-size: 24px; line-height: 1.6; margin-top: 30px; border: 1px solid #444; display: inline-block; animation: fadeInUp 0.8s ease-out 0.5s backwards; text-align: left; }
+    .code-snippet .keyword { color: #f92672; }
+    .code-snippet .string { color: #a6e22e; }
+    .code-snippet .function { color: #66d9ef; }
+    .code-snippet .comment { color: #75715e; }
+    
+    /* 热点隔离页专用 */
+    .isolation-container { display: flex; width: 100%; max-width: 1400px; justify-content: space-around; align-items: flex-start; margin-top: 40px; }
+    .isolation-path { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 30px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 2px solid #555; }
+    .isolation-path h3 { font-size: 42px; font-weight: 700; }
+    .hot-path { border-color: #ff6b6b; }
+    .hot-path h3 { color: #ff6b6b; }
+    .normal-path h3 { color: #4dabf7; }
+    .path-icon-group { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    .down-arrow { font-size: 40px; color: #ffd700; transform: rotate(90deg); margin: -10px 0; }
+
+    /* Slide 7 - Interactive Animation Styles (FINAL FIX) */
+    .frontend-anim-container { display: flex; gap: 60px; width: 100%; max-width: 1500px; justify-content: center; align-items: flex-start; }
+    .anim-column { flex: 1; background: rgba(255, 255, 255, 0.05); padding: 40px; border-radius: 15px; border: 1px solid #444; text-align: center; }
+    .anim-column h3 { font-size: 36px; color: #ffd700; margin-bottom: 40px; }
+    .anim-column p { font-size: 24px; color: #aaa; margin-top: 40px; height: 80px; line-height: 1.6; }
+    .anim-box { height: 250px; position: relative; display: flex; justify-content: center; align-items: center; }
+    .anim-heart { font-size: 120px; color: #ff6b6b; position: relative; z-index: 10; cursor: pointer; user-select: none; transition: transform 0.1s; }
+    .anim-heart:active { transform: scale(1.15); }
+    .request-arrow { position: absolute; font-size: 80px; color: #4dabf7; opacity: 0; transform: translateX(-150px); pointer-events: none; }
+    
+    /* New animation class and keyframes */
+    .request-arrow.is-animating { animation: send-req 1.5s ease-out; }
+    @keyframes send-req { 
+      0% { opacity: 0; transform: translateX(-150px); } 
+      30% { opacity: 1; } 
+      70% { opacity: 1; } 
+      100% { opacity: 0; transform: translateX(150px); } 
+    }
+
+    .click-burst { position: absolute; width: 150px; height: 150px; border: 5px solid #ffc0c0; border-radius: 50%; transform: scale(0.5); opacity: 0; animation: burst 0.5s ease-out forwards; pointer-events: none; }
+    @keyframes burst { from { transform: scale(0.5); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+    .like-counter { position: absolute; top: 0; right: 0; font-size: 50px; font-weight: bold; color: #ffd700; background: rgba(0,0,0,0.7); padding: 5px 15px; border-radius: 20px; opacity: 0; transform: translateY(20px) scale(0.5); transition: all 0.3s; pointer-events: none; }
+    .like-counter.show { opacity: 1; transform: translateY(0) scale(1); }
+    .server-icon { position: absolute; right: 0; font-size: 100px; color: #868e96; opacity: 0.5; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <!-- SVG 定义 -->
+    <svg width="0" height="0" style="position:absolute;">
+      <defs>
+        <linearGradient id="phoneGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ff6b6b;" /><stop offset="100%" style="stop-color:#ee5a6f;" /></linearGradient>
+        <linearGradient id="redisGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#51cf66;" /><stop offset="100%" style="stop-color:#37b24d;" /></linearGradient>
+        <linearGradient id="kafkaGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#9775fa;" /><stop offset="100%" style="stop-color:#845ef7;" /></linearGradient>
+        <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ffd700;" /><stop offset="100%" style="stop-color:#ffed4e;" /></linearGradient>
+        <radialGradient id="globeGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%"><stop offset="0%" style="stop-color:#4dabf7;" /><stop offset="100%" style="stop-color:#1971c2;" /></radialGradient>
+        <linearGradient id="storageDiskGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ced4da;" /><stop offset="100%" style="stop-color:#868e96;" /></linearGradient>
+        <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#f093fb;" /><stop offset="100%" style="stop-color:#9775fa;" /></linearGradient>
+        <radialGradient id="hbaseGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%"><stop offset="0%" style="stop-color:#868e96;" /><stop offset="100%" style="stop-color:#495057;" /></radialGradient>
+      </defs>
+    </svg>
+    
+    <!-- 1. 封面 -->
+    <div class="slide active"><div class="cover-icon">❤️</div><h1 class="main-title">百万人同时点赞怎么办？</h1><div class="subtitle">从最简单到抖音级的架构演进</div></div>
+
+    <!-- 2. 最简单方案 -->
+    <div class="slide">
+      <div class="slide-title">最简单的实现：<span class="highlight">直接写数据库</span></div>
+      <div class="flow-container"><div class="icon-container icon-phone" style="animation-delay: 0.1s;"><div class="icon-label">客户端</div><svg viewBox="0 0 140 240"><rect x="5" y="5" width="130" height="230" rx="20" fill="url(#phoneGradient)" /><rect x="20" y="20" width="100" height="180" rx="10" fill="#333" /></svg></div><div class="arrow-3d"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div><div class="icon-container" style="animation-delay: 0.3s;"><div class="icon-label">数据库</div><div class="cylinder"><div class="cylinder-top"></div><div class="cylinder-body"></div><div class="cylinder-bottom"></div></div></div></div>
+      <div class="code-snippet" style="font-size: 28px;"><span class="keyword">UPDATE</span> videos <span class="keyword">SET</span> likes = likes + 1 <span class="keyword">WHERE</span> id = ?;</div>
+    </div>
+
+    <!-- 3. 问题暴露 -->
+    <div class="slide"><div class="info-box problem-box"><div class="info-title">💥 数据库扛不住</div><div class="info-desc">锁表 + 写磁盘 + 更新索引<br><br>响应时间：毫秒 → 秒级<br><br>并发能力：< 1000 QPS</div></div></div>
+
+    <!-- 4. Redis登场 -->
+    <div class="slide"><div class="info-box solution-box"><div class="info-title">⚡ 为什么是 Redis？</div><div class="info-metric">10万+ QPS</div><div class="info-desc">内存数据库 + 原子操作<br>INCR 命令天生为计数而生</div></div></div>
+
+    <!-- 5. Redis流程 -->
+    <div class="slide">
+      <div class="slide-title">Redis 方案：<span class="highlight">秒级响应</span></div>
+      <div class="flow-container"><div class="icon-container icon-phone" style="animation-delay: 0.1s;"><div class="icon-label">客户端</div><svg viewBox="0 0 140 240"><rect x="5" y="5" width="130" height="230" rx="20" fill="url(#phoneGradient)" /><rect x="20" y="20" width="100" height="180" rx="10" fill="#333" /></svg></div><div class="arrow-3d"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div><div class="icon-container icon-redis" style="animation-delay: 0.3s;"><div class="icon-label">Redis</div><svg viewBox="0 0 160 220"><path d="M80 0 L30 100 L70 110 L20 220 L130 120 L90 110 Z" fill="url(#redisGradient)"/></svg></div><div class="arrow-3d" style="transform: rotate(90deg) translateY(20px);"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div><div class="icon-container" style="animation-delay: 0.5s;"><div class="icon-label" style="top: auto; bottom: -60px;">数据库 (异步)</div><div class="cylinder"><div class="cylinder-top"></div><div class="cylinder-body"></div><div class="cylinder-bottom"></div></div></div></div>
+      <div class="code-snippet" style="font-size: 28px;"><span class="function">INCR</span> <span class="string">"video:likes:{video_id}"</span>;</div>
+    </div>
+    
+    <!-- 6. 消息队列 -->
+    <div class="slide">
+      <div class="slide-title">升级：<span class="highlight">Kafka 削峰</span></div>
+      <div class="flow-container"><div class="icon-container icon-redis" style="animation-delay: 0.1s;"><div class="icon-label">Redis</div><svg viewBox="0 0 160 220"><path d="M80 0 L30 100 L70 110 L20 220 L130 120 L90 110 Z" fill="url(#redisGradient)"/></svg></div><div class="arrow-3d"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div><div class="icon-container icon-kafka" style="animation-delay: 0.3s;"><div class="icon-label">Kafka</div><svg viewBox="0 0 200 200"><path d="M0 20 L200 20 L130 180 L70 180 Z" fill="url(#kafkaGradient)"/></svg></div><div class="arrow-3d"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div><div class="icon-container" style="animation-delay: 0.5s;"><div class="icon-label">数据库</div><div class="cylinder"><div class="cylinder-top"></div><div class="cylinder-body"></div><div class="cylinder-bottom"></div></div></div></div>
+      <div class="code-snippet" style="font-size: 28px;">producer.<span class="function">send</span>(<span class="string">"like_events"</span>, {video_id, user_id});</div>
+    </div>
+
+    <!-- 7. 前端优化 (交互动画版) -->
+    <div class="slide">
+      <div class="slide-title">📱 前端优化：<span class="highlight">真实交互演示</span></div>
+      <div class="frontend-anim-container">
+        <div class="anim-column">
+          <h3>普通视频：防抖 (Debounce)</h3>
+          <div class="anim-box debounce-anim">
+            <div id="debounce-heart" class="anim-heart">❤️</div>
+            <div id="debounce-arrow" class="request-arrow">→</div>
+            <div class="server-icon">🗄️</div>
+          </div>
+          <p>请连续点击爱心，请求只会在您停止点击后发送一次。</p>
+        </div>
+        <div class="anim-column">
+          <h3>直播点赞：节流 (Throttle)</h3>
+          <div class="anim-box throttle-anim">
+            <div id="throttle-heart" class="anim-heart">❤️</div>
+            <div id="throttle-counter" class="like-counter">+0</div>
+            <div id="throttle-arrow" class="request-arrow">→</div>
+            <div class="server-icon">🗄️</div>
+          </div>
+          <p>请疯狂点击爱心，请求每 2 秒最多发送一次。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. 抖音级挑战 -->
+    <div class="slide"><div class="info-box problem-box"><div class="info-title">🚀 抖音级挑战</div><div class="info-desc">单 Redis 扛不住<br>热点视频千万点赞<br>全球用户跨地域延迟</div></div></div>
+
+    <!-- 9. 多级缓存 -->
+    <div class="slide"><div class="slide-title">升级一：<span class="highlight">多级缓存</span></div><div class="flow-container" style="gap: 20px;"><div class="icon-container icon-phone" style="animation-delay: 0.1s; transform: scale(0.8);"><div class="icon-label">用户</div><svg viewBox="0 0 140 240"><rect x="5" y="5" width="130" height="230" rx="20" fill="url(#phoneGradient)" /><rect x="20" y="20" width="100" height="180" rx="10" fill="#333" /></svg></div><div class="arrow-3d" style="transform: scale(0.8);"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div><div class="icon-container icon-edge-node" style="animation-delay: 0.3s; transform: scale(0.8);"><div class="icon-label">边缘节点</div><svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="95" fill="url(#globeGradient)"/><path d="M100,5 A95,95 0 0,1 100,195 A95,95 0 0,1 100,5 Z" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="none"/><ellipse cx="100" cy="100" rx="40" ry="94" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="none"/><ellipse cx="100" cy="100" rx="75" ry="94.5" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="none"/></svg><div class="icon-desc">就近访问</div></div><div class="arrow-3d" style="transform: scale(0.8);"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div><div class="icon-container icon-local-cache" style="animation-delay: 0.5s; transform: scale(0.8);"><div class="icon-label">本地缓存</div><div class="server-box"></div><div class="icon-desc">拦截80%请求</div></div><div class="arrow-3d" style="transform: scale(0.8);"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div><div class="icon-container icon-redis" style="animation-delay: 0.7s; transform: scale(0.8);"><div class="icon-label">Redis集群</div><svg viewBox="0 0 160 220"><path d="M80 0 L30 100 L70 110 L20 220 L130 120 L90 110 Z" fill="url(#redisGradient)"/></svg><div class="icon-desc">分片扛压</div></div></div></div>
+
+    <!-- 10. 热点隔离 -->
+    <div class="slide">
+      <div class="slide-title">升级二：<span class="highlight">🔥 热点隔离</span></div>
+      <div class="code-snippet" style="margin-bottom: 20px; padding: 15px 25px; font-size: 22px; background: #333;">
+          <span class="comment">// 流量路由决策</span><br>
+          <span class="keyword">if</span> (<span class="function">isHot</span>(<span class="variable">video_id</span>)) { <span class="function">routeToHotQueue</span>(); } <span class="keyword">else</span> { <span class="function">routeToNormalQueue</span>(); }
+      </div>
+      <div class="isolation-container">
+          <div class="isolation-path hot-path">
+              <h3>🔥 热点视频通道</h3>
+              <div class="path-icon-group">
+                  <div class="icon-container icon-redis" style="transform: scale(0.7); height: 200px;"><div class="icon-label" style="font-size: 32px;">热点专用 Redis</div><svg viewBox="0 0 160 220"><path d="M80 0 L30 100 L70 110 L20 220 L130 120 L90 110 Z" fill="url(#redisGradient)"/></svg></div>
+                  <div class="down-arrow">➔</div>
+                  <div class="icon-container icon-kafka" style="transform: scale(0.7); height: 200px;"><div class="icon-label" style="font-size: 32px;">热点专用 Kafka</div><svg viewBox="0 0 200 200"><path d="M0 20 L200 20 L130 180 L70 180 Z" fill="url(#kafkaGradient)"/></svg></div>
+              </div>
+          </div>
+          <div class="isolation-path normal-path">
+              <h3>🧊 普通视频通道</h3>
+              <div class="path-icon-group">
+                  <div class="icon-container icon-redis" style="transform: scale(0.7); height: 200px;"><div class="icon-label" style="font-size: 32px;">Redis 集群</div><svg viewBox="0 0 160 220"><path d="M80 0 L30 100 L70 110 L20 220 L130 120 L90 110 Z" fill="url(#redisGradient)"/></svg></div>
+                   <div class="down-arrow">➔</div>
+                  <div class="icon-container icon-kafka" style="transform: scale(0.7); height: 200px;"><div class="icon-label" style="font-size: 32px;">Kafka 集群</div><svg viewBox="0 0 200 200"><path d="M0 20 L200 20 L130 180 L70 180 Z" fill="url(#kafkaGradient)"/></svg></div>
+              </div>
+          </div>
+      </div>
+    </div>
+
+    <!-- 11. 完整链路 (升级) -->
+    <div class="slide">
+      <div class="slide-title"><span class="highlight">完整链路</span></div>
+      <div class="flow-container" style="gap: 1px; transform: scale(0.75);">
+          <div class="icon-container icon-phone"><div class="icon-label" style="font-size: 30px;">客户端</div><svg viewBox="0 0 140 240"><rect x="5" y="5" width="130" height="230" rx="20" fill="url(#phoneGradient)" /><rect x="20" y="20" width="100" height="180" rx="10" fill="#333" /></svg><div class="flow-time-label" style="background: #ff6b6b;">0ms</div></div>
+          <div class="arrow-3d"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div>
+          <div class="icon-container icon-local-cache"><div class="icon-label" style="font-size: 30px;">本地缓存</div><div class="server-box"></div><div class="flow-time-label" style="background: #fcc419; color: #111;">< 10ms</div></div>
+          <div class="arrow-3d"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div>
+          <div class="icon-container icon-redis"><div class="icon-label" style="font-size: 30px;">Redis</div><svg viewBox="0 0 160 220"><path d="M80 0 L30 100 L70 110 L20 220 L130 120 L90 110 Z" fill="url(#redisGradient)"/></svg><div class="flow-time-label" style="background: #fcc419; color: #111;">< 50ms</div></div>
+          <div class="arrow-3d"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div>
+          <div class="icon-container icon-kafka"><div class="icon-label" style="font-size: 30px;">Kafka</div><svg viewBox="0 0 200 200"><path d="M0 20 L200 20 L130 180 L70 180 Z" fill="url(#kafkaGradient)"/></svg><div class="flow-time-label" style="background: #9775fa;">异步</div></div>
+          <div class="arrow-3d"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div>
+          <div class="icon-container"><div class="icon-label" style="font-size: 30px;">数据库</div><div class="cylinder"><div class="cylinder-top"></div><div class="cylinder-body"></div><div class="cylinder-bottom"></div></div><div class="flow-time-label" style="background: #4dabf7;">后台</div></div>
+          <div class="arrow-3d"><svg viewBox="0 0 150 80"><path d="M 10 40 L 100 40 L 100 20 L 140 40 L 100 60 L 100 40 Z" fill="url(#arrowGradient)"/></svg></div>
+          <div class="icon-container"><div class="icon-label" style="font-size: 30px;">HBase</div><div class="cylinder"><div class="cylinder-top" style="background: url(#hbaseGradient);"></div><div class="cylinder-body" style="background: linear-gradient(to bottom, #868e96, #495057);"></div><div class="cylinder-bottom" style="background: url(#hbaseGradient);"></div></div><div class="flow-time-label" style="background: #868e96;">T+1 归档</div></div>
+        </div>
+      </div>
+
+      <!-- 12. 性能对比 -->
+      <div class="slide"><div class="slide-title">架构演进：<span class="highlight">性能对比</span></div><div class="comparison-grid"><div class="comparison-card" style="animation-delay: 0.1s;"><div class="comparison-stage">方案一</div><div class="comparison-qps">< 1K</div><div class="comparison-desc">直接写数据库</div></div><div class="comparison-card" style="animation-delay: 0.2s;"><div class="comparison-stage">方案二</div><div class="comparison-qps">10万+</div><div class="comparison-desc">Redis 缓存</div></div><div class="comparison-card" style="animation-delay: 0.3s;"><div class="comparison-stage">方案三</div><div class="comparison-qps">50万+</div><div class="comparison-desc">Redis + Kafka</div></div><div class="comparison-card" style="animation-delay: 0.4s;"><div class="comparison-stage">方案四</div><div class="comparison-qps">百万+</div><div class="comparison-desc">分布式集群</div></div></div></div>
+
+      <!-- 13. 核心思想 -->
+      <div class="slide">
+        <div class="slide-title">核心设计思想</div>
+        <div class="principles-grid">
+          <div class="principle-card"><div class="principle-icon"><svg viewBox="0 0 160 220"><path d="M80 0 L30 100 L70 110 L20 220 L130 120 L90 110 Z" fill="url(#redisGradient)"/></svg></div><h3>缓存扛压</h3><p>Redis 承接高并发</p></div>
+          <div class="principle-card"><div class="principle-icon"><svg viewBox="0 0 200 200"><path d="M0 20 L200 20 L130 180 L70 180 Z" fill="url(#kafkaGradient)"/></svg></div><h3>异步削峰</h3><p>Kafka 缓冲流量</p></div>
+          <div class="principle-card"><div class="principle-icon"><svg viewBox="0 0 200 200" style="filter: drop-shadow(0 10px 20px rgba(134, 142, 150, 0.4));"><g transform="translate(10, 50)"><ellipse cx="90" cy="50" rx="80" ry="25" fill="url(#storageDiskGradient)"/><path d="M10,50 V100 A80,25 0 0,0 170,100 V50 A80,25 0 0,1 10,50 Z" fill="#adb5bd"/></g><g transform="translate(10, 30)"><ellipse cx="90" cy="50" rx="80" ry="25" fill="url(#storageDiskGradient)"/><path d="M10,50 V100 A80,25 0 0,0 170,100 V50 A80,25 0 0,1 10,50 Z" fill="#adb5bd"/></g><g transform="translate(10, 10)"><ellipse cx="90" cy="50" rx="80" ry="25" fill="url(#storageDiskGradient)"/><path d="M10,50 V100 A80,25 0 0,0 170,100 V50 A80,25 0 0,1 10,50 Z" fill="#adb5bd"/></g></svg></div><h3>分层存储</h3><p>热点数据 + 冷数据归档</p></div>
+          <div class="principle-card"><div class="principle-icon"><svg viewBox="0 0 200 200"><path d="M100,10 C40,10 40,60 40,60 V130 C40,190 100,190 100,190 C100,190 160,190 160,130 V60 C160,60 160,10 100,10 Z" fill="url(#shieldGradient)"/><path d="M100,20 C50,20 50,65 50,65 V130 C50,180 100,180 100,180 C100,180 150,180 150,130 V65 C150,65 150,20 100,20 Z" fill="rgba(255,255,255,0.2)"/></svg></div><h3>容灾兜底</h3><p>多级降级 + 异地多活</p></div>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      let currentSlide = 0;
+      const slides = document.querySelectorAll('.slide');
+      let isAnimSlideInitialized = false;
+
+      function showSlide(index) {
+        slides.forEach((slide, i) => {
+          slide.classList.remove('active', 'prev');
+          if (i === index) {
+            slide.classList.add('active');
+          } else if (i < index) {
+            slide.classList.add('prev');
+          }
+        });
+
+        // 首次进入动画页时，初始化交互
+        if (index === 6 && !isAnimSlideInitialized) {
+          setupInteractiveAnimations();
+          isAnimSlideInitialized = true;
+        }
+      }
+
+      // --- ROBUST INTERACTIVE ANIMATION SETUP (FINAL FIX V2) ---
+      function setupInteractiveAnimations() {
+        
+        // --- DEBOUNCE SETUP ---
+        const debounceHeart = document.getElementById('debounce-heart');
+        const debounceArrow = document.getElementById('debounce-arrow');
+        const debounceBox = document.querySelector('.debounce-anim');
+        let debounceTimer;
+
+        function triggerDebounceAnimation() {
+            // Remove class to reset animation
+            debounceArrow.classList.remove('is-animating');
+            // This is a trick to force a DOM reflow, ensuring the animation can be re-triggered
+            void debounceArrow.offsetWidth;
+            // Add class to start animation
+            debounceArrow.classList.add('is-animating');
+        }
+
+        debounceHeart.addEventListener('click', () => {
+          // Visual feedback for click
+          const burst = document.createElement('div');
+          burst.className = 'click-burst';
+          debounceBox.appendChild(burst);
+          burst.addEventListener('animationend', () => burst.remove());
+          
+          // Clear previous timer and set a new one
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(triggerDebounceAnimation, 1000);
+        });
+        
+        // --- THROTTLE SETUP ---
+        const throttleHeart = document.getElementById('throttle-heart');
+        const throttleCounter = document.getElementById('throttle-counter');
+        const throttleBox = document.querySelector('.throttle-anim');
+        const throttleArrow = document.getElementById('throttle-arrow');
+        let canSend = true;
+        let clickCount = 0;
+
+        function triggerThrottleAnimation() {
+            // Remove class to reset animation
+            throttleArrow.classList.remove('is-animating');
+            // Force DOM reflow
+            void throttleArrow.offsetWidth;
+            // Add class to start animation
+            throttleArrow.classList.add('is-animating');
+        }
+
+        throttleHeart.addEventListener('click', () => {
+          // Visual feedback for click
+          const burst = document.createElement('div');
+          burst.className = 'click-burst';
+          throttleBox.appendChild(burst);
+          burst.addEventListener('animationend', () => burst.remove());
+
+          // Update counter
+          clickCount++;
+          throttleCounter.textContent = `+${clickCount}`;
+          if (!throttleCounter.classList.contains('show')) {
+            throttleCounter.classList.add('show');
+          }
+          
+          // Check if we are allowed to send the request
+          if (canSend) {
+            canSend = false;
+            
+            triggerThrottleAnimation();
+            
+            // Set a timer to allow sending again after the interval
+            setTimeout(() => {
+              canSend = true;
+              clickCount = 0;
+              throttleCounter.classList.remove('show');
+            }, 2000);
+          }
+        });
+      }
+
+      // --- GENERAL SLIDE NAVIGATION ---
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' && currentSlide < slides.length - 1) {
+          currentSlide++;
+          showSlide(currentSlide);
+        } else if (e.key === 'ArrowLeft' && currentSlide > 0) {
+          currentSlide--;
+          showSlide(currentSlide);
+        }
+      });
+      
+      // Initial setup
+      showSlide(0);
+
+      // --- COVER HEART CLICK ANIMATION ---
+      function setupCoverHeart() {
+        const heartIcon = document.querySelector('.slide.active .cover-icon');
+        if (heartIcon) {
+          heartIcon.addEventListener('click', () => {
+            if (!heartIcon.classList.contains('clicked')) {
+              heartIcon.classList.add('clicked');
+            }
+          });
+
+          heartIcon.addEventListener('animationend', (event) => {
+            if (event.animationName === 'click-heartbeat') {
+              heartIcon.classList.remove('clicked');
+            }
+          });
+        }
+      }
+      
+      setupCoverHeart();
+      
+      const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.attributeName === 'class' && mutation.target.classList.contains('active') && currentSlide === 0) {
+             setupCoverHeart();
+          }
+        }
+      });
+      slides.forEach(slide => observer.observe(slide, { attributes: true }));
+
+    </script>
+  </body>
+</html>

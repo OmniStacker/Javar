@@ -1,0 +1,415 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>如何设计一个10万QPS的商品详情页？ - 白板讲稿</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+
+    :root {
+        --bg-color: #0c0c1e;
+        --primary-glow: #00ffff;
+        --secondary-glow: #ff00ff;
+        --text-color: #e0e0e0;
+        --highlight-color: #f0f0f0;
+        --card-bg: rgba(20, 20, 40, 0.7);
+        --card-border: rgba(0, 255, 255, 0.3);
+        --accent-yellow: #ffee00;
+    }
+
+    body {
+        font-family: 'Noto Sans SC', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 40px 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 40px;
+        overflow-x: hidden;
+    }
+
+    #background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        background: var(--bg-color);
+        background-image: 
+            linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+        background-size: 50px 50px;
+        animation: pan 120s linear infinite;
+    }
+
+    @keyframes pan {
+        0% { background-position: 0 0; }
+        100% { background-position: 1000px 500px; }
+    }
+
+    .slide {
+        background: var(--card-bg);
+        border: 2px solid var(--card-border);
+        border-radius: 20px;
+        width: 100%;
+        max-width: 1000px;
+        min-height: 560px;
+        padding: 40px 50px;
+        box-sizing: border-box;
+        box-shadow: 0 0 20px var(--card-border), 0 0 40px rgba(255, 0, 255, 0.2) inset;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(10px);
+        text-align: center;
+    }
+
+    .handwritten {
+        font-family: 'ZCOOL KuaiLe', cursive;
+        color: var(--accent-yellow);
+        font-size: 1.2em;
+    }
+
+    .main-title h1 {
+        font-size: 64px;
+        font-weight: 900;
+        margin: 0;
+        color: var(--highlight-color);
+        text-shadow: 0 0 10px var(--primary-glow), 0 0 20px var(--primary-glow);
+    }
+    .main-title p {
+        font-size: 24px;
+        color: var(--text-color);
+        opacity: 0.8;
+    }
+    
+    .question-mark {
+        font-size: 150px;
+        font-weight: 900;
+        color: var(--primary-glow);
+        text-shadow: 0 0 20px var(--primary-glow);
+        margin: 20px 0;
+    }
+
+    .strike-through {
+        position: relative;
+        display: inline-block;
+    }
+    .strike-through::after {
+        content: '';
+        position: absolute;
+        left: -10%;
+        top: 50%;
+        width: 120%;
+        height: 10px;
+        background: #ff3b3b;
+        transform: rotate(-5deg);
+        box-shadow: 0 0 10px #ff3b3b;
+        border-radius: 5px;
+    }
+    
+    .icon {
+        width: 64px;
+        height: 64px;
+        stroke-width: 1.5;
+        margin-bottom: 15px;
+        color: var(--primary-glow);
+        filter: drop-shadow(0 0 5px var(--primary-glow));
+    }
+    
+    .grid-container {
+        display: grid;
+        width: 100%;
+        gap: 25px;
+        margin-top: 30px;
+    }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+    .visual-card {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--card-border);
+        border-radius: 15px;
+        padding: 25px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 220px;
+    }
+    .visual-card h3 {
+        margin: 0 0 10px;
+        font-size: 24px;
+        color: var(--highlight-color);
+    }
+    .visual-card p {
+        margin: 0;
+        font-size: 16px;
+        opacity: 0.8;
+    }
+    .visual-card .keyword {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--accent-yellow);
+        margin-top: 15px;
+    }
+    
+    .flowchart {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        width: 100%;
+        margin-top: 20px;
+    }
+    .flow-item {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--card-border);
+        border-radius: 100px;
+        padding: 15px 30px;
+        width: 70%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+    }
+    .flow-item .icon {
+        width: 36px;
+        height: 36px;
+        margin: 0;
+    }
+    .flow-item span {
+        font-size: 20px;
+        font-weight: 500;
+    }
+    .flow-arrow {
+        font-size: 40px;
+        color: var(--primary-glow);
+        line-height: 0.5;
+        font-weight: 900;
+    }
+    
+    .summary-circle {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        width: 450px;
+        height: 450px;
+        margin-top: 20px;
+    }
+    .center-circle {
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: var(--card-bg);
+        border: 2px solid var(--primary-glow);
+        box-shadow: 0 0 20px var(--primary-glow) inset;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--highlight-color);
+    }
+    .summary-node {
+        position: absolute;
+        width: 150px;
+        height: 100px;
+        background: rgba(0,0,0,0.3);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-size: 18px;
+        font-weight: 500;
+    }
+    .summary-node span { font-size: 14px; opacity: 0.7; }
+    .node-1 { transform: translate(0, -200px); }
+    .node-2 { transform: translate(200px, 0); }
+    .node-3 { transform: translate(0, 200px); }
+    .node-4 { transform: translate(-200px, 0); }
+
+
+</style>
+</head>
+<body>
+
+<div id="background"></div>
+<script src="https://unpkg.com/feather-icons"></script>
+
+<!-- 镜头 1: 开场 - 提出核心问题 -->
+<div class="slide">
+    <div class="main-title">
+        <h1>10万 QPS</h1>
+        <p>商品详情页架构如何设计？</p>
+    </div>
+    <div class="question-mark">?</div>
+    <div class="handwritten">一套让面试官眼前一亮的“架构师级”回答框架</div>
+</div>
+
+<!-- 镜头 2: 颠覆认知 - 错误答案 vs 正确起点 -->
+<div class="slide">
+    <div class="grid-container grid-2" style="align-items: center;">
+        <div class="visual-card" style="border-color: #ff3b3b; box-shadow: 0 0 20px #ff3b3b;">
+            <i class="icon" data-feather="x-circle"></i>
+            <h3><span class="strike-through">常规答案</span></h3>
+            <p>"CDN + Redis + 负载均衡"</p>
+            <p class="keyword">只罗列工具的点状思维</p>
+        </div>
+        <div class="visual-card" style="border-color: var(--primary-glow); box-shadow: 0 0 20px var(--primary-glow);">
+            <i class="icon" data-feather="compass"></i>
+            <h3>正确起点</h3>
+            <p class="handwritten" style="font-size: 28px;">第一个问题：<br>从哪儿开始？</p>
+            <p class="keyword">答案：分析业务</p>
+        </div>
+    </div>
+</div>
+
+<!-- 镜头 3: 分析业务 - 数据一分为三 -->
+<div class="slide">
+    <h2 style="font-size: 36px; margin-bottom: 30px;">“先分类，再治理”</h2>
+    <div class="grid-container grid-3">
+        <div class="visual-card">
+            <i class="icon" data-feather="image"></i>
+            <h3>静态数据</h3>
+            <p>商品描述、规格</p>
+            <p class="keyword">几乎不变</p>
+        </div>
+        <div class="visual-card">
+            <i class="icon" data-feather="dollar-sign"></i>
+            <h3>准动态数据</h3>
+            <p>价格、促销活动</p>
+            <p class="keyword">偶尔变化</p>
+        </div>
+        <div class="visual-card">
+            <i class="icon" data-feather="zap"></i>
+            <h3>实时动态数据</h3>
+            <p>库存、最新评论</p>
+            <p class="keyword">一直在变</p>
+        </div>
+    </div>
+</div>
+
+<!-- 镜头 4: 构建防线 - 三级缓存 -->
+<div class="slide">
+    <h2 style="font-size: 32px;"><span class="handwritten">第二个问题：</span>如何构筑防线？</h2>
+    <p style="opacity: 0.8;">目标：让99%的请求到不了数据库！</p>
+    <div class="flowchart">
+        <div class="flow-item"><i class="icon" data-feather="users"></i><span>用户请求</span></div>
+        <div class="flow-arrow">⬇</div>
+        <div class="flow-item"><i class="icon" data-feather="globe"></i><span>防线一：CDN</span> <span style="margin-left:auto; opacity: 0.7;">(消化90%流量)</span></div>
+        <div class="flow-arrow">⬇</div>
+        <div class="flow-item"><i class="icon" data-feather="database"></i><span>防线二：分布式缓存 (Redis)</span></div>
+        <div class="flow-arrow">⬇</div>
+        <div class="flow-item"><i class="icon" data-feather="cpu"></i><span>防线三：本地缓存 (Caffeine)</span></div>
+        <div class="flow-arrow" style="color: #ff3b3b;">⬇</div>
+        <div class="flow-item" style="border-color: #ff3b3b; width: 40%;"><i class="icon" data-feather="server" style="color: #ff3b3b;"></i><span style="color: #ff3b3b;">DB (1%)</span></div>
+    </div>
+</div>
+
+<!-- 镜头 5: 攻克难点 - 库存怎么办？ -->
+<div class="slide">
+    <h2 style="font-size: 32px; margin-bottom: 30px;"><span class="handwritten">第三个问题：</span>最难的库存怎么办？</h2>
+    <div class="grid-container grid-2">
+        <div class="visual-card">
+            <i class="icon" data-feather="eye"></i>
+            <h3>怎么“读”？</h3>
+            <p style="font-size: 24px; font-weight: 700;">模糊化</p>
+            <p>只缓存状态：“有货” / “紧张”</p>
+        </div>
+        <div class="visual-card">
+            <i class="icon" data-feather="edit-3"></i>
+            <h3>怎么“写”？</h3>
+            <p style="font-size: 24px; font-weight: 700;">延后化</p>
+            <p>下单时用锁扣减，MQ异步通知</p>
+        </div>
+    </div>
+    <p class="keyword" style="margin-top: 30px; font-size: 24px;">放弃强一致，追求最终一致！</p>
+</div>
+
+<!-- 镜头 6: 兜底保障 - 系统如何不死？ -->
+<div class="slide">
+     <h2 style="font-size: 32px; margin-bottom: 30px;"><span class="handwritten">第四个问题：</span>系统如何不死？</h2>
+     <div class="grid-container grid-2">
+        <div class="visual-card">
+            <i class="icon" data-feather="shield"></i>
+            <h3>缓存保护三件套</h3>
+            <p>布隆过滤器 → 防穿透</p>
+            <p>分布式锁 → 防击穿</p>
+            <p>过期随机值 → 防雪崩</p>
+        </div>
+        <div class="visual-card">
+            <i class="icon" data-feather="tool"></i>
+            <h3>服务稳定三剑客</h3>
+            <p>服务降级</p>
+            <p>接口限流</p>
+            <p>服务熔断</p>
+        </div>
+    </div>
+</div>
+
+<!-- 镜头 7: 总结 - 架构师的思维闭环 -->
+<div class="slide">
+    <h2 style="font-size: 36px; margin-bottom: 20px;">架构师的思维闭环</h2>
+    <div class="summary-circle">
+        <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; transform: rotate(-90deg); stroke-dasharray: 251.2; stroke-dashoffset: 251.2; animation: draw-circle 2s forwards ease-in-out;">
+            <circle cx="50" cy="50" r="40" stroke="rgba(0,255,255,0.5)" stroke-width="2" fill="none" />
+        </svg>
+        <div class="center-circle">思维<br>闭环</div>
+        <div class="summary-node node-1">
+            <i data-feather="compass" style="width:24px; height:24px;"></i>
+            起点在哪？
+            <span>分析业务</span>
+        </div>
+         <div class="summary-node node-2">
+            <i data-feather="layers" style="width:24px; height:24px;"></i>
+            如何防御？
+            <span>多级缓存</span>
+        </div>
+         <div class="summary-node node-3">
+            <i data-feather="target" style="width:24px; height:24px;"></i>
+            难点在哪？
+            <span>最终一致</span>
+        </div>
+         <div class="summary-node node-4">
+            <i data-feather="life-buoy" style="width:24px; height:24px;"></i>
+            如何兜底？
+            <span>高可用</span>
+        </div>
+    </div>
+</div>
+
+<!-- 镜头 8: 结尾 -->
+<div class="slide">
+    <h1 style="font-size: 48px;">你学会了吗？</h1>
+    <p class="handwritten" style="font-size: 32px;">关注我，解锁更多硬核干货！</p>
+    <i data-feather="thumbs-up" class="icon" style="margin-top: 30px;"></i>
+</div>
+
+
+<script>
+    feather.replace();
+    // For animated circle in summary
+    const style = document.createElement('style');
+    style.innerHTML = `
+        @keyframes draw-circle {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+
+</body>
+</html>

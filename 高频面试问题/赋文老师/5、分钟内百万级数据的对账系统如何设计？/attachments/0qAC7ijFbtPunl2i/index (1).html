@@ -1,0 +1,472 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<title>分钟级百万对账系统 - 架构师速讲 v4.0 (SCQA版)</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    :root {
+        --bg-color: #0d111e;
+        --card-bg-color: rgba(13, 17, 30, 0.7);
+        --primary-text-color: #c9d1d9;
+        --secondary-text-color: #8b949e;
+        --accent-blue: #58a6ff;
+        --accent-green: #3fb950;
+        --accent-red: #ff7b72;
+        --border-color: #30363d;
+        --glow-blue: rgba(88, 166, 255, 0.2);
+        --glow-green: rgba(63, 185, 80, 0.2);
+        --glow-red: rgba(255, 123, 114, 0.2);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+        background-color: var(--bg-color);
+        background-image: radial-gradient(var(--secondary-text-color) 0.5px, transparent 0.5px), radial-gradient(var(--secondary-text-color) 0.5px, var(--bg-color) 0.5px);
+        background-size: 25px 25px;
+        background-position: 0 0, 12.5px 12.5px;
+        color: var(--primary-text-color);
+        margin: 0;
+        padding: 80px 20px 120px 20px;
+        overflow-x: hidden;
+    }
+
+    .slide {
+        max-width: 1200px;
+        min-height: 550px;
+        margin: 0 auto 30px auto;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        display: none; /* Hide by default */
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    
+    .slide.active {
+        display: flex;
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .slide-header {
+        width: 100%;
+        text-align: left;
+        margin-bottom: 40px;
+    }
+
+    .slide-header-title {
+        display: inline-block;
+        background: #1c212e;
+        border: 1px solid var(--border-color);
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: 500;
+    }
+
+    .comparison-container {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .concept-box {
+        flex: 1;
+        max-width: 500px;
+        min-width: 400px;
+        position: relative;
+    }
+
+    .concept-box-label {
+        position: absolute;
+        top: -15px;
+        left: 20px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        border: 1px solid;
+    }
+
+    .concept-box-tag {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        color: var(--secondary-text-color);
+        font-size: 14px;
+    }
+    
+    .concept-box-desc {
+        color: var(--secondary-text-color);
+        font-size: 14px;
+        text-align: center;
+        max-width: 80%;
+        margin-top: 20px;
+        line-height: 1.6;
+    }
+
+    .concept-box-inner {
+        height: 350px;
+        border-radius: 12px;
+        padding: 50px 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        background: rgba(36, 41, 51, 0.3);
+    }
+    .concept-box-inner::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 12px;
+        padding: 1px; /* border-width */
+        background: linear-gradient(rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+    }
+
+    /* Themes */
+    .box-red .concept-box-label { background-color:#3b1e28; color:var(--accent-red); border-color:var(--accent-red); }
+    .box-red .concept-box-inner { box-shadow: inset 0 0 40px var(--glow-red); }
+    .box-red .pool-item { background-color:#521c22; border-color:#993a3f; color:#ff9592; }
+
+    .box-blue .concept-box-label { background-color: #1c283f; color: var(--accent-blue); border-color: var(--accent-blue); }
+    .box-blue .concept-box-inner { box-shadow: inset 0 0 40px var(--glow-blue); }
+    .box-blue .pool-item { background: #1c283f; border: 1px solid #38537b; color: #92b5de; }
+    
+    .box-green .concept-box-label { background-color: #102d23; color: var(--accent-green); border-color: var(--accent-green); }
+    .box-green .concept-box-inner { box-shadow: inset 0 0 40px var(--glow-green); }
+    .box-green .pool-item { background: #1f3c31; border: 1px solid #335948; color: #a1d8b1; }
+
+
+    .pool-container { display: flex; gap: 20px; justify-content: center; align-items: center; flex-wrap: wrap; }
+    .pool-item { width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; border-radius: 8px; font-weight: 500; text-align: center; font-size: 14px; line-height: 1.3; }
+    
+    /* Single Box Layout */
+    .single-box-container { width: 100%; display: flex; justify-content: center; }
+    .single-box { width: 100%; max-width: 1024px; min-height: 380px; border-radius: 12px; padding: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(36, 41, 51, 0.3); box-shadow: inset 0 0 60px rgba(13, 17, 30, 0.5); border: 1px solid var(--border-color); }
+    .slide-subtitle { font-size: 16px; color: var(--secondary-text-color); margin-top: 15px; text-align: center; max-width: 800px; line-height: 1.7; }
+    .question-text { font-size: 28px; font-weight: 500; color: var(--accent-blue); text-align: center; }
+
+    /* Custom Graphics */
+    .diagram-vs { display: flex; gap: 20px; align-items: center; text-align: center; }
+    .vs-item { font-size: 18px; }
+    .vs-icon { font-size: 50px; }
+    .vs-separator { font-size: 50px; }
+
+    .progress-bar-container { width: 250px; height: 20px; background-color: var(--border-color); border-radius: 10px; overflow: hidden; border: 1px solid var(--border-color); margin-bottom: 20px; }
+    .progress-bar { height: 100%; border-radius: 8px; transition: width 0.5s ease-out; }
+    .progress-bar-red { background-color: var(--accent-red); }
+    .progress-bar-green { background-color: var(--accent-green); }
+
+    .sharding-diagram { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; text-align: center; gap: 20px; }
+    .shard-source { font-size: 20px; }
+    .shard-arrow { font-size: 40px; color: var(--secondary-text-color); }
+    .shard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .shard-worker { width: 60px; height: 60px; font-size: 12px; display: flex; align-items: center; justify-content: center; background: #1c283f; border: 1px solid #38537b; color: #92b5de; border-radius: 8px; }
+
+    .css-dashboard { width: 100%; max-width: 600px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 15px; }
+    .dash-widget { background: #181d2a; border-radius: 8px; padding: 15px; }
+    .dash-widget h4 { margin: 0 0 10px 0; color: var(--secondary-text-color); font-size: 14px; }
+    .stat-card { grid-column: span 2; display: flex; justify-content: space-around; }
+    .stat-item { text-align: center;}
+    .stat-item .value { font-size: 28px; font-weight: bold; color: var(--accent-green); }
+    .stat-item .label { font-size: 12px; }
+    .pie-chart { width: 100px; height: 100px; border-radius: 50%; background-image: conic-gradient(var(--accent-green) 0 99.8%, var(--accent-red) 99.8% 100%); margin: 0 auto; }
+    .line-chart { height: 100px; border-left: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); position: relative; }
+    .line-chart-line { position: absolute; inset: 0; background: linear-gradient(to top, transparent, var(--glow-green)); border-top: 2px solid var(--accent-green); clip-path: polygon(0 80%, 15% 75%, 30% 85%, 45% 60%, 60% 70%, 75% 55%, 90% 40%, 100% 45%); }
+
+    /* --- Footer Nav --- */
+    .footer-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: rgba(13, 17, 30, 0.8); border-top: 1px solid var(--border-color); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; padding: 0 25px; font-size: 14px; color: var(--secondary-text-color); z-index: 1000; }
+    .footer-left { display: flex; align-items: center; gap: 8px;}
+    .footer-center { display: flex; align-items: center; gap: 15px; }
+    .footer-right { display: flex; align-items: center; gap: 20px; }
+    .nav-button { background: none; border: 1px solid var(--border-color); color: var(--primary-text-color); padding: 4px 12px; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; }
+    .nav-button:hover { background-color: var(--border-color); }
+    .nav-button:disabled { color: #484f58; border-color: #484f58; cursor: not-allowed; background: none; }
+    .page-dots { display: flex; gap: 6px; }
+    .dot { width: 8px; height: 8px; background: var(--border-color); border-radius: 50%; transition: background-color 0.3s, transform 0.3s; }
+    .dot.current { background: var(--accent-blue); transform: scale(1.3); }
+    kbd { background: var(--border-color); padding: 2px 6px; border-radius: 4px; font-family: inherit; }
+</style>
+</head>
+<body>
+    <!-- Slide 1: S (Situation) -->
+    <div class="slide active" id="slide-1">
+        <div class="slide-header"><div class="slide-header-title">场景 (Situation): 数字世界的铁律</div></div>
+        <div class="single-box-container">
+            <div class="single-box">
+                <div class="diagram-vs">
+                    <div class="vs-item"><div class="vs-icon">💻</div>平台账本</div>
+                    <div class="vs-separator" style="color: var(--accent-green);">≈</div>
+                    <div class="vs-item"><div class="vs-icon">🏦</div>渠道账本</div>
+                </div>
+                <div class="slide-subtitle">在数字支付的庞大世界里，每一笔交易都会在不同系统中留下记录。我们平台的账本，与银行、支付宝、微信等支付渠道的账本，必须分毫不差。这是系统稳定运行的基石，也是金融世界的铁律。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 2: C (Complication) -->
+    <div class="slide" id="slide-2">
+        <div class="slide-header"><div class="slide-header-title">冲突 (Complication): 魔鬼在于差异</div></div>
+        <div class="single-box-container">
+            <div class="single-box">
+                <div class="diagram-vs">
+                    <div class="vs-item"><div class="vs-icon">💻</div>平台账本<br>(100万条)</div>
+                    <div class="vs-separator" style="color: var(--accent-red);">≠</div>
+                    <div class="vs-item"><div class="vs-icon">🏦</div>渠道账本<br>(100万条)</div>
+                </div>
+                 <div class="slide-subtitle">但是，由于网络延迟、系统抖动或人为错误，差异总是不可避免。当百万笔交易中出现一笔差错，就可能意味着巨大的资金风险和客户信任危机。而我们要做的，就是在海量数据中，快速找到这根“针”。</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 3: Q (Question) -->
+    <div class="slide" id="slide-3">
+        <div class="slide-header"><div class="slide-header-title">核心问题 (Question): 我们的架构难题</div></div>
+        <div class="single-box-container">
+            <div class="single-box">
+                <div class="question-text">
+                    如何设计一个系统，<br>能在分钟级内，完成百万级数据的精准对账？
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 4: A (Answer) -->
+    <div class="slide" id="slide-4">
+        <div class="slide-header"><div class="slide-header-title">回答 (Answer): 一套三层递进的架构心法</div></div>
+        <div class="single-box-container">
+            <div class="single-box" style="align-items: flex-start; text-align: left; font-size: 20px; line-height: 2.5; padding-left: 150px;">
+                <div style="color: var(--accent-green);">第一层: 算法降维打击，奠定性能基石</div>
+                <div style="color: var(--accent-blue);">第二层: 架构并行提速，应对海量数据</div>
+                <div style="color: var(--accent-red);">第三层: 工程化保障，确保系统稳定</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 5: A.1 (Algorithm) -->
+    <div class="slide" id="slide-5">
+        <div class="slide-header"><div class="slide-header-title">第一层: 算法降维打击</div></div>
+        <div class="comparison-container">
+            <div class="concept-box box-red">
+                <div class="concept-box-label">暴力循环 O(N²)</div>
+                <div class="concept-box-tag">新手思路</div>
+                <div class="concept-box-inner">
+                    <svg width="200" height="150" viewBox="0 0 100 75" style="opacity: 0.8; margin-bottom: 20px;"><g fill="#ff9592"><circle cx="10" cy="10" r="3"/><circle cx="10" cy="37.5" r="3"/><circle cx="10" cy="65" r="3"/><circle cx="90" cy="10" r="3"/><circle cx="90" cy="37.5" r="3"/><circle cx="90" cy="65" r="3"/></g><g stroke="#ff7b72" stroke-width="1" opacity="0.6"><line x1="10" y1="10" x2="90" y2="10"/><line x1="10" y1="10" x2="90" y2="37.5"/><line x1="10" y1="10" x2="90" y2="65"/><line x1="10" y1="37.5" x2="90" y2="10"/><line x1="10" y1="37.5" x2="90" y2="37.5"/><line x1="10" y1="37.5" x2="90" y2="65"/><line x1="10" y1="65" x2="90" y2="10"/><line x1="10" y1="65" x2="90" y2="37.5"/><line x1="10" y1="65" x2="90" y2="65"/></g></svg>
+                    <div class="concept-box-desc">100万 x 100万 = 1万亿次计算，这是性能灾难。</div>
+                </div>
+            </div>
+            <div class="concept-box box-green">
+                <div class="concept-box-label">哈希映射 O(N)</div>
+                <div class="concept-box-tag">高手思路</div>
+                <div class="concept-box-inner">
+                    <svg width="200" height="150" viewBox="0 0 100 75" style="opacity: 0.8; margin-bottom: 20px;"><g fill="#a1d8b1"><circle cx="10" cy="10" r="3"/><circle cx="10" cy="37.5" r="3"/><circle cx="10" cy="65" r="3"/><circle cx="90" cy="10" r="3"/><circle cx="90" cy="37.5" r="3"/><circle cx="90" cy="65" r="3"/></g><g stroke="#3fb950" stroke-width="1" opacity="0.8"><line x1="10" y1="10" x2="90" y2="10"/><line x1="10" y1="37.5" x2="90" y2="37.5"/><line x1="10" y1="65" x2="90" y2="65"/></g></svg>
+                    <div class="concept-box-desc">空间换时间，将复杂度从N的平方降到N，这是实现“分钟级”的前提。</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: A.2 (Parallelism) -->
+    <div class="slide" id="slide-6">
+        <div class="slide-header"><div class="slide-header-title">第二层: 架构并行提速</div></div>
+        <div class="single-box-container">
+            <div class="single-box box-blue">
+                <div class="sharding-diagram">
+                    <div class="shard-source">百万数据流</div>
+                    <div class="shard-arrow">→</div>
+                    <div class="shard-grid">
+                        <div class="shard-worker">分片 1</div><div class="shard-worker">分片 2</div><div class="shard-worker">分片 3</div><div class="shard-worker">分片 ...</div>
+                    </div>
+                </div>
+                <div class="slide-subtitle">仅有高效算法不足以应对百万级数据。我们必须“分而治之”，将总任务拆解成多个可并行处理的小任务分片，用集群的力量实现指数级加速。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: A.2 Problem (Skew) -->
+    <div class="slide" id="slide-7">
+        <div class="slide-header"><div class="slide-header-title">并行的陷阱: 数据倾斜</div></div>
+        <div class="comparison-container">
+            <div class="concept-box box-green">
+                <div class="concept-box-label">理想情况</div>
+                <div class="concept-box-tag">雨露均沾</div>
+                <div class="concept-box-inner">
+                    <div class="pool-container">
+                        <div class="pool-item">Worker 1<br>(1000)</div>
+                        <div class="pool-item">Worker 2<br>(1000)</div>
+                    </div>
+                </div>
+            </div>
+            <div class="concept-box box-red">
+                <div class="concept-box-label">现实瓶颈</div>
+                <div class="concept-box-tag">一核有难,多核围观</div>
+                <div class="concept-box-inner">
+                    <div class="pool-container">
+                        <div class="pool-item">Worker 1<br>(100)</div>
+                        <div class="pool-item box-red">网红商户<br>(900,000)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 8: A.2 Solution (Routing) -->
+    <div class="slide" id="slide-8">
+        <div class="slide-header"><div class="slide-header-title">倾斜的破解之道: 动态智能路由</div></div>
+        <div class="comparison-container">
+            <div class="concept-box box-green">
+                <div class="concept-box-label">普通商户</div>
+                <div class="concept-box-tag">按商户ID聚合</div>
+                <div class="concept-box-inner" style="gap:20px;">
+                     <div style="font-size: 24px;">商户A → Worker 1</div>
+                     <div class="concept-box-desc">按商户ID路由，方便管理。</div>
+                </div>
+            </div>
+            <div class="concept-box box-red">
+                <div class="concept-box-label">网红商户</div>
+                <div class="concept-box-tag">按订单ID打散</div>
+                <div class="concept-box-inner" style="gap:20px;">
+                     <div style="font-size: 24px; line-height: 2;">订单1 → Worker 3<br>订单2 → Worker 8</div>
+                     <div class="concept-box-desc">识别大商户，二次分片，将其海量订单随机打散到所有节点，化解瓶颈。</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: A.3 (Reliability) -->
+    <div class="slide" id="slide-9">
+        <div class="slide-header"><div class="slide-header-title">第三层: 工程化保障 (上) - 可靠性</div></div>
+        <div class="comparison-container">
+            <div class="concept-box box-red">
+                <div class="concept-box-label">普通重启</div>
+                <div class="concept-box-tag">重复处理, 数据错乱</div>
+                <div class="concept-box-inner">
+                    <div style="font-size:24px; color:var(--accent-red); margin-bottom: 20px;">⚡ 任务失败 ⚡</div>
+                    <div class="progress-bar-container"><div class="progress-bar progress-bar-red" style="width: 0%;"></div></div>
+                </div>
+            </div>
+            <div class="concept-box box-green">
+                <div class="concept-box-label">断点续传</div>
+                <div class="concept-box-tag">幂等设计, 保证一致</div>
+                <div class="concept-box-inner">
+                     <div style="font-size:24px; color:var(--accent-green); margin-bottom: 20px;">⚡ 任务失败 ⚡</div>
+                     <div class="progress-bar-container"><div class="progress-bar progress-bar-green" style="width: 70%;"></div></div>
+                     <div class="concept-box-desc">系统记录每个分片的完成状态。重启后只做未完之事，保证“不多不少，只对一次”。</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 10: A.3 (Monitoring) -->
+    <div class="slide" id="slide-10">
+        <div class="slide-header"><div class="slide-header-title">第三层: 工程化保障 (下) - 可观测性</div></div>
+        <div class="single-box-container">
+             <div class="single-box">
+                <div class="css-dashboard">
+                    <div class="dash-widget stat-card">
+                        <div class="stat-item"><div class="value">99.9%</div><div class="label">对平率</div></div>
+                        <div class="stat-item"><div class="value">58s</div><div class="label">总耗时</div></div>
+                        <div class="stat-item"><div class="value">1.2M</div><div class="label">总笔数</div></div>
+                    </div>
+                    <div class="dash-widget"><h4>结果分布</h4><div class="pie-chart"></div></div>
+                    <div class="dash-widget"><h4>任务耗时 (秒)</h4><div class="line-chart"><div class="line-chart-line"></div></div></div>
+                </div>
+                <div class="slide-subtitle">为系统建立“驾驶舱”，实时监控核心指标，不仅能快速定位问题，更是向上汇报战果、体现架构价值的关键。</div>
+             </div>
+        </div>
+    </div>
+
+    <!-- Slide 11: Summary -->
+    <div class="slide" id="slide-11">
+        <div class="slide-header"><div class="slide-header-title">总结 (Answer Recap): 架构师的黄金三角</div></div>
+        <div class="single-box-container">
+             <div class="single-box">
+                <div style="position: relative; width: 400px; height: 300px;">
+                    <svg viewBox="0 0 100 100" style="position:absolute; top:0; left:0; width:100%; height:100%; overflow:visible;">
+                        <polygon points="50,5 95,80 5,80" style="fill:none; stroke:var(--accent-blue); stroke-width:1;" />
+                    </svg>
+                    <div style="position:absolute; top: -10px; left:50%; transform:translateX(-50%); font-size:16px;">高效算法</div>
+                    <div style="position:absolute; bottom: 0; left:0; font-size:16px;">并行架构</div>
+                    <div style="position:absolute; bottom: 0; right:0; font-size:16px;">工程实践</div>
+                    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:var(--accent-blue); font-size:20px; font-weight:bold; text-align:center;">高性能<br>对账系统</div>
+                </div>
+                <div class="slide-subtitle">所以，回到最初的问题，答案就是：通过高效算法、并行架构和可靠的工程实践，三位一体，共同构建出一个能在一分钟内处理百万级数据的对账系统。</div>
+             </div>
+        </div>
+    </div>
+
+    <!-- Footer Navigation -->
+    <div class="footer-nav">
+        <div class="footer-left"><span>主线:</span><span id="footer-storyline"></span></div>
+        <div class="footer-center">
+            <button class="nav-button" id="prevBtn">上一页</button>
+            <div class="page-dots" id="page-dots-container"></div>
+            <button class="nav-button" id="nextBtn">下一页</button>
+        </div>
+        <div class="footer-right"><span>键盘: <kbd>←</kbd> <kbd>→</kbd></span><span id="page-counter"></span></div>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const slides = Array.from(document.querySelectorAll('.slide'));
+        const totalSlides = slides.length;
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const pageCounter = document.getElementById('page-counter');
+        const storyline = document.getElementById('footer-storyline');
+        const dotsContainer = document.getElementById('page-dots-container');
+
+        const storylines = [
+            "S: 数字世界的铁律", "C: 魔鬼在于差异", "Q: 核心架构难题", "A: 我们的三层心法",
+            "第一层: 算法降维打击", "第二层: 架构并行提速", "并行的陷阱: 数据倾斜", "倾斜的破解: 智能路由",
+            "第三层: 可靠性保障", "第三层: 可观测性保障", "总结: 架构师黄金三角"
+        ];
+        let currentSlideIndex = 0;
+        for (let i = 0; i < totalSlides; i++) {
+            const dot = document.createElement('div');
+            dot.classList.add('dot');
+            dot.dataset.index = i;
+            dotsContainer.appendChild(dot);
+            dot.addEventListener('click', () => showSlide(i));
+        }
+        const dots = Array.from(document.querySelectorAll('.dot'));
+        function showSlide(index) {
+            if (index < 0 || index >= totalSlides) return;
+            slides.forEach(s => s.classList.remove('active'));
+            currentSlideIndex = index;
+            slides[currentSlideIndex].classList.add('active');
+            updateNav();
+        }
+        function updateNav() {
+            pageCounter.textContent = `第 ${currentSlideIndex + 1} / ${totalSlides} 页`;
+            storyline.textContent = storylines[currentSlideIndex];
+            prevBtn.disabled = currentSlideIndex === 0;
+            nextBtn.disabled = currentSlideIndex === totalSlides - 1;
+            dots.forEach((dot, i) => dot.classList.toggle('current', i === currentSlideIndex));
+        }
+        function prevSlide() { if (currentSlideIndex > 0) showSlide(currentSlideIndex - 1); }
+        function nextSlide() { if (currentSlideIndex < totalSlides - 1) showSlide(currentSlideIndex + 1); }
+        prevBtn.addEventListener('click', prevSlide);
+        nextBtn.addEventListener('click', nextSlide);
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); } 
+            else if (e.key === 'ArrowRight') { e.preventDefault(); nextSlide(); }
+        });
+        showSlide(0);
+    });
+</script>
+</body>
+</html>

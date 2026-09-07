@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面试官：说一下Nginx反向代理的作用？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 50% { box-shadow: 0 0 25px 12px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(239, 68, 68, 0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        @keyframes flow-down { 0% { transform: translateY(0); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(80px); opacity: 0; } }
+        @keyframes rotate-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .diagram-node { background-color: rgba(30, 41, 59, 0.6); border: 2px solid rgba(71, 85, 105, 0.5); border-radius: 1rem; padding: 1.5rem; text-align: center; transition: all 0.3s ease; }
+        .diagram-node:hover { transform: scale(1.05); }
+        .diagram-node-good { animation: subtle-pulse-green 3s infinite; }
+        /* 移除了 shake 动画 */
+        .diagram-node-bad { animation: subtle-pulse-red 2s infinite; } 
+        /* 应用新的 flow-down 动画 */
+        .flow-arrow { animation: flow-down 2s linear infinite; left: 50%; transform: translateX(-50%); }
+
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .slide:last-of-type { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场 -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-200">
+                面试官：说一下<span class="gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">Nginx反向代理</span>的作用？
+            </h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">从单点服务到分布式架构的演进之路</h2>
+            <div class="content-panel mt-12 p-8 md:p-12 border-sky-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-center gap-8">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6 w-48">
+                        <i class="fa-solid fa-desktop text-5xl text-sky-300 mb-4"></i>
+                        <h4 class="font-bold text-lg">客户端</h4>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <i class="fa-solid fa-arrow-right text-3xl text-sky-400 mb-2"></i>
+                        <p class="text-sm text-slate-400">请求</p>
+                    </div>
+                    <div class="diagram-node bg-gradient-to-br from-emerald-900/50 to-green-900/50 border-emerald-500/50 p-6 w-48 diagram-node-good">
+                        <i class="fa-solid fa-server text-5xl text-emerald-300 mb-4"></i>
+                        <h4 class="font-bold text-lg text-emerald-300">Nginx代理</h4>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <i class="fa-solid fa-arrow-right text-3xl text-emerald-400 mb-2"></i>
+                        <p class="text-sm text-slate-400">转发</p>
+                    </div>
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6 w-48">
+                        <i class="fa-solid fa-database text-5xl text-slate-400 mb-4"></i>
+                        <h4 class="font-bold text-lg">后端服务</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 正向代理 vs 反向代理 (优化版) -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-teal-400 to-cyan-400">正向代理 vs 反向代理</h2>
+            <p class="mt-4 text-xl text-slate-400">一个为客户端而生，一个为服务器而战</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-teal-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-8 items-start">
+                    
+                    <!-- 正向代理 -->
+                    <div class="flex flex-col items-center h-full">
+                        <h3 class="font-bold text-2xl text-teal-300 mb-6">正向代理</h3>
+                        <div class="w-full flex flex-col items-center gap-y-4 text-center">
+                            <!-- 客户端 -->
+                            <div class="opacity-70">
+                                <div class="flex gap-x-4">
+                                    <i class="fa-solid fa-user text-4xl text-slate-400"></i>
+                                    <i class="fa-solid fa-user text-4xl text-slate-400"></i>
+                                    <i class="fa-solid fa-user text-4xl text-slate-400"></i>
+                                </div>
+                                <p class="font-bold mt-2 text-slate-400">客户端们</p>
+                            </div>
+                            
+                            <i class="fa-solid fa-arrow-down-long text-2xl text-teal-400"></i>
+
+                            <!-- 代理区域 -->
+                            <div class="w-full border-2 border-dashed border-teal-500/60 rounded-2xl p-4 bg-teal-900/20">
+                                <div class="diagram-node bg-slate-800/50 border-teal-500/50 p-4 w-full">
+                                    <i class="fa-solid fa-shield-halved text-4xl text-teal-300"></i>
+                                    <h4 class="font-bold mt-2 text-lg">正向代理服务器</h4>
+                                </div>
+                                <p class="text-xs text-teal-400 font-mono mt-2">客户端网络</p>
+                            </div>
+
+                            <i class="fa-solid fa-arrow-down-long text-2xl text-slate-400"></i>
+
+                            <!-- 目标服务器 -->
+                            <div>
+                                <i class="fa-solid fa-server text-4xl text-slate-300"></i>
+                                <p class="font-bold mt-2 text-slate-300">目标服务器</p>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-6">
+                            <p class="text-sm text-slate-300 bg-slate-800/50 px-4 py-2 rounded-lg">
+                                <i class="fa-solid fa-eye-slash text-teal-400 mr-2"></i>服务器<span class="font-bold text-teal-300">不知道</span>真实客户端是谁。
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- VS 分隔 -->
+                    <div class="flex items-center h-full pt-24">
+                        <span class="font-black text-7xl text-slate-600" style="text-shadow: 0 0 10px rgba(100, 116, 139, 0.3);">VS</span>
+                    </div>
+
+                    <!-- 反向代理 -->
+                    <div class="flex flex-col items-center h-full">
+                        <h3 class="font-bold text-2xl text-cyan-300 mb-6">反向代理</h3>
+                        <div class="w-full flex flex-col items-center gap-y-4 text-center">
+                            <!-- 客户端 -->
+                            <div>
+                                <i class="fa-solid fa-desktop text-4xl text-sky-300"></i>
+                                <p class="font-bold mt-2 text-sky-300">客户端</p>
+                            </div>
+
+                            <i class="fa-solid fa-arrow-down-long text-2xl text-slate-400"></i>
+
+                            <!-- 代理服务器 -->
+                            <div class="diagram-node bg-slate-800/50 border-cyan-500/50 p-4 w-full">
+                                <i class="fa-solid fa-server text-4xl text-cyan-300"></i>
+                                <h4 class="font-bold mt-2 text-lg">Nginx 反向代理</h4>
+                            </div>
+
+                            <i class="fa-solid fa-arrow-down-long text-2xl text-cyan-400"></i>
+
+                            <!-- 后端服务区域 -->
+                            <div class="w-full border-2 border-dashed border-cyan-500/60 rounded-2xl p-4 bg-cyan-900/20 opacity-70">
+                                 <div class="flex justify-around">
+                                    <i class="fa-solid fa-database text-4xl text-slate-400"></i>
+                                    <i class="fa-solid fa-database text-4xl text-slate-400"></i>
+                                    <i class="fa-solid fa-database text-4xl text-slate-400"></i>
+                                </div>
+                                <p class="font-bold mt-2 text-slate-400">后端服务集群</p>
+                                 <p class="text-xs text-cyan-400 font-mono mt-2">服务器私有网络</p>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-6">
+                            <p class="text-sm text-slate-300 bg-slate-800/50 px-4 py-2 rounded-lg">
+                               <i class="fa-solid fa-eye-slash text-cyan-400 mr-2"></i>客户端<span class="font-bold text-cyan-300">不知道</span>真实服务器是谁。
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: 传统架构困境 (优化版) -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-red-500 to-rose-400">传统架构的困境</h2>
+            <p class="mt-4 text-xl text-slate-400">当所有压力都汇于一点</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-red-500/30">
+                <div class="flex flex-col items-center gap-y-6 w-full">
+
+                    <!-- 1. 流量来源 (客户端) -->
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-400 mb-4">海量并发请求</h3>
+                        <div class="flex items-center justify-center gap-x-8">
+                            <i class="fa-solid fa-desktop text-4xl text-slate-400"></i>
+                            <i class="fa-solid fa-mobile-screen-button text-4xl text-slate-400"></i>
+                            <i class="fa-solid fa-tablet-screen-button text-4xl text-slate-400"></i>
+                        </div>
+                    </div>
+
+                    <!-- 2. 压力指向 (箭头) -->
+                    <div class="flex text-red-400 text-4xl">
+                        <i class="fa-solid fa-arrow-down-long mx-2"></i>
+                        <i class="fa-solid fa-arrow-down-long mx-2 animate-pulse" style="animation-delay: 0.2s;"></i>
+                        <i class="fa-solid fa-arrow-down-long mx-2" style="animation-delay: 0.4s;"></i>
+                    </div>
+
+                    <!-- 3. 核心瓶颈 (单点服务器) -->
+                    <div class="relative bg-red-900/30 border-2 border-red-500/50 p-8 rounded-2xl w-72 text-center">
+                        <div class="absolute -top-4 -right-4 bg-rose-500 rounded-full w-12 h-12 flex items-center justify-center text-white shadow-lg shadow-rose-500/30">
+                            <i class="fa-solid fa-bomb text-2xl"></i>
+                        </div>
+                        <i class="fa-solid fa-server text-6xl text-red-300 mb-4"></i>
+                        <h4 class="font-bold text-2xl text-red-300">单点服务器</h4>
+                        <p class="text-rose-300/80 text-sm mt-1">所有请求的唯一处理节点</p>
+                    </div>
+
+                    <!-- 4. 产生的具体问题 -->
+                    <div class="w-full max-w-4xl border-t-2 border-dashed border-red-500/30 mt-8 pt-8">
+                         <h3 class="text-lg font-bold text-slate-400 mb-6">最终导致四大核心问题</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div class="bg-slate-800/40 p-4 rounded-lg border border-red-500/30 text-center">
+                                <i class="fa-solid fa-gauge-high text-4xl text-red-400 mb-3"></i>
+                                <h5 class="font-bold text-red-300">性能瓶颈</h5>
+                                <p class="text-xs text-slate-400 mt-1">高并发下响应缓慢</p>
+                            </div>
+                            <div class="bg-slate-800/40 p-4 rounded-lg border border-red-500/30 text-center">
+                                <i class="fa-solid fa-power-off text-4xl text-red-400 mb-3"></i>
+                                <h5 class="font-bold text-red-300">单点故障</h5>
+                                <p class="text-xs text-slate-400 mt-1">宕机则全站瘫痪</p>
+                            </div>
+                            <div class="bg-slate-800/40 p-4 rounded-lg border border-red-500/30 text-center">
+                                <i class="fa-solid fa-shield-virus text-4xl text-red-400 mb-3"></i>
+                                <h5 class="font-bold text-red-300">安全风险</h5>
+                                <p class="text-xs text-slate-400 mt-1">服务直接暴露公网</p>
+                            </div>
+                            <div class="bg-slate-800/40 p-4 rounded-lg border border-red-500/30 text-center">
+                                <i class="fa-solid fa-layer-group text-4xl text-red-400 mb-3"></i>
+                                <h5 class="font-bold text-red-300">扩展困难</h5>
+                                <p class="text-xs text-slate-400 mt-1">只能垂直升级硬件</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 负载均衡 -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-400 to-orange-400">负载均衡 - 流量分发的艺术</h2>
+            <p class="mt-4 text-xl text-slate-400">智能分发请求，实现负载均衡</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-amber-500/30">
+                <div class="flex flex-col items-center">
+                    <!-- Nginx节点 -->
+                    <div class="diagram-node bg-amber-900/30 border-amber-500/50 p-6 w-48 mb-8">
+                        <i class="fa-solid fa-server text-5xl text-amber-300 mb-4"></i>
+                        <h4 class="font-bold text-lg text-amber-300">Nginx负载均衡器</h4>
+                    </div>
+
+                    <!-- 流量分发动画 -->
+                    <div class="relative w-full h-32 mb-8">
+                        <!-- 流动的请求点 (已优化) -->
+                        <div class="absolute top-4 w-3 h-3 bg-amber-400 rounded-full flow-arrow"></div>
+                        <div class="absolute top-4 w-3 h-3 bg-amber-400 rounded-full flow-arrow" style="animation-delay: 0.7s;"></div>
+                        <div class="absolute top-4 w-3 h-3 bg-amber-400 rounded-full flow-arrow" style="animation-delay: 1.4s;"></div>
+                    </div>
+
+                    <!-- 后端服务器群 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                        <div class="diagram-node diagram-node-good bg-green-900/30 border-green-500/50 p-6">
+                            <i class="fa-solid fa-server text-4xl text-green-300 mb-3"></i>
+                            <h5 class="font-bold text-green-300">服务器 A</h5>
+                            <div class="w-full bg-slate-700 rounded-full h-2 mt-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 60%"></div>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">负载: 60%</p>
+                        </div>
+                        <div class="diagram-node diagram-node-good bg-green-900/30 border-green-500/50 p-6">
+                            <i class="fa-solid fa-server text-4xl text-green-300 mb-3"></i>
+                            <h5 class="font-bold text-green-300">服务器 B</h5>
+                            <div class="w-full bg-slate-700 rounded-full h-2 mt-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 45%"></div>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">负载: 45%</p>
+                        </div>
+                        <div class="diagram-node diagram-node-good bg-green-900/30 border-green-500/50 p-6">
+                            <i class="fa-solid fa-server text-4xl text-green-300 mb-3"></i>
+                            <h5 class="font-bold text-green-300">服务器 C</h5>
+                            <div class="w-full bg-slate-700 rounded-full h-2 mt-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 70%"></div>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">负载: 70%</p>
+                        </div>
+                    </div>
+
+                    <!-- 负载均衡算法 -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 w-full">
+                        <div class="bg-amber-900/20 p-4 rounded-lg border border-amber-500/30 text-center">
+                            <i class="fa-solid fa-arrows-rotate text-2xl text-amber-400 mb-2"></i>
+                            <h6 class="font-bold text-amber-300 text-sm">轮询</h6>
+                        </div>
+                        <div class="bg-amber-900/20 p-4 rounded-lg border border-amber-500/30 text-center">
+                            <i class="fa-solid fa-weight-hanging text-2xl text-amber-400 mb-2"></i>
+                            <h6 class="font-bold text-amber-300 text-sm">加权轮询</h6>
+                        </div>
+                        <div class="bg-amber-900/20 p-4 rounded-lg border border-amber-500/30 text-center">
+                            <i class="fa-solid fa-hashtag text-2xl text-amber-400 mb-2"></i>
+                            <h6 class="font-bold text-amber-300 text-sm">IP哈希</h6>
+                        </div>
+                        <div class="bg-amber-900/20 p-4 rounded-lg border border-amber-500/30 text-center">
+                            <i class="fa-solid fa-link text-2xl text-amber-400 mb-2"></i>
+                            <h6 class="font-bold text-amber-300 text-sm">最少连接</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 故障转移 -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-400 to-pink-400">高可用性 - 故障转移的守护者</h2>
+            <p class="mt-4 text-xl text-slate-400">自动检测故障，确保服务持续可用</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-rose-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 故障前 -->
+                    <div class="bg-slate-800/40 p-6 rounded-xl">
+                        <h3 class="font-bold text-xl text-green-300 mb-6 text-center">正常状态</h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 w-32">
+                                <i class="fa-solid fa-server text-3xl text-slate-400 mb-2"></i>
+                                <h5 class="font-bold text-sm">Nginx</h5>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="diagram-node diagram-node-good bg-green-900/30 border-green-500/50 p-3 w-20">
+                                    <i class="fa-solid fa-server text-xl text-green-300 mb-1"></i>
+                                    <p class="text-xs">A</p>
+                                </div>
+                                <div class="diagram-node diagram-node-good bg-green-900/30 border-green-500/50 p-3 w-20">
+                                    <i class="fa-solid fa-server text-xl text-green-300 mb-1"></i>
+                                    <p class="text-xs">B</p>
+                                </div>
+                                <div class="diagram-node diagram-node-good bg-green-900/30 border-green-500/50 p-3 w-20">
+                                    <i class="fa-solid fa-server text-xl text-green-300 mb-1"></i>
+                                    <p class="text-xs">C</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 故障后 -->
+                    <div class="bg-slate-800/40 p-6 rounded-xl">
+                        <h3 class="font-bold text-xl text-rose-300 mb-6 text-center">故障转移</h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 w-32">
+                                <i class="fa-solid fa-server text-3xl text-slate-400 mb-2"></i>
+                                <h5 class="font-bold text-sm">Nginx</h5>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="diagram-node diagram-node-good bg-green-900/30 border-green-500/50 p-3 w-20">
+                                    <i class="fa-solid fa-server text-xl text-green-300 mb-1"></i>
+                                    <p class="text-xs">A</p>
+                                </div>
+                                <div class="diagram-node diagram-node-bad bg-red-900/30 border-red-500/50 p-3 w-20 relative">
+                                    <i class="fa-solid fa-server text-xl text-red-300 mb-1"></i>
+                                    <p class="text-xs">B</p>
+                                    <div class="absolute -top-1 -right-1">
+                                        <i class="fa-solid fa-times-circle text-red-400 text-sm"></i>
+                                    </div>
+                                </div>
+                                <div class="diagram-node diagram-node-good bg-green-900/30 border-green-500/50 p-3 w-20">
+                                    <i class="fa-solid fa-server text-xl text-green-300 mb-1"></i>
+                                    <p class="text-xs">C</p>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <i class="fa-solid fa-arrow-right text-2xl text-rose-400 mb-2"></i>
+                                <p class="text-sm text-rose-300 font-semibold">流量自动切换到健康节点</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 健康检查机制 -->
+                <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-blue-900/20 p-6 rounded-xl border border-blue-500/30">
+                        <h4 class="font-bold text-lg text-blue-300 mb-3 flex items-center">
+                            <i class="fa-solid fa-eye mr-3"></i>被动检查
+                        </h4>
+                        <p class="text-slate-300 text-sm">通过请求响应状态判断服务器健康状态</p>
+                    </div>
+                    <div class="bg-violet-900/20 p-6 rounded-xl border border-violet-500/30">
+                        <h4 class="font-bold text-lg text-violet-300 mb-3 flex items-center">
+                            <i class="fa-solid fa-heartbeat mr-3"></i>主动检查
+                        </h4>
+                        <p class="text-slate-300 text-sm">定期发送探测请求验证服务器可用性</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: 安全防护 -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-green-400 to-emerald-400">安全防护 - 隐藏后端的盾牌</h2>
+            <p class="mt-4 text-xl text-slate-400">多层安全防护，保护后端服务</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-green-500/30">
+                <div class="flex flex-col items-center">
+                    <!-- 攻击与防护示意图 -->
+                    <div class="relative w-full max-w-4xl h-64 mb-8">
+                        <!-- 攻击箭头 -->
+                        <div class="absolute left-0 top-1/2 transform -translate-y-1/2">
+                            <div class="flex items-center space-x-4">
+                                <i class="fa-solid fa-user-ninja text-4xl text-red-400"></i>
+                                <div class="flex space-x-2">
+                                    <i class="fa-solid fa-arrow-right text-2xl text-red-400"></i>
+                                    <i class="fa-solid fa-arrow-right text-2xl text-red-400"></i>
+                                    <i class="fa-solid fa-arrow-right text-2xl text-red-400"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-red-400 mt-2">恶意攻击</p>
+                        </div>
+
+                        <!-- Nginx盾牌 -->
+                        <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                            <div class="diagram-node diagram-node-good bg-green-900/30 border-green-500/50 p-8 w-32 h-32 flex flex-col items-center justify-center">
+                                <i class="fa-solid fa-shield-halved text-5xl text-green-300"></i>
+                                <p class="text-sm font-bold text-green-300 mt-2">Nginx</p>
+                            </div>
+                        </div>
+
+                        <!-- 受保护的后端 -->
+                        <div class="absolute right-0 top-1/2 transform -translate-y-1/2">
+                            <div class="flex flex-col items-center space-y-2">
+                                <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 w-20">
+                                    <i class="fa-solid fa-server text-2xl text-slate-400"></i>
+                                </div>
+                                <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 w-20">
+                                    <i class="fa-solid fa-server text-2xl text-slate-400"></i>
+                                </div>
+                                <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 w-20">
+                                    <i class="fa-solid fa-server text-2xl text-slate-400"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-slate-400 mt-2 text-center">受保护的后端</p>
+                        </div>
+
+                        <!-- 被阻挡的攻击 -->
+                        <div class="absolute left-1/2 top-1/4 transform -translate-x-1/2">
+                            <i class="fa-solid fa-ban text-3xl text-red-500"></i>
+                            <p class="text-xs text-red-400 mt-1">攻击被阻挡</p>
+                        </div>
+                    </div>
+
+                    <!-- 安全功能列表 -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+                        <div class="bg-green-900/20 p-4 rounded-lg border border-green-500/30 text-center">
+                            <i class="fa-solid fa-ban text-3xl text-green-400 mb-2"></i>
+                            <h6 class="font-bold text-green-300 text-sm">IP访问控制</h6>
+                            <p class="text-xs text-slate-400 mt-1">限制特定IP访问</p>
+                        </div>
+                        <div class="bg-green-900/20 p-4 rounded-lg border border-green-500/30 text-center">
+                            <i class="fa-solid fa-filter text-3xl text-green-400 mb-2"></i>
+                            <h6 class="font-bold text-green-300 text-sm">请求过滤</h6>
+                            <p class="text-xs text-slate-400 mt-1">过滤恶意请求</p>
+                        </div>
+                        <div class="bg-green-900/20 p-4 rounded-lg border border-green-500/30 text-center">
+                            <i class="fa-solid fa-lock text-3xl text-green-400 mb-2"></i>
+                            <h6 class="font-bold text-green-300 text-sm">SSL终止</h6>
+                            <p class="text-xs text-slate-400 mt-1">加密解密处理</p>
+                        </div>
+                        <div class="bg-green-900/20 p-4 rounded-lg border border-green-500/30 text-center">
+                            <i class="fa-solid fa-tachometer-alt text-3xl text-green-400 mb-2"></i>
+                            <h6 class="font-bold text-green-300 text-sm">DDoS防护</h6>
+                            <p class="text-xs text-slate-400 mt-1">限制请求频率</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: 缓存加速 -->
+    <section id="slide7" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-400 to-purple-400">缓存加速 - 性能提升的利器</h2>
+            <p class="mt-4 text-xl text-slate-400">智能缓存策略，显著提升响应速度</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-violet-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 缓存命中 -->
+                    <div class="bg-slate-800/40 p-6 rounded-xl">
+                        <h3 class="font-bold text-xl text-green-300 mb-6 text-center flex items-center justify-center">
+                            <i class="fa-solid fa-bolt mr-2"></i>缓存命中 (快速路径)
+                        </h3>
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 w-32">
+                                <i class="fa-solid fa-desktop text-3xl text-sky-300 mb-2"></i>
+                                <h5 class="font-bold text-sm">客户端</h5>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fa-solid fa-arrow-down text-2xl text-green-400"></i>
+                                <span class="text-green-400 text-sm ml-2">请求</span>
+                            </div>
+                            <div class="diagram-node diagram-node-good bg-violet-900/30 border-violet-500/50 p-4 w-40">
+                                <i class="fa-solid fa-server text-3xl text-violet-300 mb-2"></i>
+                                <h5 class="font-bold text-sm text-violet-300">Nginx缓存</h5>
+                                <div class="flex items-center justify-center mt-2">
+                                    <i class="fa-solid fa-check-circle text-green-400 mr-1"></i>
+                                    <span class="text-xs text-green-400">命中</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fa-solid fa-arrow-up text-2xl text-green-400"></i>
+                                <span class="text-green-400 text-sm ml-2">直接响应</span>
+                            </div>
+                            <div class="text-center">
+                                <div class="inline-flex items-center bg-green-900/30 px-3 py-1 rounded-full">
+                                    <i class="fa-solid fa-clock text-green-400 mr-2"></i>
+                                    <span class="text-green-300 text-sm font-bold">响应时间: 10ms</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 缓存未命中 -->
+                    <div class="bg-slate-800/40 p-6 rounded-xl">
+                        <h3 class="font-bold text-xl text-amber-300 mb-6 text-center flex items-center justify-center">
+                            <i class="fa-solid fa-route mr-2"></i>缓存未命中 (转发路径)
+                        </h3>
+                        <div class="flex flex-col items-center space-y-3">
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-28">
+                                <i class="fa-solid fa-desktop text-2xl text-sky-300 mb-1"></i>
+                                <h5 class="font-bold text-xs">客户端</h5>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-xl text-slate-400"></i>
+                            <div class="diagram-node bg-violet-900/30 border-violet-500/50 p-3 w-32">
+                                <i class="fa-solid fa-server text-2xl text-violet-300 mb-1"></i>
+                                <h5 class="font-bold text-xs text-violet-300">Nginx</h5>
+                                <div class="flex items-center justify-center mt-1">
+                                    <i class="fa-solid fa-times-circle text-amber-400 mr-1"></i>
+                                    <span class="text-xs text-amber-400">未命中</span>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-arrow-down text-xl text-amber-400"></i>
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-28">
+                                <i class="fa-solid fa-database text-2xl text-slate-400 mb-1"></i>
+                                <h5 class="font-bold text-xs">后端服务</h5>
+                            </div>
+                            <i class="fa-solid fa-arrow-up text-xl text-amber-400"></i>
+                            <div class="text-center">
+                                <div class="inline-flex items-center bg-amber-900/30 px-3 py-1 rounded-full">
+                                    <i class="fa-solid fa-clock text-amber-400 mr-2"></i>
+                                    <span class="text-amber-300 text-sm font-bold">响应时间: 200ms</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 缓存策略 -->
+                <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-violet-900/20 p-6 rounded-xl border border-violet-500/30 text-center">
+                        <i class="fa-solid fa-image text-3xl text-violet-400 mb-3"></i>
+                        <h4 class="font-bold text-violet-300 mb-2">静态资源缓存</h4>
+                        <p class="text-slate-400 text-sm">CSS、JS、图片等文件</p>
+                    </div>
+                    <div class="bg-violet-900/20 p-6 rounded-xl border border-violet-500/30 text-center">
+                        <i class="fa-solid fa-code text-3xl text-violet-400 mb-3"></i>
+                        <h4 class="font-bold text-violet-300 mb-2">动态内容缓存</h4>
+                        <p class="text-slate-400 text-sm">API响应、页面片段</p>
+                    </div>
+                    <div class="bg-violet-900/20 p-6 rounded-xl border border-violet-500/30 text-center">
+                        <i class="fa-solid fa-sync-alt text-3xl text-violet-400 mb-3"></i>
+                        <h4 class="font-bold text-violet-300 mb-2">缓存失效机制</h4>
+                        <p class="text-slate-400 text-sm">时间、版本、手动清除</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 8: 统一入口管理 -->
+    <section id="slide8" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-indigo-400 to-blue-400">统一入口管理 - 微服务的交通枢纽</h2>
+            <p class="mt-4 text-xl text-slate-400">API网关模式，统一管理微服务访问</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-indigo-500/30">
+                <div class="flex flex-col items-center">
+                    <!-- 中心化的Nginx节点 -->
+                    <div class="diagram-node diagram-node-good bg-indigo-900/30 border-indigo-500/50 p-8 w-48 mb-8">
+                        <i class="fa-solid fa-server text-6xl text-indigo-300 mb-4"></i>
+                        <h4 class="font-bold text-xl text-indigo-300">Nginx API网关</h4>
+                        <p class="text-sm text-slate-400 mt-2">统一入口</p>
+                    </div>
+
+                    <!-- 连接线和微服务 -->
+                    <div class="relative w-full max-w-5xl">
+                        <!-- 连接线 -->
+                        <div class="absolute left-1/2 top-0 w-1 h-16 bg-indigo-400 transform -translate-x-0.5"></div>
+                        <div class="absolute left-1/2 top-16 w-96 h-1 bg-indigo-400 transform -translate-x-48"></div>
+                        
+                        <!-- 微服务群 -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16">
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 text-center">
+                                <i class="fa-solid fa-user text-3xl text-blue-400 mb-2"></i>
+                                <h5 class="font-bold text-blue-300 text-sm">用户服务</h5>
+                                <p class="text-xs text-slate-400 mt-1">user.api.com</p>
+                            </div>
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 text-center">
+                                <i class="fa-solid fa-shopping-cart text-3xl text-green-400 mb-2"></i>
+                                <h5 class="font-bold text-green-300 text-sm">订单服务</h5>
+                                <p class="text-xs text-slate-400 mt-1">order.api.com</p>
+                            </div>
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 text-center">
+                                <i class="fa-solid fa-credit-card text-3xl text-yellow-400 mb-2"></i>
+                                <h5 class="font-bold text-yellow-300 text-sm">支付服务</h5>
+                                <p class="text-xs text-slate-400 mt-1">pay.api.com</p>
+                            </div>
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 text-center">
+                                <i class="fa-solid fa-bell text-3xl text-purple-400 mb-2"></i>
+                                <h5 class="font-bold text-purple-300 text-sm">通知服务</h5>
+                                <p class="text-xs text-slate-400 mt-1">notify.api.com</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 统一管理功能 -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 w-full">
+                        <div class="bg-indigo-900/20 p-4 rounded-lg border border-indigo-500/30 text-center">
+                            <i class="fa-solid fa-route text-2xl text-indigo-400 mb-2"></i>
+                            <h6 class="font-bold text-indigo-300 text-sm">路由规则</h6>
+                        </div>
+                        <div class="bg-indigo-900/20 p-4 rounded-lg border border-indigo-500/30 text-center">
+                            <i class="fa-solid fa-exchange-alt text-2xl text-indigo-400 mb-2"></i>
+                            <h6 class="font-bold text-indigo-300 text-sm">协议转换</h6>
+                        </div>
+                        <div class="bg-indigo-900/20 p-4 rounded-lg border border-indigo-500/30 text-center">
+                            <i class="fa-solid fa-edit text-2xl text-indigo-400 mb-2"></i>
+                            <h6 class="font-bold text-indigo-300 text-sm">请求改写</h6>
+                        </div>
+                        <div class="bg-indigo-900/20 p-4 rounded-lg border border-indigo-500/30 text-center">
+                            <i class="fa-solid fa-chart-line text-2xl text-indigo-400 mb-2"></i>
+                            <h6 class="font-bold text-indigo-300 text-sm">监控日志</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 9: 最佳实践总结 -->
+    <section id="slide9" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-emerald-400 to-teal-400">最佳实践与总结</h2>
+            <p class="mt-4 text-xl text-slate-400">生产环境部署的黄金法则</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-emerald-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 配置最佳实践 -->
+                    <div class="bg-slate-800/40 p-6 rounded-xl">
+                        <h3 class="font-bold text-xl text-emerald-300 mb-6 text-center flex items-center justify-center">
+                            <i class="fa-solid fa-cog mr-3"></i>配置最佳实践
+                        </h3>
+                        <div class="space-y-4">
+                            <div class="flex items-start bg-slate-900/50 p-4 rounded-lg">
+                                <i class="fa-solid fa-clock text-emerald-400 mr-3 mt-1"></i>
+                                <div>
+                                    <h5 class="font-bold text-emerald-300 text-sm">合理设置超时时间</h5>
+                                    <p class="text-slate-400 text-xs mt-1">避免连接堆积，优化资源利用</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start bg-slate-900/50 p-4 rounded-lg">
+                                <i class="fa-solid fa-heartbeat text-emerald-400 mr-3 mt-1"></i>
+                                <div>
+                                    <h5 class="font-bold text-emerald-300 text-sm">启用健康检查</h5>
+                                    <p class="text-slate-400 text-xs mt-1">及时发现和处理故障节点</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start bg-slate-900/50 p-4 rounded-lg">
+                                <i class="fa-solid fa-memory text-emerald-400 mr-3 mt-1"></i>
+                                <div>
+                                    <h5 class="font-bold text-emerald-300 text-sm">优化缓存策略</h5>
+                                    <p class="text-slate-400 text-xs mt-1">根据业务特点设置合适规则</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start bg-slate-900/50 p-4 rounded-lg">
+                                <i class="fa-solid fa-chart-line text-emerald-400 mr-3 mt-1"></i>
+                                <div>
+                                    <h5 class="font-bold text-emerald-300 text-sm">监控和日志</h5>
+                                    <p class="text-slate-400 text-xs mt-1">建立完善的监控告警机制</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 高可用部署 -->
+                    <div class="bg-slate-800/40 p-6 rounded-xl">
+                        <h3 class="font-bold text-xl text-teal-300 mb-6 text-center flex items-center justify-center">
+                            <i class="fa-solid fa-server mr-3"></i>高可用部署
+                        </h3>
+                        <div class="space-y-4">
+                            <div class="flex items-start bg-slate-900/50 p-4 rounded-lg">
+                                <i class="fa-solid fa-copy text-teal-400 mr-3 mt-1"></i>
+                                <div>
+                                    <h5 class="font-bold text-teal-300 text-sm">主备模式</h5>
+                                    <p class="text-slate-400 text-xs mt-1">使用Keepalived实现高可用</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start bg-slate-900/50 p-4 rounded-lg">
+                                <i class="fa-solid fa-sitemap text-teal-400 mr-3 mt-1"></i>
+                                <div>
+                                    <h5 class="font-bold text-teal-300 text-sm">集群模式</h5>
+                                    <p class="text-slate-400 text-xs mt-1">多实例配合DNS负载均衡</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start bg-slate-900/50 p-4 rounded-lg">
+                                <i class="fa-solid fa-cube text-teal-400 mr-3 mt-1"></i>
+                                <div>
+                                    <h5 class="font-bold text-teal-300 text-sm">容器化部署</h5>
+                                    <p class="text-slate-400 text-xs mt-1">结合K8s实现自动扩缩容</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 核心总结 -->
+                <div class="mt-8 bg-gradient-to-r from-emerald-900/30 to-teal-900/30 p-8 rounded-xl border border-emerald-500/50">
+                    <h3 class="font-bold text-2xl text-center text-emerald-300 mb-6">核心价值总结</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 text-center">
+                        <div class="flex flex-col items-center">
+                            <i class="fa-solid fa-balance-scale text-3xl text-emerald-400 mb-2"></i>
+                            <h5 class="font-bold text-emerald-300 text-sm">负载均衡</h5>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <i class="fa-solid fa-shield-alt text-3xl text-emerald-400 mb-2"></i>
+                            <h5 class="font-bold text-emerald-300 text-sm">安全防护</h5>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <i class="fa-solid fa-heart text-3xl text-emerald-400 mb-2"></i>
+                            <h5 class="font-bold text-emerald-300 text-sm">高可用性</h5>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <i class="fa-solid fa-tachometer-alt text-3xl text-emerald-400 mb-2"></i>
+                            <h5 class="font-bold text-emerald-300 text-sm">性能优化</h5>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <i class="fa-solid fa-cogs text-3xl text-emerald-400 mb-2"></i>
+                            <h5 class="font-bold text-emerald-300 text-sm">运维简化</h5>
+                        </div>
+                    </div>
+                    <div class="mt-6 text-center">
+                        <p class="text-slate-300 text-lg">Nginx反向代理是现代Web架构不可或缺的基础设施组件，为企业数字化转型提供坚实的技术支撑。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center py-8 text-slate-500">
+        面试官：说一下Nginx反向代理的作用？
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            const navDots = navContainer.querySelectorAll('a');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            slides.forEach(slide => { observer.observe(slide); });
+        });
+    </script>
+</body>
+</html>

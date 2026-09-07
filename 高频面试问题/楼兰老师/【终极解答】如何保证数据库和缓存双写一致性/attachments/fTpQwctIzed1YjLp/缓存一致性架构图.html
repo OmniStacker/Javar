@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据库与缓存双写一致性</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #111827;
+            color: #F9FAFB;
+            overflow: hidden; /* Hide main scrollbars */
+        }
+        .container {
+            scroll-snap-type: x mandatory;
+            overflow-x: scroll;
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none;  /* IE and Edge */
+        }
+        .container::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, and Opera */
+        }
+        .page {
+            scroll-snap-align: start;
+            flex: 0 0 100vw;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 4rem;
+            box-sizing: border-box;
+            position: relative;
+            gap: 1.5rem; /* Adjusted gap */
+            transition: all 0.5s ease-in-out;
+        }
+        .page-number {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            font-size: 1rem;
+            color: #4B5563;
+        }
+        .tag {
+            background-color: #374151;
+            color: #D1D5DB;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 1.125rem;
+            border: 1px solid #4B5563;
+            transition: all 0.2s ease;
+        }
+        .tag.interview-pitfall {
+            background-color: #991B1B;
+            border-color: #F87171;
+            color: #FEE2E2;
+        }
+        .box {
+            background-color: #1F2937;
+            border: 1px solid #4B5563;
+            border-radius: 0.5rem;
+            padding: 1rem 1.5rem;
+            text-align: center;
+        }
+        .arrow {
+            position: relative;
+            color: #6B7280;
+            font-size: 2rem;
+            margin: 0 1rem;
+        }
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 0;
+        }
+         .flow-step .step-num {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #60A5FA;
+            border: 2px solid #60A5FA;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+         }
+         .danger {
+            color: #F87171;
+            font-weight: bold;
+         }
+         .success {
+            color: #34D399;
+            font-weight: bold;
+         }
+         .strike {
+            text-decoration: line-through;
+            color: #9CA3AF;
+         }
+         .mermaid {
+            background-color: #1F2937;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            border: 1px solid #4B5563;
+            width: 100%;
+         }
+    </style>
+</head>
+<body>
+    <div class="container" id="container">
+        <!-- Page 1: Opening -->
+        <section class="page">
+            <div class="text-center space-y-6">
+                <h1 class="text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-300">数据库 & 缓存双写一致性</h1>
+                <p class="text-3xl text-gray-300">一个价值百万的面试题，彻底搞懂！</p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-4 mt-8 max-w-4xl">
+                <div class="tag">双写一致性</div>
+                <div class="tag">延迟双删</div>
+                <div class="tag">CAP理论</div>
+                <div class="tag">消息队列</div>
+                <div class="tag">Binlog</div>
+                <div class="tag interview-pitfall">并发陷阱</div>
+                <div class="tag interview-pitfall">脏数据</div>
+                <div class="tag interview-pitfall">性能杀手：锁</div>
+            </div>
+            <div class="page-number">1 / 9</div>
+        </section>
+
+        <!-- Page 2: The Problem -->
+        <section class="page">
+            <h2 class="text-4xl font-bold">问题所在：数据不一致</h2>
+            <div class="flex items-center justify-center gap-8 w-full max-w-4xl">
+                <div class="box text-2xl">👨‍💻<br/>用户</div>
+                <div class="flex flex-col items-center">
+                    <span class="text-lg">请求数据</span>
+                    <span class="arrow text-5xl text-green-400">→</span>
+                </div>
+                <div class="box border-red-500 border-2 relative">
+                    <h3 class="text-2xl">缓存 Cache</h3>
+                    <p class="text-xl mt-2">旧数据 (v1)</p>
+                    <span class="absolute -top-4 -right-4 text-4xl">❌</span>
+                </div>
+                <div class="flex flex-col items-center">
+                     <span class="text-lg text-gray-500">缓存未命中</span>
+                     <span class="arrow text-3xl text-gray-500">→</span>
+                </div>
+                <div class="box">
+                    <h3 class="text-2xl">数据库 DB</h3>
+                    <p class="text-xl mt-2 success">新数据 (v2)</p>
+                </div>
+            </div>
+            <p class="text-2xl mt-16 text-center">用户读到了<span class="danger">旧数据</span>，明明数据库已经更新了！</p>
+            <div class="page-number">2 / 9</div>
+        </section>
+        
+        <!-- Page 3: Bad Solution - Lock -->
+        <section class="page">
+            <h2 class="text-4xl font-bold">方案一：加锁（强一致性）</h2>
+            <div class="w-full flex-grow flex flex-col justify-center items-center" style="gap: 2rem;">
+                <div class="flex items-center justify-center w-full max-w-6xl">
+                    <div class="flex flex-col gap-4">
+                        <div class="box text-xl">线程 A</div>
+                        <div class="box text-xl">线程 B</div>
+                        <div class="box text-xl">线程 C</div>
+                    </div>
+                    <div class="arrow text-6xl mx-8">→</div>
+                    <div class="box bg-blue-900 border-blue-500 relative p-12">
+                        <span class="absolute -top-5 left-1/2 -translate-x-1/2 text-5xl">🔒</span>
+                        <h3 class="text-5xl font-bold">更新<br/>DB/缓存</h3>
+                    </div>
+                    <div class="arrow text-6xl mx-8">→</div>
+                    <div class="box border-green-500 bg-green-900/50 p-6">
+                        <span class="text-3xl">✔</span>
+                        <p class="text-xl mt-2">数据绝对一致</p>
+                    </div>
+                </div>
+                <div class="flex justify-around w-full max-w-4xl text-xl mt-8">
+                    <div class="text-center">
+                        <h4 class="font-bold text-2xl mb-2">优点:</h4>
+                        <p>简单粗暴, 保证强一致性。</p>
+                    </div>
+                    <div class="text-center">
+                        <h4 class="font-bold text-2xl mb-2 text-red-400">缺点:</h4>
+                        <p>性能杀手, 高并发下系统吞吐量直线下降。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="page-number">3 / 9</div>
+        </section>
+
+        <!-- Page 4: Scenario A -->
+        <section class="page">
+            <h2 class="text-4xl font-bold">并发陷阱：先删缓存，再更新DB</h2>
+            <div class="w-full max-w-5xl">
+                <pre class="mermaid">
+sequenceDiagram
+  participant RA as Request A (Write)
+  participant RB as Request B (Read)
+  participant C as Cache
+  participant DB as Database
+  RA->>C: 1. Delete cache(key)
+  Note right of C: Cache is empty
+  RB->>C: 2. Read cache(key) - Miss
+  RB->>DB: 3. Read DB (gets v1)
+  Note right of DB: DB has old data v1
+  RB->>C: 4. Write cache(key, v1)
+  Note right of C: Cache now has old data v1
+  RA->>DB: 5. Write DB (sets v2)
+  Note right of DB: DB now has new data v2
+  Note over RA,DB: ❌ Inconsistency!<br/>Cache has v1, DB has v2
+                </pre>
+            </div>
+            <p class="text-2xl mt-8 text-center"><span class="danger">结论：</span>导致缓存与数据库数据<span class="danger">永久不一致</span>，方案不可取！</p>
+            <div class="page-number">4 / 9</div>
+        </section>
+
+        <!-- Page 5: Scenario B -->
+        <section class="page">
+            <h2 class="text-4xl font-bold">并发风险：先更新DB，再删缓存</h2>
+            <div class="w-full max-w-5xl">
+                <pre class="mermaid">
+sequenceDiagram
+  participant RA as Request A (Write)
+  participant RB as Request B (Read)
+  participant C as Cache
+  participant DB as Database
+  RA->>DB: 1. Write DB (sets v2)
+  Note right of DB: DB has new data v2
+  RB->>C: 2. Read cache(key) - Hit (gets v1)
+  Note right of C: User gets old data v1 (briefly)
+  RA->>C: 3. Delete cache(key)
+  Note right of C: Cache is empty
+  Note over RA,C: Next read will miss, fetch v2 from DB,<br/>and write v2 to cache.
+  Note over RA,C: ✅ System self-corrects.
+                </pre>
+            </div>
+            <p class="text-2xl mt-8 text-center"><span class="success">结论：</span>可能发生短暂不一致，但系统可<span class="success">自动修复</span>。相对安全。</p>
+            <div class="page-number">5 / 9</div>
+        </section>
+
+        <!-- Page 6: Delayed Double Delete -->
+        <section class="page">
+            <h2 class="text-4xl font-bold">方案二：延迟双删 (Cache-Aside 变种)</h2>
+            <div class="w-full max-w-5xl">
+                <div class="flow-step">
+                    <div class="step-num">1</div>
+                    <div class="box text-xl strike">更新缓存</div>
+                    <p class="text-xl ml-4">不推荐！成本高，且有并发问题</p>
+                </div>
+                <div class="text-5xl ml-5 my-2">↓</div>
+                <div class="flow-step">
+                    <div class="step-num">1</div>
+                    <div class="box text-xl bg-red-900/50 border-red-500">删除缓存</div>
+                </div>
+                <div class="text-5xl ml-5 my-2">↓</div>
+                <div class="flow-step">
+                    <div class="step-num">2</div>
+                    <div class="box text-xl">更新数据库</div>
+                </div>
+                <div class="text-5xl ml-5 my-2">↓</div>
+                 <div class="flow-step">
+                    <div class="step-num">3</div>
+                    <div class="box text-xl">延时 <span class="font-mono text-yellow-300">500ms</span> (估算业务读库+写缓存时间)</div>
+                </div>
+                <div class="text-5xl ml-5 my-2">↓</div>
+                <div class="flow-step">
+                    <div class="step-num">4</div>
+                    <div class="box text-xl bg-red-900/50 border-red-500">再次删除缓存</div>
+                </div>
+            </div>
+             <div class="flex justify-around w-full max-w-4xl text-xl mt-8">
+                <div class="text-center">
+                    <h4 class="font-bold text-2xl mb-2">优点:</h4>
+                    <p>大大降低不一致概率。</p>
+                </div>
+                <div class="text-center">
+                    <h4 class="font-bold text-2xl mb-2 text-red-400">缺点:</h4>
+                    <p>延时难以精确评估，增加了写请求耗时。</p>
+                </div>
+            </div>
+            <div class="page-number">6 / 9</div>
+        </section>
+
+        <!-- Page 7: Message Queue -->
+        <section class="page">
+            <h2 class="text-4xl font-bold">方案三：消息队列（最终一致性）</h2>
+            <div class="flex items-center justify-center gap-6 w-full max-w-6xl">
+                <div class="box text-xl">👨‍💻<br/>写请求</div>
+                <div class="arrow text-4xl">→</div>
+                <div class="flex flex-col gap-4">
+                    <div class="box text-xl">1. 更新数据库</div>
+                    <div class="box text-xl">2. 发送消息到 MQ</div>
+                </div>
+                <div class="arrow text-4xl">→</div>
+                <div class="box text-xl border-purple-500">🚀<br/>消息队列<br/>(RabbitMQ/Kafka)</div>
+                <div class="arrow text-4xl">→</div>
+                <div class="box text-xl">⚙️<br/>消费者服务</div>
+                <div class="arrow text-4xl">→</div>
+                <div class="box text-xl bg-red-900/50 border-red-500">3. 删除缓存</div>
+            </div>
+            <div class="flex justify-around w-full max-w-5xl text-xl mt-12">
+                <div class="text-center">
+                    <h4 class="font-bold text-2xl mb-2">优点:</h4>
+                    <p>业务解耦，主流程性能高，可靠性强（支持重试）。</p>
+                </div>
+                <div class="text-center">
+                    <h4 class="font-bold text-2xl mb-2 text-yellow-400">缺点:</h4>
+                    <p>架构变重，存在短暂的数据不一致。</p>
+                </div>
+            </div>
+            <div class="page-number">7 / 9</div>
+        </section>
+
+        <!-- Page 8: Binlog -->
+        <section class="page">
+            <h2 class="text-4xl font-bold">终极方案：订阅 Binlog（异步解耦）</h2>
+            <div class="flex items-center justify-center gap-6 w-full max-w-7xl">
+                <div class="box text-xl">👨‍💻<br/>写请求</div>
+                <div class="arrow text-4xl">→</div>
+                <div class="box text-xl">1. 更新数据库</div>
+                <div class="arrow text-4xl">→</div>
+                <div class="box text-xl border-green-500">🗃️<br/>MySQL<br/>产生 Binlog</div>
+                <div class="arrow text-4xl">→</div>
+                <div class="box text-xl border-blue-500">📡<br/>订阅服务<br/>(Canal/Maxwell)</div>
+                <div class="arrow text-4xl">→</div>
+                <div class="box text-xl bg-red-900/50 border-red-500">2. 删除缓存</div>
+            </div>
+            <p class="text-2xl mt-10">业务代码只需关心数据库，缓存同步完全分离！</p>
+            <div class="flex justify-around w-full max-w-5xl text-xl mt-8">
+                <div class="text-center">
+                    <h4 class="font-bold text-2xl mb-2">优点:</h4>
+                    <p>完全解耦，对业务代码无侵入，可靠性极高。</p>
+                </div>
+                <div class="text-center">
+                    <h4 class="font-bold text-2xl mb-2 text-yellow-400">缺点:</h4>
+                    <p>架构最重，需要引入和维护额外组件。</p>
+                </div>
+            </div>
+            <div class="page-number">8 / 9</div>
+        </section>
+
+        <!-- Page 9: Summary -->
+        <section class="page">
+            <h2 class="text-5xl font-bold">总结与对比</h2>
+            <table class="w-full max-w-6xl text-left text-lg border-collapse">
+                <thead>
+                    <tr class="border-b-2 border-gray-600">
+                        <th class="p-4 text-2xl">方案</th>
+                        <th class="p-4 text-2xl">一致性</th>
+                        <th class="p-4 text-2xl">性能/吞吐量</th>
+                        <th class="p-4 text-2xl">复杂度</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+                    <tr class="bg-gray-900/50">
+                        <td class="p-4 font-bold">加锁</td>
+                        <td class="p-4 success">强一致</td>
+                        <td class="p-4 danger">极低</td>
+                        <td class="p-4">低</td>
+                    </tr>
+                    <tr>
+                        <td class="p-4 font-bold">延迟双删</td>
+                        <td class="p-4 text-yellow-400">准实时 (最终)</td>
+                        <td class="p-4">中</td>
+                        <td class="p-4">中</td>
+                    </tr>
+                    <tr class="bg-gray-900/50">
+                        <td class="p-4 font-bold">消息队列</td>
+                        <td class="p-4 text-yellow-400">最终一致</td>
+                        <td class="p-4 success">高</td>
+                        <td class="p-4">高</td>
+                    </tr>
+                    <tr>
+                        <td class="p-4 font-bold">订阅Binlog</td>
+                        <td class="p-4 text-yellow-400">最终一致</td>
+                        <td class="p-4 success">极高</td>
+                        <td class="p-4 danger">极高</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="text-2xl mt-12">没有银弹，只有最适合业务场景的方案。</p>
+            <div class="page-number">9 / 9</div>
+        </section>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'dark', sequence: { showSequenceNumbers: true } });
+        const container = document.getElementById('container');
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+                container.scrollBy({
+                    left: window.innerWidth,
+                    behavior: 'smooth'
+                });
+            } else if (e.key === 'ArrowLeft') {
+                container.scrollBy({
+                    left: -window.innerWidth,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灰度发布、蓝绿部署和滚动发布深度解析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        @keyframes slide-in-up {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+            50% { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); }
+        }
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7); }
+            50% { box-shadow: 0 0 0 12px rgba(248, 113, 113, 0); }
+        }
+        @keyframes shake-intense {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+            20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: #020617;
+            color: #e2e8f0;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow-x: hidden;
+        }
+        .slide {
+            min-height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            position: relative;
+            border-bottom: 1px solid #1e293b;
+            animation: slide-in-up 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+        }
+        .content-panel {
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .gradient-text-sky { background-image: linear-gradient(to right, #38bdf8, #0ea5e9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-text-teal { background-image: linear-gradient(to right, #2dd4bf, #14b8a6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-text-amber { background-image: linear-gradient(to right, #fbbF24, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-text-rose { background-image: linear-gradient(to right, #fb7185, #f43f5e); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-text-green { background-image: linear-gradient(to right, #4ade80, #22c55e); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-text-violet { background-image: linear-gradient(to right, #a78bfa, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        
+        .diagram-node {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        .diagram-node:hover { transform: scale(1.05); }
+        .diagram-node-good { animation: pulse-green 2s infinite; }
+        .diagram-node-bad { animation: pulse-red 1.5s infinite, shake-intense 3.5s infinite; }
+
+        .nav-dots {
+            position: fixed;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            z-index: 50;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #475569;
+            border-radius: 50%;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        .nav-dot.active {
+            background-color: #f8fafc;
+            transform: scale(1.5);
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-dots">
+        <a href="#intro" class="nav-dot active" data-section="intro"></a>
+        <a href="#canary" class="nav-dot" data-section="canary"></a>
+        <a href="#blue-green" class="nav-dot" data-section="blue-green"></a>
+        <a href="#rolling" class="nav-dot" data-section="rolling"></a>
+        <a href="#rollback" class="nav-dot" data-section="rollback"></a>
+        <a href="#decision" class="nav-dot" data-section="decision"></a>
+    </nav>
+
+    <main>
+        <!-- 1. Intro Slide (Enlarged) -->
+        <section id="intro" class="slide">
+            <div class="text-center">
+                <h1 class="text-5xl md:text-7xl font-bold tracking-tighter mb-8">
+                    <span class="gradient-text-sky">灰度、蓝绿和滚动发布</span>到底是什么？
+                </h1>
+                <p class="text-2xl md:text-3xl text-slate-400 mb-16">为何大厂高可用架构都离不开它们？</p>
+                
+                <div class="flex justify-center items-center gap-4 md:gap-8 text-sm md:text-base">
+                    <div class="flex items-center gap-3 p-4 bg-slate-800/50 rounded-lg">
+                        <i class="fas fa-code text-sky-400 text-xl"></i>
+                        <span>开发完成</span>
+                    </div>
+                    <i class="fas fa-arrow-right text-slate-500 text-2xl md:text-4xl"></i>
+                    <div class="flex items-center gap-3 p-4 bg-slate-800/50 rounded-lg">
+                        <i class="fas fa-vial text-teal-400 text-xl"></i>
+                        <span>测试通过</span>
+                    </div>
+                    <i class="fas fa-arrow-right text-slate-500 text-2xl md:text-4xl"></i>
+                    <div class="flex flex-col items-center justify-center p-6 border-2 border-amber-400/50 rounded-lg bg-amber-900/20">
+                        <i class="fas fa-sitemap text-amber-300 text-3xl mb-3"></i>
+                        <span class="font-bold text-amber-300">选择发布策略</span>
+                    </div>
+                     <i class="fas fa-arrow-right text-slate-500 text-2xl md:text-4xl"></i>
+                    <div class="flex items-center gap-3 p-4 bg-slate-800/50 rounded-lg">
+                        <i class="fas fa-rocket text-green-400 text-xl"></i>
+                        <span>安全上线</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Canary Release Slide -->
+        <section id="canary" class="slide">
+            <div class="w-full max-w-6xl mx-auto">
+                <h2 class="text-3xl md:text-5xl font-bold text-center mb-4 gradient-text-teal">灰度发布 (Canary Release)</h2>
+                <p class="text-center text-slate-400 text-lg mb-12">“金丝雀”的精准试探，风险最低的发布模式</p>
+                <div class="content-panel border-teal-500/50 p-8">
+                    <div class="flex flex-col items-center gap-6">
+                        <!-- Traffic Source -->
+                        <div class="flex flex-col items-center">
+                            <div class="p-4 bg-slate-700/50 rounded-full">
+                                <i class="fas fa-users text-3xl text-teal-300"></i>
+                            </div>
+                            <span class="mt-2 text-sm font-semibold text-slate-400">实时流量</span>
+                        </div>
+                        
+                        <i class="fas fa-arrow-down text-3xl text-slate-500"></i>
+
+                        <!-- Router / Gateway -->
+                        <div class="relative flex flex-col items-center z-10">
+                            <div class="p-6 bg-teal-900/50 border-2 border-teal-500 rounded-xl shadow-lg">
+                                <i class="fas fa-sliders-h text-5xl text-teal-400"></i>
+                            </div>
+                            <span class="mt-2 text-lg font-bold text-teal-300">智能网关</span>
+                            <p class="text-sm text-amber-400 font-bold">按规则分流</p>
+                        </div>
+
+                        <!-- Connecting Lines with Percentage -->
+                        <div class="w-full h-20 relative -mt-8">
+                            <!-- Line to Stable (95%) -->
+                            <div class="absolute left-1/2 top-0 h-full w-1/4 border-l-4 border-b-4 border-slate-500 rounded-bl-2xl -translate-x-full">
+                                 <span class="absolute top-2 left-[-40px] text-xl font-bold text-slate-400">95%</span>
+                            </div>
+                            <!-- Line to Canary (5%) -->
+                            <div class="absolute left-1/2 top-0 h-full w-1/4 border-r-2 border-b-2 border-dashed border-amber-500 rounded-br-2xl">
+                                <span class="absolute top-2 right-[-30px] text-xl font-bold text-amber-400">5%</span>
+                                <div class="absolute bottom-0 right-[-2px] translate-y-1/2 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-amber-500"></div>
+                            </div>
+                        </div>
+
+                        <!-- Environments -->
+                        <div class="w-full grid grid-cols-2 gap-8">
+                            <!-- Stable Environment (95%) -->
+                            <div class="flex flex-col items-center gap-3">
+                                <div class="diagram-node content-panel border-slate-600 p-6 text-center w-full">
+                                    <i class="fas fa-server text-4xl text-slate-400 mb-2"></i>
+                                    <h3 class="font-bold text-lg text-slate-300">稳定版 v1.0</h3>
+                                </div>
+                                <span class="text-sm font-semibold bg-slate-700 text-slate-300 px-3 py-1 rounded-full">线上服务中</span>
+                            </div>
+
+                            <!-- Canary Environment (5%) -->
+                            <div class="flex flex-col items-center gap-3">
+                                <div class="diagram-node content-panel border-amber-500 p-6 text-center w-full opacity-90">
+                                    <i class="fas fa-feather-pointed text-4xl text-amber-400 mb-2"></i>
+                                    <h3 class="font-bold text-lg text-amber-300">金丝雀 v1.1</h3>
+                                </div>
+                                <span class="text-sm font-semibold bg-amber-800/50 text-amber-300 px-3 py-1 rounded-full">小流量测试中</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Blue-Green Deployment -->
+        <section id="blue-green" class="slide">
+            <div class="w-full max-w-6xl mx-auto">
+                <h2 class="text-3xl md:text-5xl font-bold text-center mb-4 gradient-text-sky">蓝绿部署 (Blue-Green)</h2>
+                <p class="text-center text-slate-400 text-lg mb-12">优雅的“一键翻转”，回滚最快的发布模式</p>
+                <div class="content-panel border-sky-500/50 p-8">
+                    <div class="flex flex-col items-center gap-6">
+                        <!-- Traffic Source -->
+                        <div class="flex flex-col items-center">
+                            <div class="p-4 bg-slate-700/50 rounded-full">
+                                <i class="fas fa-users text-3xl text-sky-300"></i>
+                            </div>
+                            <span class="mt-2 text-sm font-semibold text-slate-400">实时流量</span>
+                        </div>
+                        
+                        <i class="fas fa-arrow-down text-3xl text-slate-500"></i>
+
+                        <!-- Router / Load Balancer -->
+                        <div class="relative flex flex-col items-center z-10">
+                            <div class="p-6 bg-sky-900/50 border-2 border-sky-500 rounded-xl shadow-lg">
+                                <i class="fas fa-route text-5xl text-sky-400"></i>
+                            </div>
+                            <span class="mt-2 text-lg font-bold text-sky-300">负载均衡器</span>
+                            <p class="text-sm text-amber-400 font-bold">执行流量切换</p>
+                        </div>
+
+                        <!-- Connecting Lines -->
+                        <div class="w-full h-20 relative -mt-8">
+                            <!-- Line to Blue (Standby) -->
+                            <div class="absolute left-1/2 top-0 h-full w-1/4 border-l-2 border-b-2 border-dashed border-slate-600 rounded-bl-2xl -translate-x-full"></div>
+                            <!-- Line to Green (Live) -->
+                            <div class="absolute left-1/2 top-0 h-full w-1/4 border-r-2 border-b-2 border-green-500 rounded-br-2xl">
+                                <div class="absolute bottom-0 right-[-2px] translate-y-1/2 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-green-500"></div>
+                            </div>
+                        </div>
+
+                        <!-- Environments -->
+                        <div class="w-full grid grid-cols-2 gap-8">
+                            <!-- Blue Environment (Standby) -->
+                            <div class="flex flex-col items-center gap-3">
+                                <div class="diagram-node content-panel border-slate-600 p-6 text-center w-full opacity-70">
+                                    <i class="fas fa-server text-4xl text-slate-500 mb-2"></i>
+                                    <h3 class="font-bold text-lg text-slate-400">蓝色环境 v1.0</h3>
+                                </div>
+                                <span class="text-sm font-semibold bg-slate-700 text-slate-300 px-3 py-1 rounded-full">待命回滚</span>
+                            </div>
+
+                            <!-- Green Environment (Live) -->
+                            <div class="flex flex-col items-center gap-3">
+                                <div class="diagram-node content-panel border-green-500 p-6 text-center w-full diagram-node-good">
+                                    <i class="fas fa-server text-4xl text-green-400 mb-2"></i>
+                                    <h3 class="font-bold text-lg text-green-300">绿色环境 v1.1</h3>
+                                </div>
+                                <span class="text-sm font-semibold bg-green-800/50 text-green-300 px-3 py-1 rounded-full">线上服务中</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. Rolling Update -->
+        <section id="rolling" class="slide">
+            <div class="w-full max-w-6xl mx-auto">
+                <h2 class="text-3xl md:text-5xl font-bold text-center mb-4 gradient-text-violet">滚动发布 (Rolling Update)</h2>
+                <p class="text-center text-slate-400 text-lg mb-12">“蚂蚁搬家”式的平滑演进，最经济的发布模式</p>
+                <div class="content-panel border-violet-500/50 p-8">
+                    <div class="flex flex-col items-center gap-6">
+                        <!-- Traffic Source -->
+                        <div class="flex flex-col items-center">
+                            <div class="p-4 bg-slate-700/50 rounded-full">
+                                <i class="fas fa-users text-3xl text-violet-300"></i>
+                            </div>
+                            <span class="mt-2 text-sm font-semibold text-slate-400">实时流量</span>
+                        </div>
+                        
+                        <i class="fas fa-arrow-down text-3xl text-slate-500"></i>
+
+                        <!-- Load Balancer -->
+                        <div class="relative flex flex-col items-center z-10">
+                            <div class="p-6 bg-violet-900/50 border-2 border-violet-500 rounded-xl shadow-lg">
+                                <i class="fas fa-route text-5xl text-violet-400"></i>
+                            </div>
+                            <span class="mt-2 text-lg font-bold text-violet-300">负载均衡器</span>
+                            <p class="text-sm text-slate-400">将流量分发至存活实例</p>
+                        </div>
+
+                        <i class="fas fa-arrow-down text-3xl text-slate-500 mt-2"></i>
+
+                        <!-- Server Cluster -->
+                        <div class="w-full bg-slate-800/30 border border-slate-700 rounded-2xl p-6">
+                            <h3 class="text-center font-bold text-slate-300 mb-6">服务器集群 (共6个实例)</h3>
+                            <div class="grid grid-cols-3 gap-5">
+                                <!-- Instance 1: Already updated -->
+                                <div class="diagram-node p-4 text-center bg-violet-500/30 border border-violet-500 rounded-lg">
+                                    <i class="fas fa-server text-3xl text-violet-300 mb-2"></i>
+                                    <span class="font-bold text-white">v1.1</span>
+                                    <div class="text-xs font-semibold bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full mt-2">运行中</div>
+                                </div>
+                                <!-- Instance 2: Updating -->
+                                <div class="relative diagram-node p-4 text-center bg-amber-500/30 border border-amber-500 rounded-lg">
+                                     <i class="fas fa-sync fa-spin text-3xl text-amber-300 mb-2"></i>
+                                     <span class="font-bold text-white">v1.1</span>
+                                     <div class="text-xs font-semibold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full mt-2">启动中</div>
+                                </div>
+                                <!-- Instance 3: Being Terminated -->
+                                <div class="diagram-node p-4 text-center bg-rose-500/20 border border-rose-600 rounded-lg opacity-60">
+                                    <i class="fas fa-server text-3xl text-rose-400 mb-2"></i>
+                                    <span class="font-bold text-slate-300 line-through">v1.0</span>
+                                    <div class="text-xs font-semibold bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full mt-2">停止中</div>
+                                </div>
+                                <!-- Other v1.0 Instances -->
+                                <div class="diagram-node p-4 text-center bg-slate-600/50 border border-slate-600 rounded-lg">
+                                    <i class="fas fa-server text-3xl text-slate-400 mb-2"></i>
+                                    <span class="font-bold text-slate-300">v1.0</span>
+                                    <div class="text-xs font-semibold bg-slate-500/20 text-slate-300 px-2 py-0.5 rounded-full mt-2">运行中</div>
+                                </div>
+                                <div class="diagram-node p-4 text-center bg-slate-600/50 border border-slate-600 rounded-lg">
+                                    <i class="fas fa-server text-3xl text-slate-400 mb-2"></i>
+                                    <span class="font-bold text-slate-300">v1.0</span>
+                                    <div class="text-xs font-semibold bg-slate-500/20 text-slate-300 px-2 py-0.5 rounded-full mt-2">运行中</div>
+                                </div>
+                                 <div class="diagram-node p-4 text-center bg-slate-600/50 border border-slate-600 rounded-lg">
+                                    <i class="fas fa-server text-3xl text-slate-400 mb-2"></i>
+                                    <span class="font-bold text-slate-300">v1.0</span>
+                                    <div class="text-xs font-semibold bg-slate-500/20 text-slate-300 px-2 py-0.5 rounded-full mt-2">运行中</div>
+                                </div>
+                            </div>
+                            <div class="mt-6 text-center text-sm text-violet-300 bg-violet-900/40 p-2 rounded-md">
+                                <i class="fas fa-info-circle mr-2"></i>逐个停止旧版本实例，并启动新版本实例替代
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Rollback Mechanism -->
+        <section id="rollback" class="slide">
+            <div class="w-full max-w-7xl mx-auto">
+                <h2 class="text-3xl md:text-5xl font-bold text-center mb-4 gradient-text-rose">故障与回滚：决胜毫秒之间</h2>
+                <p class="text-center text-slate-400 text-lg mb-12">面对突发故障，不同策略的回滚机制有何天壤之别？</p>
+                
+                <div class="content-panel border-rose-500/50 p-8">
+                    <!-- Central Trigger -->
+                    <div class="flex justify-center mb-8">
+                        <div class="diagram-node diagram-node-bad content-panel border-rose-500/80 p-6 text-center shadow-lg shadow-rose-500/20">
+                            <i class="fas fa-bug text-5xl text-rose-400 mb-3"></i>
+                            <h3 class="font-bold text-xl text-rose-300">线上服务发现重大Bug!</h3>
+                        </div>
+                    </div>
+
+                    <!-- Diverging Paths -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                        <!-- Divider -->
+                        <div class="absolute top-0 left-1/2 w-px h-full bg-slate-700 hidden md:block"></div>
+
+                        <!-- Path 1: Canary Rollback -->
+                        <div class="text-center p-4">
+                            <h3 class="gradient-text-teal text-2xl font-bold mb-6">灰度发布回滚</h3>
+                            <i class="fas fa-arrow-down text-3xl text-slate-500 mb-6"></i>
+                            
+                            <div class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                                <i class="fas fa-sliders-h text-5xl text-amber-400 mb-4"></i>
+                                <h4 class="text-lg font-semibold text-amber-300">调整流量规则</h4>
+                                <p class="text-slate-400">将新版本(v1.1)流量从 <span class="font-bold text-white">20%</span> 调整至 <span class="font-bold text-rose-400">0%</span></p>
+                            </div>
+
+                            <i class="fas fa-arrow-down text-3xl text-slate-500 my-6"></i>
+
+                            <div class="bg-green-900/30 p-6 rounded-xl border border-green-700">
+                               <h4 class="text-lg font-semibold text-green-300">服务恢复</h4>
+                               <p class="text-slate-400">所有流量回归 <span class="font-bold text-white">v1.0</span> 稳定版</p>
+                               <div class="mt-4 text-sm font-bold bg-teal-800/50 text-teal-300 px-3 py-1 rounded-full inline-block">机制：软件规则 | 速度：快速</div>
+                            </div>
+                        </div>
+
+                        <!-- Path 2: Blue-Green Rollback -->
+                        <div class="text-center p-4">
+                            <h3 class="gradient-text-sky text-2xl font-bold mb-6">蓝绿部署回滚</h3>
+                            <i class="fas fa-arrow-down text-3xl text-slate-500 mb-6"></i>
+
+                            <div class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                                <i class="fas fa-sync-alt text-5xl text-amber-400 mb-4 animate-spin [animation-duration:3s]"></i>
+                                <h4 class="text-lg font-semibold text-amber-300">反向切换流量</h4>
+                                <p class="text-slate-400">负载均衡器指针从 <span class="font-bold text-rose-400">绿色环境</span> 切回 <span class="font-bold text-white">蓝色环境</span></p>
+                            </div>
+
+                            <i class="fas fa-arrow-down text-3xl text-slate-500 my-6"></i>
+
+                            <div class="bg-green-900/30 p-6 rounded-xl border border-green-700">
+                               <h4 class="text-lg font-semibold text-green-300">服务恢复</h4>
+                               <p class="text-slate-400">旧的 <span class="font-bold text-white">蓝色环境(v1.0)</span> 重新接管所有流量</p>
+                               <div class="mt-4 text-sm font-bold bg-sky-800/50 text-sky-300 px-3 py-1 rounded-full inline-block">机制：DNS/路由切换 | 速度：瞬时</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. Decision Matrix -->
+        <section id="decision" class="slide">
+            <div class="w-full max-w-7xl mx-auto">
+                <h2 class="text-3xl md:text-5xl font-bold text-center mb-4 gradient-text-amber">终极对决：如何选择？</h2>
+                <p class="text-center text-slate-400 text-lg mb-12">没有银弹，只有最适合的场景。一张图帮你决策！</p>
+                <div class="content-panel border-amber-500/50 p-8">
+                    <table class="w-full border-collapse text-center">
+                        <thead>
+                            <tr>
+                                <th class="p-4 w-1/4"></th>
+                                <th class="p-4 border-b-2 border-teal-500/50">
+                                    <h3 class="gradient-text-teal text-2xl font-bold">灰度发布</h3>
+                                </th>
+                                <th class="p-4 border-b-2 border-sky-500/50">
+                                    <h3 class="gradient-text-sky text-2xl font-bold">蓝绿部署</h3>
+                                </th>
+                                <th class="p-4 border-b-2 border-violet-500/50">
+                                    <h3 class="gradient-text-violet text-2xl font-bold">滚动发布</h3>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-slate-700">
+                                <td class="p-6 font-bold text-slate-300 text-left">发布风险</td>
+                                <td>
+                                    <div class="flex justify-center items-center gap-2 text-green-400 text-xl"><i class="fas fa-shield-alt"></i><span class="text-base font-bold">极低</span></div>
+                                </td>
+                                <td>
+                                    <div class="flex justify-center items-center gap-2 text-amber-400 text-xl"><i class="fas fa-shield-alt"></i><i class="fas fa-shield-alt"></i><i class="fas fa-shield-alt"></i><span class="text-base font-bold">中等</span></div>
+                                </td>
+                                <td>
+                                    <div class="flex justify-center items-center gap-2 text-rose-400 text-xl"><i class="fas fa-shield-alt"></i><i class="fas fa-shield-alt"></i><i class="fas fa-shield-alt"></i><i class="fas fa-shield-alt"></i><i class="fas fa-shield-alt"></i><span class="text-base font-bold">高</span></div>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-slate-700">
+                                <td class="p-6 font-bold text-slate-300 text-left">资源成本</td>
+                                <td>
+                                    <div class="flex justify-center items-center gap-2 text-green-400 text-xl"><i class="fas fa-dollar-sign"></i><span class="text-base font-bold">低</span></div>
+                                </td>
+                                <td>
+                                    <div class="flex justify-center items-center gap-2 text-rose-400 text-xl"><i class="fas fa-dollar-sign"></i><i class="fas fa-dollar-sign"></i><i class="fas fa-dollar-sign"></i><i class="fas fa-dollar-sign"></i><i class="fas fa-dollar-sign"></i><span class="text-base font-bold">高 (x2)</span></div>
+                                </td>
+                                <td>
+                                    <div class="flex justify-center items-center gap-2 text-green-400 text-xl"><i class="fas fa-dollar-sign"></i><span class="text-base font-bold">极低</span></div>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-slate-700">
+                                <td class="p-6 font-bold text-slate-300 text-left">回滚速度</td>
+                                <td>
+                                    <div class="flex justify-center items-center gap-2 text-amber-400 text-xl"><i class="fas fa-bolt"></i><i class="fas fa-bolt"></i><i class="fas fa-bolt"></i><span class="text-base font-bold">较快</span></div>
+                                </td>
+                                <td>
+                                    <div class="flex justify-center items-center gap-2 text-green-400 text-xl"><i class="fas fa-bolt"></i><i class="fas fa-bolt"></i><i class="fas fa-bolt"></i><i class="fas fa-bolt"></i><i class="fas fa-bolt"></i><span class="text-base font-bold">瞬时</span></div>
+                                </td>
+                                <td>
+                                    <div class="flex justify-center items-center gap-2 text-rose-400 text-xl"><i class="fas fa-bolt"></i><span class="text-base font-bold">慢</span></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="p-6 font-bold text-slate-300 text-left">一句话总结</td>
+                                <td class="p-4 text-sm text-teal-200/90 bg-teal-900/20">对稳定性要求苛刻的核心业务。</td>
+                                <td class="p-4 text-sm text-sky-200/90 bg-sky-900/20">需要“一键回滚”能力的快速迭代业务。</td>
+                                <td class="p-4 text-sm text-violet-200/90 bg-violet-900/20">资源有限或无状态的常规业务。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="text-center p-4 text-xs text-slate-500 bg-slate-900/50">
+        灰度发布、蓝绿部署和滚动发布到底是什么？为何大厂都在用！
+    </footer>
+
+    <script>
+        const sections = document.querySelectorAll('section');
+        const navDots = document.querySelectorAll('.nav-dot');
+
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.6
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const sectionId = entry.target.id;
+                    navDots.forEach(dot => {
+                        dot.classList.toggle('active', dot.getAttribute('data-section') === sectionId);
+                    });
+                }
+            });
+        }, observerOptions);
+
+        sections.forEach(section => {
+            observer.observe(section);
+        });
+    </script>
+</body>
+</html>

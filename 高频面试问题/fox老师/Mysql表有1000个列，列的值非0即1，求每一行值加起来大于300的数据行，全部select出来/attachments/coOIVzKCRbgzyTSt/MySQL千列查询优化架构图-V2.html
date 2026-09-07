@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MySQL千列查询优化架构图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+            padding-top: 150px; /* 为固定的 header 留出空间 */
+        }
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #0052D4, #4364F7, #6FB1FC);
+            color: white;
+            padding: 20px 30px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-bottom: 4px solid #FFC107;
+        }
+        .main-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .sub-title-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e8e8e8;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 16px;
+            border-left: 5px solid #4364F7;
+            padding-left: 12px;
+        }
+        .code-block {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+        .arrow {
+            font-size: 2.5rem;
+            color: #9ca3af;
+            text-align: center;
+            margin: 16px 0;
+        }
+        .warning-card {
+            border-left: 8px solid #f56565; /* Red */
+            background: #fff5f5;
+        }
+        .warning-title {
+            color: #c53030;
+        }
+        .success-card {
+            border-left: 8px solid #48bb78; /* Green */
+            background: #f0fff4;
+        }
+        .success-title {
+            color: #2f855a;
+        }
+        .arch-card {
+            border-left: 8px solid #805ad5; /* Purple */
+            background: #faf5ff;
+        }
+        .arch-title {
+            color: #553c9a;
+        }
+        .summary-card {
+            border-top: 8px solid #0052D4;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="fixed-header">
+        <h1 class="main-title text-center">MySQL千列查询地狱？从新手到架构师的终极通关指南！</h1>
+        <div class="sub-title-container">
+            <span>💡 动态SQL：临时方案的巧妙与陷阱</span>
+            <span>🚀 持久化列+索引：生产级性能优化王牌</span>
+            <span>⚠️ 在线DDL：规避生产锁表的“核武器”</span>
+            <span>🏗️ 架构重构：从根源上治本的终极方案</span>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+
+        <!-- 1. 问题陈述 -->
+        <div class="card">
+            <h2 class="card-title">① 问题原点：一张有1000个0/1列的“天书”表</h2>
+            <p>我们的挑战是：在一张名为 `target_table` 的表中，有 `col_1` 到 `col_1000` 共1000个列，其值非0即1。需要高效筛选出所有“行和”大于300的数据。</p>
+        </div>
+
+        <div class="arrow">⬇️</div>
+
+        <!-- 2. 架构反思 -->
+        <div class="card arch-card">
+            <h2 class="card-title arch-title">🏗️ 终极方案（治本）：架构重构 - 拒绝反模式！</h2>
+            <p class="mb-4">在动手解决前，首先要认识到“千列宽表”是数据库设计的**反模式**。最佳实践是进行架构重构，将“宽表”转为“垂直表”。</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-4 border border-red-300 rounded-lg bg-red-50">
+                    <h3 class="font-bold text-red-700">❌ 错误设计 (Wide Table)</h3>
+                    <p>target_table(id, col_1, col_2, ..., col_1000)</p>
+                    <ul class="list-disc list-inside mt-2 text-sm">
+                        <li>维护性差</li>
+                        <li>无法有效索引</li>
+                        <li>查询复杂低效</li>
+                    </ul>
+                </div>
+                <div class="p-4 border border-green-300 rounded-lg bg-green-50">
+                    <h3 class="font-bold text-green-700">✅ 正确设计 (Vertical Table)</h3>
+                    <p>features_table(id, main_id, feature_name, value)</p>
+                    <ul class="list-disc list-inside mt-2 text-sm">
+                        <li>易于扩展</li>
+                        <li>可高效索引 (main_id)</li>
+                        <li>查询清晰、高性能</li>
+                    </ul>
+                </div>
+            </div>
+            <p class="mt-4 font-semibold">虽然重构是最佳选择，但当无法立即实施时，我们需要以下“治标”方案。</p>
+        </div>
+
+        <div class="arrow">⬇️</div>
+        
+        <!-- 3. 临时解决方案 -->
+        <div class="card">
+            <h2 class="card-title">② 紧急修复方案 (适用于小数据量 & 临时需求)</h2>
+            <p>利用 `INFORMATION_SCHEMA` 动态生成求和SQL，避免手动编写1000个列。</p>
+            <div class="code-block">
+                <span class="text-gray-400">-- 关键步骤：拼接求和表达式</span>
+                <br>
+                SELECT GROUP_CONCAT(COLUMN_NAME SEPARATOR '+')
+                <br>
+                FROM INFORMATION_SCHEMA.COLUMNS
+                <br>
+                WHERE TABLE_NAME = 'target_table' AND COLUMN_NAME REGEXP '^col_';
+            </div>
+        </div>
+
+        <!-- 4. 临时方案的陷阱 -->
+        <div class="card warning-card">
+            <h2 class="card-title warning-title">⚠️ 陷阱：`GROUP_CONCAT` 的“隐形杀手”</h2>
+            <p>MySQL的 `group_concat_max_len` 变量默认值通常是 **1024** 字节，1000个列名的拼接长度会远超此限制，导致SQL被截断而出错！</p>
+            <p class="font-bold mt-2">解决方案：在执行前，必须先调大该值！</p>
+            <div class="code-block">
+                SET SESSION group_concat_max_len = 100000; <span class="text-gray-400">-- 设置一个足够大的安全值</span>
+            </div>
+        </div>
+
+        <div class="arrow">⬇️</div>
+
+        <!-- 5. 生产级优化方案 -->
+        <div class="card success-card">
+            <h2 class="card-title success-title">③ 生产级优化方案 (适用于大数据量 & 高频查询)</h2>
+            <p>核心思想：将计算结果**持久化**，用空间换时间，将实时计算的成本降为0。</p>
+            <p class="mt-2"><strong>步骤1:</strong> 添加一个 `STORED` (物理存储) 的计算列，自动维护求和结果。</p>
+            <div class="code-block">
+                ALTER TABLE target_table
+                <br>
+                ADD COLUMN row_total_sum INT AS (col_1 + col_2 + ...) STORED;
+            </div>
+            <p class="mt-4"><strong>步骤2:</strong> 为这个新的计算列创建索引，查询将实现数量级的提速。</p>
+            <div class="code-block">
+                CREATE INDEX idx_row_total_sum ON target_table(row_total_sum);
+            </div>
+            <p class="mt-4"><strong>最终查询:</strong> 变得极其简单和高效！</p>
+            <div class="code-block">
+                SELECT * FROM target_table WHERE row_total_sum > 300;
+            </div>
+        </div>
+
+        <!-- 6. 生产级方案的风险 -->
+        <div class="card warning-card">
+            <h2 class="card-title warning-title">☢️ 重大风险：`ALTER TABLE` 的生产事故！</h2>
+            <p>在有海量数据的线上表直接执行 `ALTER TABLE` 或 `CREATE INDEX`，会**锁住整张表**，导致业务长时间中断，这是**绝对禁止**的危险操作！</p>
+            <p class="font-bold mt-2">安全方案：必须使用在线DDL（Online DDL）工具。</p>
+            <div class="flex justify-around mt-4">
+                <span class="font-mono bg-gray-200 text-gray-800 py-1 px-3 rounded">pt-online-schema-change</span>
+                <span class="font-mono bg-gray-200 text-gray-800 py-1 px-3 rounded">gh-ost</span>
+            </div>
+            <p class="mt-2 text-center text-sm text-gray-600">这些工具可以在不锁表、不影响线上服务的情况下完成表结构变更。</p>
+        </div>
+
+        <div class="arrow">⬇️</div>
+
+        <!-- 7. 终极扩展 -->
+        <div class="card">
+            <h2 class="card-title">④ 终极扩展：超大数据量（>1亿行）</h2>
+            <p>当数据量巨大时，即使有索引，扫描范围依然可能很大。此时可以引入**表分区**。例如按时间分区，查询时带上分区键，MySQL会自动进行**分区裁剪**，只在相关的分区内进行查找，进一步减少扫描量。</p>
+            <p class="mt-4 font-semibold">示例1：为表添加按年份的分区</p>
+            <div class="code-block">
+                <span class="text-gray-400">-- 假设表中有 create_date 字段, 为其添加按年份的分区</span><br>
+                ALTER TABLE target_table<br>
+                PARTITION BY RANGE (YEAR(create_date)) (<br>
+                &nbsp;&nbsp;PARTITION p2023 VALUES LESS THAN (2024),<br>
+                &nbsp;&nbsp;PARTITION p2024 VALUES LESS THAN (2025),<br>
+                &nbsp;&nbsp;PARTITION p2025 VALUES LESS THAN (2026),<br>
+                &nbsp;&nbsp;PARTITION p_future VALUES LESS THAN MAXVALUE<br>
+                );
+            </div>
+            <p class="mt-4 font-semibold">示例2：利用分区裁剪进行高效查询</p>
+            <div class="code-block">
+                <span class="text-gray-400">-- 查询2025年的数据时, MySQL只会扫描 p2025 分区, 极大减少扫描范围</span><br>
+                SELECT * FROM target_table<br>
+                WHERE row_total_sum > 300<br>
+                &nbsp;&nbsp;AND create_date >= '2025-01-01' AND create_date < '2026-01-01';
+            </div>
+        </div>
+
+        <div class="arrow">⬇️</div>
+
+        <!-- 8. 总结 -->
+        <div class="card summary-card">
+            <h2 class="card-title">⑤ 总结：架构师的决策路径</h2>
+            <p>面对复杂的技术问题，一个清晰的决策流程至关重要。以下是解决此类问题的推荐思考路径：</p>
+            <ul class="list-decimal list-inside mt-4 space-y-3 font-medium">
+                <li><span class="bg-purple-100 text-purple-800 py-1 px-2 rounded-md">第一优先级 (治本):</span> **架构重构**。识别出“千列宽表”是反模式，优先考虑通过“垂直分表”从根本上优化设计。这是最具扩展性和可维护性的长远之计。</li>
+                <li><span class="bg-green-100 text-green-800 py-1 px-2 rounded-md">第二优先级 (治标):</span> **持久化计算列 + 索引**。如果短期内无法重构，这是最佳性能优化方案。用空间换时间，将动态计算变为静态索引查找。</li>
+                <li><span class="bg-red-100 text-red-800 py-1 px-2 rounded-md">执行前置条件 (安全):</span> **使用在线DDL工具**。在对生产大表进行 `ALTER` 或 `CREATE INDEX` 操作时，必须使用 `pt-online-schema-change` 或 `gh-ost` 等工具，严防锁表事故。</li>
+                <li><span class="bg-blue-100 text-blue-800 py-1 px-2 rounded-md">终极扩展 (海量数据):</span> **引入表分区**。当优化后的查询因数据行数实在太大（亿级以上）而再次变慢时，采用表分区技术，通过分区裁剪进一步缩小数据扫描范围。</li>
+            </ul>
+        </div>
+
+    </main>
+
+</body>
+</html>

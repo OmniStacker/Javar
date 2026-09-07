@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统稳定性：AI时代的工程师护城河</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+        :root {
+            --bg-color: #0d1117;
+            --card-bg-color: #161b22;
+            --text-color: #c9d1d9;
+            --primary-color: #58a6ff;
+            --secondary-color: #8b949e;
+            --border-color: #30363d;
+            --green-color: #3fb950;
+            --orange-color: #e3b341;
+            --red-color: #f85149;
+            --purple-color: #a371f7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Noto Sans SC', sans-serif;
+            overflow: hidden;
+        }
+
+        .page {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            border-bottom: 2px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 500;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .page-subtitle {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        /* --- Start Page --- */
+        #start-page {
+            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+        }
+
+        .main-title {
+            font-size: 4.5rem;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 10px #58a6ff, 0 0 20px #58a6ff, 0 0 40px #58a6ff, 0 0 80px #58a6ff;
+            animation: glow 2s ease-in-out infinite alternate;
+            text-align: center;
+        }
+
+        .main-subtitle {
+            font-size: 2rem;
+            color: var(--secondary-color);
+            margin-top: 2rem;
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+        
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            max-width: 900px;
+        }
+        .tag {
+            background-color: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--secondary-color);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            animation: fadeIn 0.5s ease-out forwards;
+            opacity: 0;
+        }
+        .tag:hover {
+            color: var(--text-color);
+            border-color: var(--primary-color);
+            transform: translateY(-3px);
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px #58a6ff, 0 0 20px #58a6ff, 0 0 30px #58a6ff;
+            }
+            to {
+                text-shadow: 0 0 20px #58a6ff, 0 0 30px #2a8cff, 0 0 40px #2a8cff;
+            }
+        }
+        /* --- Content Pages --- */
+        .diagram-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: stretch;
+            width: 100%;
+            max-width: 1300px;
+            gap: 20px;
+        }
+
+        .diagram-card {
+            background-color: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .diagram-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .card-title {
+            font-size: 1.75rem;
+            font-weight: 500;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .card-content {
+            font-size: 1.1rem;
+            color: var(--secondary-color);
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .interview-point {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--orange-color);
+            background-color: rgba(227, 179, 65, 0.1);
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        .details-list {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+            align-self: flex-start;
+            width: 100%;
+        }
+        .details-list li {
+            background-color: var(--bg-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-top: 8px;
+            border-left: 3px solid var(--secondary-color);
+        }
+        
+        .flow-arrow {
+            font-size: 2.5rem; color: var(--secondary-color); align-self: center;
+        }
+        
+        .flow-box {
+            background: var(--card-bg-color); border: 1px solid var(--border-color); padding: 15px 25px; border-radius: 8px; text-align: center; font-size: 1.2rem;
+        }
+        
+        .split-container {
+            display: flex; width: 100%; max-width: 1300px; gap: 40px;
+        }
+        .split-panel {
+            flex: 1; background: var(--card-bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 25px;
+        }
+        .panel-title {
+            font-size: 1.75rem; color: var(--primary-color); margin-bottom: 20px; text-align: center;
+        }
+        .panel-item {
+            background: var(--bg-color); padding: 12px; border-radius: 5px; margin-top: 10px; border-left: 3px solid var(--secondary-color); font-size: 1.1rem;
+        }
+        .panel-sub-title {
+            text-align: center; color: var(--purple-color); font-weight: 500; margin-top: 20px; font-size: 1.1rem;
+        }
+
+        /* --- End Page --- */
+        #end-page .golden-sentence {
+            margin-top: 3rem;
+            font-size: 2.5rem;
+            font-weight: 500;
+            color: var(--orange-color);
+            text-align: center;
+            line-height: 1.6;
+            max-width: 1000px;
+        }
+        
+        .footer-nav {
+            position: absolute; bottom: 20px; font-size: 1rem; color: var(--secondary-color); animation: blink 1.5s infinite;
+        }
+        
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+    </style>
+</head>
+<body>
+
+    <section id="start-page" class="page">
+        <h1 class="main-title">系统稳定性：AI时代的工程师护城河</h1>
+        <p class="main-subtitle">当AI负责创造，顶尖工程师负责守护</p>
+        <div class="tag-container">
+            <span class="tag" style="animation-delay: 0.1s;">可观测性</span>
+            <span class="tag" style="animation-delay: 0.2s;">弹性架构</span>
+            <span class="tag" style="animation-delay: 0.3s;">高可用部署</span>
+            <span class="tag" style="animation-delay: 0.4s;">数据一致性</span>
+            <span class="tag" style="animation-delay: 0.5s;">容量规划</span>
+            <span class="tag" style="animation-delay: 0.6s;">应急预案</span>
+            <span class="tag" style="animation-delay: 0.7s;">限流熔断</span>
+            <span class="tag" style="animation-delay: 0.8s;">分布式事务</span>
+            <span class="tag" style="animation-delay: 0.9s;">灰度发布</span>
+            <span class="tag" style="animation-delay: 1s;">混沌工程</span>
+        </div>
+        <div class="footer-nav">按 ▼ 键开始</div>
+    </section>
+
+    <section id="page-observability" class="page">
+        <h2 class="page-title">1. 可观测性：系统的眼睛</h2>
+        <p class="page-subtitle">核心思想：从“感觉出错了”升级到“精确定位错误”</p>
+        <div class="diagram-container">
+            <div class="diagram-card">
+                <h3 class="card-title">指标监控 (Metrics)</h3>
+                <p class="card-content">系统健康度的量化体现。CPU、内存、QPS、延迟等，是发现异常的第一道防线。</p>
+            </div>
+            <div class="diagram-card">
+                <h3 class="card-title">链路追踪 (Tracing)</h3>
+                <p class="card-content">还原请求的完整路径。快速定位分布式系统中的性能瓶颈和服务依赖问题。</p>
+            </div>
+            <div class="diagram-card">
+                <h3 class="card-title">日志分析 (Logging)</h3>
+                <p class="card-content">事件的详细记录。提供最丰富的上下文信息，是问题排查和事后复盘的最终依据。</p>
+            </div>
+        </div>
+    </section>
+    
+    <section id="page-resilience" class="page">
+        <h2 class="page-title">2. 弹性架构：系统的护盾</h2>
+        <p class="page-subtitle">确保在极端压力下，系统不会全线崩溃</p>
+        <div class="diagram-container">
+            <div class="diagram-card">
+                <h3 class="card-title">🚦 智能限流</h3>
+                <p class="card-content">为系统设置“最大接待量”，优雅地拒绝超出能力范围的请求。</p>
+                <span class="interview-point">面试要点</span>
+                <ul class="details-list">
+                    <li>固定窗口：实现简单，有临界突刺问题</li>
+                    <li>滑动窗口：更精确，实现稍复杂</li>
+                    <li>令牌桶：允许一定程度的突发流量</li>
+                    <li>漏桶：强制平滑流量，出口速率恒定</li>
+                </ul>
+            </div>
+            <div class="diagram-card">
+                <h3 class="card-title">🛡️ 服务熔断</h3>
+                <p class="card-content">当依赖的服务持续出错时，主动“拉闸”，防止故障蔓延导致雪崩。</p>
+                <span class="interview-point">面试要点</span>
+                <ul class="details-list">
+                    <li>CLOSED (闭合): 正常请求</li>
+                    <li>OPEN (打开): 快速失败，拒绝所有请求</li>
+                    <li>HALF-OPEN (半开): 少量试探，探测服务是否恢复</li>
+                </ul>
+            </div>
+            <div class="diagram-card">
+                <h3 class="card-title">⚖️ 服务降级</h3>
+                <p class="card-content">在资源紧张时，暂时关闭或简化非核心功能，力保核心业务可用。</p>
+                <span class="interview-point">核心思想</span>
+                <ul class="details-list">
+                    <li>丢车保帅，有损服务</li>
+                    <li>例如：关闭推荐、返回兜底数据</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section id="page-deployment" class="page">
+        <h2 class="page-title">3. 高可用部署：无感发布</h2>
+        <p class="page-subtitle">发布新功能，不影响用户体验，是专业团队的基本功</p>
+        <div class="split-container">
+            <div class="split-panel">
+                <h3 class="panel-title">🔵 蓝绿部署 🟢</h3>
+                <p class="panel-item">准备与线上环境完全一致的V2环境</p>
+                <p class="panel-item">通过负载均衡将100%流量瞬间切到V2</p>
+                <p class="panel-item">出现问题？瞬间切回V1</p>
+                <p class="panel-sub-title">优点：零停机，回滚极快 / 缺点：需要双倍资源</p>
+            </div>
+            <div class="split-panel">
+                <h3 class="panel-title">🔘 灰度发布 (金丝雀)</h3>
+                <p class="panel-item">将少量流量 (如1%用户) 导入V2</p>
+                <p class="panel-item">持续监控V2版本的健康状况和业务指标</p>
+                <p class="panel-item">验证无误后，逐步扩大流量比例至100%</p>
+                <p class="panel-sub-title">优点：风险可控，影响小 / 缺点：发布周期长，管理复杂</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="page-consistency" class="page">
+        <h2 class="page-title">4. 数据一致性：事务的艺术</h2>
+        <p class="page-subtitle">面试高频区：如何在分布式世界里保证“钱货两清”</p>
+        <div class="diagram-container">
+            <div class="diagram-card" style="flex: 2;">
+                <h3 class="card-title">分布式事务核心挑战</h3>
+                <p class="card-content">一次业务操作跨越多个独立的服务（数据库），需要保证它们要么都成功，要么都失败。</p>
+                <div class="flow-container" style="display:flex; justify-content:center; gap: 20px; width:100%;">
+                  <div class="flow-box">创建订单</div><div class="flow-arrow">→</div><div class="flow-box">扣减库存</div><div class="flow-arrow">→</div><div class="flow-box">增加积分</div>
+                </div>
+            </div>
+            <div class="diagram-card" style="flex: 3;">
+                <h3 class="card-title">常见解决方案对比</h3>
+                <ul class="details-list">
+                    <li><b>2PC/XA:</b> 强一致性，数据库层面支持。但同步阻塞，性能差，单点问题严重。</li>
+                    <li><b>TCC:</b> 业务层面实现两阶段。性能高，但开发复杂，对业务侵入大。</li>
+                    <li><b>SAGA:</b> 长事务方案，一阶段正向执行，二阶段反向补偿。最终一致，适合流程长、容忍临时不一致的场景。</li>
+                    <li><b>本地消息表:</b> 借助消息队列的最终一致性方案。实现简单可靠，是业界广泛应用的主流选择。</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section id="page-capacity" class="page">
+        <h2 class="page-title">5. 规划与应急：攻防之道</h2>
+        <p class="page-subtitle">事前主动规划，事后从容应对</p>
+        <div class="split-container">
+            <div class="split-panel">
+                <h3 class="panel-title">事前规划：容量评估 📈</h3>
+                <p class="panel-item"><b>基准测试：</b>摸清单机或单个服务的性能极限。</p>
+                <p class="panel-item"><b>压力测试：</b>模拟真实流量，找到整个系统的瓶颈点。</p>
+                <p class="panel-item"><b>容量计算：</b>根据业务增长目标（如QPS、用户量）推算所需资源，并预留Buffer。</p>
+                <p class="panel-sub-title">核心思想：将业务目标转化为技术资源需求</p>
+            </div>
+            <div class="split-panel">
+                <h3 class="panel-title">事后应急：故障处理 🚨</h3>
+                <p class="panel-item"><b>故障预案 (Playbook):</b> 建立标准处理流程（SOP），明确负责人、步骤、工具。</p>
+                <p class="panel-item"><b>故障演练 (Chaos):</b> 通过混沌工程主动注入故障，检验预案有效性和系统薄弱点。</p>
+                <p class="panel-item"><b>故障复盘 (Post-mortem):</b> 深入分析根因，杜绝同类问题再次发生，持续改进。</p>
+                <p class="panel-sub-title">核心思想：从被动响应转向主动防御</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="end-page" class="page">
+        <h2 class="page-title">总结：稳定性建设四大核心</h2>
+        <div class="diagram-container" style="gap: 40px;">
+            <div class="flow-box" style="font-size: 1.5rem; padding: 25px;">预防为主</div>
+            <div class="flow-box" style="font-size: 1.5rem; padding: 25px;">快速发现</div>
+            <div class="flow-box" style="font-size: 1.5rem; padding: 25px;">快速恢复</div>
+            <div class="flow-box" style="font-size: 1.5rem; padding: 25px;">持续改进</div>
+        </div>
+        <p class="golden-sentence">在AI可以生成代码的时代，<br>保障系统稳定运行的能力，是AI无法替代的核心护城河。</p>
+        <div class="footer-nav">按 ▲ 键返回</div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const pages = document.querySelectorAll('.page');
+            let currentPageIndex = 0;
+            const totalPages = pages.length;
+
+            const scrollToPage = (index) => {
+                if (index >= 0 && index < totalPages) {
+                    pages[index].scrollIntoView({ behavior: 'smooth' });
+                    currentPageIndex = index;
+                }
+            };
+            
+            let scrollTimer = null;
+            const handleScroll = (delta) => {
+                if (scrollTimer) return;
+                if (delta > 0) { // Down
+                    if (currentPageIndex < totalPages - 1) {
+                        scrollToPage(currentPageIndex + 1);
+                    }
+                } else { // Up
+                    if (currentPageIndex > 0) {
+                        scrollToPage(currentPageIndex - 1);
+                    }
+                }
+                scrollTimer = setTimeout(() => {
+                    scrollTimer = null;
+                }, 600); // Debounce to prevent rapid scrolling
+            };
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    handleScroll(1);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    handleScroll(-1);
+                }
+            });
+            
+            window.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                handleScroll(e.deltaY);
+            }, { passive: false });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阿里二面：如何保证消息队列的顺序性？工作3年了还不会，有点扎心！</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); } 50% { box-shadow: 0 0 20px 10px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); } 50% { box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        @keyframes arrow-flow-right { 0% { opacity: 0; transform: translateX(-20px); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateX(20px); } }
+        @keyframes stress { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .diagram-node { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 1.5rem; border-radius: 1rem; font-weight: 600; text-align: center; border: 1px solid; transition: all 0.3s ease; }
+        .diagram-node:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(148, 163, 184, 0.2); }
+        .diagram-arrow { font-size: 2.5rem; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 1rem; position: relative; }
+        .diagram-node-bad { animation: subtle-pulse-red 2.5s infinite ease-in-out, shake 3s infinite ease-in-out; }
+        .diagram-node-good { animation: subtle-pulse-green 2.5s infinite ease-in-out; }
+        
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .annotation { position: absolute; background-color: rgba(239, 68, 68, 0.8); color: white; padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: bold; white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场 -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight gradient-text bg-gradient-to-r from-amber-400 to-yellow-300">阿里二面：如何保证消息队列的顺序性？</h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">工作3年了还不会，有点扎心！</h2>
+            <div class="content-panel mt-10 p-6 md:p-8 border-sky-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-around gap-6 md:gap-4 text-white">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-4"><i class="fa-solid fa-file-invoice-dollar text-4xl text-sky-300"></i><h4>业务请求</h4></div>
+                    <div class="diagram-arrow text-4xl text-sky-400/50"><i class="fa-solid fa-angles-right"></i></div>
+                    <div class="diagram-node diagram-node-bad border-red-600/50 bg-red-900/30 p-4"><i class="fa-solid fa-shuffle text-4xl text-red-400"></i><h4>并发下的无序处理</h4></div>
+                    <div class="diagram-arrow text-4xl text-sky-400/50"><i class="fa-solid fa-angles-right"></i></div>
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-4"><i class="fa-solid fa-cubes-stacked text-4xl text-violet-300"></i><h4>RocketMQ</h4></div>
+                    <div class="diagram-arrow text-4xl text-sky-400/50"><i class="fa-solid fa-angles-right"></i></div>
+                    <div class="diagram-node diagram-node-good border-teal-500/80 bg-teal-900/40 p-4"><i class="fa-solid fa-list-check text-4xl text-teal-300"></i><h4>分区有序消费</h4></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 为什么会乱序 -->
+    <section id="slide2" class="slide">
+        <div class="w-full max-w-6xl mx-auto">
+            <h2 class="text-center text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-red-500 to-orange-400">痛点：为什么默认情况会乱序？</h2>
+            <p class="text-center mt-4 text-xl text-slate-400">高吞吐的代价：并发消费打破了“先进先出”的理想模型。</p>
+            <div class="content-panel mt-8 p-8 border-red-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 错误演示 -->
+                    <div class="border-2 border-dashed border-red-500/50 rounded-xl p-6">
+                        <h3 class="text-center text-2xl font-bold text-red-400 mb-6"><i class="fa-solid fa-circle-xmark"></i> 并发下的混乱</h3>
+                        <div class="flex justify-between items-center">
+                            <div class="flex flex-col gap-2">
+                                <div class="diagram-node bg-slate-800/50 border-slate-600 text-sm p-2">P1</div>
+                                <div class="diagram-node bg-slate-800/50 border-slate-600 text-sm p-2">P2</div>
+                            </div>
+                            <div class="text-2xl text-red-400/50"><i class="fa-solid fa-angles-right"></i></div>
+                            <div class="diagram-node bg-red-900/30 border-red-600/50 p-3"><i class="fa-brands fa-rocketchat text-3xl text-red-300"></i><h4 class="font-bold">Topic</h4></div>
+                            <div class="text-2xl text-red-400/50"><i class="fa-solid fa-angles-right"></i></div>
+                            <div class="flex flex-col gap-2">
+                                <div class="diagram-node bg-slate-800/50 border-slate-600 text-smp-2">C1 (支付)</div>
+                                  <div class="diagram-node bg-slate-800/50 border-slate-600 text-smp-2">C2 (创建)</div>
+                              </div>
+                          </div>
+                          <p class="text-center text-red-300 mt-4 text-sm font-semibold">错误：支付消息先于创建消息被处理！</p>
+                      </div>
+                      <!-- 正确演示 -->
+                      <div class="border-2 border-dashed border-green-500/50 rounded-xl p-6">
+                          <h3 class="text-center text-2xl font-bold text-green-400 mb-6"><i class="fa-solid fa-circle-check"></i> 理想中的顺序</h3>
+                          <div class="flex justify-between items-center">
+                              <div class="diagram-node bg-slate-800/50 border-slate-600 text-sm p-2">P1</div>
+                              <div class="text-2xl text-green-400/50"><i class="fa-solid fa-angles-right"></i></div>
+                              <div class="diagram-node bg-green-900/30 border-green-600/50 p-3"><i class="fa-brands fa-rocketchat text-3xl text-green-300"></i><h4 class="font-bold">Topic</h4></div>
+                              <div class="text-2xl text-green-400/50"><i class="fa-solid fa-angles-right"></i></div>
+                              <div class="flex flex-col gap-2">
+                                  <div class="diagram-node bg-slate-800/50 border-slate-600 text-sm p-2">C1 (创建)</div>
+                                  <div class="diagram-node bg-slate-800/50 border-slate-600 text-sm p-2 mt-2">C1 (支付)</div>
+                              </div>
+                          </div>
+                           <p class="text-center text-green-300 mt-4 text-sm font-semibold">正确：同一消费者按顺序处理消息</p>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </section>
+
+      <!-- Slide 3: 发送端解决方案 -->
+    <section id="slide3" class="slide">
+        <div class="w-full max-w-6xl mx-auto">
+            <h2 class="text-center text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-cyan-400">发送端：将关联消息送入“同一车道”</h2>
+            <p class="text-center mt-4 text-xl text-slate-400">使用 `MessageQueueSelector`，按业务标识（如订单ID）选择队列。</p>
+            <div class="content-panel mt-8 p-8 border-sky-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-center gap-6 text-center">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-server text-5xl text-sky-300"></i><h4 class="font-bold mt-2">生产者</h4><p class="text-xs text-slate-400">OrderID: A001</p></div>
+                    <div class="diagram-arrow text-4xl text-sky-300 flex flex-col gap-1"><i class="fa-solid fa-right-long"></i></div>
+                    <div class="diagram-node bg-sky-900/40 border-sky-500/80 p-6"><i class="fa-solid fa-filter-circle-dollar text-5xl text-sky-200"></i><h4 class="font-bold mt-2">MessageQueueSelector</h4><p class="text-sm font-mono text-amber-300">hash("A001") % 3 = 1</p></div>
+                    <div class="diagram-arrow text-4xl text-sky-300 flex flex-col gap-1"><i class="fa-solid fa-right-long"></i></div>
+                    <div class="flex flex-col gap-4">
+                        <div class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-48"><h4 class="font-bold">Queue 0</h4></div>
+                        <div class="relative diagram-node bg-green-900/30 border-green-500 p-3 w-48">
+                            <h4 class="font-bold">Queue 1</h4>
+                            <!-- FIX: Annotation on the right with text wrapping -->
+                            <div class="absolute left-full ml-4 top-1/2 -translate-y-1/2 flex items-center gap-2 w-32">
+                                <i class="fa-solid fa-arrow-left text-green-400 text-2xl flex-shrink-0"></i>
+                                <span class="text-green-300 font-semibold text-sm text-left">所有A001消息进入此队列</span>
+                            </div>
+                        </div>
+                        <div class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-48"><h4 class="font-bold">Queue 2</h4></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+      
+      <!-- Slide 4: 消费端解决方案 -->
+       <section id="slide4" class="slide">
+        <div class="w-full max-w-6xl mx-auto">
+            <h2 class="text-center text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-400 to-purple-400">消费端：为“指定车道”安排“专属收费员”</h2>
+            <p class="text-center mt-4 text-xl text-slate-400">使用 `MessageListenerOrderly`，锁定队列，确保单线程消费。</p>
+            <div class="content-panel mt-8 p-6 md:p-8 border-violet-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-10">
+                    
+                    <!-- Flow 1: Active Lock -->
+                    <div class="flow-lane border-purple-500/30">
+                        <div class="flex flex-col items-center gap-4">
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 w-full"><h4 class="font-bold">Queue 0</h4></div>
+                            <div class="relative h-24 w-full flex justify-center">
+                                <div class="data-flow-pipe"></div>
+                                <i class="fa-solid fa-lock text-2xl text-amber-400 absolute top-1/2 -translate-y-1/2 bg-[#1e293b] p-2 rounded-full ring-4 ring-[#1e293b]"></i>
+                            </div>
+                            <div class="diagram-node bg-purple-900/40 border-purple-500/80 w-full active-consumer"><i class="fa-solid fa-robot text-4xl text-sky-300"></i><h4 class="font-bold mt-2">线程 C1</h4><p class="text-xs font-semibold text-purple-300">处理中 (Processing)</p></div>
+                        </div>
+                    </div>
+
+                    <!-- Flow 2: Active Lock -->
+                    <div class="flow-lane border-purple-500/30">
+                        <div class="flex flex-col items-center gap-4">
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 w-full"><h4 class="font-bold">Queue 1</h4></div>
+                            <div class="relative h-24 w-full flex justify-center">
+                                <div class="data-flow-pipe"></div>
+                                <i class="fa-solid fa-lock text-2xl text-amber-400 absolute top-1/2 -translate-y-1/2 bg-[#1e293b] p-2 rounded-full ring-4 ring-[#1e293b]"></i>
+                            </div>
+                            <div class="diagram-node bg-purple-900/40 border-purple-500/80 w-full active-consumer"><i class="fa-solid fa-robot text-4xl text-sky-300"></i><h4 class="font-bold mt-2">线程 C2</h4><p class="text-xs font-semibold text-purple-300">处理中 (Processing)</p></div>
+                        </div>
+                    </div>
+
+                    <!-- Flow 3: Idle/Waiting -->
+                    <div class="flow-lane border-slate-700/50">
+                        <div class="flex flex-col items-center gap-4 opacity-60">
+                            <div class="diagram-node bg-slate-800/50 border-slate-700 w-full"><h4 class="font-bold">Queue 2</h4></div>
+                            <div class="relative h-24 w-full flex justify-center">
+                                <div class="w-1 h-full border-l-2 border-dashed border-slate-600"></div>
+                                <i class="fa-solid fa-hourglass-half text-2xl text-slate-500 absolute top-1/2 -translate-y-1/2 bg-[#1e293b] p-2 rounded-full ring-4 ring-[#1e293b]"></i>
+                            </div>
+                            <div class="diagram-node bg-slate-800/50 border-slate-700 w-full"><i class="fa-solid fa-robot text-4xl text-slate-500"></i><h4 class="font-bold mt-2">线程 C3</h4><p class="text-xs font-semibold text-slate-400">空闲 (Idle)</p></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+      <!-- Slide 5: 对比分析 -->
+      <section id="slide5" class="slide">
+          <div class="text-center w-full max-w-6xl mx-auto">
+              <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-400 to-yellow-300">对比分析：分区顺序 vs. 全局顺序</h2>
+              <p class="mt-4 text-xl text-slate-400">性能与顺序之间的权衡艺术。</p>
+              <div class="content-panel mt-8 p-6 md:p-8 border-amber-500/30 overflow-x-auto">
+                  <table class="w-full text-left text-base md:text-lg border-collapse">
+                      <thead>
+                          <tr class="border-b border-slate-600">
+                              <th class="p-4">特性维度</th>
+                              <th class="p-4">全局顺序</th>
+                              <th class="p-4">分区顺序 (RocketMQ)</th>
+                          </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-700">
+                          <tr class="hover:bg-slate-800/20 transition-colors">
+                              <td class="p-4 font-bold">吞吐量</td>
+                              <td class="p-4 text-red-400 font-bold"><i class="fa-solid fa-arrow-down mr-2"></i>极低</td>
+                              <td class="p-4 text-green-400 font-bold"><i class="fa-solid fa-arrow-up mr-2"></i>极高</td>
+                          </tr>
+                          <tr class="hover:bg-slate-800/20 transition-colors">
+                              <td class="p-4 font-bold">扩展性</td>
+                              <td class="p-4 text-red-400 font-bold"><i class="fa-solid fa-arrow-down mr-2"></i>差</td>
+                              <td class="p-4 text-green-400 font-bold"><i class="fa-solid fa-arrow-up mr-2"></i>好</td>
+                          </tr>
+                          <tr class="hover:bg-slate-800/20 transition-colors">
+                              <td class="p-4 font-bold">实现复杂度</td>
+                              <td class="p-4">简单</td>
+                              <td class="p-4">中等</td>
+                          </tr>
+                          <tr class="hover:bg-slate-800/20 transition-colors">
+                              <td class="p-4 font-bold">适用场景</td>
+                              <td class="p-4">极罕见</td>
+                              <td class="p-4 text-violet-300 font-bold"><i class="fa-solid fa-crown mr-2"></i>事实标准</td>
+                          </tr>
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+      </section>
+
+      <!-- Slide 6: 最终总结 -->
+      <section id="slide6" class="slide">
+          <div class="w-full max-w-6xl mx-auto text-center">
+              <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-emerald-400 to-green-400">总结：面试官的最佳答案</h2>
+              <p class="mt-4 text-xl text-slate-400">一张图掌握RocketMQ顺序消费的精髓。</p>
+              <div class="content-panel mt-8 p-8 border-green-500/30">
+                  <div class="flex flex-col md:flex-row items-center justify-around gap-4">
+                      <div class="diagram-node bg-slate-800/50 border-slate-600 p-4"><i class="fa-solid fa-server text-4xl text-sky-300"></i><h4 class="font-bold">生产者</h4></div>
+                      <div class="diagram-arrow text-3xl text-green-300"><i class="fa-solid fa-arrow-right-long" style="animation: arrow-flow-right 2s infinite;"></i><span class="text-sm font-mono absolute -bottom-6">Selector</span></div>
+                      <div class="diagram-node bg-slate-800/50 border-slate-600 p-4"><i class="fa-solid fa-filter text-4xl text-amber-300"></i><h4 class="font-bold">分区键</h4></div>
+                      <div class="diagram-arrow text-3xl text-green-300"><i class="fa-solid fa-arrow-right-long" style="animation: arrow-flow-right 2s infinite 0.5s;"></i></div>
+                      <div class="diagram-node diagram-node-good bg-green-900/40 border-green-500/80 p-4"><i class="fa-solid fa-layer-group text-4xl text-green-300"></i><h4 class="font-bold">单一队列</h4></div>
+                      <div class="diagram-arrow text-3xl text-green-300"><i class="fa-solid fa-arrow-right-long" style="animation: arrow-flow-right 2s infinite 1s;"></i><span class="text-sm font-mono absolute -bottom-6">Lock</span></div>
+                      <div class="diagram-node diagram-node-good bg-green-900/40 border-green-500/80 p-4"><i class="fa-solid fa-robot text-4xl text-green-300"></i><h4 class="font-bold">单一线程</h4></div>
+                      <div class="diagram-arrow text-3xl text-green-300"><i class="fa-solid fa-arrow-right-long" style="animation: arrow-flow-right 2s infinite 1.5s;"></i></div>
+                      <div class="diagram-node bg-slate-800/50 border-slate-600 p-4"><i class="fa-solid fa-circle-check text-4xl text-teal-300"></i><h4 class="font-bold">有序消费</h4></div>
+                  </div>
+              </div>
+          </div>
+      </section>
+
+      <!-- 页脚 -->
+      <footer class="text-center py-8 text-slate-500">
+          阿里二面：如何保证消息队列的顺序性？工作3年了还不会，有点扎心！
+      </footer>
+
+      <script>
+          document.addEventListener('DOMContentLoaded', () => {
+              const slides = document.querySelectorAll('.slide');
+              const navContainer = document.getElementById('nav-dots');
+              if (slides.length === 0) return;
+              slides.forEach(slide => {
+                  const dot = document.createElement('a');
+                  dot.href = `#${slide.id}`; 
+                  navContainer.appendChild(dot);
+              });
+              const navDots = navContainer.querySelectorAll('a');
+              const observer = new IntersectionObserver((entries) => {
+                  entries.forEach(entry => {
+                      if (entry.isIntersecting) {
+                          const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                          navDots.forEach(dot => dot.classList.remove('active'));
+                          if (activeDot) { activeDot.classList.add('active'); }
+                      }
+                  });
+              }, { root: null, threshold: 0.5 });
+              slides.forEach(slide => { observer.observe(slide); });
+          });
+      </script>
+  </body>
+  </html>

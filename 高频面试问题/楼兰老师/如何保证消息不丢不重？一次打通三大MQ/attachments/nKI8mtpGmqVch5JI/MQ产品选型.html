@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>消息队列终极选型指南</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --primary-color: #bb86fc;
+            --rabbitmq-color: #ff6600;
+            --kafka-color: #00a0e9;
+            --rocketmq-color: #3cba54;
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden; /* Prevent default scrollbars */
+        }
+
+        .section {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+            position: relative;
+        }
+        
+        .section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- Intro Section --- */
+        #intro {
+            background: linear-gradient(45deg, #1a1a1a, #2c2c2c);
+        }
+        #intro h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--primary-color), #03dac6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            animation: fadeInDown 1s ease-out;
+        }
+        #intro p {
+            font-size: 1.5rem;
+            color: #b0b0b0;
+            margin-bottom: 40px;
+            animation: fadeInUp 1s ease-out 0.5s;
+            animation-fill-mode: backwards;
+        }
+        
+        /* --- Core Problem Section --- */
+        #problem h2 {
+            font-size: 2.5rem;
+            margin-bottom: 50px;
+        }
+        .problem-container {
+            display: flex;
+            justify-content: space-around;
+            width: 80%;
+            max-width: 1000px;
+        }
+        .problem-card {
+            background: var(--card-color);
+            padding: 30px;
+            border-radius: 15px;
+            width: 45%;
+            border: 1px solid #333;
+        }
+        .problem-card h3 {
+            font-size: 1.8rem;
+            color: #ff5252;
+            margin-bottom: 20px;
+        }
+         .problem-card.repeat h3 {
+            color: #ffc107;
+        }
+        .problem-card p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        .problem-card svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+        }
+
+        /* --- MQ Sections --- */
+        .section h2 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .section .subtitle {
+            font-size: 1.3rem;
+            color: #aaa;
+            margin-bottom: 50px;
+        }
+        .mq-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 60px;
+            width: 90%;
+            max-width: 1200px;
+        }
+        .mq-icon {
+            flex: 1;
+            max-width: 300px;
+        }
+        .mq-icon svg {
+            width: 100%;
+            height: auto;
+        }
+        .mq-points {
+            flex: 1.5;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .point {
+            background: var(--card-color);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid;
+            transition: transform 0.3s ease;
+        }
+        .point:hover {
+            transform: translateX(10px);
+        }
+        .point strong {
+            display: block;
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+        .point p {
+            font-size: 1rem;
+            color: #b0b0b0;
+        }
+
+        #rabbitmq .point { border-color: var(--rabbitmq-color); }
+        #rabbitmq strong { color: var(--rabbitmq-color); }
+        #kafka .point { border-color: var(--kafka-color); }
+        #kafka strong { color: var(--kafka-color); }
+        #rocketmq .point { border-color: var(--rocketmq-color); }
+        #rocketmq strong { color: var(--rocketmq-color); }
+        
+        /* --- Selection Section --- */
+        #selection .selection-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            width: 90%;
+            max-width: 1200px;
+            margin-top: 40px;
+        }
+        .selection-card {
+            background: var(--card-color);
+            padding: 30px;
+            border-radius: 15px;
+            border-top: 5px solid;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .selection-card:hover {
+            transform: translateY(-10px);
+        }
+        .selection-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+        .selection-card .tagline {
+            font-size: 1.1rem;
+            font-style: italic;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+        .selection-card ul {
+            list-style: none;
+            text-align: left;
+            padding-left: 10px;
+        }
+        .selection-card li {
+            margin-bottom: 10px;
+            position: relative;
+            padding-left: 25px;
+        }
+        .selection-card li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+        #card-rabbitmq { border-color: var(--rabbitmq-color); }
+        #card-rabbitmq h3 { color: var(--rabbitmq-color); }
+        #card-rabbitmq li::before { color: var(--rabbitmq-color); }
+        #card-rabbitmq:hover { box-shadow: 0 0 20px var(--rabbitmq-color); }
+
+        #card-kafka { border-color: var(--kafka-color); }
+        #card-kafka h3 { color: var(--kafka-color); }
+        #card-kafka li::before { color: var(--kafka-color); }
+        #card-kafka:hover { box-shadow: 0 0 20px var(--kafka-color); }
+
+        #card-rocketmq { border-color: var(--rocketmq-color); }
+        #card-rocketmq h3 { color: var(--rocketmq-color); }
+        #card-rocketmq li::before { color: var(--rocketmq-color); }
+        #card-rocketmq:hover { box-shadow: 0 0 20px var(--rocketmq-color); }
+
+        /* --- Conclusion Section --- */
+        #conclusion {
+            border-bottom: none;
+            background: linear-gradient(45deg, #2c2c2c, #1a1a1a);
+        }
+        #conclusion h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1.4;
+            max-width: 800px;
+            background: linear-gradient(90deg, #e0e0e0, #b0b0b0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        /* --- Animations --- */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* --- Responsive --- */
+        @media (max-width: 900px) {
+            .mq-container {
+                flex-direction: column;
+            }
+            .mq-icon {
+                max-width: 200px;
+            }
+            #selection .selection-grid {
+                grid-template-columns: 1fr;
+            }
+            .problem-container {
+                flex-direction: column;
+                gap: 30px;
+                width: 90%;
+            }
+            .problem-card {
+                width: 100%;
+            }
+            #intro h1 { font-size: 3rem; }
+            .section h2 { font-size: 2.2rem; }
+            #conclusion h1 { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. 开场页 -->
+    <section id="intro" class="section visible">
+        <h1>消息队列：面试通关的核武器</h1>
+        <p>从防丢防重到三巨头选型，一次性帮你通关。</p>
+    </section>
+
+    <!-- 2. 核心痛点 -->
+    <section id="problem" class="section">
+        <h2>为什么「不丢不重」是核心命门？</h2>
+        <div class="problem-container">
+            <div class="problem-card loss">
+                <svg viewBox="0 0 1024 1024" fill="#ff5252"><path d="M512 85.333333c-235.648 0-426.666667 191.018667-426.666667 426.666667s191.018667 426.666667 426.666667 426.666667 426.666667-191.018667 426.666667-426.666667S747.648 85.333333 512 85.333333z m0 768c-186.325333 0-337.834667-151.509333-337.834667-337.834667S325.674667 177.664 512 177.664s337.834667 151.509333 337.834667 337.834666S698.325333 853.333333 512 853.333333z" /><path d="M648.533333 375.466667 375.466667 648.533333l45.269333 45.269334 273.066667-273.066667z" /><path d="M375.466667 375.466667l273.066666 273.066666 45.269334-45.269333-273.066667-273.066666z" /></svg>
+                <h3>消息丢失</h3>
+                <p>电商场景：用户下了单，收不到货。<br>金融场景：转账不到账，资金损失。</p>
+            </div>
+            <div class="problem-card repeat">
+                 <svg viewBox="0 0 1024 1024" fill="#ffc107"><path d="M888.6 247.8c-13.2-18.2-35.6-24.8-55.4-17.2L512 332.2 190.8 230.6c-19.8-7.6-42.2-1-55.4 17.2-13.2 18.2-16.2 42.4-7.2 63.6L214.6 512 128.2 712.2c-9 21.2-6 45.4 7.2 63.6 13.2 18.2 35.6 24.8 55.4 17.2L512 691.4l321.2 101.4c19.8 7.6 42.2 1 55.4-17.2 13.2-18.2 16.2-42.4 7.2-63.6L797.4 512l86.4-200.6c9-21.2 6-45.4-7.2-63.6zM512 606.2L244.4 691.4 316.2 512 244.4 332.2 512 417.4V606.2z m267.6 85.2L512 606.2V417.4l267.6-85.2L707.8 512l71.8 179.4z" /></svg>
+                <h3>消息重复</h3>
+                <p>电商场景：一个订单，发了两次货。<br>金融场景：一次转账，扣了两次款。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. RabbitMQ -->
+    <section id="rabbitmq" class="section">
+        <h2>RabbitMQ</h2>
+        <p class="subtitle">英伦绅士的严谨范儿</p>
+        <div class="mq-container">
+            <div class="mq-icon">
+                <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M100 20C144.183 20 180 55.8172 180 100C180 144.183 144.183 180 100 180C55.8172 180 20 144.183 20 100C20 55.8172 55.8172 20 100 20Z" stroke="var(--rabbitmq-color)" stroke-width="10"/>
+                    <path d="M60 70H140" stroke="var(--rabbitmq-color)" stroke-width="10" stroke-linecap="round"/>
+                    <path d="M50 70C50 58.9543 58.9543 50 70 50H130C141.046 50 150 58.9543 150 70V70" stroke="var(--rabbitmq-color)" stroke-width="10" stroke-linecap="round"/>
+                    <path d="M130 140C130 128.954 121.046 120 110 120H90C78.9543 120 70 128.954 70 140" stroke="var(--rabbitmq-color)" stroke-width="10" stroke-linecap="round"/>
+                    <path d="M100 120V100" stroke="var(--rabbitmq-color)" stroke-width="10" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="mq-points">
+                <div class="point">
+                    <strong>生产者：确认机制</strong>
+                    <p>事务或Confirm机制，确保消息抵达Broker。</p>
+                </div>
+                 <div class="point">
+                    <strong>Broker：持久化 + 镜像</strong>
+                    <p>队列与消息均持久化，配合镜像队列保证高可用。</p>
+                </div>
+                <div class="point">
+                    <strong>消费者：手动ACK</strong>
+                    <p>业务处理成功后，手动确认，防止消息丢失。</p>
+                </div>
+                <div class="point">
+                    <strong>RabbitMQ 如何去重？</strong>
+                    <p>依赖消费端，例如根据唯一ID判断是否已处理。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Kafka -->
+    <section id="kafka" class="section">
+        <h2>Kafka</h2>
+        <p class="subtitle">做事毛躁的暴躁老哥</p>
+        <div class="mq-container">
+            <div class="mq-icon">
+                <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M100 20L125.878 74.1217L180 100L125.878 125.878L100 180L74.1217 125.878L20 100L74.1217 74.1217L100 20Z" stroke="var(--kafka-color)" stroke-width="10" stroke-linejoin="round"/>
+                    <path d="M100 55V145" stroke="var(--kafka-color)" stroke-width="10" stroke-linecap="round"/>
+                    <path d="M55 100H145" stroke="var(--kafka-color)" stroke-width="10" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="mq-points">
+                <div class="point">
+                    <strong>生产者：acks=all</strong>
+                    <p>Leader和所有ISR副本都确认，可靠性最高。</p>
+                </div>
+                <div class="point">
+                    <strong>Broker：副本机制</strong>
+                    <p>分区多副本，Leader宕机后自动切换，数据不丢。</p>
+                </div>
+                <div class="point">
+                    <strong>消费者：手动提交Offset</strong>
+                    <p>精准控制消费位点，避免重复消费或消息丢失。</p>
+                </div>
+                <div class="point">
+                    <strong>Kafka 怎么去重？</strong>
+                    <p>单分区幂等性，跨分区事务，从根源上防重。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. RocketMQ -->
+    <section id="rocketmq" class="section">
+        <h2>RocketMQ</h2>
+        <p class="subtitle">全能的六边形战士</p>
+        <div class="mq-container">
+            <div class="mq-icon">
+                <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M100 20L173.205 60V140L100 180L26.7949 140V60L100 20Z" stroke="var(--rocketmq-color)" stroke-width="10" stroke-linejoin="round"/>
+                    <path d="M100 20V100L26.7949 60" stroke="var(--rocketmq-color)" stroke-width="10" stroke-linejoin="round"/>
+                    <path d="M100 20L173.205 60L100 100" stroke="var(--rocketmq-color)" stroke-width="10" stroke-linejoin="round"/>
+                    <path d="M100 180V100L26.7949 140" stroke="var(--rocketmq-color)" stroke-width="10" stroke-linejoin="round"/>
+                    <path d="M100 180L173.205 140L100 100" stroke="var(--rocketmq-color)" stroke-width="10" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="mq-points">
+            		<div class="point">
+                    <strong>Broker：同步刷盘 + 主从</strong>
+                    <p>消息实时落盘，配合Dledger主从架构，金融级可靠。</p>
+                </div>
+                <div class="point">
+                    <strong>客户端：多种功能灵活选择</strong>
+                    <p>支持事务消息、顺序消息、延迟消息等高级功能，非常适合灵活又严格的电商场景。</p>
+                </div>
+                <div class="point">
+                    <strong>RocketMQ 如何去重？</strong>
+                    <p>RocketMQ 的两阶段提交事务消息机制，能完美解决分布式事务中，本地事务执行与消息发送的原子性问题。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. 选型总结 -->
+    <section id="selection" class="section">
+        <h2>实战选型：到底该选谁？</h2>
+        <p class="subtitle">根据场景，按图索骥</p>
+        <div class="selection-grid">
+            <div class="selection-card" id="card-rabbitmq">
+                <h3>RabbitMQ</h3>
+                <p class="tagline">精致小皮鞋</p>
+                <ul>
+                    <li>中小型项目</li>
+                    <li>业务场景简单</li>
+                    <li>高可靠，低并发</li>
+                    <li>如：订单通知、短信发送</li>
+                </ul>
+            </div>
+            <div class="selection-card" id="card-kafka">
+                <h3>Kafka</h3>
+                <p class="tagline">越野大卡车</p>
+                <ul>
+                    <li>大数据场景</li>
+                    <li>性能优先，吞吐量之王</li>
+                    <li>允许一定延迟和复杂性</li>
+                    <li>如：日志收集、实时计算</li>
+                </ul>
+            </div>
+            <div class="selection-card" id="card-rocketmq">
+                <h3>RocketMQ</h3>
+                <p class="tagline">全能SUV</p>
+                <ul>
+                    <li>大型分布式系统</li>
+                    <li>功能全面，平衡选手</li>
+                    <li>支持事务、顺序、延迟消息</li>
+                    <li>如：电商、金融核心业务</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. 结束总结页 -->
+    <section id="conclusion" class="section">
+        <h1>技术选型，<br>是现代程序员的第一道考题。</h1>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sections = document.querySelectorAll('.section');
+            let currentSectionIndex = 0;
+            let isScrolling = false;
+
+            // --- Intersection Observer for animations ---
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    } else {
+                        // Optional: remove class to re-animate if scrolling back
+                        // entry.target.classList.remove('visible');
+                    }
+                });
+            }, {
+                threshold: 0.5 // Trigger when 50% of the section is visible
+            });
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+
+            // --- Keyboard Navigation ---
+            window.addEventListener('keydown', (e) => {
+                if (isScrolling) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (currentSectionIndex < sections.length - 1) {
+                        currentSectionIndex++;
+                        scrollToSection(currentSectionIndex);
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (currentSectionIndex > 0) {
+                        currentSectionIndex--;
+                        scrollToSection(currentSectionIndex);
+                    }
+                }
+            });
+            
+            function scrollToSection(index) {
+                isScrolling = true;
+                sections[index].scrollIntoView({ behavior: 'smooth' });
+                
+                // A timeout to prevent rapid key presses during scroll animation
+                setTimeout(() => {
+                    isScrolling = false;
+                }, 1000); // Match this to your scroll behavior duration
+            }
+        });
+    </script>
+
+</body>
+</html>

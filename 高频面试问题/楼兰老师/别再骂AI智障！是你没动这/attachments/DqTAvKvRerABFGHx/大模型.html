@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI技术核心路线图</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .main-title {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .main-title h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+        }
+        .main-title p {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            margin-top: 0.75rem;
+            font-weight: 400;
+        }
+        .nested-container {
+            width: 100%;
+            max-width: 900px;
+            border-radius: 16px;
+            padding: 2rem;
+            background-color: #fff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+        }
+        .concept-layer {
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 3rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .concept-layer:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+        .concept-layer h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.6rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+        }
+        .concept-layer h2 .en {
+            font-size: 1rem;
+            font-weight: 300;
+            color: #888;
+            margin-left: 10px;
+        }
+        .concept-layer p {
+            margin: 0;
+            line-height: 1.8;
+            font-size: 0.95rem;
+            color: #555;
+        }
+        code {
+            background-color: rgba(0,0,0,0.06);
+            padding: 3px 6px;
+            border-radius: 5px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+            margin: 0 2px;
+        }
+        /* Color Scheme for Layers */
+        #ai { background-color: #eaf5ff; border: 1px solid #cce7ff; }
+        #ai h2 { color: #007bff; }
+        #ml { background-color: #eafaf1; border: 1px solid #ccecdb; margin-left: 2%; }
+        #ml h2 { color: #28a745; }
+        #dl { background-color: #fff8e1; border: 1px solid #ffecb3; margin-left: 4%; }
+        #dl h2 { color: #ffc107; }
+        #gen-ai { background-color: #ffebee; border: 1px solid #ffcdd2; margin-left: 6%; }
+        #gen-ai h2 { color: #dc3545; }
+        #llm { background-color: #f3e5f5; border: 1px solid #e1bee7; margin-left: 8%; }
+        #llm h2 { color: #8e24aa; }
+
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .main-title h1 { font-size: 2rem; }
+            .main-title p { font-size: 1rem; }
+            .nested-container { padding: 1rem; }
+            .concept-layer { padding: 1rem; }
+            .concept-layer h2 { font-size: 1.4rem; }
+            #ml, #dl, #gen-ai, #llm { margin-left: 0; } /* Stack vertically on mobile */
+        }
+    </style>
+</head>
+<body>
+    <div class="main-title">
+        <h1>AI技术核心路线图：从入门到前沿，一次看懂！</h1>
+        <p>五大核心概念全解析：人工智能 > 机器学习 > 深度学习 > 生成式AI > 大语言模型</p>
+    </div>
+
+    <div class="nested-container">
+        <div id="ai" class="concept-layer">
+            <h2>人工智能 <span class="en">Artificial Intelligence</span></h2>
+            <p>构建能模拟、延伸和扩展人类智能的理论与技术。当前主流为专注于特定任务的“弱人工智能”，而具备通用认知能力的“强人工智能”(AGI)是远期目标。</p>
+            <p></p>
+            <div id="ml" class="concept-layer">
+                <h2>机器学习 <span class="en">Machine Learning</span></h2>
+                <p>实现人工智能的核心方法，使计算机从数据中自动学习规律和模式。经典算法包括K近邻(<code>k-NN</code>)、决策树(<code>Decision tree</code>)还有随机森林(<code>Random Forest</code>)等。</p>
+                <p></p>
+                <div id="dl" class="concept-layer">
+                    <h2>深度学习 <span class="en">Deep Learning</span></h2>
+                    <p>机器学习的强大分支，通过构建多层“神经网络”进行学习。核心架构包括用于图像识别的卷积神经网络(<code>CNN</code>)(如<code>YOLO</code>)，及用于自然语言处理(<code>NLP</code>)的循环神经网络(<code>RNN</code>)。</p>
+                    <p></p>
+                    <div id="gen-ai" class="concept-layer">
+                        <h2>生成式AI <span class="en">Generative AI</span></h2>
+                        <p>专注于创造全新原创内容的AI技术。核心模型包括生成对抗网络(<code>GAN</code>)、扩散模型(<code>Diffusion Model</code>)。</p>
+                        <p></p>
+                        <div id="llm" class="concept-layer">
+                            <h2>大语言模型 <span class="en">Large Language Model</span></h2>
+                            <p>生成式AI在语言领域的关键应用。大多基于<code>Transformer</code>架构，通过海量参数和数据训练以实现强大的语言能力。代表模型有<code>BERT</code>、<code>T5</code>、<code>GPT</code>、<code>Gemini</code>等。</p>
+                        		<p></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

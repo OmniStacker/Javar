@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计算机薪资与职业路径信息图</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            text-align: center;
+            margin-bottom: 30px;
+            border: 1px solid #e8e8e8;
+        }
+        .main-title {
+            font-size: 42px;
+            font-weight: bold;
+            color: #1a237e;
+            margin: 0 0 10px 0;
+        }
+        .sub-title {
+            font-size: 20px;
+            color: #555;
+            font-weight: 500;
+        }
+        .container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+        .column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid #f0f0f0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        .card-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #004d40;
+        }
+        .column-title {
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            color: #fff;
+        }
+        .bachelor-title { background-color: #1976d2; }
+        .master-title { background-color: #d84315; }
+
+        .content-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        .icon {
+            font-size: 32px;
+            width: 40px;
+            text-align: center;
+        }
+        .item-text { flex: 1; }
+        .item-text strong { color: #c62828; }
+        .item-note {
+            font-size: 16px;
+            color: #777;
+            padding-left: 55px; /* Align with text */
+            margin-top: -10px;
+        }
+        .arrow {
+            font-size: 24px;
+            color: #aaa;
+            margin: 0 8px;
+        }
+        .conclusion-card {
+            background: linear-gradient(135deg, #004d40, #00796b);
+            color: #fff;
+            text-align: center;
+        }
+        .conclusion-card .card-title {
+            color: #fff;
+            justify-content: center;
+        }
+        .conclusion-card p {
+            font-size: 22px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+            .main-title { font-size: 32px; }
+            .sub-title { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="sticky-header">
+        <h1 class="main-title">揭秘计算机薪资密码：学历与方向的终极对决</h1>
+        <p class="sub-title">学历决定起点 | 能力决定上限 | 实习才是硬通货 | 方向选择非关键，底层内功是王道</p>
+    </header>
+
+    <main class="container">
+        <!-- 本科生路径 -->
+        <section class="column">
+            <h2 class="column-title bachelor-title">本科生路径</h2>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">💻</span>主路径：开发岗</h3>
+                <div class="content-item">
+                    <div class="item-text">前端 / 后端 / 嵌入式开发</div>
+                </div>
+                <div class="item-note">就业岗位多，包容性强，是绝大多数本科生的选择。</div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">💰</span>薪资决定三要素</h3>
+                <div class="content-item">
+                    <span class="icon">🎓</span>
+                    <div class="item-text"><strong>学历</strong> <span class="arrow">→</span> 公司规模 <span class="arrow">→</span> 薪资下限</div>
+                </div>
+                <div class="content-item">
+                    <span class="icon">🏆</span>
+                    <div class="item-text"><strong>能力成果</strong> <span class="arrow">→</span> 技能熟练度 + 基础（四大件） + 竞赛/项目</div>
+                </div>
+                <div class="content-item">
+                    <span class="icon">📄</span>
+                    <div class="item-text"><strong>实习履历</strong> <span class="arrow">→</span> 进入大厂的“分水岭”，至关重要！</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">🤔</span>次要路径</h3>
+                <div class="content-item">
+                    <span class="icon">🔧</span>
+                    <div class="item-text">运维 / 测试 / 网络</div>
+                </div>
+                <div class="item-note">岗位相对少，薪资和工作内容两极分化，需谨慎选择。</div>
+            </div>
+
+             <div class="card">
+                <h3 class="card-title"><span class="icon">🚫</span>不建议的方向</h3>
+                <div class="content-item">
+                    <span class="icon">🤖</span>
+                    <div class="item-text">算法岗</div>
+                </div>
+                <div class="item-note">门槛极高，除非个人能力逆天或资源丰富，否则不建议本科阶段尝试。</div>
+            </div>
+        </section>
+
+        <!-- 硕士生路径 -->
+        <section class="column">
+            <h2 class="column-title master-title">硕士生路径</h2>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">🚀</span>开发岗 (PLUS)</h3>
+                 <div class="content-item">
+                    <span class="icon">✅</span>
+                    <div class="item-text"><strong>入行率更高：</strong>相比本科，找工作更轻松。</div>
+                </div>
+                <div class="content-item">
+                    <span class="icon">📈</span>
+                    <div class="item-text"><strong>薪资起点/上限更高：</strong>轻松突破本科生薪资坎。</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">🔬</span>研发岗</h3>
+                <div class="content-item">
+                    <span class="icon">⚙️</span>
+                    <div class="item-text">操作系统 / 数据库 / 编译器等</div>
+                </div>
+                <div class="item-note">研究和优化技术本身，门槛高，技术壁垒高，更稳定，一般为大厂或研究所。</div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">🤯</span>交叉方向 (AI算法)</h3>
+                 <div class="content-item">
+                    <span class="icon">💸</span>
+                    <div class="item-text"><strong>特点一：</strong>薪资高，上限可观。</div>
+                </div>
+                <div class="content-item">
+                    <span class="icon">🌪️</span>
+                    <div class="item-text"><strong>特点二：</strong>极度内卷，与所有理工科顶尖人才竞争。</div>
+                </div>
+                <div class="item-note"><strong>重要建议：</strong>务必学好开发技能作为“退路”，切忌“头铁”硬冲！</div>
+            </div>
+        </section>
+    </main>
+
+    <div style="padding: 0 20px;">
+        <div class="card conclusion-card">
+            <h3 class="card-title"><span class="icon">🎯</span>结论：如何打破焦虑？</h3>
+            <p>计算机是“赢家通吃”的行业，没有躺平的余地。</p>
+            <p>解决焦虑最好的办法就是<strong>行动</strong>：主动收集信息、做好规划、坐住板凳、刷题、做项目！</p>
+        </div>
+    </div>
+
+</body>
+</html>

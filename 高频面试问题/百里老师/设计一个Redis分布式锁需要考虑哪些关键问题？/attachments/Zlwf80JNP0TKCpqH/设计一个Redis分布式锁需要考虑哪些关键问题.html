@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设计一个Redis分布式锁需要考虑哪些关键问题</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { 
+            from { opacity: 0; transform: translateY(50px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        @keyframes subtle-pulse-green { 
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 
+            50% { box-shadow: 0 0 25px 12px rgba(34, 197, 94, 0); } 
+        }
+        @keyframes subtle-pulse-red { 
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 
+            50% { box-shadow: 0 0 25px 12px rgba(239, 68, 68, 0); } 
+        }
+        @keyframes rotate-slow { 
+            from { transform: rotate(0deg); } 
+            to { transform: rotate(360deg); } 
+        }
+
+        html { scroll-behavior: smooth; }
+        body { 
+            background-color: #0f172a; 
+            color: #e2e8f0; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+        }
+        .slide { 
+            min-height: 100vh; 
+            width: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 3rem 1.5rem; 
+            opacity: 0; 
+            animation: slide-in-up 0.8s ease-out forwards; 
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5); 
+        }
+        .content-panel { 
+            background-color: rgba(30, 41, 59, 0.4); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px); 
+            border: 1px solid rgba(71, 85, 105, 0.3); 
+            border-radius: 1.5rem; 
+            padding: 2rem; 
+            width: 100%; 
+        }
+        .gradient-text { 
+            background-clip: text; 
+            -webkit-background-clip: text; 
+            color: transparent; 
+        }
+        
+        .diagram-node { 
+            border-radius: 1rem; 
+            padding: 1.5rem; 
+            border: 2px solid; 
+            transition: all 0.3s ease; 
+        }
+        .diagram-node:hover { 
+            transform: scale(1.05); 
+        }
+        .diagram-node-good { 
+            border-color: #22c55e; 
+            animation: subtle-pulse-green 2s infinite; 
+        }
+        .diagram-node-bad { 
+            border-color: #ef4444; 
+            animation: subtle-pulse-red 2s infinite; 
+        }
+        .diagram-node-neutral { 
+            border-color: #64748b; 
+        }
+
+        #nav-dots { 
+            position: fixed; 
+            right: 20px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            z-index: 9999; 
+        }
+        #nav-dots a { 
+            width: 12px; 
+            height: 12px; 
+            background-color: rgba(148, 163, 184, 0.5); 
+            border-radius: 50%; 
+            transition: all 0.3s ease; 
+        }
+        #nav-dots a.active, #nav-dots a:hover { 
+            background-color: #f1f5f9; 
+            transform: scale(1.3); 
+        }
+        .slide:last-of-type { 
+            border-bottom: none; 
+        }
+
+        /* 代码块样式优化 */
+        pre {
+            text-align: left;
+            overflow-x: auto;
+        }
+        pre code {
+            display: block;
+            white-space: pre;
+        }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场 (优化版) -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto px-4">
+            <!-- 主标题区域 -->
+            <div class="mb-16">
+                <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight leading-tight mb-6">
+                    <span class="text-slate-200">设计一个</span>
+                    <span class="gradient-text bg-gradient-to-r from-red-400 via-rose-400 to-pink-400">Redis分布式锁</span> 需要考虑哪些关键问题？
+                </h1>
+            </div>
+
+            <!-- 五大问题卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-12">
+                <!-- 问题1：死锁 -->
+                <div class="group hover:scale-105 transition-all duration-300">
+                    <div class="bg-gradient-to-br from-red-900/40 to-red-800/20 backdrop-blur-sm rounded-2xl p-6 border-2 border-red-500/40 hover:border-red-400/70 h-full flex flex-col items-center justify-center shadow-lg hover:shadow-red-500/30">
+                        <div class="w-20 h-20 rounded-xl bg-red-900/50 border border-red-500/50 flex items-center justify-center mb-4 group-hover:bg-red-800/60 transition-colors">
+                            <i class="fa-solid fa-skull-crossbones text-4xl text-red-400"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-red-300 mb-2">死锁问题</h3>
+                        <p class="text-xs text-slate-400 text-center">线程崩溃后<br>锁无法释放</p>
+                    </div>
+                </div>
+
+                <!-- 问题2：锁误删 -->
+                <div class="group hover:scale-105 transition-all duration-300">
+                    <div class="bg-gradient-to-br from-orange-900/40 to-orange-800/20 backdrop-blur-sm rounded-2xl p-6 border-2 border-orange-500/40 hover:border-orange-400/70 h-full flex flex-col items-center justify-center shadow-lg hover:shadow-orange-500/30">
+                        <div class="w-20 h-20 rounded-xl bg-orange-900/50 border border-orange-500/50 flex items-center justify-center mb-4 group-hover:bg-orange-800/60 transition-colors">
+                            <i class="fa-solid fa-user-xmark text-4xl text-orange-400"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-orange-300 mb-2">锁误删问题</h3>
+                        <p class="text-xs text-slate-400 text-center">线程A误删了<br>线程B的锁</p>
+                    </div>
+                </div>
+
+                <!-- 问题3：单点故障问题 -->
+                <div class="group hover:scale-105 transition-all duration-300">
+                    <div class="bg-gradient-to-br from-amber-900/40 to-amber-800/20 backdrop-blur-sm rounded-2xl p-6 border-2 border-amber-500/40 hover:border-amber-400/70 h-full flex flex-col items-center justify-center shadow-lg hover:shadow-amber-500/30">
+                        <div class="w-20 h-20 rounded-xl bg-amber-900/50 border border-amber-500/50 flex items-center justify-center mb-4 group-hover:bg-amber-800/60 transition-colors">
+                            <i class="fa-solid fa-server text-4xl text-amber-400"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-amber-300 mb-2">单点故障问题</h3>
+                        <p class="text-xs text-slate-400 text-center">Redis宕机导致<br>服务不可用</p>
+                    </div>
+                </div>
+
+                <!-- 问题4：不可重入问题 -->
+                <div class="group hover:scale-105 transition-all duration-300">
+                    <div class="bg-gradient-to-br from-violet-900/40 to-violet-800/20 backdrop-blur-sm rounded-2xl p-6 border-2 border-violet-500/40 hover:border-violet-400/70 h-full flex flex-col items-center justify-center shadow-lg hover:shadow-violet-500/30">
+                        <div class="w-20 h-20 rounded-xl bg-violet-900/50 border border-violet-500/50 flex items-center justify-center mb-4 group-hover:bg-violet-800/60 transition-colors">
+                            <i class="fa-solid fa-rotate text-4xl text-violet-400"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-violet-300 mb-2">不可重入问题</h3>
+                        <p class="text-xs text-slate-400 text-center">同一线程无法<br>重复获取锁</p>
+                    </div>
+                </div>
+
+                <!-- 问题5：原子性 -->
+                <div class="group hover:scale-105 transition-all duration-300">
+                    <div class="bg-gradient-to-br from-sky-900/40 to-sky-800/20 backdrop-blur-sm rounded-2xl p-6 border-2 border-sky-500/40 hover:border-sky-400/70 h-full flex flex-col items-center justify-center shadow-lg hover:shadow-sky-500/30">
+                        <div class="w-20 h-20 rounded-xl bg-sky-900/50 border border-sky-500/50 flex items-center justify-center mb-4 group-hover:bg-sky-800/60 transition-colors">
+                            <i class="fa-solid fa-atom text-4xl text-sky-400"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-sky-300 mb-2">原子性问题</h3>
+                        <p class="text-xs text-slate-400 text-center">多步操作被<br>打断导致竞态</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 副标题 -->
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div class="w-full border-t border-slate-700"></div>
+                </div>
+                <div class="relative flex justify-center">
+                    <span class="bg-slate-900 px-6 text-lg md:text-xl text-slate-400">
+                        从理论到实践，构建生产级分布式锁的完整指南
+                    </span>
+                </div>
+            </div>
+
+            <!-- 滚动提示 -->
+            <div class="mt-12 animate-bounce">
+                <i class="fa-solid fa-chevron-down text-3xl text-slate-600"></i>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Slide 2: 问题一 - 死锁 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-red-500 to-rose-400">问题一：死锁问题</h2>
+            <p class="mt-4 text-xl text-slate-400">线程崩溃后，锁无法释放</p>
+            
+            <div class="content-panel mt-8 p-6 md:p-10 border-red-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <!-- 左侧：对比流程 -->
+                    <div class="space-y-8">
+                        <!-- 正常流程 -->
+                        <div>
+                            <h3 class="font-bold text-xl text-green-300 mb-4 flex items-center justify-center">
+                                <i class="fa-solid fa-circle-check mr-2"></i>正常流程
+                            </h3>
+                            <div class="flex items-center justify-between">
+                                <div class="diagram-node diagram-node-good bg-slate-800/50 p-4 w-24 text-center">
+                                    <i class="fa-solid fa-lock text-3xl text-green-400"></i>
+                                    <p class="text-xs mt-2 font-mono">加锁</p>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-2xl text-green-400"></i>
+                                <div class="diagram-node diagram-node-good bg-slate-800/50 p-4 w-24 text-center">
+                                    <i class="fa-solid fa-gears text-3xl text-sky-400"></i>
+                                    <p class="text-xs mt-2 font-mono">业务</p>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-2xl text-green-400"></i>
+                                <div class="diagram-node diagram-node-good bg-slate-800/50 p-4 w-24 text-center">
+                                    <i class="fa-solid fa-lock-open text-3xl text-green-400"></i>
+                                    <p class="text-xs mt-2 font-mono">解锁</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 死锁流程 -->
+                        <div>
+                            <h3 class="font-bold text-xl text-red-300 mb-4 flex items-center justify-center">
+                                <i class="fa-solid fa-circle-xmark mr-2"></i>死锁流程
+                            </h3>
+                            <div class="flex items-center justify-between">
+                                <div class="diagram-node diagram-node-bad bg-slate-800/50 p-4 w-24 text-center">
+                                    <i class="fa-solid fa-lock text-3xl text-red-400"></i>
+                                    <p class="text-xs mt-2 font-mono">加锁</p>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-2xl text-red-400"></i>
+                                <div class="diagram-node diagram-node-bad bg-slate-800/50 p-4 w-24 text-center relative">
+                                    <i class="fa-solid fa-bomb text-3xl text-red-400"></i>
+                                    <p class="text-xs mt-2 font-mono text-red-300 font-bold">崩溃</p>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-2xl text-slate-600 opacity-30"></i>
+                                <div class="diagram-node bg-slate-800/50 border-slate-600 p-4 w-24 text-center opacity-50">
+                                    <i class="fa-solid fa-lock text-3xl text-slate-600"></i>
+                                    <p class="text-xs mt-2 font-mono text-slate-600">永久占用</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：解决方案 -->
+                    <div class="flex flex-col justify-center space-y-6">
+                        <div class="bg-green-900/20 p-6 rounded-xl border border-green-500/30">
+                            <h4 class="font-bold text-xl text-green-300 mb-4 flex items-center">
+                                <i class="fa-solid fa-lightbulb mr-3"></i>解决方案
+                            </h4>
+                            <div class="space-y-4 text-slate-300">
+                                <div>
+                                    <h5 class="font-bold text-lg mb-2 text-green-400">1. 设置过期时间</h5>
+                                    <pre class="bg-slate-900/70 p-3 rounded text-xs font-mono"><code>SET lock_key value NX EX 30</code></pre>
+                                    <p class="text-sm mt-2">即使线程崩溃，锁也会在30秒后自动释放</p>
+                                </div>
+                                <div>
+                                    <h5 class="font-bold text-lg mb-2 text-green-400">2. Redisson看门狗机制</h5>
+                                    <p class="text-sm">自动续期机制，防止业务执行时间超过过期时间</p>
+                                    <div class="mt-3 flex items-center gap-2 text-xs">
+                                        <span class="bg-amber-900/50 px-2 py-1 rounded">每10秒检查</span>
+                                        <i class="fa-solid fa-arrow-right text-amber-400"></i>
+                                        <span class="bg-green-900/50 px-2 py-1 rounded">自动续期至30秒</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-900/20 p-4 rounded-xl border border-amber-500/30">
+                            <p class="text-sm text-amber-200 flex items-start">
+                                <i class="fa-solid fa-triangle-exclamation mr-2 mt-1"></i>
+                                <span><b>过期时间设置原则：</b>业务最大耗时 + 50%-100%冗余<br>
+                                示例：业务20秒 → 设置30秒</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: 问题二 - 锁误删 -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-orange-500 to-amber-400">问题二：锁误删问题</h2>
+            <p class="mt-4 text-xl text-slate-400">线程A误删了线程B的锁</p>
+            
+            <div class="content-panel mt-8 p-6 md:p-10 border-orange-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-8">
+                    <!-- 左侧：问题场景（3列） -->
+                    <div class="md:col-span-3 space-y-6">
+                        <h3 class="font-bold text-xl text-orange-300 mb-4">问题场景：三阶段演示</h3>
+                        
+                        <div class="grid grid-cols-3 gap-4">
+                            <!-- 阶段1 -->
+                            <div class="text-center">
+                                <div class="diagram-node diagram-node-good bg-slate-800/50 p-4">
+                                    <i class="fa-solid fa-user text-4xl text-green-400 mb-2"></i>
+                                    <p class="font-bold text-green-300">线程A</p>
+                                    <div class="mt-3 bg-green-900/50 px-3 py-2 rounded border border-green-500/50">
+                                        <p class="text-xs font-mono">锁标识: A</p>
+                                        <p class="text-xs text-green-300 mt-1">持有锁</p>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-slate-400 mt-2">第0秒：线程A获取锁</p>
+                            </div>
+
+                            <!-- 阶段2 -->
+                            <div class="text-center">
+                                <div class="diagram-node bg-slate-800/50 border-amber-500/50 p-4">
+                                    <i class="fa-solid fa-user text-4xl text-sky-400 mb-2"></i>
+                                    <p class="font-bold text-sky-300">线程B</p>
+                                    <div class="mt-3 bg-sky-900/50 px-3 py-2 rounded border border-sky-500/50">
+                                        <p class="text-xs font-mono">锁标识: B</p>
+                                        <p class="text-xs text-sky-300 mt-1">持有锁</p>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-amber-300 mt-2">第30秒：锁过期，B获取锁</p>
+                            </div>
+
+                            <!-- 阶段3 -->
+                            <div class="text-center">
+                                <div class="diagram-node diagram-node-bad bg-slate-800/50 p-4 relative">
+                                    <i class="fa-solid fa-users text-4xl text-red-400 mb-2"></i>
+                                    <p class="font-bold text-red-300">A + B + C</p>
+                                    <div class="mt-3 bg-red-900/50 px-3 py-2 rounded border border-red-500/50">
+                                        <p class="text-xs font-mono">锁标识: ???</p>
+                                        <p class="text-xs text-red-300 mt-1">混乱状态</p>
+                                    </div>
+                                    <div class="absolute -top-2 -right-2">
+                                        <i class="fa-solid fa-triangle-exclamation text-2xl text-red-400 animate-pulse"></i>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-red-300 mt-2">第35秒：A误删B的锁</p>
+                            </div>
+                        </div>
+
+                        <!-- 时间轴 -->
+                        <div class="relative mt-8 pt-4">
+                            <div class="absolute top-0 left-0 right-0 h-1 bg-slate-700 rounded"></div>
+                            <div class="flex justify-between text-xs text-slate-400 mt-2">
+                                <span>0s<br>A加锁</span>
+                                <span>30s<br>锁过期<br>B获取锁</span>
+                                <span class="text-red-300 font-bold">35s<br>A执行DEL<br>误删B的锁</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：解决方案（2列） -->
+                    <div class="md:col-span-2 flex flex-col justify-center space-y-6">
+                        <div class="bg-green-900/20 p-6 rounded-xl border border-green-500/30">
+                            <h4 class="font-bold text-xl text-green-300 mb-4 flex items-center">
+                                <i class="fa-solid fa-shield-halved mr-3"></i>解决方案
+                            </h4>
+                            
+                            <div class="space-y-4 text-slate-300">
+                                <div>
+                                    <h5 class="font-bold text-lg mb-2 text-green-400">1. 唯一标识</h5>
+                                    <pre class="bg-slate-900/70 p-3 rounded text-xs font-mono"><code>UUID + 线程ID
+uuid-abc123:thread-456</code></pre>
+                                </div>
+
+                                <div>
+                                    <h5 class="font-bold text-lg mb-2 text-green-400">2. Lua脚本原子校验</h5>
+                                    <pre class="bg-slate-900/70 p-3 rounded text-xs font-mono"><code>if redis.call('get', KEYS[1]) == ARGV[1] then
+    return redis.call('del', KEYS[1])
+else
+    return 0
+end</code></pre>
+                                    <p class="text-sm mt-2">只删除自己的锁，避免误删</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-red-900/20 p-4 rounded-xl border border-red-500/30">
+                            <p class="text-sm text-red-200 flex items-start">
+                                <i class="fa-solid fa-ban mr-2 mt-1"></i>
+                                <span><b>禁止操作：</b>GET + DEL 分步执行<br>必须用Lua脚本保证原子性</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 问题三 - 单点故障问题 -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-500 to-yellow-400">问题三：单点故障问题</h2>
+            <p class="mt-4 text-xl text-slate-400">Redis宕机导致服务不可用</p>
+            
+            <div class="content-panel mt-8 p-6 md:p-10 border-amber-500/30">
+                <h3 class="font-bold text-2xl text-amber-300 mb-8">架构对比：主从+哨兵 vs Redis Cluster</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <!-- 左侧：主从+哨兵 -->
+                    <div class="space-y-6">
+                        <h4 class="font-bold text-xl text-sky-300 flex items-center justify-center">
+                            <i class="fa-solid fa-tower-broadcast mr-2"></i>主从 + 哨兵
+                        </h4>
+                        
+                        <div class="flex flex-col items-center gap-4">
+                            <!-- 主节点 -->
+                            <div class="diagram-node bg-slate-800/50 border-sky-500/50 p-4 w-48 text-center">
+                                <i class="fa-solid fa-server text-4xl text-sky-400 mb-2"></i>
+                                <p class="font-bold text-sky-300">主节点 (Master)</p>
+                                <p class="text-xs text-slate-400 mt-1">处理所有写操作</p>
+                            </div>
+
+                            <!-- 同步箭头 -->
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-arrow-down text-2xl text-slate-500"></i>
+                                <span class="text-xs text-slate-400">异步复制</span>
+                            </div>
+
+                            <!-- 从节点 -->
+                            <div class="flex gap-4">
+                                <div class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-32 text-center">
+                                    <i class="fa-solid fa-server text-3xl text-slate-400 mb-1"></i>
+                                    <p class="text-sm font-bold text-slate-300">从节点1</p>
+                                </div>
+                                <div class="diagram-node bg-slate-800/50 border-slate-600 p-3 w-32 text-center">
+                                    <i class="fa-solid fa-server text-3xl text-slate-400 mb-1"></i>
+                                    <p class="text-sm font-bold text-slate-300">从节点2</p>
+                                </div>
+                            </div>
+
+                            <!-- 哨兵 -->
+                            <div class="flex gap-3 mt-4">
+                                <div class="bg-violet-900/30 px-3 py-2 rounded border border-violet-500/50 text-center">
+                                    <i class="fa-solid fa-eye text-xl text-violet-400"></i>
+                                    <p class="text-xs text-violet-300 mt-1">哨兵1</p>
+                                </div>
+                                <div class="bg-violet-900/30 px-3 py-2 rounded border border-violet-500/50 text-center">
+                                    <i class="fa-solid fa-eye text-xl text-violet-400"></i>
+                                    <p class="text-xs text-violet-300 mt-1">哨兵2</p>
+                                </div>
+                                <div class="bg-violet-900/30 px-3 py-2 rounded border border-violet-500/50 text-center">
+                                    <i class="fa-solid fa-eye text-xl text-violet-400"></i>
+                                    <p class="text-xs text-violet-300 mt-1">哨兵3</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 优缺点 -->
+                        <div class="space-y-3 text-sm">
+                            <div class="bg-green-900/20 p-3 rounded border border-green-500/30">
+                                <p class="text-green-300"><i class="fa-solid fa-check mr-2"></i>部署简单</p>
+                            </div>
+                            <div class="bg-red-900/20 p-3 rounded border border-red-500/30">
+                                <p class="text-red-300"><i class="fa-solid fa-xmark mr-2"></i>写操作集中在主节点</p>
+                            </div>
+                            <div class="bg-red-900/20 p-3 rounded border border-red-500/30">
+                                <p class="text-red-300"><i class="fa-solid fa-xmark mr-2"></i>主节点宕机全量服务中断</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：Redis Cluster -->
+                    <div class="space-y-6">
+                        <h4 class="font-bold text-xl text-green-300 flex items-center justify-center">
+                            <i class="fa-solid fa-circle-nodes mr-2"></i>Redis Cluster (推荐)
+                        </h4>
+                        
+                        <div class="grid grid-cols-3 gap-3">
+                            <!-- 主节点1 -->
+                            <div class="diagram-node diagram-node-good bg-slate-800/50 p-3 text-center">
+                                <i class="fa-solid fa-server text-3xl text-green-400 mb-1"></i>
+                                <p class="text-sm font-bold text-green-300">主节点1</p>
+                                <p class="text-xs text-slate-400">槽: 0-5460</p>
+                            </div>
+                            <!-- 主节点2 -->
+                            <div class="diagram-node diagram-node-good bg-slate-800/50 p-3 text-center">
+                                <i class="fa-solid fa-server text-3xl text-emerald-400 mb-1"></i>
+                                <p class="text-sm font-bold text-emerald-300">主节点2</p>
+                                <p class="text-xs text-slate-400">槽: 5461-10922</p>
+                            </div>
+                            <!-- 主节点3 -->
+                            <div class="diagram-node diagram-node-good bg-slate-800/50 p-3 text-center">
+                                <i class="fa-solid fa-server text-3xl text-teal-400 mb-1"></i>
+                                <p class="text-sm font-bold text-teal-300">主节点3</p>
+                                <p class="text-xs text-slate-400">槽: 10923-16383</p>
+                            </div>
+                            
+                            <!-- 从节点 -->
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-2 text-center">
+                                <i class="fa-solid fa-server text-2xl text-slate-400"></i>
+                                <p class="text-xs text-slate-300 mt-1">从节点1</p>
+                            </div>
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-2 text-center">
+                                <i class="fa-solid fa-server text-2xl text-slate-400"></i>
+                                <p class="text-xs text-slate-300 mt-1">从节点2</p>
+                            </div>
+                            <div class="diagram-node bg-slate-800/50 border-slate-600 p-2 text-center">
+                                <i class="fa-solid fa-server text-2xl text-slate-400"></i>
+                                <p class="text-xs text-slate-300 mt-1">从节点3</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-green-900/30 p-4 rounded-lg border border-green-500/50 text-center">
+                            <p class="text-sm text-green-200">
+                                <i class="fa-solid fa-layer-group mr-2"></i>
+                                数据按哈希槽分片存储 (16384个槽)
+                            </p>
+                        </div>
+
+                        <!-- 优缺点 -->
+                        <div class="space-y-3 text-sm">
+                            <div class="bg-green-900/20 p-3 rounded border border-green-500/30">
+                                <p class="text-green-300"><i class="fa-solid fa-check mr-2"></i>写操作分散到多个主节点</p>
+                            </div>
+                            <div class="bg-green-900/20 p-3 rounded border border-green-500/30">
+                                <p class="text-green-300"><i class="fa-solid fa-check mr-2"></i>单主节点宕机仅影响1/3服务</p>
+                            </div>
+                            <div class="bg-green-900/20 p-3 rounded border border-green-500/30">
+                                <p class="text-green-300"><i class="fa-solid fa-check mr-2"></i>支持水平扩展</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 对比表格 -->
+                <div class="mt-10 overflow-x-auto">
+                    <table class="w-full text-sm border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-slate-700">
+                                <th class="p-3 text-left text-slate-400">对比维度</th>
+                                <th class="p-3 text-left text-slate-400">主从+哨兵</th>
+                                <th class="p-3 text-left text-slate-400">Redis Cluster</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-bold text-slate-300">扩容方式</td>
+                                <td class="p-3 text-slate-400">仅支持垂直扩容</td>
+                                <td class="p-3 text-green-300">支持水平扩容 ✓</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-bold text-slate-300">写操作分布</td>
+                                <td class="p-3 text-slate-400">集中在主节点</td>
+                                <td class="p-3 text-green-300">分散到多个主节点 ✓</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-bold text-slate-300">故障影响</td>
+                                <td class="p-3 text-red-300">全量服务中断</td>
+                                <td class="p-3 text-green-300">仅影响1/3服务 ✓</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-bold text-slate-300">推荐指数</td>
+                                <td class="p-3">★★★☆☆</td>
+                                <td class="p-3 text-green-300 font-bold">★★★★★</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 问题四 - 可重入性 -->
+    <section id="slide5" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-violet-500 to-purple-400">问题四：不可重入问题</h2>
+            <p class="mt-4 text-xl text-slate-400">同一线程无法重复获取已持有的锁</p>
+            
+            <div class="content-panel mt-8 p-6 md:p-10 border-violet-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <!-- 左侧：问题场景 -->
+                    <div class="space-y-6">
+                        <h3 class="font-bold text-xl text-violet-300 mb-4">递归调用场景</h3>
+                        
+                        <div class="flex flex-col items-center gap-4">
+                            <!-- 方法A -->
+                            <div class="w-full">
+                                <div class="diagram-node bg-slate-800/50 border-violet-500/50 p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h4 class="font-bold text-violet-300">businessMethod()</h4>
+                                        <div class="bg-green-900/50 px-3 py-1 rounded border border-green-500/50">
+                                            <p class="text-xs text-green-300">第1次加锁 ✓</p>
+                                        </div>
+                                    </div>
+                                    <pre class="bg-slate-900/70 p-3 rounded text-xs font-mono"><code>lock.lock();  // 成功
+try {
+    // 业务逻辑...
+    recursiveMethod();
+} finally {
+    lock.unlock();
+}</code></pre>
+                                </div>
+                            </div>
+
+                            <!-- 调用箭头 -->
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-arrow-down text-3xl text-violet-400"></i>
+                                <span class="text-sm text-violet-300">调用</span>
+                            </div>
+
+                            <!-- 方法B -->
+                            <div class="w-full">
+                                <div class="diagram-node diagram-node-bad bg-slate-800/50 p-4 relative">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h4 class="font-bold text-red-300">recursiveMethod()</h4>
+                                        <div class="bg-red-900/50 px-3 py-1 rounded border border-red-500/50">
+                                            <p class="text-xs text-red-300">第2次加锁 ✗</p>
+                                        </div>
+                                    </div>
+                                    <pre class="bg-slate-900/70 p-3 rounded text-xs font-mono"><code>lock.lock();  // 失败! 死锁
+try {
+    // 递归逻辑...
+} finally {
+    lock.unlock();
+}</code></pre>
+                                    <div class="absolute -top-3 -right-3">
+                                        <i class="fa-solid fa-lock text-3xl text-red-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-red-900/20 p-4 rounded-lg border border-red-500/30 w-full">
+                                <p class="text-sm text-red-200 text-center">
+                                    <i class="fa-solid fa-circle-exclamation mr-2"></i>
+                                    线程被自己持有的锁阻塞，陷入死锁
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：解决方案 -->
+                    <div class="flex flex-col justify-center space-y-6">
+                        <div class="bg-green-900/20 p-6 rounded-xl border border-green-500/30">
+                            <h4 class="font-bold text-xl text-green-300 mb-4 flex items-center">
+                                <i class="fa-solid fa-rotate mr-3"></i>Redisson可重入锁
+                            </h4>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <h5 class="font-bold text-lg mb-2 text-green-400">Hash结构 + 计数器</h5>
+                                    <pre class="bg-slate-900/70 p-3 rounded text-xs font-mono"><code>Key: lock:order:123
+Value (Hash):
+{
+  "uuid:thread-456": 2
+}</code></pre>
+                                    <p class="text-sm text-slate-300 mt-2">记录线程标识和重入次数</p>
+                                </div>
+
+                                <div class="mt-6">
+                                    <h5 class="font-bold text-lg mb-3 text-green-400">重入计数变化</h5>
+                                    <div class="space-y-2">
+                                        <div class="flex items-center gap-3">
+                                            <div class="bg-green-900/50 px-3 py-2 rounded flex-1 text-center">
+                                                <p class="text-xs text-green-300">第1次加锁</p>
+                                                <p class="text-2xl font-bold text-green-400 mt-1">1</p>
+                                            </div>
+                                            <i class="fa-solid fa-arrow-right text-green-400"></i>
+                                            <div class="bg-green-900/50 px-3 py-2 rounded flex-1 text-center">
+                                                <p class="text-xs text-green-300">第2次加锁</p>
+                                                <p class="text-2xl font-bold text-green-400 mt-1">2</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <div class="bg-sky-900/50 px-3 py-2 rounded flex-1 text-center">
+                                                <p class="text-xs text-sky-300">第1次解锁</p>
+                                                <p class="text-2xl font-bold text-sky-400 mt-1">1</p>
+                                            </div>
+                                            <i class="fa-solid fa-arrow-right text-sky-400"></i>
+                                            <div class="bg-sky-900/50 px-3 py-2 rounded flex-1 text-center">
+                                                <p class="text-xs text-sky-300">第2次解锁</p>
+                                                <p class="text-2xl font-bold text-sky-400 mt-1">0</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-3 text-center">
+                                        <i class="fa-solid fa-info-circle mr-1"></i>
+                                        计数归零时才真正释放锁
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-violet-900/20 p-4 rounded-xl border border-violet-500/30">
+                            <h5 class="font-bold text-lg text-violet-300 mb-2">典型应用场景</h5>
+                            <ul class="space-y-2 text-sm text-slate-300">
+                                <li><i class="fa-solid fa-check mr-2 text-violet-400"></i>递归算法（树形结构遍历）</li>
+                                <li><i class="fa-solid fa-check mr-2 text-violet-400"></i>多步骤事务操作</li>
+                                <li><i class="fa-solid fa-check mr-2 text-violet-400"></i>方法间的嵌套调用</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: 问题五 - 原子性 -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-500 to-cyan-400">问题五：原子性问题</h2>
+            <p class="mt-4 text-xl text-slate-400">多步操作被其他命令打断导致竞态条件</p>
+            
+            <div class="content-panel mt-8 p-6 md:p-10 border-sky-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <!-- 左侧：错误示例 -->
+                    <div class="space-y-6">
+                        <div class="bg-red-900/20 p-6 rounded-xl border border-red-500/30">
+                            <h3 class="font-bold text-xl text-red-300 mb-4 flex items-center">
+                                <i class="fa-solid fa-triangle-exclamation mr-3"></i>错误：非原子操作
+                            </h3>
+                            
+                            <!-- 加锁错误 -->
+                            <div class="mb-6">
+                                <h4 class="font-bold text-lg text-red-400 mb-3">加锁场景</h4>
+                                <pre class="bg-slate-900/70 p-4 rounded text-xs font-mono"><code>// 步骤1: 判断
+if (jedis.exists("lock_key") == false) {
+    // ⚠️ 危险窗口：可能被打断
+    // 步骤2: 设置
+    jedis.set("lock_key", "value");
+    jedis.expire("lock_key", 30);
+}</code></pre>
+                            </div>
+
+                            <!-- 时序图 -->
+                            <div class="bg-slate-800/50 p-4 rounded-lg">
+                                <h5 class="font-bold text-sm text-slate-300 mb-3">竞态条件时序</h5>
+                                <div class="space-y-2 text-xs font-mono">
+                                    <div class="flex items-start gap-2">
+                                        <span class="text-green-400 w-20 flex-shrink-0">线程A:</span>
+                                        <span class="text-slate-400">EXISTS → false</span>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <span class="text-sky-400 w-20 flex-shrink-0">线程B:</span>
+                                        <span class="text-slate-400">EXISTS → false</span>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <span class="text-green-400 w-20 flex-shrink-0">线程A:</span>
+                                        <span class="text-slate-400">SET lock_key A</span>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <span class="text-sky-400 w-20 flex-shrink-0">线程B:</span>
+                                        <span class="text-red-300">SET lock_key B (覆盖!)</span>
+                                    </div>
+                                </div>
+                                <div class="mt-3 p-2 bg-red-900/30 rounded text-center">
+                                    <p class="text-xs text-red-300 font-bold">
+                                        <i class="fa-solid fa-bolt mr-1"></i>
+                                        互斥性被破坏
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- 解锁错误 -->
+                            <div class="mt-6">
+                                <h4 class="font-bold text-lg text-red-400 mb-3">解锁场景</h4>
+                                <pre class="bg-slate-900/70 p-4 rounded text-xs font-mono"><code>// 步骤1: 查询
+String value = jedis.get("lock_key");
+// ⚠️ 危险窗口：锁可能过期
+// 步骤2: 删除
+if (myValue.equals(value)) {
+    jedis.del("lock_key"); // 可能误删
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：正确方案 -->
+                    <div class="space-y-6">
+                        <div class="bg-green-900/20 p-6 rounded-xl border border-green-500/30">
+                            <h3 class="font-bold text-xl text-green-300 mb-4 flex items-center">
+                                <i class="fa-solid fa-shield-halved mr-3"></i>正确：原子操作
+                            </h3>
+                            
+                            <!-- 加锁正确 -->
+                            <div class="mb-6">
+                                <h4 class="font-bold text-lg text-green-400 mb-3">加锁：SET NX EX</h4>
+                                <pre class="bg-slate-900/70 p-4 rounded text-xs font-mono"><code>SET lock_key unique_value NX EX 30</code></pre>
+                                <div class="mt-3 space-y-2 text-sm text-slate-300">
+                                    <p><i class="fa-solid fa-check mr-2 text-green-400"></i><b>NX:</b> 仅当key不存在时设置</p>
+                                    <p><i class="fa-solid fa-check mr-2 text-green-400"></i><b>EX 30:</b> 同时设置30秒过期</p>
+                                    <p><i class="fa-solid fa-check mr-2 text-green-400"></i><b>原子性:</b> 一条命令完成三件事</p>
+                                </div>
+                            </div>
+
+                            <!-- 解锁正确 -->
+                            <div>
+                                <h4 class="font-bold text-lg text-green-400 mb-3">解锁：Lua脚本</h4>
+                                <pre class="bg-slate-900/70 p-4 rounded text-xs font-mono"><code>if redis.call('get', KEYS[1]) == ARGV[1] then
+    return redis.call('del', KEYS[1])
+else
+    return 0
+end</code></pre>
+                                <div class="mt-3 space-y-2 text-sm text-slate-300">
+                                    <p><i class="fa-solid fa-check mr-2 text-green-400"></i>查询 + 校验 + 删除 原子执行</p>
+                                    <p><i class="fa-solid fa-check mr-2 text-green-400"></i>Redis单线程保证不被打断</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 对比图 -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-red-900/20 p-4 rounded-lg border border-red-500/30 text-center">
+                                <i class="fa-solid fa-ban text-4xl text-red-400 mb-2"></i>
+                                <p class="font-bold text-red-300 mb-2">非原子</p>
+                                <div class="space-y-1 text-xs">
+                                    <div class="bg-slate-800/50 px-2 py-1 rounded">步骤1</div>
+                                    <div class="text-red-400">⚡ 可被打断</div>
+                                    <div class="bg-slate-800/50 px-2 py-1 rounded">步骤2</div>
+                                </div>
+                            </div>
+                            <div class="bg-green-900/20 p-4 rounded-lg border border-green-500/30 text-center">
+                                <i class="fa-solid fa-shield-halved text-4xl text-green-400 mb-2"></i>
+                                <p class="font-bold text-green-300 mb-2">原子操作</p>
+                                <div class="bg-slate-800/50 px-3 py-4 rounded text-xs">
+                                    <p class="text-green-400">一次性完成</p>
+                                    <p class="text-slate-400 mt-1">不可分割</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-sky-900/20 p-4 rounded-xl border border-sky-500/30">
+                            <p class="text-sm text-sky-200 text-center">
+                                <i class="fa-solid fa-lightbulb mr-2"></i>
+                                <b>原子性本质：</b>Redis单线程模型 + Lua脚本整体执行
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: 最佳实践总结 -->
+    <section id="slide7" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-purple-400 to-indigo-400">生产环境最佳实践</h2>
+            <p class="mt-4 text-xl text-slate-400">五大问题的完整解决方案</p>
+            
+            <div class="content-panel mt-8 p-6 md:p-10 border-indigo-500/30">
+                <!-- 决策矩阵表格 -->
+                <div class="overflow-x-auto mb-10">
+                    <table class="w-full text-sm border-collapse min-w-[1000px]">
+                        <thead>
+                            <tr class="border-b-2 border-slate-700">
+                                <th class="p-4 text-left text-slate-400 font-semibold uppercase">关键问题</th>
+                                <th class="p-4 text-left text-slate-400 font-semibold uppercase">核心原因</th>
+                                <th class="p-4 text-left text-slate-400 font-semibold uppercase">最佳方案</th>
+                                <th class="p-4 text-left text-slate-400 font-semibold uppercase">关键技术</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            <tr class="hover:bg-slate-800/40 transition-colors">
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fa-solid fa-skull-crossbones text-2xl text-red-400"></i>
+                                        <span class="font-bold text-lg text-slate-300">死锁问题</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-slate-400">线程崩溃或超时未释放锁</td>
+                                <td class="p-4 text-slate-300">过期时间 + Redisson看门狗</td>
+                                <td class="p-4">
+                                    <code class="bg-slate-900/70 px-2 py-1 rounded text-xs text-green-300">SET NX EX</code>
+                                    <span class="text-slate-400"> + 自动续期</span>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition-colors">
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fa-solid fa-user-xmark text-2xl text-orange-400"></i>
+                                        <span class="font-bold text-lg text-slate-300">锁误删问题</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-slate-400">未校验锁持有者身份</td>
+                                <td class="p-4 text-slate-300">唯一标识 + Lua脚本</td>
+                                <td class="p-4">
+                                    <code class="bg-slate-900/70 px-2 py-1 rounded text-xs text-green-300">UUID + 线程ID</code>
+                                    <span class="text-slate-400"> + 原子校验</span>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition-colors">
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fa-solid fa-server text-2xl text-amber-400"></i>
+                                        <span class="font-bold text-lg text-slate-300">单点故障问题</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-slate-400">Redis单节点无冗余</td>
+                                <td class="p-4 text-slate-300">Redis Cluster (3主3从)</td>
+                                <td class="p-4">
+                                    <code class="bg-slate-900/70 px-2 py-1 rounded text-xs text-green-300">分片存储</code>
+                                    <span class="text-slate-400"> + 主从复制</span>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition-colors">
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fa-solid fa-rotate text-2xl text-violet-400"></i>
+                                        <span class="font-bold text-lg text-slate-300">不可重入问题</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-slate-400">未记录重入次数</td>
+                                <td class="p-4 text-slate-300">Redisson Hash计数器</td>
+                                <td class="p-4">
+                                    <code class="bg-slate-900/70 px-2 py-1 rounded text-xs text-green-300">HSET</code>
+                                    <span class="text-slate-400"> + </span>
+                                    <code class="bg-slate-900/70 px-2 py-1 rounded text-xs text-green-300">HINCRBY</code>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition-colors">
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fa-solid fa-atom text-2xl text-sky-400"></i>
+                                        <span class="font-bold text-lg text-slate-300">原子性问题</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-slate-400">多步操作可被打断</td>
+                                <td class="p-4 text-slate-300">原子命令 + Lua脚本</td>
+                                <td class="p-4">
+                                    <code class="bg-slate-900/70 px-2 py-1 rounded text-xs text-green-300">SET NX EX</code>
+                                    <span class="text-slate-400"> + Lua</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 三板斧 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                    <div class="bg-gradient-to-br from-emerald-900/30 to-green-900/20 p-6 rounded-xl border border-green-500/40">
+                        <div class="text-center mb-4">
+                            <i class="fa-solid fa-code text-5xl text-green-400"></i>
+                        </div>
+                        <h3 class="font-bold text-xl text-green-300 text-center mb-3">1. 框架选型</h3>
+                        <p class="text-sm text-slate-300 text-center">优先使用 <b class="text-green-400">Redisson</b><br>避免重复造轮子</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-sky-900/30 to-blue-900/20 p-6 rounded-xl border border-sky-500/40">
+                        <div class="text-center mb-4">
+                            <i class="fa-solid fa-circle-nodes text-5xl text-sky-400"></i>
+                        </div>
+                        <h3 class="font-bold text-xl text-sky-300 text-center mb-3">2. 集群方案</h3>
+                        <p class="text-sm text-slate-300 text-center"><b class="text-sky-400">Redis Cluster</b><br>(3主3从) 确保高可用</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-violet-900/30 to-purple-900/20 p-6 rounded-xl border border-violet-500/40">
+                        <div class="text-center mb-4">
+                            <i class="fa-solid fa-chart-line text-5xl text-violet-400"></i>
+                        </div>
+                        <h3 class="font-bold text-xl text-violet-300 text-center mb-3">3. 监控告警</h3>
+                        <p class="text-sm text-slate-300 text-center">实时监控<br><b class="text-violet-400">成功率 + 耗时 + 健康状态</b></p>
+                    </div>
+                </div>
+
+                <!-- 面试高频问题 -->
+                <div class="bg-indigo-900/20 p-6 rounded-xl border border-indigo-500/30">
+                    <h3 class="font-bold text-2xl text-indigo-300 mb-6 text-center">
+                        <i class="fa-solid fa-comments mr-3"></i>面试高频问题
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div class="bg-slate-800/40 p-4 rounded-lg">
+                            <p class="font-bold text-amber-300 mb-2">Q: 业务执行时间不确定怎么办？</p>
+                            <p class="text-slate-300">A: 使用Redisson看门狗自动续期</p>
+                        </div>
+                        <div class="bg-slate-800/40 p-4 rounded-lg">
+                            <p class="font-bold text-amber-300 mb-2">Q: 如何防止锁被误删？</p>
+                            <p class="text-slate-300">A: UUID+线程ID标识 + Lua脚本校验</p>
+                        </div>
+                        <div class="bg-slate-800/40 p-4 rounded-lg">
+                            <p class="font-bold text-amber-300 mb-2">Q: Redis单节点宕机怎么办？</p>
+                            <p class="text-slate-300">A: 部署Redis Cluster (3主3从)</p>
+                        </div>
+                        <div class="bg-slate-800/40 p-4 rounded-lg">
+                            <p class="font-bold text-amber-300 mb-2">Q: 为什么不用SETNX+EXPIRE？</p>
+                            <p class="text-slate-300">A: 非原子操作，可能导致死锁</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center py-8 text-slate-500 text-sm">
+        Redis分布式锁设计：五大核心问题与解决方案
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            
+            // 创建导航点
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            
+            const navDots = navContainer.querySelectorAll('a');
+            
+            // 监听滚动，更新导航点状态
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+            
+            slides.forEach(slide => { observer.observe(slide); });
+
+            // 键盘方向键翻页功能
+            let currentSlideIndex = 0;
+
+            function updateCurrentSlideIndex() {
+                slides.forEach((slide, index) => {
+                    const rect = slide.getBoundingClientRect();
+                    if (rect.top >= -100 && rect.top <= 100) {
+                        currentSlideIndex = index;
+                    }
+                });
+            }
+
+            function goToSlide(index) {
+                if (index >= 0 && index < slides.length) {
+                    slides[index].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    currentSlideIndex = index;
+                }
+            }
+
+            // 监听键盘事件
+            document.addEventListener('keydown', (e) => {
+                updateCurrentSlideIndex();
+                
+                if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    goToSlide(currentSlideIndex + 1);
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    goToSlide(currentSlideIndex - 1);
+                }
+            });
+
+            // 监听滚动事件，更新当前slide索引
+            window.addEventListener('scroll', updateCurrentSlideIndex);
+        });
+    </script>
+</body>
+</html>
+

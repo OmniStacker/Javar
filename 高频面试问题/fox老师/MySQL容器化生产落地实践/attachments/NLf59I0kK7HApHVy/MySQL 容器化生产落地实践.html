@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+  <style>
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 150px; 
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    background-color: #f0f4f8;
+  }
+  .arrow-flow {
+    position: relative;
+    animation: flow 3s ease-in-out infinite;
+  }
+  @keyframes flow {
+    0% { transform: translateX(-10px); opacity: 0.5; }
+    50% { transform: translateX(10px); opacity: 1; }
+    100% { transform: translateX(-10px); opacity: 0.5; }
+  }
+  .arrow {
+    font-size: 2.5rem;
+    color: #9CA3AF;
+    line-height: 1;
+  }
+  .card-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+  .arrow-dashed {
+    stroke-dasharray: 8, 8;
+    animation: dash 1s linear infinite;
+  }
+  @keyframes dash {
+    to {
+      stroke-dashoffset: -16;
+    }
+  }
+  .path-container {
+    position: relative;
+    padding-top: 4rem; 
+  }
+  .road {
+    border-bottom: 8px dashed #d1d5db;
+    width: 80%;
+    margin: 0 auto;
+    position: absolute;
+    top: 50%;
+    left: 10%;
+    z-index: 0;
+  }
+  .step-card {
+    transition: all 0.3s ease-in-out;
+  }
+  .step-card:hover {
+    transform: translateY(-8px) scale(1.05);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+  </style>
+
+</head>
+<body class="bg-gray-200">
+<!-- ==================================================== -->
+  <!-- 1. 全新的固定头部 (Sticky Header)                   -->
+  <!-- ==================================================== -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur-lg shadow-lg py-4 px-6">
+    <div class="max-w-6xl mx-auto">
+      <h1 class="text-center text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-gray-800 mb-4">
+        MySQL 容器化：别再纠结 “能不能用”，这才是生产级落地方案
+      </h1>
+      <div class="flex justify-center items-center space-x-6 md:space-x-12">
+        <!-- 误区组 -->
+        <div class="flex items-center space-x-5">
+          <div class="text-center transition-transform hover:scale-110">
+            <!-- **修正点 1**: 更新了图标名称 -->
+            <i class="fas fa-hourglass-half text-4xl text-red-500"></i>
+            <span class="block text-sm font-bold text-gray-700 mt-1">性能误区</span>
+          </div>
+          <div class="text-center transition-transform hover:scale-110">
+            <i class="fas fa-dumpster-fire text-4xl text-red-500"></i>
+            <span class="block text-sm font-bold text-gray-700 mt-1">数据误区</span>
+          </div>
+          <div class="text-center transition-transform hover:scale-110">
+            <i class="fas fa-eye-slash text-4xl text-red-500"></i>
+            <span class="block text-sm font-bold text-gray-700 mt-1">监控误区</span>
+          </div>
+        </div>
+        <!-- 分隔线 -->
+        <div class="h-16 border-l-2 border-gray-300"></div>
+        <!-- 解法组 -->
+        <div class="flex items-center space-x-5">
+          <div class="text-center transition-transform hover:scale-110">
+            <i class="fas fa-cogs text-4xl text-green-500"></i>
+            <span class="block text-sm font-bold text-gray-700 mt-1">性能解法</span>
+          </div>
+          <div class="text-center transition-transform hover:scale-110">
+            <i class="fas fa-shield-alt text-4xl text-green-500"></i>
+            <span class="block text-sm font-bold text-gray-700 mt-1">可靠性解法</span>
+          </div>
+          <div class="text-center transition-transform hover:scale-110">
+            <i class="fas fa-chart-line text-4xl text-green-500"></i>
+            <span class="block text-sm font-bold text-gray-700 mt-1">观测性解法</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================================================== -->
+  <!-- 2. 主内容区域                                      -->
+  <!-- ==================================================== -->
+  <main>
+
+  <!-- 主内容容器，负责整体布局、背景和间距 -->
+  <div class="p-4 md:p-8 space-y-16 flex flex-col items-center">
+
+    <!-- Section 1: 来自 "MySQL容器化：3大误区与3大解法 (视觉版).html" -->
+      <section id="mysql-myths-and-solutions" class="w-full max-w-6xl">
+        <!-- 注意：这里的旧标题已被移除，因为它现在位于固定头部 -->
+ <div class="w-full bg-gradient-to-br from-gray-50 to-blue-100 rounded-2xl shadow-2xl overflow-hidden p-8 md:p-12">
+          <div class="relative flex flex-col md:flex-row justify-between items-center md:space-x-8">
+            <div class="w-full md:w-5/12 space-y-6">
+              <h2 class="text-3xl font-bold text-gray-500 text-center md:text-left"><i class="fas fa-cloud-rain mr-2"></i>常见的“乌云” (误区)</h2>
+              <div class="flex items-center p-4 bg-white/60 rounded-xl shadow-md">
+                <!-- **修正点 1**: 更新了图标名称 -->
+                <i class="fas fa-hourglass-half text-4xl text-red-500 w-16 text-center"></i>
+                <p class="ml-4 font-semibold text-gray-700 text-xl">性能一定很差？</p>
+              </div>
+              <div class="flex items-center p-4 bg-white/60 rounded-xl shadow-md">
+                <i class="fas fa-dumpster-fire text-4xl text-red-500 w-16 text-center"></i>
+                <p class="ml-4 font-semibold text-gray-700 text-xl">数据容易丢失？</p>
+              </div>
+              <div class="flex items-center p-4 bg-white/60 rounded-xl shadow-md">
+                <i class="fas fa-eye-slash text-4xl text-red-500 w-16 text-center"></i>
+                <p class="ml-4 font-semibold text-gray-700 text-xl">监控是个黑盒？</p>
+              </div>
+            </div>
+            <div class="hidden md:block w-2/12 text-center">
+                <i class="fas fa-long-arrow-alt-right text-6xl text-blue-400 arrow-flow"></i>
+            </div>
+            <div class="md:hidden text-center py-8">
+                <i class="fas fa-long-arrow-alt-down text-6xl text-blue-400"></i>
+            </div>
+            <div class="w-full md:w-5/12 space-y-6">
+              <h2 class="text-3xl font-bold text-blue-800 text-center md:text-right"><i class="fas fa-lightbulb mr-2"></i>指路的“灯塔” (解法)</h2>
+              <div class="flex items-center p-4 bg-white/80 rounded-xl shadow-lg border-l-4 border-green-400">
+                <i class="fas fa-cogs text-4xl text-green-500 w-16 text-center"></i>
+                <p class="ml-4 font-semibold text-gray-800 text-xl">性能调优方案</p>
+              </div>
+              <div class="flex items-center p-4 bg-white/80 rounded-xl shadow-lg border-l-4 border-green-400">
+                <i class="fas fa-shield-alt text-4xl text-green-500 w-16 text-center"></i>
+                <p class="ml-4 font-semibold text-gray-800 text-xl">持久化存储方案</p>
+              </div>
+              <div class="flex items-center p-4 bg-white/80 rounded-xl shadow-lg border-l-4 border-green-400">
+                <i class="fas fa-chart-line text-4xl text-green-500 w-16 text-center"></i>
+                <p class="ml-4 font-semibold text-gray-800 text-xl">统一可观测方案</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+</section>
+
+    <!-- Section 2: 来自 "误区1：MySQL容器化扩容难 (图示版).html" -->
+    <section id="myth-scaling-difficulty" class="w-full max-w-6xl">
+      <!-- 
+        在这里粘贴 "误区1：MySQL容器化扩容难 (图示版).html" 文件 
+        <body>内的全部内容 
+      -->
+	<div class="w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div class="p-6 md:p-8">
+      <!-- Header -->
+      <div class="text-center mb-6">
+        <h2 class="text-base font-semibold text-red-500 uppercase tracking-wider">误区 1</h2>
+        <p class="mt-1 text-3xl font-bold text-gray-800">MySQL 容器化扩容难？</p>
+      </div>
+
+      <!-- Divider -->
+      <div class="relative my-6">
+        <div class="absolute inset-0 flex items-center" aria-hidden="true">
+          <div class="w-full border-t border-gray-300"></div>
+        </div>
+        <div class="relative flex justify-center">
+          <span class="px-4 bg-white text-xl font-medium text-green-600">真相：拆开看，很简单！</span>
+        </div>
+      </div>
+
+      <!-- Main Content Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+
+        <!-- 场景一: 存储扩容 -->
+        <div class="bg-blue-50 p-6 rounded-xl border-2 border-blue-200 text-center">
+          <h3 class="text-xl font-bold text-blue-800 mb-4">存储扩容 (让盘变大)</h3>
+          
+          <!-- Visual Flow -->
+          <div class="flex flex-col items-center space-y-3">
+            <!-- Before -->
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-database text-3xl text-blue-400"></i>
+              <i class="fas fa-hdd text-4xl text-blue-400"></i>
+            </div>
+            <span class="text-sm font-semibold text-gray-500">100G</span>
+
+            <!-- Action -->
+            <div class="flex items-center space-x-3 my-2 p-2 bg-white rounded-lg shadow-sm">
+               <i class="fas fa-file-code text-2xl text-yellow-500"></i>
+               <code class="text-sm text-gray-700 font-mono">storage: 500Gi</code>
+            </div>
+
+            <!-- Arrow -->
+            <i class="fas fa-arrow-down text-3xl text-gray-400"></i>
+
+            <!-- After -->
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-database text-3xl text-blue-600"></i>
+              <i class="fas fa-hdd text-6xl text-blue-600"></i>
+            </div>
+            <span class="text-lg font-bold text-gray-700">500G</span>
+          </div>
+          
+          <p class="mt-4 bg-blue-100 text-blue-800 font-semibold py-2 px-3 rounded-md text-sm">
+            <i class="fas fa-check-circle mr-1"></i>改个配置，无缝扩容
+          </p>
+        </div>
+
+        <!-- 场景二: 实例扩容 -->
+        <div class="bg-purple-50 p-6 rounded-xl border-2 border-purple-200 text-center">
+          <h3 class="text-xl font-bold text-purple-800 mb-4">实例扩容 (加分身)</h3>
+          
+          <!-- Visual Flow -->
+          <div class="flex flex-col items-center space-y-3">
+            <!-- Before -->
+            <div class="flex items-center justify-center">
+              <i class="fas fa-database text-4xl text-purple-400" title="Master"></i>
+            </div>
+            <span class="text-sm font-semibold text-gray-500">主库</span>
+
+            <!-- Action -->
+            <div class="flex items-center space-x-3 my-2 p-2 bg-white rounded-lg shadow-sm">
+               <i class="fas fa-robot text-3xl text-teal-500"></i>
+               <span class="text-sm text-gray-700 font-semibold">MySQL Operator</span>
+            </div>
+
+            <!-- Arrow -->
+            <i class="fas fa-arrow-down text-3xl text-gray-400"></i>
+
+            <!-- After -->
+            <div class="flex items-end justify-center space-x-2">
+              <i class="fas fa-database text-3xl text-purple-400 opacity-80" title="Replica"></i>
+              <i class="fas fa-database text-5xl text-purple-600" title="Master"></i>
+              <i class="fas fa-database text-3xl text-purple-400 opacity-80" title="Replica"></i>
+            </div>
+            <span class="text-lg font-bold text-gray-700">主从集群</span>
+          </div>
+          
+          <p class="mt-4 bg-purple-100 text-purple-800 font-semibold py-2 px-3 rounded-md text-sm">
+            <i class="fas fa-rocket mr-1"></i>Operator出手，自动搞定
+          </p>
+        </div>
+
+      </div>
+      
+      <!-- Conclusion -->
+      <div class="mt-8 pt-5 border-t border-gray-200 text-center">
+        <p class="text-xl font-semibold text-gray-700">结论：用对<span class="text-green-600">云原生工具</span>，扩容很简单！</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+	<section id="myth-scaling-difficulty" class="w-full max-w-6xl">
+	      <div class=" w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div class="p-6 md:p-8">
+      <!-- Header -->
+      <div class="text-center mb-6">
+        <h2 class="text-base font-semibold text-red-500 uppercase tracking-wider">误区 2</h2>
+        <p class="mt-1 text-3xl font-bold text-gray-800">“Docker 没资源隔离，应用会崩溃？”</p>
+      </div>
+
+      <!-- Problem Visualization -->
+      <div class="bg-red-50 border-2 border-dashed border-red-300 rounded-xl p-4 mb-8">
+          <h3 class="text-center text-lg font-bold text-red-700 mb-3">想象中的“混乱”：默认配置</h3>
+          <div class="flex justify-around items-center">
+              <!-- App 1: MQ -->
+              <div class="text-center">
+                  <i class="fas fa-rabbit-running text-5xl text-gray-700"></i>
+                  <p class="font-semibold">应用A (MQ)</p>
+              </div>
+              <!-- Resource Fight -->
+              <div class="text-center">
+                  <p class="font-bold text-red-600">抢占！</p>
+                  <i class="fas fa-arrow-right-long text-4xl text-red-500 animate-pulse"></i>
+                  <div>
+                      <i class="fas fa-microchip text-2xl text-gray-500"></i>
+                      <i class="fas fa-memory text-2xl text-gray-500"></i>
+                  </div>
+              </div>
+              <!-- App 2: MySQL -->
+              <div class="text-center">
+                  <i class="fas fa-database text-5xl text-red-400 opacity-70"></i>
+                  <p class="font-semibold text-red-500">应用B (MySQL) <i class="fas fa-dizzy"></i></p>
+              </div>
+          </div>
+      </div>
+
+      <!-- Truth Section -->
+      <div class="relative my-8">
+        <div class="absolute inset-0 flex items-center" aria-hidden="true"><div class="w-full border-t border-gray-300"></div></div>
+        <div class="relative flex justify-center"><span class="px-4 bg-white text-xl font-medium text-green-600">真相：Docker靠这两招实现隔离</span></div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8">
+        <!-- Namespace -->
+        <div class="bg-blue-50 p-5 rounded-xl text-center border-2 border-blue-200">
+          <i class="fas fa-eye-slash text-4xl text-blue-500 mb-2"></i>
+          <h4 class="text-lg font-bold text-blue-800">Namespaces</h4>
+          <p class="text-sm text-blue-700">环境隔离 (互相看不见)</p>
+        </div>
+        <!-- cgroups -->
+        <div class="bg-purple-50 p-5 rounded-xl text-center border-2 border-purple-200">
+          <i class="fas fa-ruler-combined text-4xl text-purple-500 mb-2"></i>
+          <h4 class="text-lg font-bold text-purple-800">cgroups</h4>
+          <p class="text-sm text-purple-700">资源限制 (互相抢不走)</p>
+        </div>
+      </div>
+
+      <!-- Solution Section -->
+      <h3 class="text-center text-xl font-bold text-gray-800 mb-4">生产环境怎么做？加上“资源锁”！</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Docker Run -->
+          <div>
+              <p class="font-bold text-gray-700 mb-2 flex items-center"><i class="fab fa-docker text-2xl text-blue-500 mr-2"></i> 单机 Docker</p>
+              <pre class="bg-gray-800 text-white p-3 rounded-lg text-sm overflow-x-auto"><code class="language-bash">docker run -m 4G --cpus 2 ...</code></pre>
+          </div>
+          <!-- K8s -->
+          <div>
+              <p class="font-bold text-gray-700 mb-2 flex items-center"><i class="fas fa-cubes text-2xl text-blue-500 mr-2"></i> Kubernetes</p>
+              <pre class="bg-gray-800 text-white p-3 rounded-lg text-sm overflow-x-auto"><code class="language-yaml">resources:
+limits:
+  memory: 4Gi
+  cpu: 2</code></pre>
+          </div>
+      </div>
+
+      <!-- Conclusion -->
+      <div class="mt-8 pt-5 border-t border-gray-200 text-center">
+        <p class="text-xl font-semibold text-gray-700">结论：不是 Docker 的锅，是<span class="text-green-600">配置的错</span>！</p>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/components/prism-bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/components/prism-yaml.min.js"></script>
+
+    </section>
+
+
+    <!-- Section 3: 来自 "误区3：容器化只为伸缩容灾？(视觉版).html" -->
+    <section id="myth-only-for-scaling" class="w-full max-w-6xl">
+      <!-- 
+        在这里粘贴 "误区3：容器化只为伸缩容灾？(视觉版).html" 文件 
+        <body>内的全部内容 
+      -->
+	  <div class="w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div class="p-6 md:p-8">
+      <!-- Header -->
+      <div class="text-center mb-4">
+        <h2 class="text-base font-semibold text-red-500 uppercase tracking-wider">误区 3</h2>
+        <p class="mt-1 text-3xl font-bold text-gray-800">容器化只为了“高大上”的场景？</p>
+      </div>
+
+      <!-- Problem vs Reality -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <!-- Narrow View -->
+          <div class="md:col-span-1 bg-red-50 border-2 border-dashed border-red-300 rounded-xl p-4 text-center flex flex-col justify-center">
+              <h3 class="text-lg font-bold text-red-700 mb-2">狭隘的看法</h3>
+              <div class="space-y-2 text-gray-600">
+                  <p><i class="fas fa-arrows-alt-h mr-2"></i> 自动伸缩</p>
+                  <p><i class="fas fa-life-ring mr-2"></i> 故障容灾</p>
+              </div>
+          </div>
+          <!-- Arrow -->
+          <div class="hidden md:flex justify-center items-center">
+              <i class="fas fa-arrow-right-long text-5xl text-gray-400"></i>
+          </div>
+           <div class="md:hidden flex justify-center items-center">
+              <i class="fas fa-arrow-down-long text-3xl text-gray-400"></i>
+          </div>
+          <!-- Broader Truth -->
+          <div class="md:col-span-1 bg-green-50 border-2 border-green-300 rounded-xl p-4 text-center flex flex-col justify-center">
+               <h3 class="text-lg font-bold text-green-700 mb-2">真正的价值</h3>
+               <p class="text-2xl font-extrabold text-green-800">运维效率！</p>
+          </div>
+      </div>
+
+
+      <!-- Core Benefits -->
+      <h3 class="text-center text-xl font-bold text-gray-800 mb-6">它为运维带来的三大“解放”</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+        <!-- 1. Consistency -->
+        <div class="bg-gray-50 p-5 rounded-xl border">
+          <i class="fas fa-stamp text-5xl text-sky-500 mb-3"></i>
+          <h4 class="text-lg font-bold text-gray-800">环境一致</h4>
+          <p class="text-sm text-gray-600">开发/测试/生产<br>不再有差异</p>
+        </div>
+        <!-- 2. Automation -->
+        <div class="bg-gray-50 p-5 rounded-xl border">
+          <i class="fas fa-magic-wand-sparkles text-5xl text-indigo-500 mb-3"></i>
+          <h4 class="text-lg font-bold text-gray-800">部署自动</h4>
+          <p class="text-sm text-gray-600">一键部署、滚动更新<br>故障自愈</p>
+        </div>
+        <!-- 3. Simplicity -->
+        <div class="bg-gray-50 p-5 rounded-xl border">
+          <i class="fas fa-layer-group text-5xl text-emerald-500 mb-3"></i>
+          <h4 class="text-lg font-bold text-gray-800">集群简化</h4>
+          <p class="text-sm text-gray-600">数天 -> 分钟<br>DBA 不再熬夜</p>
+        </div>
+      </div>
+
+      <!-- Conclusion -->
+      <div class="mt-8 pt-6 border-t border-gray-200 text-center">
+        <p class="text-xl font-semibold text-gray-700">结论：容器化的<span class="text-green-600">核心价值</span>，是对<span class="text-green-600">所有场景</span>的运维效率革命！</p>
+      </div>
+    </div>
+  </div>
+
+    </section>
+
+    <!-- Section 4: 来自 "挑战1：存储性能瓶颈 (视觉版).html" -->
+    <section id="challenge-storage-performance" class="w-full max-w-6xl">
+      <!-- 
+        在这里粘贴 "挑战1：存储性能瓶颈 (视觉版).html" 文件 
+        <body>内的全部内容 
+      -->
+	    <div class="w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div class="p-8">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h2 class="text-base font-semibold text-orange-500 uppercase tracking-wider">挑战 1</h2>
+        <p class="mt-1 text-4xl font-extrabold text-gray-900">直面 MySQL 存储性能瓶颈</p>
+      </div>
+
+      <!-- Main Content Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-8 items-center">
+          <!-- Problem Section -->
+          <div class="md:col-span-2 bg-red-50 border-2 border-dashed border-red-300 rounded-xl p-6">
+              <h3 class="text-2xl font-bold text-red-800 mb-4 text-center"><i class="fas fa-triangle-exclamation mr-2"></i>两大性能杀手</h3>
+              <div class="space-y-4">
+                  <div class="flex items-start">
+                      <i class="fas fa-network-wired text-red-600 text-3xl mt-1"></i>
+                      <div class="ml-4">
+                          <h4 class="font-bold text-gray-800">网络 IO 拖后腿</h4>
+                          <p class="text-sm text-gray-600">分布式存储的延迟，在随机写场景下被放大。</p>
+                      </div>
+                  </div>
+                  <div class="flex items-start">
+                      <i class="fas fa-ghost text-red-600 text-3xl mt-1"></i>
+                      <div class="ml-4">
+                          <h4 class="font-bold text-gray-800">CSI 插件不靠谱</h4>
+                          <p class="text-sm text-gray-600">挂载慢、同步异常，可用性受威胁。</p>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <!-- Arrow -->
+          <div class="hidden md:flex justify-center items-center">
+              <i class="fas fa-arrow-right-long text-5xl text-gray-400"></i>
+          </div>
+          <div class="md:hidden flex justify-center items-center my-4">
+              <i class="fas fa-arrow-down-long text-3xl text-gray-400"></i>
+          </div>
+
+
+          <!-- Solution Section -->
+          <div class="md:col-span-2 bg-green-50 border-2 border-green-300 rounded-xl p-6">
+               <h3 class="text-2xl font-bold text-green-800 mb-4 text-center"><i class="fas fa-shield-halved mr-2"></i>三层防御策略</h3>
+               <div class="space-y-4">
+                  <div class="flex items-center">
+                      <i class="fas fa-server text-green-600 text-2xl w-8 text-center"></i>
+                      <p class="ml-3 text-gray-700"><strong>硬件层：</strong>用 <span class="font-bold">本地 SSD</span> 或 <span class="font-bold">高性能云盘</span></p>
+                  </div>
+                   <div class="flex items-center">
+                      <i class="fas fa-puzzle-piece text-green-600 text-2xl w-8 text-center"></i>
+                      <p class="ml-3 text-gray-700"><strong>软件层：</strong>选 <span class="font-bold">官方稳定</span> 的 CSI 插件</p>
+                  </div>
+                   <div class="flex items-center">
+                      <i class="fas fa-sliders text-green-600 text-2xl w-8 text-center"></i>
+                      <p class="ml-3 text-gray-700"><strong>应用层：</strong>精调 <span class="font-bold">MySQL</span> 刷盘参数</p>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <!-- Conclusion -->
+      <div class="mt-8 pt-6 border-t-2 border-dashed border-gray-300 text-center">
+        <p class="text-lg font-semibold text-gray-800">硬件、软件、应用三管齐下，才能榨干存储性能！</p>
+      </div>
+    </div>
+  </div>
+
+    </section>
+
+    <!-- Section 5: 来自 "挑战2：数据可靠性 (视觉版).html" -->
+    <section id="challenge-data-reliability" class="w-full max-w-6xl">
+      <!-- 
+        在这里粘贴 "挑战2：数据可靠性 (视觉版).html" 文件 
+        <body>内的全部内容 
+      -->
+	    <div class="w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div class="p-8">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h2 class="text-base font-semibold text-yellow-500 uppercase tracking-wider">挑战 2</h2>
+        <p class="mt-1 text-4xl font-extrabold text-gray-900">为数据构筑“金钟罩”</p>
+      </div>
+
+      <!-- Main Content Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
+          
+          <!-- THREATS Column -->
+          <div class="md:col-span-2 flex flex-col space-y-6">
+              <h3 class="text-2xl font-bold text-red-700 text-center mb-2"><i class="fa-solid fa-file-circle-exclamation mr-2"></i>数据面临的威胁</h3>
+              <!-- Threat 1: Component Failure -->
+              <div class="flex items-center bg-red-50 p-4 rounded-lg border border-red-200">
+                  <i class="fa-solid fa-link-slash text-4xl text-red-500"></i>
+                  <div class="ml-4">
+                      <h4 class="font-bold text-gray-800">组件失效</h4>
+                      <p class="text-sm text-gray-600">CSI 插件 Bug 或存储卷损坏</p>
+                  </div>
+              </div>
+              <!-- Threat 2: Complex Recovery -->
+              <div class="flex items-center bg-yellow-50 p-4 rounded-lg border border-yellow-300">
+                  <i class="fa-solid fa-person-digging text-4xl text-yellow-600"></i>
+                  <div class="ml-4">
+                      <h4 class="font-bold text-gray-800">恢复复杂</h4>
+                      <p class="text-sm text-gray-600">依赖原生工具，流程繁琐</p>
+                  </div>
+              </div>
+          </div>
+
+          <!-- ARROW / DIVIDER -->
+          <div class="hidden md:flex justify-center items-center">
+              <i class="fa-solid fa-arrow-right-long text-5xl text-gray-400"></i>
+          </div>
+           <div class="md:hidden flex justify-center items-center my-4">
+              <i class="fa-solid fa-arrow-down-long text-3xl text-gray-400"></i>
+          </div>
+
+          <!-- SHIELDS Column -->
+          <div class="md:col-span-2 flex flex-col space-y-4">
+              <h3 class="text-2xl font-bold text-green-800 text-center mb-2"><i class="fa-solid fa-shield-heart mr-2"></i>三重可靠性护盾</h3>
+              <!-- Shield 1: Snapshots -->
+              <div class="flex items-center">
+                  <div class="fa-stack fa-2x w-12 text-cyan-500">
+                    <i class="fa-solid fa-shield fa-stack-2x"></i>
+                    <i class="fa-solid fa-camera-retro fa-stack-1x fa-inverse"></i>
+                  </div>
+                  <div class="ml-3">
+                      <h4 class="font-bold">存储快照</h4>
+                      <p class="text-sm text-gray-600">秒级备份，快速恢复</p>
+                  </div>
+              </div>
+              <!-- Shield 2: Redundancy -->
+              <div class="flex items-center">
+                  <div class="fa-stack fa-2x w-12 text-teal-500">
+                    <i class="fa-solid fa-shield fa-stack-2x"></i>
+                    <i class="fa-solid fa-copy fa-stack-1x fa-inverse"></i>
+                  </div>
+                  <div class="ml-3">
+                      <h4 class="font-bold">数据冗余</h4>
+                      <p class="text-sm text-gray-600">多副本存储，防单点故障</p>
+                  </div>
+              </div>
+              <!-- Shield 3: Drills -->
+              <div class="flex items-center">
+                  <div class="fa-stack fa-2x w-12 text-emerald-500">
+                    <i class="fa-solid fa-shield fa-stack-2x"></i>
+                    <i class="fa-solid fa-clipboard-check fa-stack-1x fa-inverse"></i>
+                  </div>
+                  <div class="ml-3">
+                      <h4 class="font-bold">恢复演练</h4>
+                      <p class="text-sm text-gray-600">确保备份方案真实有效</p>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+  </div>
+
+    </section>
+
+    <!-- Section 6: 来自 "挑战3：监控排障复杂性 (视觉版 - 已修正).html" -->
+    <section id="challenge-monitoring-complexity" class="w-full max-w-6xl">
+      <!-- 
+        在这里粘贴 "挑战3：监控排障复杂性 (视觉版 - 已修正).html" 文件 
+        <body>内的全部内容 
+      -->
+	    <div class="w-full bg-white rounded-2xl shadow-xl overflow-hidden p-8">
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <h2 class="text-base font-semibold text-blue-500 uppercase tracking-wider">挑战 3</h2>
+      <p class="mt-1 text-4xl font-extrabold text-gray-900">点亮监控“黑盒”</p>
+      <p class="max-w-2xl mx-auto mt-4 text-xl text-gray-500">从传统运维到云原生可观测性的进化</p>
+    </div>
+
+    <!-- Main Grid: Before vs After -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+      
+      <!-- BEFORE: The Old World -->
+      <div class="bg-red-50 border-2 border-dashed border-red-300 rounded-xl p-6">
+        <h3 class="text-2xl font-bold text-red-800 text-center mb-6"><i class="fas fa-eye-slash mr-2"></i>旧世界：监控盲区</h3>
+        <div class="relative flex flex-col items-center space-y-8">
+          <!-- Traditional Monitoring -->
+          <div class="text-center">
+            <i class="fas fa-server text-4xl text-gray-500"></i>
+            <p class="font-bold">传统监控</p>
+          </div>
+          <!-- MySQL Pod -->
+          <div class="relative text-center">
+              <i class="fa-brands fa-docker text-7xl text-gray-600"></i>
+              <p class="font-bold mt-1">MySQL 容器</p>
+              <p class="text-sm text-red-600 font-mono">IP: 10.1.1.2 (易变)</p>
+              <i class="fas fa-file-alt absolute -top-2 -right-4 text-2xl text-gray-400 animate-pulse" title="日志散落"></i>
+          </div>
+          <!-- Broken Connection -->
+          <svg class="absolute top-16 h-16 w-full" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path class="arrow-dashed" stroke="#ef4444" stroke-width="3" d="M 50 0 V 100" />
+              <i class="fas fa-question-circle absolute text-red-500" style="top: 50%; left: 55%;"></i>
+          </svg>
+          <p class="absolute top-28 text-center text-red-600 font-semibold bg-red-100 px-2 py-1 rounded">采集失败 & IP 漂移</p>
+        </div>
+      </div>
+
+      <!-- AFTER: The New World -->
+      <div class="bg-green-50 border-2 border-green-400 rounded-xl p-6">
+        <h3 class="text-2xl font-bold text-green-800 text-center mb-6"><i class="fas fa-eye mr-2"></i>新世界：清晰可控</h3>
+        <div class="flex flex-col items-center space-y-4">
+          <!-- Toolchain: Prometheus, Grafana, Loki -->
+          <div class="flex justify-around items-end space-x-4 w-full">
+            <div class="text-center w-24">
+              <i class="fas fa-fire text-4xl text-orange-500"></i>
+              <p class="text-xs font-bold mt-2">Prometheus</p>
+            </div>
+            <div class="text-center w-24">
+              <i class="fas fa-chart-bar text-4xl text-sky-500"></i>
+              <p class="text-xs font-bold mt-2">Grafana</p>
+            </div>
+            <div class="text-center w-24">
+              <i class="fas fa-magnifying-glass-chart text-4xl text-yellow-500"></i>
+              <p class="text-xs font-bold mt-2">Loki/ELK</p>
+            </div>
+          </div>
+          
+          <i class="fas fa-arrow-down text-2xl text-gray-400"></i>
+
+          <!-- K8s Service -->
+          <div class="relative text-center bg-blue-100 px-4 py-2 rounded-lg">
+            <i class="fas fa-sitemap text-3xl text-blue-600"></i>
+            <p class="font-bold mt-1">Kubernetes Service</p>
+            <p class="text-sm text-blue-700 font-mono">mysql.default.svc</p>
+          </div>
+
+          <i class="fas fa-arrow-down text-2xl text-gray-400"></i>
+
+          <!-- MySQL Pod with PV -->
+          <div class="relative text-center">
+            <i class="fa-brands fa-docker text-7xl text-green-600"></i>
+            <p class="font-bold mt-1">MySQL 容器</p>
+            <div class="flex items-center justify-center mt-1">
+              <i class="fas fa-database text-green-700" title="持久化存储卷"></i>
+              <p class="text-sm text-green-700 ml-1">日志 -> PV</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    </section>
+
+    <!-- Section 7: 来自 "MySQL 容器化之路 (视觉版).html" -->
+    <section id="mysql-containerization-path" class="w-full max-w-6xl">
+      <!-- 
+        在这里粘贴 "MySQL 容器化之路 (视觉版).html" 文件 
+        <body>内的全部内容 
+      -->
+	    <div class="mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden p-8">
+    <!-- Header -->
+    <div class="text-center mb-12">
+      <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">MySQL 容器化的抉择之路</h1>
+      <p class="mt-4 max-w-3xl mx-auto text-xl text-gray-500">停止纠结"能不能"，聚焦"怎么做"：选择正确的方案，决定最终的成败。</p>
+    </div>
+
+    <!-- Main Visual Path -->
+    <div class="relative flex flex-col items-center">
+      <!-- Decision Maker -->
+      <div class="decision-point bg-white p-4 rounded-full shadow-lg border-4 border-blue-500 mb-8">
+        <i class="fas fa-user-tie text-5xl text-blue-600"></i>
+        <p class="text-center font-bold text-sm mt-1">DBA</p>
+      </div>
+
+      <!-- The Two Paths -->
+      <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-12">
+        <!-- Path 1: The Pitfall Road -->
+        <div class="space-y-10 border-4 border-dashed border-red-300 bg-red-50 p-6 rounded-2xl">
+          <h2 class="text-2xl font-bold text-red-700 text-center"><i class="fas fa-exclamation-triangle mr-2"></i>踩坑之路 (非生产)</h2>
+          <div class="space-y-6">
+            <div class="step-card bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500">
+              <h3 class="font-bold text-lg flex items-center"><i class="fab fa-docker text-2xl text-red-500 mr-3"></i>单机 Docker</h3>
+              <p class="text-gray-600 ml-8">缺乏集群调度，单点故障风险</p>
+            </div>
+            <div class="step-card bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500">
+              <h3 class="font-bold text-lg flex items-center"><i class="fas fa-hdd text-2xl text-red-500 mr-3"></i>宿主机存储</h3>
+              <p class="text-gray-600 ml-8">Pod漂移后数据丢失，状态不保</p>
+            </div>
+            <div class="step-card bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500">
+              <h3 class="font-bold text-lg flex items-center"><i class="fas fa-fire text-2xl text-red-500 mr-3"></i>无资源限制</h3>
+              <p class="text-gray-600 ml-8">资源抢占，影响核心服务稳定性</p>
+            </div>
+          </div>
+          <div class="text-center mt-6">
+              <i class="fas fa-ban text-6xl text-red-500"></i>
+              <p class="mt-2 text-xl font-bold text-red-800">终点：生产事故</p>
+          </div>
+        </div>
+
+        <!-- Path 2: The Pro Road -->
+        <div class="space-y-10 border-4 border-solid border-green-400 bg-green-50 p-6 rounded-2xl">
+          <h2 class="text-2xl font-bold text-green-700 text-center"><i class="fas fa-rocket mr-2"></i>云原生之路 (生产级)</h2>
+          <div class="space-y-6">
+            <div class="step-card bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500">
+              <h3 class="font-bold text-lg flex items-center"><img src="https://www.vectorlogo.zone/logos/kubernetes/kubernetes-icon.svg" class="w-7 h-7 mr-3" alt="K8s">Kubernetes</h3>
+              <p class="text-gray-600 ml-10">强大的集群编排与故障自愈</p>
+            </div>
+            <div class="step-card bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500">
+              <h3 class="font-bold text-lg flex items-center"><i class="fas fa-database text-2xl text-green-500 mr-3"></i>CSI 持久化存储</h3>
+              <p class="text-gray-600 ml-8">数据安全解耦，随处挂载</p>
+            </div>
+            <div class="step-card bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500">
+              <h3 class="font-bold text-lg flex items-center"><i class="fas fa-robot text-2xl text-green-500 mr-3"></i>MySQL Operator</h3>
+              <p class="text-gray-600 ml-8">自动化运维，简化集群管理</p>
+            </div>
+          </div>
+          <div class="text-center mt-6">
+              <i class="fas fa-cloud text-6xl text-green-500"></i>
+              <p class="mt-2 text-xl font-bold text-green-800">未来：高效 & 可靠</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Final Conclusion -->
+    <div class="mt-12 pt-8 border-t-2 border-gray-200">
+      <h4 class="text-center text-2xl font-bold text-gray-800">结论：MySQL on K8s 是现代 DBA 的<span class="text-blue-600">“必修课”</span></h4>
+      <p class="text-center text-gray-600 mt-2 max-w-4xl mx-auto">掌握云原生时代的数据库部署与管理能力，是应对大规模、高可用业务挑战的关键。</p>
+    </div>
+  </div>
+
+    </section>
+
+  </div>
+</main>
+</body>
+</html>
+
+

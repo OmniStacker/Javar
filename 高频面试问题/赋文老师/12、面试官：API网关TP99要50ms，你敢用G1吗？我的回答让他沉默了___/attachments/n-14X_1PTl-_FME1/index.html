@@ -1,0 +1,481 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API网关GC调优白板讲稿</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        background-color: #f5f5f5;
+        color: #333333;
+        overflow: hidden;
+        height: 100vh;
+    }
+    
+    .container {
+        width: 100%;
+        height: calc(100vh - 80px); /* 减去底部导航高度 */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+    
+    .slide {
+        width: 100%;
+        max-width: 1280px;
+        height: 100%;
+        max-height: 720px; /* 17寸屏幕典型高度 */
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 50px 60px;
+        display: none;
+        flex-direction: column;
+    }
+    
+    .slide.active {
+        display: flex;
+        animation: fadeIn 0.5s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    /* 配色方案：4种颜色 */
+    /* 1. 主文字色：#333333 (深灰) */
+    /* 2. 强调色：#2563eb (蓝色) */
+    /* 3. 警告色：#dc2626 (红色) */
+    /* 4. 成功色：#16a34a (绿色) */
+    
+    h1 {
+        font-size: 2.8em;
+        color: #333333;
+        text-align: center;
+        margin-bottom: 40px;
+        line-height: 1.3;
+    }
+    
+    h2 {
+        font-size: 2.2em;
+        color: #2563eb;
+        margin-bottom: 30px;
+        padding-bottom: 12px;
+        border-bottom: 3px solid #2563eb;
+    }
+    
+    h3 {
+        font-size: 1.5em;
+        color: #333333;
+        margin-bottom: 15px;
+    }
+    
+    .content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 25px;
+    }
+    
+    .highlight {
+        color: #2563eb;
+        font-weight: 600;
+    }
+    
+    .danger {
+        color: #dc2626;
+        font-weight: 600;
+    }
+    
+    .success {
+        color: #16a34a;
+        font-weight: 600;
+    }
+    
+    /* 流程图 */
+    .flow-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin: 20px 0;
+    }
+    
+    .flow-box {
+        background: #ffffff;
+        border: 2px solid #2563eb;
+        border-radius: 10px;
+        padding: 18px 25px;
+        font-size: 1.1em;
+        font-weight: 500;
+        text-align: center;
+        min-width: 160px;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+    }
+    
+    .flow-arrow {
+        font-size: 2em;
+        color: #2563eb;
+        font-weight: bold;
+    }
+    
+    /* 对比卡片 */
+    .comparison {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin: 20px 0;
+    }
+    
+    .card {
+        background: #f9fafb;
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 25px;
+        text-align: center;
+    }
+    
+    .card h3 {
+        color: #2563eb;
+        margin-bottom: 20px;
+    }
+    
+    .card-icon {
+        font-size: 3em;
+        margin-bottom: 15px;
+    }
+    
+    /* 强调框 */
+    .emphasis {
+        background: #eff6ff;
+        border-left: 5px solid #2563eb;
+        padding: 20px 25px;
+        border-radius: 8px;
+        font-size: 1.15em;
+        line-height: 1.6;
+    }
+    
+    .code-box {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.95em;
+        overflow-x: auto;
+    }
+    
+    /* 列表 */
+    .step-list {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .step-item {
+        background: #f9fafb;
+        border-left: 4px solid #2563eb;
+        padding: 15px 20px;
+        border-radius: 6px;
+        font-size: 1.1em;
+    }
+    
+    .step-item strong {
+        color: #2563eb;
+    }
+    
+    /* 底部导航 */
+    .navigation {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 80px;
+        background: #ffffff;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    }
+    
+    .nav-btn {
+        background: #2563eb;
+        color: #ffffff;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 8px;
+        font-size: 1em;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .nav-btn:hover:not(:disabled) {
+        background: #1d4ed8;
+        transform: translateY(-2px);
+    }
+    
+    .nav-btn:disabled {
+        background: #cbd5e1;
+        cursor: not-allowed;
+    }
+    
+    .page-info {
+        color: #64748b;
+        font-size: 1em;
+        font-weight: 500;
+        min-width: 80px;
+        text-align: center;
+    }
+    
+    /* 三列网格 */
+    .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin: 20px 0;
+    }
+    
+    .grid-item {
+        background: #f9fafb;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .grid-item h4 {
+        color: #2563eb;
+        font-size: 1.1em;
+        margin-bottom: 10px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 第1页：开篇 -->
+    <div class="slide active">
+        <h1>面试官：API网关TP99要50ms<br>你敢用<span class="highlight">G1</span>吗？</h1>
+        <div class="content">
+            <p style="text-align: center; font-size: 1.3em;">一个拷问<span class="danger">底层理解</span>的"送命题"</p>
+            
+            <div class="flow-container" style="flex-direction: column; gap: 15px;">
+                <div class="flow-box" style="width: 80%;">你懂"低延迟"吗？🤔</div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-box" style="width: 80%;">知道G1/ZGC的"坑"吗？🕳️</div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-box" style="width: 80%;">有完整的<span class="highlight">闭环能力</span>吗？🔄</div>
+            </div>
+            
+            <p style="text-align: center; font-size: 1.2em; margin-top: 20px;">
+                今天，带你把这个问题<span class="success">彻底打通</span>！
+            </p>
+        </div>
+    </div>
+
+    <!-- 第2页：场景特征 -->
+    <div class="slide">
+        <h2>场景画像：API网关的"人设"</h2>
+        <div class="content">
+            <div class="comparison">
+                <div class="card">
+                    <div class="card-icon">🌊</div>
+                    <h3>流量洪峰</h3>
+                    <p style="font-size: 1.2em;">QPS高达<br><span class="highlight" style="font-size: 1.5em;">数十万</span></p>
+                </div>
+                <div class="card">
+                    <div class="card-icon">💀</div>
+                    <h3>朝生夕死</h3>
+                    <p style="font-size: 1.2em;">对象<br><span class="highlight" style="font-size: 1.5em;">用完即扔</span></p>
+                </div>
+            </div>
+            
+            <div class="emphasis">
+                <strong>🎯 核心矛盾：</strong><br>
+                频繁的Young GC产生<span class="danger">STW (Stop-The-World)</span>停顿<br>
+                → 直接导致请求延迟飙升，<span class="danger">TP99爆表</span>！
+            </div>
+        </div>
+    </div>
+
+    <!-- 第3页：G1的坑 -->
+    <div class="slide">
+        <h2>G1的"坑"：承诺为何失效？</h2>
+        <div class="content">
+            <div class="code-box">
+                -XX:+UseG1GC -XX:MaxGCPauseMillis=20
+            </div>
+            <p style="text-align: center; font-size: 1.2em;">
+                设置了停顿目标就安全了？<span class="danger">太天真了！</span>
+            </p>
+            
+            <div style="background: #f9fafb; border-radius: 10px; padding: 30px; text-align: center; font-size: 1.2em; line-height: 2.2;">
+                <div>✅ Young GC ≈ <span class="success">20ms</span></div>
+                <div style="color: #64748b;">⬇️ 流量突增 ⬇️</div>
+                <div>⚠️ Mixed GC ≈ <span class="danger">150ms</span></div>
+                <div style="color: #64748b;">⬇️ 老年代被填满 ⬇️</div>
+                <div>🔥 Full GC ≈ <span class="danger">2.3秒（灾难）</span></div>
+            </div>
+            
+            <div class="emphasis">
+                <strong>失控原因：</strong>对象晋升速度 <span class="highlight">&gt;</span> 老年代回收速度 → 并发模式失败！
+            </div>
+        </div>
+    </div>
+
+    <!-- 第4页：驯服G1 -->
+    <div class="slide">
+        <h2>破局之道(一)：驯服G1</h2>
+        <div class="content">
+            <div class="emphasis" style="text-align: center; font-size: 1.3em;">
+                <strong>核心策略：</strong><span class="success">让对象尽可能死在年轻代</span>
+            </div>
+            
+            <div class="grid-3">
+                <div class="grid-item">
+                    <h4>1️⃣ 加大堆内存</h4>
+                    <div class="code-box" style="font-size: 0.85em; margin-top: 10px;">-Xms8g<br>-Xmx8g</div>
+                    <p style="margin-top: 10px; font-size: 0.95em;">降低GC频率</p>
+                </div>
+                <div class="grid-item">
+                    <h4>2️⃣ 调新生代比例</h4>
+                    <div class="code-box" style="font-size: 0.85em; margin-top: 10px;">-XX:G1Max<br>NewSize...=60</div>
+                    <p style="margin-top: 10px; font-size: 0.95em;">给年轻代更多空间</p>
+                </div>
+                <div class="grid-item">
+                    <h4>3️⃣ 调Region大小</h4>
+                    <div class="code-box" style="font-size: 0.85em; margin-top: 10px;">-XX:G1Heap<br>RegionSize=4m</div>
+                    <p style="margin-top: 10px; font-size: 0.95em;">避免大对象晋升</p>
+                </div>
+            </div>
+            
+            <div class="emphasis">
+                <strong>4️⃣ 生命线：</strong>持续监控GC日志，分析晋升速率和Mixed GC频率
+            </div>
+        </div>
+    </div>
+
+    <!-- 第5页：拥抱ZGC -->
+    <div class="slide">
+        <h2>破局之道(二)：拥抱ZGC</h2>
+        <div class="content">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 3em; margin-bottom: 10px;">🚀</div>
+                <p style="font-size: 1.4em;"><strong>杀手级特性：</strong>STW停顿 <span class="success">&lt; 1ms</span></p>
+                <p style="font-size: 1.1em; color: #64748b;">(无论堆是4GB还是400GB)</p>
+            </div>
+            
+            <div class="comparison">
+                <div class="card">
+                    <h3>G1</h3>
+                    <p style="margin: 15px 0; font-size: 1.1em;">停顿：15-150ms</p>
+                    <p style="margin: 15px 0; font-size: 1.1em;">TP99：<span class="danger">不稳定</span> 💔</p>
+                </div>
+                <div class="card">
+                    <h3>ZGC</h3>
+                    <p style="margin: 15px 0; font-size: 1.1em;">停顿：<span class="success">&lt; 1ms</span></p>
+                    <p style="margin: 15px 0; font-size: 1.1em;">TP99：<span class="success">稳如磐石</span> ✅</p>
+                </div>
+            </div>
+            
+            <div class="emphasis">
+                <strong>代价：</strong>更高的<span class="highlight">CPU和内存</span>开销，需JDK 15+
+            </div>
+        </div>
+    </div>
+
+    <!-- 第6页：完美回答 -->
+    <div class="slide">
+        <h2>你的完美回答模板 🏆</h2>
+        <div class="content">
+            <div class="step-list">
+                <div class="step-item">
+                    <strong>第一步：分析场景</strong><br>
+                    点明网关"朝生夕死"特性，GC停顿是TP99杀手
+                </div>
+                <div class="step-item">
+                    <strong>第二步：对比方案</strong><br>
+                    G1是成熟均衡选项，ZGC是终极低延迟方案
+                </div>
+                <div class="step-item">
+                    <strong>第三步：给出策略</strong><br>
+                    G1调优三板斧 或 ZGC的资源取舍
+                </div>
+                <div class="step-item" style="border-left-color: #16a34a; background: #f0fdf4;">
+                    <strong style="color: #16a34a;">第四步：闭环能力</strong><br>
+                    强调持续监控(APM)、告警阈值、应急预案
+                </div>
+            </div>
+            
+            <p style="text-align: center; font-size: 1.2em; margin-top: 20px;">
+                这套思路打下来，面试官只会感慨：<br>
+                <span class="success" style="font-size: 1.3em;">"这才是我们要找的人！"</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- 底部导航 -->
+<div class="navigation">
+    <button class="nav-btn" id="prevBtn" disabled>◀ 上一页</button>
+    <span class="page-info" id="pageInfo">1 / 6</span>
+    <button class="nav-btn" id="nextBtn">下一页 ▶</button>
+</div>
+
+<script>
+let currentSlide = 0;
+const slides = document.querySelectorAll('.slide');
+const totalSlides = slides.length;
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const pageInfo = document.getElementById('pageInfo');
+
+function updateSlide() {
+    slides.forEach((slide, index) => {
+        slide.classList.toggle('active', index === currentSlide);
+    });
+    
+    pageInfo.textContent = `${currentSlide + 1} / ${totalSlides}`;
+    prevBtn.disabled = currentSlide === 0;
+    nextBtn.disabled = currentSlide === totalSlides - 1;
+}
+
+prevBtn.addEventListener('click', () => {
+    if (currentSlide > 0) {
+        currentSlide--;
+        updateSlide();
+    }
+});
+
+nextBtn.addEventListener('click', () => {
+    if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlide();
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') prevBtn.click();
+    if (e.key === 'ArrowRight') nextBtn.click();
+});
+
+updateSlide();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1058 @@
+<!DOCTYPE html>  
+<html lang="zh-CN">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>布隆过滤器深度解析</title>  
+    <script src="https://cdn.tailwindcss.com"></script>  
+    <style>  
+        * { margin: 0; padding: 0; box-sizing: border-box; }  
+        body {   
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;   
+            overflow: hidden;  
+            height: 100vh;  
+            width: 100vw;  
+        }  
+        .slide {  
+            display: none;  
+            width: 100vw;  
+            height: 100vh;  
+            background: white;  
+            position: absolute;  
+            top: 0;  
+            left: 0;  
+        }  
+        .slide.active {  
+            display: flex;  
+            animation: slideIn 0.5s ease-out;  
+        }  
+        @keyframes slideIn {  
+            from { opacity: 0; transform: translateX(50px); }  
+            to { opacity: 1; transform: translateX(0); }  
+        }  
+        @keyframes fadeIn {  
+            from { opacity: 0; transform: translateY(20px); }  
+            to { opacity: 1; transform: translateY(0); }  
+        }  
+        @keyframes pulse {  
+            0%, 100% { transform: scale(1); }  
+            50% { transform: scale(1.05); }  
+        }  
+        @keyframes float {  
+            0%, 100% { transform: translateY(0); }  
+            50% { transform: translateY(-10px); }  
+        }  
+        .animate-in { animation: fadeIn 0.6s ease-out forwards; }  
+        .delay-1 { animation-delay: 0.2s; opacity: 0; }  
+        .delay-2 { animation-delay: 0.4s; opacity: 0; }  
+        .delay-3 { animation-delay: 0.6s; opacity: 0; }  
+        .delay-4 { animation-delay: 0.8s; opacity: 0; }  
+        
+        .bit-cell {  
+            display: inline-block;  
+            width: 40px;  
+            height: 40px;  
+            border: 2px solid #3b82f6;  
+            margin: 2px;  
+            text-align: center;  
+            line-height: 40px;  
+            font-weight: bold;  
+            transition: all 0.3s;  
+            border-radius: 4px;  
+        }  
+        .bit-cell.active {  
+            background: #3b82f6;  
+            color: white;  
+            animation: pulse 0.5s;  
+        }  
+        
+        .module {  
+            border: 2px solid #e5e7eb;  
+            border-radius: 12px;  
+            overflow: hidden;  
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);  
+            background: white;  
+        }  
+        .module-header {  
+            padding: 16px 24px;  
+            cursor: pointer;  
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);  
+            color: white;  
+            font-size: 20px;  
+            font-weight: bold;  
+            display: flex;  
+            align-items: center;  
+            justify-content: space-between;  
+            transition: all 0.3s;  
+        }  
+        .module-header:hover {  
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);  
+        }  
+        .module-content {  
+            max-height: 0;  
+            overflow: hidden;  
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);  
+        }  
+        .module.expanded .module-content {  
+            max-height: 2000px;  
+            padding: 24px;  
+            overflow-y: auto;  
+        }  
+        
+        .tag {  
+            position: absolute;  
+            top: 20px;  
+            left: 20px;  
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);  
+            color: white;  
+            padding: 10px 20px;  
+            border-radius: 8px;  
+            font-size: 16px;  
+            font-weight: bold;  
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);  
+            z-index: 10;  
+        }  
+        
+        .flow-box {  
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);  
+            color: white;  
+            padding: 20px 30px;  
+            border-radius: 12px;  
+            font-size: 20px;  
+            font-weight: bold;  
+            box-shadow: 0 8px 20px rgba(240, 147, 251, 0.3);  
+            transition: all 0.3s;  
+        }  
+        .flow-box:hover {  
+            transform: translateY(-5px);  
+            box-shadow: 0 12px 30px rgba(240, 147, 251, 0.4);  
+        }  
+        
+        .icon-filter {  
+            width: 200px;  
+            height: 200px;  
+            animation: float 3s ease-in-out infinite;  
+        }  
+        
+        .grid-demo {  
+            display: grid;  
+            grid-template-columns: repeat(16, 1fr);  
+            gap: 4px;  
+            margin: 20px 0;  
+        }  
+        .grid-cell {  
+            aspect-ratio: 1;  
+            background: #f3f4f6;  
+            border: 1px solid #d1d5db;  
+            border-radius: 4px;  
+            transition: all 0.3s;  
+        }  
+        .grid-cell.filled {  
+            background: #3b82f6;  
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);  
+        }  
+        
+        .arrow-line {  
+            position: relative;  
+            height: 4px;  
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);  
+            border-radius: 2px;  
+        }  
+        .arrow-line::after {  
+            content: '';  
+            position: absolute;  
+            right: -10px;  
+            top: -6px;  
+            width: 0;  
+            height: 0;  
+            border-left: 15px solid #764ba2;  
+            border-top: 7px solid transparent;  
+            border-bottom: 7px solid transparent;  
+        }  
+    </style>  
+</head>  
+<body>  
+
+<!-- 第1页：封面 -->  
+<div class="slide active" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">  
+    <div class="flex flex-col items-center justify-center w-full h-full text-white">  
+        
+        <div class="flex justify-center items-center space-x-2 flex-wrap">  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell active">1</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell active">1</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+        </div>  
+        <div class="flex justify-center items-center space-x-2 flex-wrap mt-4">  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell active">1</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+            <span class="bit-cell">0</span>  
+        </div>  
+        <br/>
+        <h1 class="text-7xl font-bold mb-8 animate-in" style="text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);font-size: 80px;">  
+            <font color="yellow">布隆过滤器</font>面试4问  
+        </h1>  
+        
+        
+        <div class="grid grid-cols-2 gap-8 mt-16 w-3/4">  
+            <div class="bg-white bg-opacity-20 backdrop-blur-lg rounded-2xl p-8 animate-in delay-2">  
+                <div class="text-2xl font-bold">为什么省内存？</div>  
+            </div>  
+            <div class="bg-white bg-opacity-20 backdrop-blur-lg rounded-2xl p-8 animate-in delay-3">  
+                <div class="text-2xl font-bold">能否修改数据？</div>  
+            </div>  
+            <div class="bg-white bg-opacity-20 backdrop-blur-lg rounded-2xl p-8 animate-in delay-4">  
+                <div class="text-2xl font-bold">如何数据预热？</div>  
+            </div>  
+            <div class="bg-white bg-opacity-20 backdrop-blur-lg rounded-2xl p-8 animate-in delay-4">  
+                <div class="text-2xl font-bold">误判率暴增怎么办？</div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第2页：为什么省内存 -->  
+<div class="slide">  
+    <div class="tag">核心原理 · 内存优化</div>  
+    <div class="flex flex-col items-center justify-center w-full h-full p-16">  
+        <h2 class="text-5xl font-bold mb-16 text-gray-800">为什么这么省内存？</h2>  
+        
+        <div class="grid grid-cols-2 gap-16 w-full max-w-6xl">  
+            <!-- 传统存储 -->  
+            <div class="animate-in">  
+                <div class="text-center mb-8">  
+                    <div class="inline-block bg-red-500 text-white px-8 py-4 rounded-xl text-2xl font-bold">  
+                        ❌ 传统存储方式  
+                    </div>  
+                </div>  
+                <div class="bg-red-50 border-4 border-red-300 rounded-2xl p-8">  
+                    <div class="text-xl mb-6 font-bold text-red-700">存储完整数据</div>  
+                    <div class="space-y-4">  
+                        <div class="bg-white p-6 rounded-lg border-2 border-red-200">  
+                            <div class="text-lg font-mono">用户ID: "123456"</div>  
+                            <div class="text-sm text-gray-600 mt-2">占用: ~48 字节</div>  
+                        </div>  
+                        <div class="bg-white p-6 rounded-lg border-2 border-red-200">  
+                            <div class="text-lg font-mono">用户ID: "789012"</div>  
+                            <div class="text-sm text-gray-600 mt-2">占用: ~48 字节</div>  
+                        </div>  
+                        <div class="bg-white p-6 rounded-lg border-2 border-red-200">  
+                            <div class="text-lg font-mono">用户ID: "345678"</div>  
+                            <div class="text-sm text-gray-600 mt-2">占用: ~48 字节</div>  
+                        </div>  
+                    </div>  
+                    <div class="mt-6 text-center text-xl font-bold text-red-700">  
+                        100万数据 ≈ 48 MB  
+                    </div>  
+                </div>  
+            </div>  
+            
+            <!-- 布隆过滤器 -->  
+            <div class="animate-in delay-2">  
+                <div class="text-center mb-8">  
+                    <div class="inline-block bg-green-500 text-white px-8 py-4 rounded-xl text-2xl font-bold">  
+                        ✅ 布隆过滤器  
+                    </div>  
+                </div>  
+                <div class="bg-green-50 border-4 border-green-300 rounded-2xl p-8">  
+                    <div class="text-xl mb-6 font-bold text-green-700">只存标识（Bit位）</div>  
+                    <div class="bg-white p-6 rounded-lg border-2 border-green-200">  
+                        <div class="text-lg mb-4 font-mono">"123456" → Hash</div>  
+                        <div class="flex items-center justify-center space-x-2 text-sm">  
+                            <span class="bg-green-500 text-white px-3 py-1 rounded">位5</span>  
+                            <span class="bg-green-500 text-white px-3 py-1 rounded">位12</span>  
+                            <span class="bg-green-500 text-white px-3 py-1 rounded">位23</span>  
+                        </div>  
+                        <div class="text-sm text-gray-600 mt-4">占用: 3 bit</div>  
+                    </div>  
+                    <div class="mt-6">  
+                        <div class="text-lg font-bold mb-3 text-green-700">Bit位数组演示</div>  
+                        <div class="grid-demo">  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell filled"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell filled"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell"></div>  
+                            <div class="grid-cell filled"></div>  
+                        </div>  
+                    </div>  
+                    <div class="mt-6 text-center text-xl font-bold text-green-700">  
+                        100万数据 ≈ 几十 KB 🎉  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第3页：工作原理动画 -->  
+<div class="slide">  
+    <div class="tag">工作机制 · 可视化</div>  
+    <div class="flex flex-col items-center justify-center w-full h-full p-16">  
+        <h2 class="text-5xl font-bold mb-12 text-gray-800">布隆过滤器工作流程</h2>  
+        
+        <div class="w-full max-w-6xl">  
+            <div class="flex items-center justify-between mb-16">  
+                <div class="flow-box animate-in">  
+                    <div class="text-3xl mb-2">📝</div>  
+                    <div>输入数据</div>  
+                    <div class="text-lg mt-2 font-mono">"123456"</div>  
+                </div>  
+                
+                <div class="arrow-line animate-in delay-1" style="width: 150px;"></div>  
+                
+                <div class="flow-box animate-in delay-1" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">  
+                    <div class="text-3xl mb-2">🔢</div>  
+                    <div>Hash函数1</div>  
+                    <div class="text-lg mt-2">→ 位置 5</div>  
+                </div>  
+                
+                <div class="flow-box animate-in delay-1" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">  
+                    <div class="text-3xl mb-2">🔢</div>  
+                    <div>Hash函数2</div>  
+                    <div class="text-lg mt-2">→ 位置 12</div>  
+                </div>  
+                
+                <div class="flow-box animate-in delay-1" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">  
+                    <div class="text-3xl mb-2">🔢</div>  
+                    <div>Hash函数3</div>  
+                    <div class="text-lg mt-2">→ 位置 23</div>  
+                </div>  
+            </div>  
+            
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-12 border-4 border-blue-200">  
+                <div class="text-2xl font-bold mb-6 text-gray-800 text-center">Bit位数组（置1操作）</div>  
+                <div class="flex justify-center items-center space-x-2 flex-wrap">  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell active">1</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell active">1</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                </div>  
+                <div class="flex justify-center items-center space-x-2 flex-wrap mt-4">  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell active">1</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                    <span class="bit-cell">0</span>  
+                </div>  
+                
+                <div class="mt-12 text-center">  
+                    <div class="inline-block bg-green-500 text-white px-12 py-6 rounded-2xl text-3xl font-bold shadow-2xl">  
+                        ✅ 记录用户登录、签到状态  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第4页：能否修改数据 -->  
+<div class="slide">  
+    <div class="tag">核心问题 · 数据修改</div>  
+    <div class="w-full h-full p-16">  
+        <h2 class="text-5xl font-bold mb-12 text-center text-gray-800">能否修改已存数据？</h2>  
+        
+        <div class="space-y-6 max-w-7xl mx-auto">  
+            <!-- 模块1：问题说明 -->  
+            <div class="module expanded" data-index="0">  
+                <div class="module-header" onclick="toggleModule(0)">  
+                    <span>❌ 不能直接修改 - 原因解析</span>  
+                    <span class="text-3xl">▼</span>  
+                </div>  
+                <div class="module-content">  
+                    <div class="grid grid-cols-2 gap-12">  
+                        <div class="bg-red-50 rounded-xl p-8 border-3 border-red-300">  
+                            <div class="text-2xl font-bold mb-6 text-red-700">⚠️ Bit位共享冲突</div>  
+                            <div class="bg-white rounded-lg p-6 mb-4">  
+                                <div class="font-mono text-lg mb-3 text-blue-600">用户ID: 123456</div>  
+                                <div class="flex space-x-3">  
+                                    <span class="bg-blue-500 text-white px-4 py-2 rounded">位5</span>  
+                                    <span class="bg-blue-500 text-white px-4 py-2 rounded">位12</span>  
+                                    <span class="bg-blue-500 text-white px-4 py-2 rounded">位23</span>  
+                                </div>  
+                            </div>  
+                            <div class="bg-white rounded-lg p-6">  
+                                <div class="font-mono text-lg mb-3 text-purple-600">用户ID: 654321</div>  
+                                <div class="flex space-x-3">  
+                                    <span class="bg-purple-500 text-white px-4 py-2 rounded">位8</span>  
+                                    <span class="bg-red-500 text-white px-4 py-2 rounded font-bold">位12 ⚠️</span>  
+                                    <span class="bg-purple-500 text-white px-4 py-2 rounded">位19</span>  
+                                </div>  
+                            </div>  
+                            <div class="mt-6 bg-red-100 p-6 rounded-lg">  
+                                <div class="text-xl font-bold text-red-800">💥 位12被共享！</div>  
+                                <div class="text-lg text-red-700 mt-2">改一个影响另一个</div>  
+                            </div>  
+                        </div>  
+                        
+                        <div class="flex flex-col justify-center">  
+                            <div class="bg-yellow-100 border-l-8 border-yellow-500 p-8 rounded-lg mb-6">  
+                                <div class="text-3xl mb-4">🚫</div>  
+                                <div class="text-2xl font-bold text-gray-800">核心问题</div>  
+                                <div class="text-xl text-gray-700 mt-4 leading-relaxed">  
+                                    多个数据可能映射到<span class="text-red-600 font-bold">同一个Bit位</span>  
+                                </div>  
+                            </div>  
+                            <div class="bg-orange-100 border-l-8 border-orange-500 p-8 rounded-lg">  
+                                <div class="text-3xl mb-4">⛔</div>  
+                                <div class="text-2xl font-bold text-gray-800">致命后果</div>  
+                                <div class="text-xl text-gray-700 mt-4 leading-relaxed">  
+                                    清除一个位 = 破坏其他数据的标记  
+                                </div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+            
+            <!-- 模块2：解决方案 -->  
+            <div class="module" data-index="1">  
+                <div class="module-header" onclick="toggleModule(1)">  
+                    <span>✅ 解决方案：定期重建策略</span>  
+                    <span class="text-3xl">▶</span>  
+                </div>  
+                <div class="module-content">  
+                    <div class="flex items-center justify-between">  
+                        <div class="flow-box" style="width: 20%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">  
+                            <div class="text-4xl mb-3">🗄️</div>  
+                            <div class="text-xl">数据库</div>  
+                            <div class="text-lg mt-3">修改数据</div>  
+                        </div>  
+                        
+                        <div class="arrow-line" style="width: 8%;"></div>  
+                        
+                        <div class="flow-box" style="width: 20%; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">  
+                            <div class="text-4xl mb-3">🔵</div>  
+                            <div class="text-xl">旧过滤器</div>  
+                            <div class="text-lg mt-3">继续服务</div>  
+                        </div>  
+                        
+                        <div class="arrow-line" style="width: 8%;"></div>  
+                        
+                        <div class="flow-box" style="width: 20%; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">  
+                            <div class="text-4xl mb-3">🆕</div>  
+                            <div class="text-xl">新过滤器</div>  
+                            <div class="text-lg mt-3">后台构建</div>  
+                        </div>  
+                        
+                        <div class="arrow-line" style="width: 8%;"></div>  
+                        
+                        <div class="flow-box" style="width: 20%; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">  
+                            <div class="text-4xl mb-3">🔄</div>  
+                            <div class="text-xl">热切换</div>  
+                            <div class="text-lg mt-3">替换旧的</div>  
+                        </div>  
+                    </div>  
+                    
+                    <div class="mt-12 grid grid-cols-3 gap-8">  
+                        <div class="bg-blue-50 rounded-xl p-8 text-center border-2 border-blue-300">  
+                            <div class="text-5xl mb-4">1️⃣</div>  
+                            <div class="text-2xl font-bold text-blue-700">修改数据库</div>  
+                        </div>  
+                        <div class="bg-purple-50 rounded-xl p-8 text-center border-2 border-purple-300">  
+                            <div class="text-5xl mb-4">2️⃣</div>  
+                            <div class="text-2xl font-bold text-purple-700">后台重建</div>  
+                        </div>  
+                        <div class="bg-green-50 rounded-xl p-8 text-center border-2 border-green-300">  
+                            <div class="text-5xl mb-4">3️⃣</div>  
+                            <div class="text-2xl font-bold text-green-700">无缝切换</div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第5页：数据预热 -->  
+<div class="slide">  
+    <div class="tag">生产实战 · 数据预热</div>  
+    <div class="w-full h-full" style="padding: 100px 60px 40px 60px;">  
+        <h2 class="text-4xl font-bold mb-8 text-center text-gray-800">数据预热 - 启动必做</h2>  
+        
+        <div class="space-y-4 max-w-7xl mx-auto">  
+            <!-- 模块1：为什么要预热 -->  
+            <div class="module expanded" data-index="2">  
+                <div class="module-header" onclick="toggleModule(2)">  
+                    <span>⚠️ 不预热的灾难后果</span>  
+                    <span class="text-2xl">▼</span>  
+                </div>  
+                <div class="module-content">  
+                    <div class="grid grid-cols-2 gap-8">  
+                        <div class="bg-red-50 rounded-xl p-6 border-3 border-red-300">  
+                            <div class="text-2xl font-bold mb-4 text-red-700 text-center">🔥 灾难场景</div>  
+                            <div class="space-y-3">  
+                                <div class="bg-white p-4 rounded-lg border-2 border-red-200">  
+                                    <div class="flex items-center mb-2">  
+                                        <div class="text-2xl mr-3">1️⃣</div>  
+                                        <div class="text-lg font-bold">过滤器启动为空</div>  
+                                    </div>  
+                                    <div class="ml-10 text-base text-gray-700">所有Bit位 = 0</div>  
+                                </div>  
+                                
+                                <div class="bg-white p-4 rounded-lg border-2 border-red-200">  
+                                    <div class="flex items-center mb-2">  
+                                        <div class="text-2xl mr-3">2️⃣</div>  
+                                        <div class="text-lg font-bold">查询已有数据</div>  
+                                    </div>  
+                                    <div class="ml-10 text-base text-gray-700">过滤器误判：不存在</div>  
+                                </div>  
+                                
+                                <div class="bg-white p-4 rounded-lg border-2 border-red-200">  
+                                    <div class="flex items-center mb-2">  
+                                        <div class="text-2xl mr-3">3️⃣</div>  
+                                        <div class="text-lg font-bold">直接击穿缓存</div>  
+                                    </div>  
+                                    <div class="ml-10 text-base text-gray-700">海量请求打到数据库</div>  
+                                </div>  
+                                
+                                <div class="bg-red-600 text-white p-5 rounded-lg text-center">  
+                                    <div class="text-3xl mb-2">💥</div>  
+                                    <div class="text-xl font-bold">数据库 QPS 暴涨 - 系统宕机</div>  
+                                </div>  
+                            </div>  
+                        </div>  
+                        
+                        <div class="flex flex-col justify-center space-y-4">  
+                            <div class="bg-yellow-100 border-l-8 border-yellow-500 p-6 rounded-lg">  
+                                <div class="text-3xl mb-3">📊</div>  
+                                <div class="text-2xl font-bold text-gray-800 mb-3">真实案例</div>  
+                                <div class="text-xl text-gray-700 leading-relaxed">  
+                                    上线第一天<br/>  
+                                    <span class="text-red-600 font-bold text-2xl">数据库压力警戒</span><br/>  
+                                    运维连夜追着改  
+                                </div>  
+                            </div>  
+                            
+                            <div class="bg-green-100 border-l-8 border-green-500 p-6 rounded-lg">  
+                                <div class="text-3xl mb-3">✅</div>  
+                                <div class="text-2xl font-bold text-gray-800 mb-3">必须预热</div>  
+                                <div class="text-xl text-green-700 font-bold">  
+                                    启动前加载全部数据  
+                                </div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+            
+            <!-- 模块2：单机预热 -->  
+            <div class="module" data-index="3">  
+                <div class="module-header" onclick="toggleModule(3)">  
+                    <span>💻 单机应用预热方案</span>  
+                    <span class="text-2xl">▶</span>  
+                </div>  
+                <div class="module-content">  
+                    <div class="flex items-center justify-between mb-8">  
+                        <div class="flow-box" style="width: 28%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 24px;">  
+                            <div class="text-3xl mb-2">🚀</div>  
+                            <div class="text-lg">应用启动</div>  
+                            <div class="text-base mt-2">Spring Boot</div>  
+                        </div>  
+                        
+                        <div class="arrow-line" style="width: 8%;"></div>  
+                        
+                        <div class="flow-box" style="width: 28%; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 16px 24px;">  
+                            <div class="text-3xl mb-2">📚</div>  
+                            <div class="text-lg">查询数据库</div>  
+                            <div class="text-base mt-2">全部数据</div>  
+                        </div>  
+                        
+                        <div class="arrow-line" style="width: 8%;"></div>  
+                        
+                        <div class="flow-box" style="width: 28%; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); padding: 16px 24px;">  
+                            <div class="text-3xl mb-2">⚡</div>  
+                            <div class="text-lg">加载过滤器</div>  
+                            <div class="text-base mt-2">逐条添加</div>  
+                        </div>  
+                    </div>  
+                    
+                    <div class="bg-gray-900 text-green-400 rounded-xl p-6 font-mono text-lg">  
+                        <div class="text-blue-400 mb-1">// Spring Boot 启动时自动预热</div>  
+                        <div><span class="text-purple-400">@PostConstruct</span></div>  
+                        <div><span class="text-yellow-400">public void</span> init() {</div>  
+                        <div class="ml-6">List&lt;String&gt; userIds = db.getAllUserIds();</div>  
+                        <div class="ml-6"><span class="text-yellow-400">for</span> (String id : userIds) {</div>  
+                        <div class="ml-12">bloomFilter.add(id);</div>  
+                        <div class="ml-6">}</div>  
+                        <div>}</div>  
+                    </div>  
+                </div>  
+            </div>  
+            
+            <!-- 模块3：集群预热 -->  
+            <div class="module" data-index="4">  
+                <div class="module-header" onclick="toggleModule(4)">  
+                    <span>🌐 集群部署预热方案（Redis共享）</span>  
+                    <span class="text-2xl">▶</span>  
+                </div>  
+                <div class="module-content">  
+                    <div class="grid grid-cols-3 gap-6 mb-8">  
+                        <div class="bg-blue-50 rounded-xl p-6 border-3 border-blue-300">  
+                            <div class="text-3xl mb-3 text-center">📦</div>  
+                            <div class="text-xl font-bold text-center text-blue-700 mb-3">节点 A</div>  
+                            <div class="text-center text-base text-gray-700">直接读取<br/>Redis BitMap</div>  
+                        </div>  
+                        <div class="bg-purple-50 rounded-xl p-6 border-3 border-purple-300">  
+                            <div class="text-3xl mb-3 text-center">📦</div>  
+                            <div class="text-xl font-bold text-center text-purple-700 mb-3">节点 B</div>  
+                            <div class="text-center text-base text-gray-700">直接读取<br/>Redis BitMap</div>  
+                        </div>  
+                        <div class="bg-green-50 rounded-xl p-6 border-3 border-green-300">  
+                            <div class="text-3xl mb-3 text-center">📦</div>  
+                            <div class="text-xl font-bold text-center text-green-700 mb-3">节点 C</div>  
+                            <div class="text-center text-base text-gray-700">直接读取<br/>Redis BitMap</div>  
+                        </div>  
+                    </div>  
+                    
+                    <div class="text-center mb-6">  
+                        <div class="inline-block bg-red-500 text-white px-10 py-4 rounded-2xl text-2xl font-bold">  
+                            ☁️ Redis BitMap（共享存储）  
+                        </div>  
+                    </div>  
+                    
+                    <div class="grid grid-cols-2 gap-6">  
+                        <div class="bg-green-100 border-l-8 border-green-500 p-6 rounded-lg">  
+                            <div class="text-2xl mb-2">✅</div>  
+                            <div class="text-xl font-bold mb-2">优势</div>  
+                            <div class="text-lg text-gray-700 space-y-1">  
+                                <div>• 避免重复查询数据库</div>  
+                                <div>• 所有节点数据一致</div>  
+                                <div>• 启动速度快</div>  
+                            </div>  
+                        </div>  
+                        <div class="bg-blue-100 border-l-8 border-blue-500 p-6 rounded-lg">  
+                            <div class="text-2xl mb-2">⚡</div>  
+                            <div class="text-xl font-bold mb-2">高效方案</div>  
+                            <div class="text-lg text-gray-700 space-y-1">  
+                                <div>• 预热一次，多节点共享</div>  
+                                <div>• Redis BitMap 天然支持</div>  
+                                <div>• 生产环境首选</div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第6页：误判率暴增 -->  
+<div class="slide">  
+    <div class="tag">性能优化 · 误判控制</div>  
+    <div class="w-full h-full p-16">  
+        <h2 class="text-5xl font-bold mb-12 text-center text-gray-800">误判率暴增怎么办？</h2>  
+        
+        <div class="space-y-6 max-w-7xl mx-auto">  
+            <!-- 模块1：问题根源 -->  
+            <div class="module expanded" data-index="5">  
+                <div class="module-header" onclick="toggleModule(5)">  
+                    <span>🔍 误判率升高的根本原因</span>  
+                    <span class="text-3xl">▼</span>  
+                </div>  
+                <div class="module-content">  
+                    <div class="flex items-center justify-between mb-12">  
+                        <div class="bg-green-100 rounded-xl p-8 border-4 border-green-400" style="width: 28%;">  
+                            <div class="text-4xl mb-4 text-center">🆕</div>  
+                            <div class="text-2xl font-bold text-center mb-4">初始状态</div>  
+                            <div class="grid-demo" style="grid-template-columns: repeat(8, 1fr);">  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell"></div>  
+                                <div class="grid-cell"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell"></div>  
+                                <div class="grid-cell"></div>  
+                            </div>  
+                            <div class="text-center text-lg mt-4 text-green-700 font-bold">使用率: 30%</div>  
+                        </div>  
+                        
+                        <div class="text-6xl">→</div>  
+                        
+                        <div class="bg-yellow-100 rounded-xl p-8 border-4 border-yellow-400" style="width: 28%;">  
+                            <div class="text-4xl mb-4 text-center">⚠️</div>  
+                            <div class="text-2xl font-bold text-center mb-4">持续添加</div>  
+                            <div class="grid-demo" style="grid-template-columns: repeat(8, 1fr);">  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell"></div>  
+                            </div>  
+                            <div class="text-center text-lg mt-4 text-yellow-700 font-bold">使用率: 70%</div>  
+                        </div>  
+                        
+                        <div class="text-6xl">→</div>  
+                        
+                        <div class="bg-red-100 rounded-xl p-8 border-4 border-red-400" style="width: 28%;">  
+                            <div class="text-4xl mb-4 text-center">💥</div>  
+                            <div class="text-2xl font-bold text-center mb-4">接近饱和</div>  
+                            <div class="grid-demo" style="grid-template-columns: repeat(8, 1fr);">  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                                <div class="grid-cell filled"></div>  
+                            </div>  
+                            <div class="text-center text-lg mt-4 text-red-700 font-bold">使用率: 95%</div>  
+                        </div>  
+                    </div>  
+                    
+                    <div class="bg-red-50 border-4 border-red-300 rounded-2xl p-10">  
+                        <div class="text-3xl font-bold text-center mb-8 text-red-700">⚠️ Hash碰撞激增</div>  
+                        <div class="grid grid-cols-2 gap-8">  
+                            <div class="bg-white rounded-xl p-8">  
+                                <div class="text-xl font-bold mb-4 text-gray-800">未存在的数据：<span class="font-mono text-blue-600">"999999"</span></div>  
+                                <div class="text-lg text-gray-700 mb-4">Hash后映射到：</div>  
+                                <div class="flex space-x-3 mb-4">  
+                                    <span class="bg-red-500 text-white px-4 py-2 rounded">位3 (已占)</span>  
+                                    <span class="bg-red-500 text-white px-4 py-2 rounded">位7 (已占)</span>  
+                                    <span class="bg-red-500 text-white px-4 py-2 rounded">位12 (已占)</span>  
+                                </div>  
+                                <div class="bg-red-600 text-white p-6 rounded-lg text-center text-xl font-bold">  
+                                    ❌ 误判为"存在"  
+                                </div>  
+                            </div>  
+                            <div class="flex items-center justify-center bg-gradient-to-br from-red-100 to-orange-100 rounded-xl p-8">  
+                                <div class="text-center">  
+                                    <div class="text-6xl mb-6">📈</div>  
+                                    <div class="text-3xl font-bold text-red-700 mb-4">误判率飙升</div>  
+                                    <div class="text-2xl text-gray-700">位数组越满<br/>碰撞越严重</div>  
+                                </div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+            
+            <!-- 模块2：预判容量 -->  
+            <div class="module" data-index="6">  
+                <div class="module-header" onclick="toggleModule(6)">  
+                    <span>📊 方案1：提前规划容量（预防为主）</span>  
+                    <span class="text-3xl">▶</span>  
+                </div>  
+                <div class="module-content">  
+                    <div class="bg-blue-50 rounded-2xl p-10 border-4 border-blue-300 mb-10">  
+                        <div class="text-3xl font-bold text-center mb-8 text-blue-700">🎯 容量规划公式</div>  
+                        <div class="grid grid-cols-3 gap-8">  
+                            <div class="bg-white rounded-xl p-8 text-center">  
+                                <div class="text-5xl mb-4">📝</div>  
+                                <div class="text-2xl font-bold mb-3">预期数据量</div>  
+                                <div class="text-4xl text-blue-600 font-bold">100万</div>  
+                            </div>  
+                            <div class="bg-white rounded-xl p-8 text-center">  
+                                <div class="text-5xl mb-4">⚖️</div>  
+                                <div class="text-2xl font-bold mb-3">目标误判率</div>  
+                                <div class="text-4xl text-purple-600 font-bold">1%</div>  
+                            </div>  
+                            <div class="bg-white rounded-xl p-8 text-center">  
+                                <div class="text-5xl mb-4">💾</div>  
+                                <div class="text-2xl font-bold mb-3">需要的Bit数</div>  
+                                <div class="text-4xl text-green-600 font-bold">1000万</div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                    
+                    <div class="bg-green-100 border-l-8 border-green-500 p-10 rounded-lg">  
+                        <div class="text-3xl mb-4">✅</div>  
+                        <div class="text-3xl font-bold text-gray-800 mb-6">核心策略</div>  
+                        <div class="text-2xl text-gray-700 space-y-4">  
+                            <div>• 别等不够用才扩容</div>  
+                            <div>• 一开始就预留足够空间</div>  
+                            <div>• 保持使用率在 <span class="text-green-600 font-bold">70% 以下</span></div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+            
+            <!-- 模块3：动态扩容 -->  
+            <div class="module" data-index="7">  
+                <div class="module-header" onclick="toggleModule(7)">  
+                    <span>🔄 方案2：动态扩容（运行时监控）</span>  
+                    <span class="text-3xl">▶</span>  
+                </div>  
+                <div class="module-content">  
+                    <div class="flex items-center justify-between mb-12">  
+                        <div class="flow-box" style="width: 22%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">  
+                            <div class="text-4xl mb-3">📊</div>  
+                            <div class="text-xl">监控使用率</div>  
+                            <div class="text-lg mt-3">实时检测</div>  
+                        </div>  
+                        
+                        <div class="arrow-line" style="width: 6%;"></div>  
+                        
+                        <div class="flow-box" style="width: 22%; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">  
+                            <div class="text-4xl mb-3">⚠️</div>  
+                            <div class="text-xl">达到阈值</div>  
+                            <div class="text-lg mt-3">使用率70%</div>  
+                        </div>  
+                        
+                        <div class="arrow-line" style="width: 6%;"></div>  
+                        
+                        <div class="flow-box" style="width: 22%; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">  
+                            <div class="text-4xl mb-3">🆕</div>  
+                            <div class="text-xl">创建新过滤器</div>  
+                            <div class="text-lg mt-3">2倍容量</div>  
+                        </div>  
+                        
+                        <div class="arrow-line" style="width: 6%;"></div>  
+                        
+                        <div class="flow-box" style="width: 22%; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">  
+                            <div class="text-4xl mb-3">🔄</div>  
+                            <div class="text-xl">双写双查</div>  
+                            <div class="text-lg mt-3">平滑过渡</div>  
+                        </div>  
+                    </div>  
+                    
+                    <div class="grid grid-cols-2 gap-8">  
+                        <div class="bg-purple-50 rounded-xl p-8 border-3 border-purple-300">  
+                            <div class="text-2xl font-bold mb-6 text-purple-700">📝 写入策略</div>  
+                            <div class="space-y-4 text-xl">  
+                                <div class="bg-white p-4 rounded-lg">新数据 → 写入<span class="text-purple-600 font-bold">新过滤器</span></div>  
+                                <div class="bg-white p-4 rounded-lg">旧数据 → 保留<span class="text-gray-600 font-bold">旧过滤器</span></div>  
+                            </div>  
+                        </div>  
+                        <div class="bg-blue-50 rounded-xl p-8 border-3 border-blue-300">  
+                            <div class="text-2xl font-bold mb-6 text-blue-700">🔍 查询策略</div>  
+                            <div class="space-y-4 text-xl">  
+                                <div class="bg-white p-4 rounded-lg">先查<span class="text-blue-600 font-bold">新过滤器</span></div>  
+                                <div class="bg-white p-4 rounded-lg">再查<span class="text-gray-600 font-bold">旧过滤器</span></div>  
+                                <div class="bg-green-100 p-4 rounded-lg font-bold text-green-700">任一返回"存在"即判定存在</div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+            
+            <!-- 模块4：分片存储 -->  
+            <div class="module" data-index="8">  
+                <div class="module-header" onclick="toggleModule(8)">  
+                    <span>🧩 方案3：分片存储（分而治之）</span>  
+                    <span class="text-3xl">▶</span>  
+                </div>  
+                <div class="module-content">  
+                    <div class="mb-12">  
+                        <div class="text-3xl font-bold text-center mb-8 text-gray-800">用户ID尾号分片（0-9）</div>  
+                        <div class="grid grid-cols-5 gap-6">  
+                            <div class="bg-gradient-to-br from-blue-400 to-blue-600 text-white rounded-xl p-6 text-center">  
+                                <div class="text-3xl font-bold mb-2">片 0-1</div>  
+                                <div class="text-lg">过滤器 A</div>  
+                            </div>  
+                            <div class="bg-gradient-to-br from-purple-400 to-purple-600 text-white rounded-xl p-6 text-center">  
+                                <div class="text-3xl font-bold mb-2">片 2-3</div>  
+                                <div class="text-lg">过滤器 B</div>  
+                            </div>  
+                            <div class="bg-gradient-to-br from-pink-400 to-pink-600 text-white rounded-xl p-6 text-center">  
+                                <div class="text-3xl font-bold mb-2">片 4-5</div>  
+                                <div class="text-lg">过滤器 C</div>  
+                            </div>  
+                            <div class="bg-gradient-to-br from-green-400 to-green-600 text-white rounded-xl p-6 text-center">  
+                                <div class="text-3xl font-bold mb-2">片 6-7</div>  
+                                <div class="text-lg">过滤器 D</div>  
+                            </div>  
+                            <div class="bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-xl p-6 text-center">  
+                                <div class="text-3xl font-bold mb-2">片 8-9</div>  
+                                <div class="text-lg">过滤器 E</div>  
+                            </div>  
+                        </div>  
+                    </div>  
+                    
+                    <div class="grid grid-cols-3 gap-8">  
+                        <div class="bg-green-50 rounded-xl p-8 border-3 border-green-300 text-center">  
+                            <div class="text-5xl mb-4">✅</div>  
+                            <div class="text-2xl font-bold mb-3 text-green-700">单个数据量少</div>  
+                            <div class="text-xl text-gray-700">每片只存20%数据</div>  
+                        </div>  
+                        <div class="bg-blue-50 rounded-xl p-8 border-3 border-blue-300 text-center">  
+                            <div class="text-5xl mb-4">📉</div>  
+                            <div class="text-2xl font-bold mb-3 text-blue-700">误判率降低</div>  
+                            <div class="text-xl text-gray-700">使用率始终健康</div>  
+                        </div>  
+                        <div class="bg-purple-50 rounded-xl p-8 border-3 border-purple-300 text-center">  
+                            <div class="text-5xl mb-4">🚀</div>  
+                            <div class="text-2xl font-bold mb-3 text-purple-700">易于扩展</div>  
+                            <div class="text-xl text-gray-700">按片独立扩容</div>  
+                        </div>  
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- 第7页：总结 -->  
+<div class="slide">  
+    <div class="flex flex-col items-center justify-center w-full h-full" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">  
+        <h2 class="text-6xl font-bold mb-16 text-white">🎯 核心要点回顾</h2>  
+        
+        <div class="grid grid-cols-2 gap-10 w-4/5">  
+            <div class="bg-white bg-opacity-95 backdrop-blur-lg rounded-3xl p-10 shadow-2xl animate-in">  
+                <div class="text-5xl mb-6">💾</div>  
+                <div class="text-3xl font-bold mb-4 text-gray-800">为什么省内存？</div>  
+                <div class="text-xl text-gray-700">只存Bit位标识，不存完整数据</div>  
+            </div>  
+            
+            <div class="bg-white bg-opacity-95 backdrop-blur-lg rounded-3xl p-10 shadow-2xl animate-in delay-1">  
+                <div class="text-5xl mb-6">🔧</div>  
+                <div class="text-3xl font-bold mb-4 text-gray-800">能否修改数据？</div>  
+                <div class="text-xl text-gray-700">不能直接改，定期重建解决</div>  
+            </div>  
+            
+            <div class="bg-white bg-opacity-95 backdrop-blur-lg rounded-3xl p-10 shadow-2xl animate-in delay-2">  
+                <div class="text-5xl mb-6">⚡</div>  
+                <div class="text-3xl font-bold mb-4 text-gray-800">数据预热必做</div>  
+                <div class="text-xl text-gray-700">启动时加载全部数据，防穿透</div>  
+            </div>  
+            
+            <div class="bg-white bg-opacity-95 backdrop-blur-lg rounded-3xl p-10 shadow-2xl animate-in delay-3">  
+                <div class="text-5xl mb-6">📊</div>  
+                <div class="text-3xl font-bold mb-4 text-gray-800">误判率控制</div>  
+                <div class="text-xl text-gray-700">预判容量、动态扩容、分片存储</div>  
+            </div>  
+        </div>  
+        
+        <div class="mt-16 bg-white bg-opacity-20 backdrop-blur-lg rounded-2xl px-16 py-8 animate-in delay-4">  
+            <div class="text-4xl font-bold text-white">生产环境必备技能 ✨</div>  
+        </div>  
+    </div>  
+</div>  
+
+<script>  
+let currentSlide = 0;  
+const slides = document.querySelectorAll('.slide');  
+const totalSlides = slides.length;  
+
+function showSlide(n) {  
+    slides[currentSlide].classList.remove('active');  
+    currentSlide = (n + totalSlides) % totalSlides;  
+    slides[currentSlide].classList.add('active');  
+    
+    // 重置动画  
+    const animElements = slides[currentSlide].querySelectorAll('.animate-in');  
+    animElements.forEach(el => {  
+        el.style.animation = 'none';  
+        setTimeout(() => {
+            el.style.animation = '';
+        }, 10);
+    });
+}
+
+function nextSlide() {
+    showSlide(currentSlide + 1);
+}
+
+function prevSlide() {
+    showSlide(currentSlide - 1);
+}
+
+// 键盘控制
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+    }
+});
+
+// 模块切换函数
+function toggleModule(index) {
+    const modules = document.querySelectorAll('.module');
+    const module = modules[index];
+    
+    if (!module) return;
+    
+    const isExpanded = module.classList.contains('expanded');
+    const arrow = module.querySelector('.module-header span:last-child');
+    
+    if (isExpanded) {
+        // 收起
+        module.classList.remove('expanded');
+        arrow.textContent = '▶';
+    } else {
+        // 展开
+        module.classList.add('expanded');
+        arrow.textContent = '▼';
+    }
+}
+
+// 初始化第一页
+showSlide(0);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JVM调优到底是调什么？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 全局字体与重置 */
+        .reveal { font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
+        
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none !important; letter-spacing: -0.02em; }
+        
+        /* 强制每页 Slide 占满高度 */
+        .reveal .slides > section {
+            height: 100% !important;
+            top: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 玻璃拟态核心类 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .glass-panel:hover {
+            transform: translateY(-5px) scale(1.02);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* 布局辅助 */
+        .slide-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 4rem 2rem 2rem 2rem; 
+            box-sizing: border-box;
+        }
+
+        .slide-container.cover-layout {
+            justify-content: center !important;
+            padding: 0 !important;
+        }
+
+        .slide-content-wrapper {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .slide-title {
+            font-size: 3rem !important;
+            font-weight: 800 !important;
+            margin: 0 !important;
+            padding-bottom: 2rem !important;
+            flex-shrink: 0;
+            line-height: 1.1 !important;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            text-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Start Hint Overlay */
+        #start-hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 99px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        /* 主题色变量 */
+        .slide-cover { --gradient-start: #a78bfa; --gradient-end: #818cf8; }
+        .slide-space { --gradient-start: #38bdf8; --gradient-end: #0ea5e9; }
+        .slide-time { --gradient-start: #fbbf24; --gradient-end: #f59e0b; }
+        .slide-speed { --gradient-start: #34d399; --gradient-end: #10b981; }
+        .slide-truth { --gradient-start: #f43f5e; --gradient-end: #e11d48; }
+
+        /* Custom Animations */
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-20px); } 100% { transform: translateY(0px); } }
+        @keyframes flow-right { 0% { left: 0; opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+        @keyframes drop { 0% { top: -10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+        @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+
+    </style>
+</head>
+<body>
+    <div id="start-hint">按任意键开始演示</div>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: Cover - The Ultimate Trade-off (Polished Version) -->
+<section class="slide-cover" data-background-gradient="radial-gradient(circle at 50% 50%, #1e1b4b 0%, #020617 100%)">
+    <div class="slide-container cover-layout relative overflow-hidden">
+        
+        <!-- 1. 动态背景层 -->
+        <div class="absolute inset-0 z-0">
+            <!-- 网格背景 -->
+            <div class="absolute inset-0 opacity-20" 
+                 style="background-image: linear-gradient(rgba(99, 102, 241, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(99, 102, 241, 0.3) 1px, transparent 1px); background-size: 60px 60px; transform: perspective(500px) rotateX(60deg) scale(2) translateY(-50px);">
+            </div>
+            <!-- 漂浮光晕 -->
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] animate-pulse"></div>
+            <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] animate-pulse" style="animation-delay: 1.5s;"></div>
+        </div>
+
+        <!-- 2. 主内容容器 -->
+        <div class="relative z-10 w-full max-w-7xl h-full grid grid-cols-12 items-center gap-16 px-12">
+            
+            <!-- 左侧：文字排版 -->
+            <div class="col-span-6 flex flex-col items-start text-left space-y-8">
+                <!-- 标签 -->
+                <div class="fragment fade-down" data-fragment-index="1">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded border border-indigo-500/30 bg-indigo-950/80 backdrop-blur-md text-indigo-300 font-mono text-xs shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                        </span>
+                        <span>ARCHITECT_INTERVIEW_Q1</span>
+                    </div>
+                </div>
+
+                <!-- 标题组 -->
+                <div class="relative">
+                    <!-- 装饰性的代码注释 -->
+                    <div class="absolute -top-8 left-0 text-indigo-500/30 font-mono text-xs">
+                        // Performance Engineering
+                    </div>
+                    
+                    <h2 class="text-7xl font-black text-white leading-[1.1] tracking-tight drop-shadow-2xl">
+                        JVM 调优<br>
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-white to-indigo-300">到底是调什么？</span>
+                    </h2>
+                    <!-- 装饰线条 (加动画) -->
+                    <div class="relative h-1.5 w-24 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full mt-6 shadow-[0_0_10px_#6366f1] overflow-hidden">
+                        <div class="absolute inset-0 bg-white/30 animate-[shimmer_2s_infinite]"></div>
+                    </div>
+                </div>
+
+                <!-- 描述 -->
+                <p class="text-lg text-indigo-100/70 font-light leading-relaxed max-w-md fragment fade-up" data-fragment-index="2">
+                    告别参数背诵。这是一场在 <span class="font-bold text-cyan-300 border-b border-cyan-500/30 px-1">有限空间</span> 与 <span class="font-bold text-amber-300 border-b border-amber-500/30 px-1">极致时间</span> 之间的终极博弈。
+                </p>
+                
+            </div>
+
+            <!-- 右侧：视觉主体 -->
+            <div class="col-span-6 relative h-[550px] flex items-center justify-center fragment zoom-in" data-fragment-index="1">
+                
+                <!-- 核心容器 -->
+                <div class="relative w-full h-full flex items-center justify-center">
+                    
+                    <!-- 能量管道 (增强版 SVG) -->
+                    <svg class="absolute inset-0 w-full h-full z-0" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 主连接线 (虚线效果) -->
+                        <line x1="80" y1="120" x2="320" y2="280" 
+                              stroke="url(#gradient)" 
+                              stroke-width="2" 
+                              stroke-linecap="round"
+                              stroke-dasharray="5,3"
+                              class="drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                              opacity="0.6"/>
+                        <!-- 实线叠加 -->
+                        <line x1="80" y1="120" x2="320" y2="280" 
+                              stroke="url(#gradient)" 
+                              stroke-width="3" 
+                              stroke-linecap="round"
+                              class="drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]"/>
+                        <!-- 渐变定义 -->
+                        <defs>
+                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:0.8" />
+                                <stop offset="50%" style="stop-color:#ffffff;stop-opacity:0.6" />
+                                <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:0.8" />
+                            </linearGradient>
+                        </defs>
+                        <!-- 流动的能量点 -->
+                        <circle r="5" fill="#fff" opacity="0.9" filter="url(#glow)">
+                            <animateMotion dur="3s" repeatCount="indefinite" 
+                                           path="M80,120 L320,280" />
+                        </circle>
+                        <!-- 发光滤镜 -->
+                        <defs>
+                            <filter id="glow">
+                                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                    </svg>
+
+                    <!-- 左上：空间 (Space) -->
+                    <div class="absolute left-0 top-[15%] z-10 animate-[float_6s_ease-in-out_infinite]">
+                        <div class="w-40 h-40 glass-panel rounded-2xl border border-cyan-400/40 bg-[#0c4a6e]/90 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(8,145,178,0.4)] backdrop-blur-xl group hover:scale-105 transition-transform duration-500">
+                            <div class="w-14 h-14 bg-cyan-500/20 rounded-full flex items-center justify-center mb-3 group-hover:bg-cyan-500/30 transition-colors">
+                                <i class="fa-solid fa-cube text-3xl text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]"></i>
+                            </div>
+                            <span class="font-mono text-white font-bold tracking-widest text-base">SPACE</span>
+                            <div class="h-px w-10 bg-cyan-500/30 my-1.5"></div>
+                            <span class="text-[10px] text-cyan-300/80 font-mono">Memory / Heap</span>
+                        </div>
+                    </div>
+
+                    <!-- 右下：时间 (Time) -->
+                    <div class="absolute right-0 bottom-[15%] z-10 animate-[float_6s_ease-in-out_infinite_3s]">
+                        <div class="w-40 h-40 glass-panel rounded-full border border-amber-400/40 bg-[#78350f]/90 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(217,119,6,0.4)] backdrop-blur-xl group hover:scale-105 transition-transform duration-500">
+                            <div class="w-14 h-14 bg-amber-500/20 rounded-full flex items-center justify-center mb-3 group-hover:bg-amber-500/30 transition-colors">
+                                <i class="fa-solid fa-bolt text-3xl text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]"></i>
+                            </div>
+                            <span class="font-mono text-white font-bold tracking-widest text-base">TIME</span>
+                            <div class="h-px w-10 bg-amber-500/30 my-1.5"></div>
+                            <span class="text-[10px] text-amber-300/80 font-mono">Latency / STW</span>
+                        </div>
+                    </div>
+
+                    <!-- 中心节点：Trade-off (增大尺寸) -->
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+                        <div class="w-24 h-24 bg-[#0f172a] rounded-full border-2 border-gray-600 flex items-center justify-center shadow-[0_0_40px_rgba(99,102,241,0.4)] relative">
+                             <!-- 旋转的外圈 -->
+                             <div class="absolute inset-[-4px] rounded-full border-t-2 border-indigo-500 animate-spin" style="animation-duration: 4s;"></div>
+                             <div class="absolute inset-[-4px] rounded-full border-b-2 border-purple-500 animate-spin" style="animation-duration: 6s; animation-direction: reverse;"></div>
+                             <div class="text-center">
+                                 <div class="text-[9px] text-gray-500 font-mono uppercase tracking-widest">Core</div>
+                                 <div class="text-xs font-bold text-white mt-0.5">Trade-off</div>
+                             </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- 新增动画 -->
+    <style>
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 2: The Space - Memory Model (Fixed Order) -->
+<section class="slide-space" data-background-gradient="linear-gradient(135deg, #0c4a6e 0%, #075985 100%)">
+    <div class="slide-container">
+        <!-- 标题 -->
+        <h2 class="slide-title flex items-center justify-center gap-4 font-bold">
+            <i class="fa-solid fa-cube text-4xl opacity-50"></i>
+            <span>调"空间" (Memory)</span>
+        </h2>
+        
+        <div class="slide-content-wrapper">
+            <div class="w-full max-w-6xl flex flex-col gap-6">
+                
+                <!-- 【修改点1】移除了父容器的 fragment，让子元素单独控制出场 -->
+                <div class="flex gap-6 h-[420px] items-stretch">
+                    
+                    <!-- Young Gen -->
+                    <!-- 【修改点2】添加 fragment index="1"，第一个出场 -->
+                    <div class="fragment fade-right flex-[3] glass-panel border-cyan-400/40 bg-cyan-900/40 flex flex-col relative overflow-hidden group hover:border-cyan-400/60 transition-all duration-500 hover:shadow-[0_0_30px_rgba(34,211,238,0.3)]" data-fragment-index="1">
+                        <!-- 顶部高亮条 -->
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-cyan-500 shadow-[0_0_20px_#22d3ee]"></div>
+                        
+                        <!-- 标题栏 -->
+                        <div class="p-4 border-b border-cyan-500/30 flex justify-between items-center bg-cyan-950/40">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-seedling text-cyan-300 text-lg"></i>
+                                <span class="font-bold text-cyan-100 text-lg tracking-wide">年轻代 (Young)</span>
+                            </div>
+                            <span class="text-xs font-medium text-cyan-300 bg-cyan-950/70 px-3 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]">朝生夕死</span>
+                        </div>
+                        
+                        <!-- 内容区 -->
+                        <div class="flex-1 relative p-4 flex gap-3">
+                            <!-- Eden 区 -->
+                            <div class="flex-[8] border-2 border-dashed border-cyan-400/50 rounded-xl flex flex-col items-center justify-center p-3 relative bg-cyan-950/30 hover:bg-cyan-950/50 hover:border-cyan-400/70 transition-all">
+                                <span class="text-cyan-400/30 font-black text-5xl absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 select-none tracking-wider">Eden</span>
+                                <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                                    <div class="w-4 h-4 bg-cyan-300 rounded-full absolute left-[20%] top-0 animate-[drop_2s_linear_infinite] shadow-[0_0_10px_#22d3ee]"></div>
+                                    <div class="w-4 h-4 bg-cyan-300 rounded-full absolute left-[50%] top-0 animate-[drop_1.8s_linear_infinite_0.4s] shadow-[0_0_10px_#22d3ee]"></div>
+                                    <div class="w-4 h-4 bg-cyan-300 rounded-full absolute left-[80%] top-0 animate-[drop_2.2s_linear_infinite_0.8s] shadow-[0_0_10px_#22d3ee]"></div>
+                                </div>
+                                <div class="absolute bottom-2 right-2 text-[10px] font-medium text-cyan-300 bg-cyan-950/80 px-2 py-1 rounded border border-cyan-500/30">
+                                    新对象分配区
+                                </div>
+                            </div>
+                            <!-- Survivor 区 -->
+                            <div class="flex-[2] flex flex-col gap-2">
+                                <div class="flex-1 border border-cyan-400/40 rounded-xl bg-cyan-500/15 flex items-center justify-center relative group/s0 hover:bg-cyan-500/25 transition-all cursor-pointer">
+                                    <span class="text-cyan-200 text-sm font-bold [writing-mode:vertical-lr] tracking-widest">S0</span>
+                                </div>
+                                <div class="flex-1 border border-cyan-400/40 rounded-xl bg-cyan-500/15 flex items-center justify-center relative group/s1 hover:bg-cyan-500/25 transition-all cursor-pointer">
+                                    <span class="text-cyan-200 text-sm font-bold [writing-mode:vertical-lr] tracking-widest">S1</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="absolute bottom-3 left-3 flex items-center gap-2 text-cyan-200 text-xs font-medium bg-cyan-950/90 px-3 py-1.5 rounded-lg border border-cyan-400/40 shadow-[0_0_15px_rgba(34,211,238,0.3)]">
+                            <i class="fa-solid fa-recycle animate-spin" style="animation-duration: 3s;"></i>
+                            <span>Minor GC</span>
+                        </div>
+                    </div>
+
+                    <!-- 箭头 -->
+                    <!-- 【修改点3】保持 index="2"，第二个出场 -->
+                    <div class="fragment fade-in flex flex-col items-center justify-center w-20 gap-3" data-fragment-index="2">
+                        <div class="relative">
+                            <i class="fa-solid fa-angles-right text-cyan-400/70 text-5xl animate-pulse"></i>
+                            <div class="absolute inset-0 blur-xl bg-cyan-400/30 animate-pulse"></div>
+                        </div>
+                        <span class="text-xs text-cyan-300 font-medium tracking-wider bg-cyan-950/50 px-2 py-1 rounded border border-cyan-500/30">晋升</span>
+                    </div>
+
+                    <!-- Old Gen -->
+                    <!-- 【修改点4】添加 fragment index="3"，第三个出场 -->
+                    <div class="fragment fade-left flex-[5] glass-panel border-blue-400/40 bg-blue-900/40 flex flex-col relative overflow-hidden group hover:border-blue-400/60 transition-all duration-500 hover:shadow-[0_0_30px_rgba(59,130,246,0.3)]" data-fragment-index="3">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-500 shadow-[0_0_20px_#3b82f6]"></div>
+                        
+                        <div class="p-4 border-b border-blue-500/30 flex justify-between items-center bg-blue-950/40">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-archive text-blue-300 text-lg"></i>
+                                <span class="font-bold text-blue-100 text-lg tracking-wide">老年代 (Old)</span>
+                            </div>
+                            <span class="text-xs font-medium text-blue-300 bg-blue-950/70 px-3 py-1 rounded-full border border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.2)]">持久存活</span>
+                        </div>
+                        
+                        <div class="flex-1 relative overflow-hidden bg-blue-950/30">
+                            <div class="absolute bottom-0 left-0 w-full h-[65%] bg-gradient-to-t from-blue-600/60 to-blue-400/15 border-t-2 border-blue-400/50 animate-[waterRise_8s_ease-in-out_infinite]">
+                                <div class="absolute top-0 left-0 w-full h-1 bg-blue-300/60 animate-pulse shadow-[0_0_10px_#60a5fa]"></div>
+                            </div>
+                            
+                            <div class="absolute bottom-4 left-4 flex flex-wrap gap-2 max-w-[80%]">
+                                <div class="w-6 h-6 bg-blue-400/90 rounded shadow-[0_0_15px_#60a5fa] border border-blue-300/60"></div>
+                                <div class="w-6 h-6 bg-blue-400/90 rounded shadow-[0_0_15px_#60a5fa] border border-blue-300/60"></div>
+                                <div class="w-6 h-6 bg-blue-400/90 rounded shadow-[0_0_15px_#60a5fa] border border-blue-300/60"></div>
+                            </div>
+                            
+                            <div class="absolute top-4 right-4 text-right">
+                                <!-- 修复：CSS content 动画在 span 标签上无效，这里改回静态数字，或者需要用伪元素实现 -->
+                                <div class="text-blue-100 font-bold text-3xl tracking-tight drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
+                                    65%
+                                </div>
+                                <div class="text-blue-300 text-xs font-medium">使用率</div>
+                            </div>
+                            
+                            <div class="absolute left-0 w-full h-0.5 bg-red-500/70 top-[18%] shadow-[0_0_10px_rgba(239,68,68,0.5)]">
+                                <div class="absolute left-0 w-full h-px border-t-2 border-dashed border-red-400/50 -top-px"></div>
+                                <span class="absolute left-3 -top-4 text-xs text-red-300 font-medium bg-red-950/90 px-2 py-1 rounded border border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.3)] flex items-center gap-1">
+                                    <i class="fa-solid fa-exclamation-triangle text-[10px]"></i>
+                                    <span>危险阈值</span>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute bottom-3 right-3 flex items-center gap-2 text-red-300 text-sm font-medium bg-red-950/90 px-3 py-1.5 rounded-lg border border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.3)] animate-[warningBlink_8s_ease-in-out_infinite]">
+                            <i class="fa-solid fa-triangle-exclamation animate-pulse"></i>
+                            <span>Full GC 风险</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部说明 -->
+                <!-- 【修改点5】改为 index="4"，最后出现 -->
+                <div class="w-full flex gap-6 text-gray-300 text-sm fragment fade-up" data-fragment-index="4">
+                    <!-- 左侧卡片 -->
+                    <div class="flex-[3] flex items-center gap-3 bg-cyan-950/40 px-5 py-3 rounded-lg border border-cyan-500/30 hover:border-cyan-400/50 transition-colors shadow-lg">
+                        <i class="fa-solid fa-arrow-up text-cyan-400 text-xl"></i>
+                        <div>
+                            <div class="text-cyan-200 font-bold mb-1 tracking-wide">年轻代扩容</div>
+                            <div class="text-cyan-300/70 text-xs font-medium">Web 应用（短生命周期对象）</div>
+                        </div>
+                    </div>
+                    
+                    <div class="w-20"></div>
+                    
+                    <!-- 右侧卡片 -->
+                    <div class="flex-[5] flex items-center gap-3 bg-blue-950/40 px-5 py-3 rounded-lg border border-blue-500/30 hover:border-blue-400/50 transition-colors shadow-lg">
+                        <i class="fa-solid fa-arrow-up text-blue-400 text-xl"></i>
+                        <div>
+                            <div class="text-blue-200 font-bold mb-1 tracking-wide">老年代扩容</div>
+                            <div class="text-blue-300/70 text-xs font-medium">大数据处理（常驻对象）</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes waterRise {
+            0%, 100% { height: 65%; }
+            50% { height: 85%; }
+        }
+        @keyframes warningBlink {
+            0%, 45% { opacity: 0; }
+            50%, 100% { opacity: 1; }
+        }
+    </style>
+</section>
+
+
+
+            <!-- Slide 3: The Time - GC Latency (Fixed Version) -->
+<section class="slide-time" data-background-gradient="linear-gradient(135deg, #451a03 0%, #78350f 100%)">
+    <div class="slide-container">
+        <!-- 标题 -->
+        <h2 class="slide-title flex items-center justify-center gap-4 font-bold">
+            <i class="fa-solid fa-bolt text-4xl opacity-50"></i>
+            <span>调"时间" (Latency)</span>
+        </h2>
+        
+        <div class="slide-content-wrapper">
+            <div class="w-full max-w-6xl flex flex-col gap-6">
+                
+                <!-- Comparison Container -->
+                <div class="grid grid-rows-2 gap-6 w-full">
+                    
+                    <!-- Scenario A: Throughput (Parallel GC) -->
+                    <div class="glass-panel p-5 border-l-4 border-orange-500 bg-orange-950/30 fragment fade-right hover:shadow-[0_0_40px_rgba(249,115,22,0.3)] transition-all" data-fragment-index="1">
+                        <!-- 标题栏 -->
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center border border-orange-500/40">
+                                    <i class="fa-solid fa-gauge-high text-orange-400 text-lg"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xl font-bold text-orange-100 tracking-wide">Parallel GC</span>
+                                        <span class="px-2 py-0.5 bg-orange-500/30 text-orange-200 text-xs rounded-full font-medium border border-orange-500/40">吞吐量优先</span>
+                                    </div>
+                                    <div class="text-orange-300/70 text-xs font-medium mt-0.5">适用场景: 批处理、大数据计算</div>
+                                </div>
+                            </div>
+                            <div class="text-red-400 font-medium text-xs bg-red-950/50 px-2 py-1.5 rounded-lg border border-red-500/30 flex items-center gap-1.5">
+                                <i class="fa-solid fa-ban"></i>
+                                <span>长停顿 (STW)</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Timeline -->
+                        <div class="relative">
+                            <!-- 时间轴主体 -->
+                            <div class="w-full h-12 bg-black/40 rounded-lg relative flex items-center overflow-hidden border border-orange-500/20 shadow-inner">
+                                <!-- 应用运行 -->
+                                <div class="h-full bg-gradient-to-r from-green-500/30 to-green-500/20 flex-1 border-r border-white/10 relative group">
+                                    <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span class="text-[10px] text-green-300 font-medium">应用运行</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- STW Block 1 -->
+                                <div class="h-full w-[15%] bg-gradient-to-r from-red-600/90 to-red-500/90 animate-pulse flex flex-col items-center justify-center shadow-[0_0_25px_rgba(239,68,68,0.6)] border-x-2 border-red-400/50 relative group">
+                                    <i class="fa-solid fa-pause text-white text-base mb-0.5"></i>
+                                    <span class="text-[10px] font-black text-white">STW</span>
+                                    <!-- Tooltip -->
+                                    <div class="absolute -top-9 left-1/2 transform -translate-x-1/2 bg-red-950/90 text-red-200 text-[10px] px-2 py-1 rounded border border-red-500/40 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                        停顿 ~200ms
+                                    </div>
+                                </div>
+                                
+                                <div class="h-full bg-gradient-to-r from-green-500/30 to-green-500/20 flex-[2] border-r border-white/10 relative group">
+                                    <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span class="text-[10px] text-green-300 font-medium">应用运行</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- STW Block 2 -->
+                                <div class="h-full w-[15%] bg-gradient-to-r from-red-600/90 to-red-500/90 animate-pulse flex flex-col items-center justify-center shadow-[0_0_25px_rgba(239,68,68,0.6)] border-x-2 border-red-400/50 relative group" style="animation-delay: 0.5s;">
+                                    <i class="fa-solid fa-pause text-white text-base mb-0.5"></i>
+                                    <span class="text-[10px] font-black text-white">STW</span>
+                                    <!-- Tooltip -->
+                                    <div class="absolute -top-9 left-1/2 transform -translate-x-1/2 bg-red-950/90 text-red-200 text-[10px] px-2 py-1 rounded border border-red-500/40 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                        停顿 ~200ms
+                                    </div>
+                                </div>
+                                
+                                <div class="h-full bg-gradient-to-r from-green-500/30 to-green-500/20 flex-1 relative group">
+                                    <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span class="text-[10px] text-green-300 font-medium">应用运行</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 时间轴标注 -->
+                            <div class="flex justify-between mt-1.5 text-[10px] text-orange-300/60 font-medium px-1">
+                                <span>0s</span>
+                                <span>1s</span>
+                                <span>2s</span>
+                                <span>3s</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 统计信息 -->
+                        <div class="mt-3 flex gap-4 text-xs">
+                            <div class="flex items-center gap-1.5 text-orange-200">
+                                <i class="fa-solid fa-chart-line text-orange-400"></i>
+                                <span>吞吐量: <span class="font-bold">~95%</span></span>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-red-300">
+                                <i class="fa-solid fa-clock text-red-400"></i>
+                                <span>最大停顿: <span class="font-bold">~200ms</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scenario B: Low Latency (G1/ZGC) -->
+                    <div class="glass-panel p-5 border-l-4 border-emerald-500 bg-emerald-950/30 fragment fade-left hover:shadow-[0_0_40px_rgba(16,185,129,0.3)] transition-all" data-fragment-index="2">
+                        <!-- 标题栏 -->
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center border border-emerald-500/40">
+                                    <i class="fa-solid fa-bolt text-emerald-400 text-lg"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xl font-bold text-emerald-100 tracking-wide">ZGC / G1</span>
+                                        <span class="px-2 py-0.5 bg-emerald-500/30 text-emerald-200 text-xs rounded-full font-medium border border-emerald-500/40">低延迟优先</span>
+                                    </div>
+                                    <div class="text-emerald-300/70 text-xs font-medium mt-0.5">适用场景: Web 服务、实时交易系统</div>
+                                </div>
+                            </div>
+                            <div class="text-emerald-400 font-medium text-xs bg-emerald-950/50 px-2 py-1.5 rounded-lg border border-emerald-500/30 flex items-center gap-1.5">
+                                <i class="fa-solid fa-bolt"></i>
+                                <span>微停顿</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Timeline -->
+                        <div class="relative">
+                            <!-- 时间轴主体 -->
+                            <div class="w-full h-12 bg-black/40 rounded-lg relative flex items-center overflow-hidden border border-emerald-500/20 shadow-inner">
+                                <!-- 应用运行 + 微停顿交替 -->
+                                <div class="h-full bg-gradient-to-r from-green-500/30 to-green-500/20 flex-1 border-r border-white/5"></div>
+                                <div class="h-full w-[2%] bg-gradient-to-b from-yellow-400 to-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.6)] relative group">
+                                    <div class="absolute -top-9 left-1/2 transform -translate-x-1/2 bg-yellow-950/90 text-yellow-200 text-[10px] px-2 py-1 rounded border border-yellow-500/40 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                        ~1ms
+                                    </div>
+                                </div>
+                                
+                                <div class="h-full bg-gradient-to-r from-green-500/30 to-green-500/20 flex-1 border-r border-white/5"></div>
+                                <div class="h-full w-[2%] bg-gradient-to-b from-yellow-400 to-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.6)] relative group">
+                                    <div class="absolute -top-9 left-1/2 transform -translate-x-1/2 bg-yellow-950/90 text-yellow-200 text-[10px] px-2 py-1 rounded border border-yellow-500/40 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                        ~1ms
+                                    </div>
+                                </div>
+                                
+                                <div class="h-full bg-gradient-to-r from-green-500/30 to-green-500/20 flex-1 border-r border-white/5"></div>
+                                <div class="h-full w-[2%] bg-gradient-to-b from-yellow-400 to-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.6)] relative group">
+                                    <div class="absolute -top-9 left-1/2 transform -translate-x-1/2 bg-yellow-950/90 text-yellow-200 text-[10px] px-2 py-1 rounded border border-yellow-500/40 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                        ~1ms
+                                    </div>
+                                </div>
+                                
+                                <div class="h-full bg-gradient-to-r from-green-500/30 to-green-500/20 flex-1 border-r border-white/5"></div>
+                                <div class="h-full w-[2%] bg-gradient-to-b from-yellow-400 to-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.6)] relative group">
+                                    <div class="absolute -top-9 left-1/2 transform -translate-x-1/2 bg-yellow-950/90 text-yellow-200 text-[10px] px-2 py-1 rounded border border-yellow-500/40 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                        ~1ms
+                                    </div>
+                                </div>
+                                
+                                <div class="h-full bg-gradient-to-r from-green-500/30 to-green-500/20 flex-1"></div>
+                                
+                                <!-- 并发标记指示器 -->
+                                <div class="absolute inset-0 pointer-events-none">
+                                    <div class="absolute top-1 left-1 right-1 h-1 bg-gradient-to-r from-transparent via-emerald-400/30 to-transparent animate-[scan_3s_linear_infinite]"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- 时间轴标注 -->
+                            <div class="flex justify-between mt-1.5 text-[10px] text-emerald-300/60 font-medium px-1">
+                                <span>0s</span>
+                                <span>1s</span>
+                                <span>2s</span>
+                                <span>3s</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 统计信息 -->
+                        <div class="mt-3 flex gap-4 text-xs">
+                            <div class="flex items-center gap-1.5 text-emerald-200">
+                                <i class="fa-solid fa-chart-line text-emerald-400"></i>
+                                <span>吞吐量: <span class="font-bold">~90%</span></span>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-emerald-300">
+                                <i class="fa-solid fa-clock text-emerald-400"></i>
+                                <span>最大停顿: <span class="font-bold">&lt;10ms</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 底部总结 (确保显示) -->
+                <div class="text-center fragment zoom-in" data-fragment-index="3">
+                    <div class="inline-flex items-center gap-3 px-6 py-3 border-2 border-amber-500/50 rounded-xl bg-gradient-to-r from-amber-900/50 to-orange-900/50 text-amber-100 shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:shadow-[0_0_50px_rgba(245,158,11,0.5)] transition-all">
+                        <i class="fa-solid fa-scale-balanced text-xl text-amber-300"></i>
+                        <div class="text-left">
+                            <div class="text-base font-bold tracking-wide">核心权衡</div>
+                            <div class="text-xs text-amber-200/80 font-medium">吞吐量 vs 响应时间</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 自定义动画 -->
+    <style>
+        @keyframes scan {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 4: The Speed - JIT Compilation (Refined Evolution Version) -->
+<section class="slide-speed" data-background-gradient="linear-gradient(135deg, #022c22 0%, #064e3b 100%)">
+    <div class="slide-container">
+        <!-- 标题 -->
+        <h2 class="slide-title flex items-center justify-center gap-4 font-bold mb-6">
+            <i class="fa-solid fa-rocket text-3xl opacity-50"></i>
+            <span>调"速度" (JIT)</span>
+        </h2>
+        
+        <div class="slide-content-wrapper">
+            <div class="w-full max-w-5xl flex flex-col items-center justify-center relative">
+                
+                <!-- 左侧热度指示线 (贯穿整体的背景元素) -->
+                <div class="absolute left-[15%] top-[80px] bottom-[80px] w-px bg-gradient-to-b from-blue-500/30 via-yellow-500/50 to-red-500/80 hidden md:block">
+                    <div class="absolute top-0 -left-8 text-[10px] text-blue-400 font-mono">Cold</div>
+                    <div class="absolute top-1/2 -left-8 text-[10px] text-yellow-400 font-mono">Warm</div>
+                    <div class="absolute bottom-0 -left-8 text-[10px] text-red-400 font-mono">Hot</div>
+                </div>
+
+                <!-- 1. Input: Bytecode -->
+                <div class="relative z-20 fragment fade-down mb-4" data-fragment-index="1">
+                    <div class="px-6 py-2 bg-gray-900/90 border border-gray-600 rounded-full shadow-lg flex items-center gap-3 backdrop-blur-md">
+                        <i class="fa-brands fa-java text-orange-400 text-xl"></i>
+                        <div class="text-sm font-mono text-gray-200">.class (字节码)</div>
+                    </div>
+                </div>
+
+                <!-- 2. The JIT Evolution Pipeline -->
+                <div class="flex flex-col items-center gap-3 w-full relative z-10">
+                    
+                    <!-- Arrow -->
+                    <i class="fa-solid fa-arrow-down text-gray-600 text-xs animate-bounce"></i>
+
+                    <!-- Level 0: Interpreter (Small, Basic) -->
+                    <div class="w-[40%] fragment fade-up" data-fragment-index="2">
+                        <div class="p-3 rounded-lg bg-slate-800/60 border border-slate-600/50 flex items-center gap-3 relative group hover:bg-slate-800/80 transition-all">
+                            <!-- 左侧连接点 -->
+                            <div class="absolute -left-[calc(50vw-40%-15%)] top-1/2 w-[calc(50vw-40%-15%)] h-px border-t border-dashed border-blue-500/30 hidden md:block"></div>
+                            
+                            <div class="w-8 h-8 rounded bg-slate-700 flex items-center justify-center">
+                                <i class="fa-solid fa-terminal text-slate-400 text-xs"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-slate-200 text-xs font-bold">解释器</div>
+                                <div class="text-slate-500 text-[10px] truncate">逐行解释执行</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-down text-emerald-600/50 text-xs"></i>
+                        <span class="text-[10px] text-emerald-500/50 font-mono">计数阈值触发</span>
+                    </div>
+
+                    <!-- Level 3: C1 Compiler (Medium, Better) -->
+                    <div class="w-[55%] fragment fade-up" data-fragment-index="3">
+                        <div class="p-3 rounded-lg bg-emerald-900/40 border border-emerald-500/30 flex items-center gap-3 relative group hover:bg-emerald-900/60 transition-all shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                            <!-- 左侧连接点 -->
+                            <div class="absolute -left-[calc(50vw-55%-15%)] top-1/2 w-[calc(50vw-55%-15%)] h-px border-t border-dashed border-yellow-500/30 hidden md:block"></div>
+
+                            <div class="w-8 h-8 rounded bg-emerald-800/50 flex items-center justify-center">
+                                <i class="fa-solid fa-gears text-emerald-400 text-xs animate-[spin_8s_linear_infinite]"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-emerald-100 text-xs font-bold">C1 编译器</div>
+                                <div class="text-emerald-400/60 text-[10px] truncate">简单优化 (方法内联...)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-down text-emerald-500 text-xs"></i>
+                        <span class="text-[10px] text-emerald-400 font-mono"><i class="fa-solid fa-fire text-red-500 mr-1"></i>热点代码</span>
+                    </div>
+
+                    <!-- Level 4: C2 Compiler (Large, Best) -->
+                    <div class="w-[75%] fragment fade-up" data-fragment-index="4">
+                        <div class="p-4 rounded-xl bg-gradient-to-r from-emerald-900/80 to-teal-900/80 border border-emerald-400 flex items-center gap-4 relative group transform transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(52,211,153,0.2)] overflow-hidden">
+                            <!-- 左侧连接点 -->
+                            <div class="absolute -left-[calc(50vw-75%-15%)] top-1/2 w-[calc(50vw-75%-15%)] h-px border-t border-dashed border-red-500/50 hidden md:block"></div>
+
+                            <!-- 光效背景 -->
+                            <div class="absolute inset-0 bg-emerald-400/5 animate-pulse"></div>
+                            <div class="absolute -right-10 -top-10 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl"></div>
+
+                            <div class="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg z-10">
+                                <i class="fa-solid fa-jet-fighter text-white text-lg"></i>
+                            </div>
+                            <div class="flex-1 min-w-0 z-10">
+                                <div class="flex justify-between items-center">
+                                    <div class="text-white text-base font-black tracking-wide">C2 (Server Compiler)</div>
+                                    <span class="px-2 py-0.5 bg-emerald-400 text-emerald-950 text-[10px] font-bold rounded-full shadow-lg">TURBO</span>
+                                </div>
+                                <div class="text-emerald-200 text-xs mt-1">激进优化 (逃逸分析, 锁消除, 向量化...)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 3. Output: Native Code -->
+                <div class="relative z-20 mt-4 fragment fade-up" data-fragment-index="5">
+                    <div class="h-6 w-0.5 bg-gradient-to-b from-emerald-500 to-emerald-300 mx-auto mb-2 shadow-[0_0_10px_#34d399]"></div>
+                    
+                    <div class="px-8 py-3 bg-emerald-950 border-2 border-emerald-400 rounded-xl shadow-[0_0_40px_rgba(16,185,129,0.5)] flex items-center gap-4 relative overflow-hidden group">
+                        <!-- 扫光动画 -->
+                        <div class="absolute top-0 left-[-100%] w-[50%] h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-[-20deg] animate-[shine_3s_infinite]"></div>
+                        
+                        <i class="fa-solid fa-microchip text-emerald-300 text-2xl"></i>
+                        <div class="text-left">
+                            <div class="font-mono text-white font-bold text-lg tracking-widest">NATIVE CODE</div>
+                            <div class="text-[10px] text-emerald-300 font-medium">极致性能机器码</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes shine {
+            0% { left: -100%; }
+            20% { left: 200%; }
+            100% { left: 200%; }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 5: The Truth - Iceberg (Natural Shape Version) -->
+<section class="slide-truth" data-background-gradient="linear-gradient(180deg, #0f172a 0%, #1e293b 35%, #450a0a 35%, #2a0a0a 100%)">
+    <div class="slide-container">
+        <!-- 标题 -->
+        <h2 class="slide-title flex items-center justify-center gap-4 font-bold mb-6 text-white drop-shadow-lg z-50 relative">
+            <i class="fa-solid fa-magnifying-glass-chart text-3xl text-blue-300"></i>
+            <span>调优的真相</span>
+        </h2>
+        
+        <div class="slide-content-wrapper h-full flex items-center justify-center relative overflow-hidden">
+            
+            <!-- 背景光效 -->
+            <div class="absolute top-0 left-0 w-full h-[35%] bg-gradient-to-b from-sky-900/20 to-sky-600/10 z-0"></div>
+            
+            <!-- 水面线 (带波浪动画) -->
+            <div class="absolute top-[35%] w-full h-[4px] bg-blue-400/50 shadow-[0_0_20px_#60a5fa] z-40 overflow-hidden">
+                <div class="absolute top-0 left-0 w-[200%] h-full bg-gradient-to-r from-blue-300/0 via-blue-300/80 to-blue-300/0 animate-[wave-move_3s_linear_infinite]"></div>
+            </div>
+
+            <!-- 冰山容器 -->
+            <div class="relative w-[800px] h-[650px] z-20 flex flex-col items-center">
+                
+                <!-- 1. 水上部分 (The Tip) -->
+                <!-- 调整位置，使其紧贴水面线 -->
+                <div class="absolute bottom-[65%] w-[300px] h-[160px] flex items-end justify-center fragment fade-down z-30" data-fragment-index="1">
+                    <!-- 自然形状的冰山顶部 -->
+                    <svg viewBox="0 0 100 60" class="w-full h-full drop-shadow-[0_0_25px_rgba(147,197,253,0.5)]" preserveAspectRatio="none">
+                        <!-- 不规则路径 -->
+                        <path d="M10 60 L35 25 L50 5 L65 20 L90 60 Z" fill="url(#iceTipGradient)" stroke="rgba(255,255,255,0.5)" stroke-width="0.5"/>
+                        <defs>
+                            <linearGradient id="iceTipGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#e0f2fe;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#bae6fd;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#7dd3fc;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    
+                    <!-- 标签 (移到侧边，不遮挡冰山) -->
+                    <div class="absolute -right-16 top-10 flex items-center gap-3">
+                        <div class="w-12 h-px bg-white/50"></div>
+                        <div class="bg-white/90 backdrop-blur px-3 py-1.5 rounded shadow-lg text-slate-900 text-sm font-bold whitespace-nowrap">
+                            <i class="fa-solid fa-sliders text-blue-600 mr-1.5"></i>JVM 参数
+                        </div>
+                    </div>
+                    
+                    <!-- 参数文字 (浮在冰山上) -->
+                    <div class="absolute bottom-2 text-[10px] font-mono text-slate-600 bg-white/50 px-2 py-0.5 rounded backdrop-blur-sm">
+                        -Xmx, -XX:+UseG1GC
+                    </div>
+
+                    <!-- 10% 标注 -->
+                    <div class="absolute -left-20 top-1/2 text-sky-300 font-mono text-xs text-right">
+                        <div class="text-xl font-bold">10%</div>
+                        <div class="opacity-70">可见表象</div>
+                    </div>
+                </div>
+
+                <!-- 2. 水下部分 (The Mass) -->
+                <div class="absolute top-[35%] w-[460px] h-[400px] flex justify-center fragment fade-up z-20" data-fragment-index="2">
+                    <!-- 自然形状的冰山底部 -->
+                    <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-[0_0_50px_rgba(220,38,38,0.3)]" preserveAspectRatio="none">
+                        <!-- 顶部宽度与上方冰山底部(10-90)对齐，形成连接感 -->
+                        <path d="M10 0 L90 0 L95 30 L80 90 L50 100 L20 85 L5 25 Z" fill="url(#iceBaseGradient)" stroke="rgba(239,68,68,0.3)" stroke-width="0.5" class="opacity-90"/>
+                        <defs>
+                            <linearGradient id="iceBaseGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#7f1d1d;stop-opacity:0.9" />
+                                <stop offset="100%" style="stop-color:#450a0a;stop-opacity:0.95" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+
+                    <!-- 内容容器 -->
+                    <div class="absolute top-12 w-full px-8 text-center">
+                        <div class="flex flex-col items-center mb-6">
+                            <div class="bg-red-950/80 px-4 py-1 rounded-full border border-red-500/50 text-red-100 font-bold text-lg flex items-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.5)]">
+                                <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
+                                核心病灶
+                            </div>
+                        </div>
+                        
+                        <!-- Grid 布局优化 -->
+                        <div class="grid grid-cols-2 gap-3 w-full">
+                            <!-- Card 1 -->
+                            <div class="bg-gradient-to-br from-red-900/80 to-red-950/80 border border-red-500/30 p-2.5 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-red-800/80 transition-all group shadow-inner">
+                                <i class="fa-solid fa-bug text-red-400 text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="text-red-100 text-xs font-bold">代码质量差</span>
+                            </div>
+                            <!-- Card 2 -->
+                            <div class="bg-gradient-to-br from-red-900/80 to-red-950/80 border border-red-500/30 p-2.5 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-red-800/80 transition-all group shadow-inner">
+                                <i class="fa-solid fa-database text-red-400 text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="text-red-100 text-xs font-bold">SQL 慢查询</span>
+                            </div>
+                            <!-- Card 3 -->
+                            <div class="bg-gradient-to-br from-red-900/80 to-red-950/80 border border-red-500/30 p-2.5 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-red-800/80 transition-all group shadow-inner">
+                                <i class="fa-solid fa-network-wired text-red-400 text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="text-red-100 text-xs font-bold">架构缺陷</span>
+                            </div>
+                            <!-- Card 4 -->
+                            <div class="bg-gradient-to-br from-red-900/80 to-red-950/80 border border-red-500/30 p-2.5 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-red-800/80 transition-all group shadow-inner">
+                                <i class="fa-solid fa-memory text-red-400 text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="text-red-100 text-xs font-bold">内存泄漏</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 90% 标注 -->
+                    <div class="absolute -right-24 top-20 text-red-400 font-mono text-xs text-left">
+                        <div class="text-xl font-bold">90%</div>
+                        <div class="opacity-70">隐蔽根源</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes wave-move {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(0%); }
+        }
+    </style>
+</section>
+
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: false,
+            progress: false,
+            center: false,
+            hash: true,
+            transition: 'convex',
+            backgroundTransition: 'zoom',
+            fragments: true,
+            transitionSpeed: 'fast',
+        });
+
+        /* Attract Mode Logic */
+        (function() {
+            let autoPlayInterval;
+            const autoPlaySpeed = 3000; // 3 seconds per slide for demo
+            let isAttractMode = true;
+
+            function startAttractMode() {
+                if (!isAttractMode) return;
+                Reveal.configure({ loop: true });
+                autoPlayInterval = setInterval(() => {
+                    Reveal.next();
+                }, autoPlaySpeed);
+            }
+
+            function stopAttractMode() {
+                if (!isAttractMode) return;
+                isAttractMode = false;
+                clearInterval(autoPlayInterval);
+                Reveal.slide(0);
+                Reveal.configure({ loop: false });
+                
+                const hint = document.getElementById('start-hint');
+                if(hint) {
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.remove(), 500);
+                }
+            }
+
+            window.addEventListener('keydown', stopAttractMode);
+            window.addEventListener('click', stopAttractMode);
+            startAttractMode();
+        })();
+    </script>
+</body>
+</html>

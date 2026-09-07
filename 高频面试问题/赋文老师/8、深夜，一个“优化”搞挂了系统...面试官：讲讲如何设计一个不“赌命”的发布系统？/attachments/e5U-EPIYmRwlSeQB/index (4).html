@@ -1,0 +1,407 @@
+
+
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白板讲稿：如何设计一个不“赌命”的发布系统</title>
+<style>
+  :root {
+    --bg-color: #0a0a1a;
+    --primary-color: #00f2ff;
+    --secondary-color: #ff00ff;
+    --text-color: #e0e0ff;
+    --title-color: #ffffff;
+    --accent-color: #ffab00;
+    --border-color: rgba(0, 242, 255, 0.3);
+    --highlight-bg: rgba(0, 242, 255, 0.1);
+  }
+  body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(0, 242, 255, 0.2) 1px, transparent 0),
+      radial-gradient(circle at 10px 10px, rgba(255, 0, 255, 0.1) 1px, transparent 0);
+    background-size: 20px 20px;
+  }
+  .container {
+    width: 95%;
+    height: 95%;
+    max-width: 1200px;
+    max-height: 750px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    background: rgba(10, 10, 26, 0.8);
+    backdrop-filter: blur(5px);
+  }
+  .slides {
+    flex-grow: 1;
+    display: flex;
+    transition: transform 0.5s ease-in-out;
+  }
+  .slide {
+    min-width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 40px 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+  .slide.active {
+    opacity: 1;
+    transform: scale(1);
+    z-index: 2;
+  }
+  .slide h1, .slide h2 {
+    color: var(--title-color);
+    text-shadow: 0 0 10px var(--primary-color);
+    margin-top: 0;
+  }
+  .slide h1 { font-size: 2.8em; margin-bottom: 20px;}
+  .slide h2 { font-size: 2em; color: var(--primary-color); margin-bottom: 30px;}
+  .content {
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 20px;
+  }
+  .text-block {
+    flex: 1;
+    text-align: left;
+    font-size: 1.2em;
+    line-height: 1.6;
+  }
+  .diagram-block {
+    flex: 1.2;
+    background-color: var(--highlight-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9em;
+    min-height: 300px;
+  }
+  .diagram-block pre {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--text-color);
+    font-size: 1.1em;
+    line-height: 1.5;
+    text-align: left;
+    font-family: 'Fira Code', 'Consolas', monospace;
+  }
+  strong { color: var(--accent-color); }
+  .code {
+      font-family: 'Fira Code', 'Consolas', monospace;
+      background: var(--highlight-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--primary-color);
+  }
+  .arrow {
+    color: var(--secondary-color);
+    font-size: 2em;
+    font-weight: bold;
+    margin: 10px 0;
+  }
+  .icon {
+      font-size: 1.5em;
+      margin-right: 10px;
+      vertical-align: middle;
+  }
+  .navigation {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    z-index: 10;
+  }
+  .nav-btn {
+    background: var(--highlight-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .nav-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: var(--bg-color);
+    box-shadow: 0 0 15px var(--primary-color);
+  }
+  .nav-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+  }
+  .page-indicator {
+    position: absolute;
+    bottom: 25px;
+    right: 30px;
+    font-size: 1.2em;
+    color: var(--border-color);
+    z-index: 10;
+  }
+  ul { list-style: none; padding: 0;}
+  li { margin-bottom: 15px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="slides">
+    <!-- Slide 1: Title -->
+    <div class="slide active">
+      <h1>面试官：如何设计一个<br>不“赌命”的发布系统？</h1>
+      <h2>灰度发布 & A/B 测试核心架构</h2>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide">
+      <h2>痛点：发布 = 赌命</h2>
+      <div class="content">
+        <div class="diagram-block">
+<pre>
+<span class="icon">🌃</span> 深夜
+  <span class="arrow">↓</span>
+<span class="icon">💻</span> 上线“优化”代码
+  <span class="arrow">↓</span>
+<span class="icon">💥</span> 罕见BUG，服务雪崩
+  <span class="arrow">↓</span>
+<span class="icon">🚨</span> <strong>P0 故障！</strong>
+  <span class="arrow">↓</span>
+<span class="icon">😰</span> 紧急回滚，一身冷汗
+</pre>
+        </div>
+        <div class="text-block">
+          <ul>
+            <li><span class="icon">❓</span> 灵魂拷问：如果只让 <strong>1%</strong> 的用户先用，是不是就能避免灾难？</li>
+            <li><span class="icon">🎯</span> 面试官真正想考察的，是你能否设计一个<strong>稳定、可控、可观测</strong>的发布系统。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3: Core Idea -->
+    <div class="slide">
+      <h2>核心思路：流量染色 & 全链路灰度</h2>
+      <div class="content">
+        <div class="diagram-block" style="flex-direction: row; align-items: stretch; gap: 15px;">
+            <div style="flex:1; border:1px dashed var(--border-color); padding: 10px; border-radius: 5px; display: flex; flex-direction: column; justify-content: center;">
+                <h3>1. 流量染色 (Dyeing)</h3>
+                <div class="arrow">↓</div>
+                <div>在入口处，根据<strong>规则</strong>给请求打上<strong>特殊标记</strong>。</div>
+                <div class="arrow">↓</div>
+                <div class="code">Header: x-gray-version: v2</div>
+            </div>
+            <div style="flex:1; border:1px dashed var(--border-color); padding: 10px; border-radius: 5px; display: flex; flex-direction: column; justify-content: center;">
+                <h3>2. 全链路灰度 (Tracing)</h3>
+                <div class="arrow">↓</div>
+                <div>确保这个<strong>标记</strong>在整个微服务调用链中<strong>不丢失</strong>。</div>
+                <div class="arrow">↓</div>
+                <div>A → B(v2) → C(v2)</div>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4: Step 1 - Traffic Dyeing -->
+    <div class="slide">
+        <h2>第一层：流量染色 (入口层)</h2>
+        <div class="content">
+            <div class="text-block">
+                <ul>
+                    <li><span class="icon">📍</span> <strong>地点</strong>: API 网关 (e.g., Spring Cloud Gateway)</li>
+                    <li><span class="icon">⚙️</span> <strong>动作</strong>:
+                        <br>1. 获取用户画像 (UID, Location, Device...)
+                        <br>2. 匹配动态<strong>灰度规则</strong>
+                        <br>3. 生成<strong>灰度标记</strong>
+                    </li>
+                    <li><span class="icon">🏷️</span> <strong>载体</strong>: 将标记放入...
+                        <br> - HTTP <strong class="code">Header</strong>
+                        <br> - RPC <strong class="code">Attachment</strong>
+                        <br> - MQ <strong class="code">Message Property</strong>
+                    </li>
+                </ul>
+            </div>
+            <div class="diagram-block">
+<pre>
+  请求  → [ <strong>API 网关</strong> ] → 染色后的请求
+           ┌─────────┐
+ User ────▶│  Rules  │
+ (UID:123) │(北京,VIP)│
+           └─────────┘
+                 <span class="arrow">↓</span>
+           [ 添加 Header ]
+      <strong class="code">x-gray-version: v2</strong>
+</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Step 2 - Full-Link Tracing -->
+    <div class="slide">
+        <h2>第二层：全链路透传 (核心)</h2>
+        <div class="diagram-block" style="width:100%; font-size: 1em;">
+<pre>
+<span style="color:var(--primary-color)">// 目标：灰度标记像接力棒一样传递</span>
+
+<span style="color:var(--accent-color)">1. HTTP 调用 (Gateway 路由 & Feign 拦截器)</span>
+   Request → Gateway(加Header) → ServiceA → Feign(传Header) → ServiceB
+
+<span style="color:var(--accent-color)">2. RPC 调用 (Dubbo Filter)</span>
+   ServiceB → Consumer Filter(塞Attachment) → Provider Filter(取Attachment) → ServiceC
+
+<span style="color:var(--accent-color)">3. 异步调用 (RocketMQ AOP)</span>
+   ServiceC → AOP(加消息属性) → [ MQ ] → AOP(取消息属性) → ServiceD
+</pre>
+        </div>
+    </div>
+
+    <!-- Slide 6: A/B Testing -->
+    <div class="slide">
+        <h2>第三层：A/B 测试 (决策)</h2>
+        <div class="content">
+            <div class="text-block">
+                <ul>
+                    <li><span class="icon">🤔</span> <strong>不是</strong>简单的流量路由，而是<strong>业务逻辑分流</strong>。</li>
+                    <li><span class="icon">🆚</span> <strong>灰度发布</strong>: 验证新版【稳不稳定】。</li>
+                    <li><span class="icon">📈</span> <strong>A/B 测试</strong>: 对比 A、B方案【哪个更好】。</li>
+                    <li><span class="icon">🔧</span> <strong>实现</strong>: 业务代码中，通过<strong>“特性开关”</strong>或<strong>“实验平台”</strong>来决策。</li>
+                </ul>
+            </div>
+            <div class="diagram-block">
+<pre>
+// 推荐服务 RecommendService
+public List getRec(userId) {
+  <span style="color:var(--accent-color)">// 询问实验平台，我该走哪个分支？</span>
+  group = experimentClient.getGroup(userId);
+
+  switch(group) {
+    case "Plan-A": return <strong style="color:var(--primary-color)">newAlgorithmA()</strong>;
+    case "Plan-B": return <strong style="color:var(--primary-color)">newAlgorithmB()</strong>;
+    default:     return <strong style="color:var(--secondary-color)">legacyAlgorithm()</strong>;
+  }
+}
+</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Control Plane -->
+    <div class="slide">
+        <h2>第四层：统一管控平台</h2>
+        <div class="content">
+            <div class="diagram-block" style="font-size: 1.2em; line-height: 2;">
+                <div><span class="icon">🕹️</span> [ <strong>灰度发布与A/B实验平台</strong> ]</div>
+                <div class="arrow">↓</div>
+                <div style="display: flex; justify-content: space-around; width: 100%; text-align: center;">
+                    <div><span class="icon">📜</span><br>动态规则配置</div>
+                    <div><span class="icon">📊</span><br>实时指标监控</div>
+                    <div><span class="icon">⏪</span><br>一键发布/回滚</div>
+                </div>
+            </div>
+        </div>
+        <h2 style="font-size: 1.5em; margin-top: 30px;">让发布过程安全、可控、可观测</h2>
+    </div>
+
+    <!-- Slide 8: Summary -->
+    <div class="slide">
+        <h2>总结：完美回答 = 3步 + 2个锦囊</h2>
+        <div class="content" style="flex-direction: column; font-size: 1.2em; text-align: left; align-items: flex-start;">
+            <p><strong>1. 核心架构：</strong> 流量染色 → 全链路透传 (HTTP/RPC/MQ) → A/B测试 (特性开关) → 管控平台</p>
+            <p><strong>2. 展现经验 (锦囊1 - 缓存)：</strong><br>   为了防止缓存污染，缓存 Key 必须带上<strong>灰度标记</strong>。 <code class="code">Key = "user:" + uid + ":v2"</code></p>
+            <p><strong>3. 展现经验 (锦囊2 - 数据库)：</strong><br>   灰度期间，DB变更必须<strong>向前/向后兼容</strong>（只加字段，不删/改字段）。</p>
+        </div>
+    </div>
+  </div>
+</div>
+
+<div class="navigation">
+    <button id="prevBtn" class="nav-btn">上一页</button>
+    <button id="nextBtn" class="nav-btn">下一页</button>
+</div>
+<div id="pageIndicator" class="page-indicator">1 / 8</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const slideCount = slides.length;
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const pageIndicator = document.getElementById('pageIndicator');
+  let currentIndex = 0;
+
+  function updateSlides() {
+    slides.forEach((slide, index) => {
+      if (index === currentIndex) {
+        slide.classList.add('active');
+      } else {
+        slide.classList.remove('active');
+      }
+    });
+    pageIndicator.textContent = `${currentIndex + 1} / ${slideCount}`;
+    prevBtn.disabled = currentIndex === 0;
+    nextBtn.disabled = currentIndex === slideCount - 1;
+  }
+
+  prevBtn.addEventListener('click', () => {
+    if (currentIndex > 0) {
+      currentIndex--;
+      updateSlides();
+    }
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (currentIndex < slideCount - 1) {
+      currentIndex++;
+      updateSlides();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') {
+      prevBtn.click();
+    } else if (e.key === 'ArrowRight') {
+      nextBtn.click();
+    }
+  });
+
+  updateSlides();
+</script>
+
+</body>
+</html>

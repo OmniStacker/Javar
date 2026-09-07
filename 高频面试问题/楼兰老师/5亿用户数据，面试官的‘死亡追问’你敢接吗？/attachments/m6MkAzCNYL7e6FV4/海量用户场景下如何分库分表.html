@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分库分表架构图</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+    :root {
+        --bg-color: #0a0a0a;
+        --primary-color: #00f2ea;
+        --secondary-color: #ff00ff;
+        --text-color: #e0e0e0;
+        --border-color: rgba(0, 242, 234, 0.3);
+        --highlight-bg: rgba(0, 242, 234, 0.05);
+        --problem-color: #ff4d4d;
+        --solution-color: #4caf50;
+        --box-bg: #191919;
+    }
+    * {
+        box-sizing: border-box;
+    }
+    html {
+        scroll-behavior: smooth;
+    }
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-family: 'Noto Sans SC', sans-serif;
+        margin: 0;
+        overflow-x: hidden;
+    }
+    .container {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    section {
+        width: 100%;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 60px 20px;
+        border-bottom: 1px solid var(--border-color);
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+    }
+    section:last-child {
+        border-bottom: none;
+    }
+    section.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    .content-box {
+        width: 100%;
+        max-width: 1000px;
+        text-align: center;
+    }
+
+    /* Section 1: 开场 */
+    #section1 .content-box { display: flex; flex-direction: column; align-items: center; gap: 25px; }
+    .intro-title { font-size: 4rem; font-weight: 700; color: var(--primary-color); text-shadow: 0 0 10px var(--primary-color), 0 0 20px var(--primary-color); letter-spacing: 4px; margin: 10px 0; line-height: 1.2; }
+    .intro-subtitle { font-size: 1.2rem; color: var(--text-color); opacity: 0.8; margin: 0; }
+    .methods-comparison { display: flex; justify-content: center; align-items: stretch; gap: 0; margin-top: 40px; width: 100%; max-width: 800px; background-color: var(--box-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 30px 20px; }
+    .method-card { flex: 1; text-align: center; padding: 0 20px; }
+    .method-card h3 { margin: 0 0 20px 0; font-size: 1.2rem; color: var(--primary-color); font-weight: 500; }
+    .method-card p { margin: 0; font-size: 1rem; color: var(--text-color); line-height: 1.8; opacity: 0.8; }
+    .method-divider { width: 1px; background-color: var(--border-color); }
+
+    /* Section 2: 图表样式 */
+    .diagram-container { display: flex; flex-direction: column; align-items: center; gap: 25px; width: 100%; }
+    .diagram-stage { background: var(--box-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; width: 100%; max-width: 800px; }
+    .stage-header { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .stage-header h3 { margin: 0; font-size: 1.4rem; font-weight: 500; color: var(--text-color); }
+    .header-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; flex-shrink: 0; }
+    .header-icon.problem { background-color: var(--problem-color); color: white; }
+    .header-icon.solution { background-color: var(--solution-color); color: white; }
+    .stage-content { display: flex; align-items: center; justify-content: center; }
+    .single-table { justify-content: center; }
+    .split-flow { justify-content: space-around; gap: 20px; flex-wrap: wrap; }
+    .table-item { text-align: center; }
+    .table-item p { margin: 10px 0 0 0; font-size: 0.9rem; line-height: 1.5; opacity: 0.9; }
+    .table-item code { background: #333; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: var(--text-color); }
+    .table-icon-wrapper { width: 70px; height: 70px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); border: 2px solid; }
+    .table-icon-wrapper .icon-char { font-size: 2rem; }
+    .table-icon-wrapper.problem-icon { border-color: var(--problem-color); }
+    .table-icon-wrapper.problem-icon .icon-char { color: var(--problem-color); }
+    .table-icon-wrapper.base-icon { border-color: var(--border-color); }
+    .table-icon-wrapper.base-icon .icon-char { color: var(--text-color); }
+    .table-icon-wrapper.hot-icon { border-color: var(--primary-color); }
+    .table-icon-wrapper.hot-icon .icon-char { color: var(--primary-color); }
+    .table-icon-wrapper.cold-icon { border-color: var(--secondary-color); }
+    .table-icon-wrapper.cold-icon .icon-char { color: var(--secondary-color); }
+    .split-result { display: flex; gap: 20px; align-items: center; }
+    .split-result.horizontal { gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .down-arrow, .right-arrow { font-size: 2.5rem; color: var(--border-color); }
+    .right-arrow { flex-shrink: 0; }
+    .dots { font-size: 1.5rem; color: var(--border-color); align-self: center; padding: 0 10px; }
+    .table-item.small .table-icon-wrapper { width: 50px; height: 50px; }
+    .table-item.small .icon-char { font-size: 1.5rem; }
+
+    /* Section 3: 高阶追问 */
+    .card { background-color: var(--highlight-bg); border: 1px solid var(--border-color); padding: 30px; border-radius: 10px; }
+    #section3 .question-box { border: 2px solid var(--secondary-color); background-color: rgba(255, 0, 255, 0.05); }
+    #section3 .question-box h2 { color: var(--secondary-color); text-shadow: 0 0 10px var(--secondary-color); font-size: 2rem; margin-top: 0; margin-bottom: 20px; }
+    #section3 .question-box p { font-size: 1.3rem; font-weight: 500; }
+    #section3 .question-box .sub-q { opacity: 0.7; font-size: 1rem; margin-top: 15px; }
+
+    /* Section 4: 基因分片法 */
+    #section4 h1 { font-size: 3rem; color: var(--primary-color); text-shadow: 0 0 15px var(--primary-color); margin-bottom: 40px; }
+    .gene-card { background-color: var(--box-bg); border: 1px solid var(--secondary-color); border-radius: 12px; padding: 35px 40px; text-align: left; }
+    .gene-card .card-header h2 { font-size: 1.6rem; color: var(--text-color); border-left: 4px solid var(--primary-color); padding-left: 15px; margin: 0; font-weight: 500; }
+    .gene-card .card-description { margin: 20px 0 30px 0; font-size: 1rem; line-height: 1.8; opacity: 0.8; padding-left: 19px; }
+    .gene-card hr { border: none; height: 1px; background-color: var(--border-color); margin: 0 0 30px 0; }
+    #section4 .steps-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+    #section4 .step { flex: 1; min-width: 240px; max-width: 280px; text-align: left; position: relative; display: flex; flex-direction: column; }
+    #section4 .step .icon { font-size: 2.5rem; color: var(--primary-color); margin-bottom: 15px; height: 40px; }
+    #section4 .step h3 { font-size: 1.3rem; margin-bottom: 10px; color: var(--text-color); }
+    #section4 .step p { font-size: 0.9rem; opacity: 0.8; line-height: 1.6; flex-grow: 1; }
+    #section4 .arrow { font-size: 2.5rem; color: var(--border-color); align-self: center; transform: translateY(80px); }
+    .code-snippet { background-color: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-top: 15px; font-family: 'SF Mono', 'Courier New', Courier, monospace; font-size: 0.9rem; color: #c8fffa; word-wrap: break-word; }
+    
+    /* Section 5: 总结 (全新设计) */
+    .final-summary-text {
+        font-size: 2.2rem;
+        font-weight: 500;
+        line-height: 1.7;
+        color: var(--primary-color);
+        text-shadow: 0 0 12px rgba(0, 242, 234, 0.6);
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Section 1: 开场 -->
+    <section id="section1">
+        <div class="content-box">
+            <h1 class="intro-title">5亿用户数据, 如何设计分库分表方案?</h1>
+            <p class="intro-subtitle">如何有效的准备面试?</p>
+            <div class="methods-comparison">
+                <div class="method-card">
+                    <h3>面试流答法: 照搬八股</h3>
+                    <p>分库分表 \ 垂直分 \ 水平分</p>
+                </div>
+                <div class="method-divider"></div>
+                <div class="method-card">
+                    <h3>技术流答法: 八股+实战验证</h3>
+                    <p>表如何分? 数据如何查?<br>重要业务场景如何设计?</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 2: 标准解决方案图 -->
+    <section id="section2">
+        <div class="diagram-container">
+            <div class="diagram-stage">
+                <div class="stage-header"><div class="header-icon problem">!</div><h3>业务问题 1: 单表性能瓶颈</h3></div>
+                <div class="stage-content single-table"><div class="table-item"><div class="table-icon-wrapper problem-icon"><span class="icon-char">🗄️</span></div><p>巨型用户表<br><code>t_user</code></p></div></div>
+            </div>
+            <div class="down-arrow">↓</div>
+            <div class="diagram-stage">
+                <div class="stage-header"><div class="header-icon solution">✓</div><h3>解决方案: 垂直分表 (冷热分离)</h3></div>
+                <div class="stage-content split-flow">
+                    <div class="table-item"><div class="table-icon-wrapper base-icon"><span class="icon-char">☁️</span></div><p><code>t_user</code></p></div>
+                    <div class="right-arrow">→</div>
+                    <div class="split-result">
+                        <div class="table-item"><div class="table-icon-wrapper hot-icon"><span class="icon-char">🔥</span></div><p>认证表 (热)<br><code>t_user_auth</code></p></div>
+                        <div class="table-item"><div class="table-icon-wrapper cold-icon"><span class="icon-char">❄️</span></div><p>资料表 (冷)<br><code>t_user_profile</code></p></div>
+                    </div>
+                </div>
+            </div>
+            <div class="down-arrow">↓</div>
+            <div class="diagram-stage">
+                <div class="stage-header"><div class="header-icon solution">✓</div><h3>解决方案: 水平分表</h3></div>
+                <div class="stage-content split-flow">
+                    <div class="table-item"><div class="table-icon-wrapper hot-icon"><span class="icon-char">🔥</span></div><p><code>t_user_auth</code></p></div>
+                    <div class="right-arrow">→</div>
+                    <div class="split-result horizontal">
+                        <div class="table-item small"><div class="table-icon-wrapper hot-icon"><span class="icon-char">📄</span></div><p><code>t_user_auth_0</code></p></div>
+                        <div class="table-item small"><div class="table-icon-wrapper hot-icon"><span class="icon-char">📄</span></div><p><code>t_user_auth_1</code></p></div>
+                        <div class="dots">...</div>
+                        <div class="table-item small"><div class="table-icon-wrapper hot-icon"><span class="icon-char">📄</span></div><p><code>t_user_auth_1023</code></p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 3: 高阶实战追问 -->
+    <section id="section3">
+        <div class="content-box">
+            <div class="card question-box">
+                <h2>高阶追问：死亡难题</h2>
+                <p>“按 UserID 分表后，用户通过 <strong>'用户名'</strong> 登录，如何查询？”</p>
+                <p class="sub-q">难道要为了找一条数据，扫描全部1024张表吗？</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 4: 基因分片法 -->
+    <section id="section4">
+        <div class="content-box">
+            <h1>破局王牌：基因分片法</h1>
+            <div class="gene-card">
+                <div class="card-header">
+                    <h2>核心思想：在ID中注入“分片基因”</h2>
+                </div>
+                <p class="card-description">
+                    在创建用户时，就预先决定其数据存储位置，并将该位置信息（基因）作为“盐”一样，强制注入到全局唯一的UserID中。这样，无论通过UserID还是Username查询，都能瞬间定位到唯一的数据分片。
+                </p>
+                <hr>
+                <div class="steps-container">
+                    <div class="step">
+                        <div class="icon">🧬</div>
+                        <h3>1. 抽取基因</h3>
+                        <p>对 Username 哈希取模，得到分片位置（如 0-1023）。</p>
+                        <div class="code-snippet">gene = hash(username) & mask</div>
+                    </div>
+                    <div class="arrow">&rarr;</div>
+                    <div class="step">
+                        <div class="icon">💉</div>
+                        <h3>2. 注入ID</h3>
+                        <p>生成UserID时，将分片位置（基因）嵌入ID的特定位。</p>
+                        <div class="code-snippet">new_id = (origin_id &lt;&lt; N) | gene</div>
+                    </div>
+                    <div class="arrow">&rarr;</div>
+                    <div class="step">
+                        <div class="icon">🎯</div>
+                        <h3>3. 双路查询</h3>
+                        <p>Username或UserID都能反解出分片位置，实现 O(1) 查询。</p>
+                        <div class="code-snippet">hash(username) & mask = new_id & mask</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 5: 总结 -->
+    <section id="section5">
+        <div class="content-box">
+            <p class="final-summary-text">
+                面试，从来不是让你背题，<br>而是给你一个机会，展示你的思考深度。
+            </p>
+        </div>
+    </section>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sections = document.querySelectorAll('section');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, {
+            threshold: 0.1
+        });
+        sections.forEach(section => {
+            observer.observe(section);
+        });
+    });
+</script>
+</body>
+</html>

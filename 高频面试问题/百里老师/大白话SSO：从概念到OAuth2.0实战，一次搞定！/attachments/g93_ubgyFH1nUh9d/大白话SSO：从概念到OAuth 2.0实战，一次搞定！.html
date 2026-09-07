@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大白话从说明、设计、实现手把手带你设计一个SSO单点登录系统，通俗易懂！</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { box-shadow: 0 0 25px 12px rgba(239, 68, 68, 0); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem 1rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        
+        .diagram-node {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            padding: 1rem;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            z-index: 10;
+        }
+        .diagram-node:hover {
+            transform: translateY(-5px) scale(1.03);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .diagram-node-good { animation: subtle-pulse-green 2.5s infinite; }
+        .diagram-node-bad { 
+            animation: subtle-pulse-red 2.5s infinite;
+            border-color: #ef4444;
+        }
+
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .slide:last-of-type { border-bottom: none; }
+        
+        /* 时序图样式 */
+        .sequence-diagram {
+            position: relative;
+            width: 100%;
+            padding: 2rem 0;
+        }
+        
+        .sequence-actors {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 2rem;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .actor {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .actor-box {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 2px solid #475569;
+            border-radius: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            min-width: 140px;
+        }
+        
+        .actor-box:hover {
+            transform: translateY(-3px);
+            border-color: #60a5fa;
+            box-shadow: 0 8px 16px rgba(96, 165, 250, 0.2);
+        }
+        
+        .actor-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .actor-name {
+            font-weight: bold;
+            font-size: 1rem;
+            color: #e2e8f0;
+        }
+        
+        .sequence-flow {
+            position: relative;
+            min-height: 600px;
+            margin-top: -1.5rem;
+        }
+        
+        /* 生命线 */
+        .lifeline {
+            position: absolute;
+            width: 2px;
+            background: linear-gradient(to bottom, #475569 0%, #334155 100%);
+            top: 0;
+            bottom: 0;
+            z-index: 1;
+        }
+        
+        .lifeline-1 { left: 16.66%; }
+        .lifeline-2 { left: 50%; }
+        .lifeline-3 { left: 83.33%; }
+        
+        /* 消息箭头 */
+        .message {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            z-index: 5;
+        }
+        
+        .message-line {
+            position: absolute;
+            height: 2px;
+            background: currentColor;
+        }
+        
+        .message-line.solid {
+            background: currentColor;
+        }
+        
+        .message-line.dashed {
+            background: repeating-linear-gradient(
+                to right,
+                currentColor,
+                currentColor 8px,
+                transparent 8px,
+                transparent 16px
+            );
+        }
+        
+        .message-arrow-right {
+            position: absolute;
+            right: -1px;
+            top: -5px;
+            width: 0;
+            height: 0;
+            border-left: 10px solid currentColor;
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+        }
+        
+        .message-arrow-left {
+            position: absolute;
+            left: -1px;
+            top: -5px;
+            width: 0;
+            height: 0;
+            border-right: 10px solid currentColor;
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+        }
+        
+        .message-label {
+            position: absolute;
+            top: -32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            padding: 0.4rem 0.9rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            white-space: nowrap;
+            border: 1px solid currentColor;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        
+        .step-badge {
+            position: absolute;
+            left: -45px;
+            top: -14px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.875rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+        
+        /* 激活框 */
+        .activation {
+            position: absolute;
+            width: 16px;
+            background: rgba(96, 165, 250, 0.25);
+            border: 2px solid #60a5fa;
+            border-radius: 4px;
+            z-index: 3;
+            transform: translateX(-50%);
+        }
+        
+        /* 自调用框 */
+        .self-call {
+            position: absolute;
+            width: 60px;
+            height: 50px;
+            border: 2px solid currentColor;
+            border-left: none;
+            border-radius: 0 8px 8px 0;
+            z-index: 4;
+        }
+        
+        .self-call-label {
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            padding: 0.3rem 0.7rem;
+            border-radius: 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            border: 1px solid currentColor;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .actor-box {
+                min-width: 100px;
+                padding: 0.875rem 1rem;
+            }
+            .actor-icon {
+                font-size: 2rem;
+            }
+            .actor-name {
+                font-size: 0.875rem;
+            }
+            .message-label {
+                font-size: 0.75rem;
+                padding: 0.3rem 0.6rem;
+            }
+            .step-badge {
+                left: -38px;
+                width: 26px;
+                height: 26px;
+                font-size: 0.75rem;
+            }
+        }
+
+        /* 最佳实践卡片样式 - 完全修复版 */
+        .practice-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(51, 65, 85, 0.4) 100%);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            min-height: 240px; /* 统一最小高度 */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .practice-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(96, 165, 250, 0.5);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .practice-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .practice-card h3 {
+            margin: 0;
+            flex-shrink: 0;
+        }
+
+        .practice-card ul {
+            flex-grow: 1;
+            margin: 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场，点明问题 -->
+    <section id="slide1" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-200">
+                大白话<span class="gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">SSO单点登录</span>系统
+            </h1>
+            <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">从概念到OAuth 2.0实战，一次搞定！</h2>
+            <div class="content-panel mt-12 p-8 md:p-12 border-sky-500/30">
+                <div class="flex flex-col items-center justify-center gap-8 text-white">
+                    <p class="text-lg text-slate-400 max-w-3xl">核心理念：用户只需登录一次，即可访问所有相互信任的应用系统，实现"一把钥匙开万家门"的便捷与安全。</p>
+                    <div class="flex items-center justify-center space-x-6 md:space-x-10 mt-6">
+                        <div class="flex flex-col items-center gap-2">
+                           <i class="fa-solid fa-envelope text-4xl text-slate-400"></i>
+                           <span class="text-sm font-medium text-slate-500">邮箱</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                           <i class="fa-solid fa-chart-pie text-4xl text-slate-400"></i>
+                           <span class="text-sm font-medium text-slate-500">OA系统</span>
+                        </div>
+                         <div class="flex flex-col items-center gap-4">
+                            <i class="fa-solid fa-user-lock text-7xl text-sky-400" style="filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.6));"></i>
+                            <span class="font-bold text-xl text-sky-300">统一认证</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                           <i class="fa-solid fa-code-branch text-4xl text-slate-400"></i>
+                           <span class="text-sm font-medium text-slate-500">代码仓库</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                           <i class="fa-solid fa-tasks text-4xl text-slate-400"></i>
+                           <span class="text-sm font-medium text-slate-500">项目管理</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: 四种实现方案 -->
+    <section id="slide2" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-teal-400 to-cyan-400">为什么选择 OAuth 2.0？</h2>
+            <p class="mt-4 text-xl text-slate-400">从简单粗暴到标准优雅的演进之路。</p>
+            
+            <div class="content-panel mt-12 p-8 md:p-12 border-teal-500/30">
+                <div class="relative flex flex-col lg:flex-row items-center justify-center gap-y-10 lg:gap-x-4">
+
+                    <!-- 方案一: 共享Cookie -->
+                    <div class="w-full lg:w-1/5 transform hover:scale-105 transition-transform duration-300">
+                        <div class="diagram-node h-full flex flex-col text-center p-6">
+                            <i class="fa-solid fa-cookie-bite text-3xl text-amber-400 mx-auto mb-3"></i>
+                            <h3 class="font-bold text-xl text-slate-300 mb-2">共享Cookie</h3>
+                            <p class="text-sm text-slate-400 flex-grow">将Cookie域设为主域名，子域共享登录状态。</p>
+                            <div class="mt-4 text-xs">
+                                <p class="font-semibold text-green-400/80">+ 实现简单</p>
+                                <p class="font-semibold text-red-400/80 mt-1">- 强依赖同主域名</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-slate-600 text-4xl transform lg:rotate-0 rotate-90">
+                        <i class="fa-solid fa-angle-right"></i>
+                    </div>
+
+                    <!-- 方案二: 跨域设置Cookie -->
+                    <div class="w-full lg:w-1/5 transform hover:scale-105 transition-transform duration-300">
+                        <div class="diagram-node h-full flex flex-col text-center p-6">
+                            <i class="fa-solid fa-globe text-3xl text-sky-400 mx-auto mb-3"></i>
+                            <h3 class="font-bold text-xl text-slate-300 mb-2">跨域设置Cookie</h3>
+                            <p class="text-sm text-slate-400 flex-grow">通过iframe等方式为不同域设置Cookie。</p>
+                            <div class="mt-4 text-xs">
+                                <p class="font-semibold text-green-400/80">+ 解决域名限制</p>
+                                <p class="font-semibold text-red-400/80 mt-1">- 不稳健, 依赖浏览器</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-slate-600 text-4xl transform lg:rotate-0 rotate-90">
+                        <i class="fa-solid fa-angle-right"></i>
+                    </div>
+
+                    <!-- 方案三: 客户端模式 -->
+                    <div class="w-full lg:w-1/5 transform hover:scale-105 transition-transform duration-300">
+                        <div class="diagram-node h-full flex flex-col text-center p-6">
+                            <i class="fa-solid fa-mobile-screen-button text-3xl text-violet-400 mx-auto mb-3"></i>
+                            <h3 class="font-bold text-xl text-slate-300 mb-2">客户端模式</h3>
+                            <p class="text-sm text-slate-400 flex-grow">适用于App等非浏览器环境的SDK方案。</p>
+                            <div class="mt-4 text-xs">
+                                <p class="font-semibold text-green-400/80">+ 体验好, 不受限</p>
+                                <p class="font-semibold text-amber-400/80 mt-1">~ 特定领域方案</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-slate-500 text-4xl transform lg:rotate-0 rotate-90">
+                        <i class="fa-solid fa-angles-right"></i>
+                    </div>
+
+                    <!-- 方案四: OAuth 2.0 (高亮) -->
+                    <div class="w-full lg:w-1/4 transform scale-105 lg:scale-110">
+                        <div class="diagram-node h-full flex flex-col text-center p-6 border-2 border-teal-400" style="box-shadow: 0 0 35px rgba(45, 212, 191, 0.5);">
+                            <div class="relative">
+                                <i class="fa-solid fa-shield-halved text-4xl text-teal-300 mx-auto mb-3"></i>
+                                <i class="fa-solid fa-star text-yellow-300 text-lg absolute -top-2 -right-2" style="filter: drop-shadow(0 0 5px rgba(250, 204, 21, 0.7));"></i>
+                            </div>
+                            <h3 class="font-bold text-2xl text-teal-300 mb-2">OAuth 2.0</h3>
+                            <p class="text-sm text-slate-300 flex-grow">引入独立认证中心，通过标准令牌流程实现SSO。</p>
+                            <div class="mt-4 text-sm">
+                                <p class="font-semibold text-green-300">+ 灵活、安全、标准统一</p>
+                                <p class="font-semibold text-amber-300 mt-1">~ 需独立部署认证中心</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: 首次登录流程 (时序图) -->
+    <section id="slide3" class="slide">
+        <div class="w-full max-w-6xl mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-400 to-orange-400">OAuth 2.0 首次登录流程</h2>
+                <p class="mt-4 text-xl text-slate-400">一次完整的"认证-授权-信任"之旅。</p>
+            </div>
+            <div class="content-panel mt-8 p-6 md:p-12 border-amber-500/30">
+                <div class="sequence-diagram">
+                    <!-- 参与者 -->
+                    <div class="sequence-actors">
+                        <div class="actor">
+                            <div class="actor-box">
+                                <div class="actor-icon text-sky-400">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <div class="actor-name">用户/浏览器</div>
+                            </div>
+                        </div>
+                        <div class="actor">
+                            <div class="actor-box">
+                                <div class="actor-icon text-amber-400">
+                                    <i class="fa-solid fa-server"></i>
+                                </div>
+                                <div class="actor-name">系统 1</div>
+                            </div>
+                        </div>
+                        <div class="actor">
+                            <div class="actor-box">
+                                <div class="actor-icon text-green-400">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                </div>
+                                <div class="actor-name">认证中心</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 时序流程 -->
+                    <div class="sequence-flow">
+                        <!-- 生命线 -->
+                        <div class="lifeline lifeline-1"></div>
+                        <div class="lifeline lifeline-2"></div>
+                        <div class="lifeline lifeline-3"></div>
+
+                        <!-- 消息1: 访问系统1 -->
+                        <div class="message" style="top: 30px;">
+                            <div class="step-badge bg-sky-500 text-white">1</div>
+                            <div class="message-line solid text-sky-400" style="left: 16.66%; width: 33.34%;"></div>
+                            <div class="message-arrow-right text-sky-400" style="right: 50%;"></div>
+                            <div class="message-label text-sky-400" style="left: 33.33%;">访问系统1</div>
+                        </div>
+
+                        <!-- 消息2: 未登录，重定向 -->
+                        <div class="message" style="top: 90px;">
+                            <div class="step-badge bg-amber-500 text-white">2</div>
+                            <div class="message-line solid text-amber-400" style="left: 50%; width: 33.33%;"></div>
+                            <div class="message-arrow-right text-amber-400" style="right: 16.67%;"></div>
+                            <div class="message-label text-amber-400" style="left: 66.66%;">未登录，重定向到认证中心</div>
+                        </div>
+
+                        <!-- 激活框: 认证中心显示登录页 -->
+                        <div class="activation" style="left: 83.33%; top: 140px; height: 60px; background: rgba(168, 85, 247, 0.2); border-color: #a855f7;"></div>
+                        
+                        <!-- 消息3: 显示登录页 (自调用) -->
+                        <div class="self-call text-purple-400" style="left: 83.33%; top: 150px;">
+                            <div class="step-badge bg-purple-500 text-white">3</div>
+                            <div class="self-call-label text-purple-400">显示登录页面</div>
+                        </div>
+
+                        <!-- 消息4: 提交凭证 -->
+                        <div class="message" style="top: 240px;">
+                            <div class="step-badge bg-sky-500 text-white">4</div>
+                            <div class="message-line solid text-sky-400" style="left: 16.66%; width: 66.67%;"></div>
+                            <div class="message-arrow-right text-sky-400" style="right: 16.67%;"></div>
+                            <div class="message-label text-sky-400" style="left: 50%;">提交用户名/密码</div>
+                        </div>
+
+                        <!-- 激活框: 认证中心验证 -->
+                        <div class="activation" style="left: 83.33%; top: 280px; height: 70px; background: rgba(34, 197, 94, 0.2); border-color: #22c55e;"></div>
+                        
+                        <!-- 消息5: 验证并创建全局会话 (自调用) -->
+                        <div class="self-call text-green-400" style="left: 83.33%; top: 290px;">
+                            <div class="step-badge bg-green-500 text-white">5</div>
+                            <div class="self-call-label text-green-400">验证成功<br/>创建全局会话</div>
+                        </div>
+
+                        <!-- 消息6: 返回令牌 -->
+                        <div class="message" style="top: 390px;">
+                            <div class="step-badge bg-green-500 text-white">6</div>
+                            <div class="message-line solid text-green-400" style="left: 16.66%; width: 66.67%;"></div>
+                            <div class="message-arrow-left text-green-400" style="left: 16.66%;"></div>
+                            <div class="message-label text-green-400" style="left: 50%;">重定向 + 授权令牌(code)</div>
+                        </div>
+
+                        <!-- 消息7: 后台验证令牌 -->
+                        <div class="message" style="top: 450px;">
+                            <div class="step-badge bg-violet-500 text-white">7</div>
+                            <div class="message-line dashed text-violet-400" style="left: 50%; width: 33.33%;"></div>
+                            <div class="message-arrow-right text-violet-400" style="right: 16.67%;"></div>
+                            <div class="message-label text-violet-400" style="left: 66.66%;">后台验证令牌</div>
+                        </div>
+
+                        <!-- 消息8: 返回用户信息 -->
+                        <div class="message" style="top: 510px;">
+                            <div class="step-badge bg-violet-500 text-white">8</div>
+                            <div class="message-line dashed text-violet-400" style="left: 50%; width: 33.33%;"></div>
+                            <div class="message-arrow-left text-violet-400" style="left: 50%;"></div>
+                            <div class="message-label text-violet-400" style="left: 66.66%;">返回用户信息</div>
+                        </div>
+
+                        <!-- 激活框: 系统1创建局部会话 -->
+                        <div class="activation" style="left: 50%; top: 550px; height: 60px; background: rgba(59, 130, 246, 0.2); border-color: #3b82f6;"></div>
+                        
+                        <!-- 消息9: 创建局部会话 (自调用) -->
+                        <div class="self-call text-blue-400" style="left: 50%; top: 560px;">
+                            <div class="step-badge bg-blue-500 text-white">9</div>
+                            <div class="self-call-label text-blue-400">创建局部会话</div>
+                        </div>
+
+                        <!-- 消息10: 登录成功 -->
+                        <div class="message" style="top: 650px;">
+                            <div class="step-badge bg-green-500 text-white">10</div>
+                            <div class="message-line solid text-green-400" style="left: 16.66%; width: 33.34%;"></div>
+                            <div class="message-arrow-left text-green-400" style="left: 16.66%;"></div>
+                            <div class="message-label text-green-400" style="left: 33.33%;">登录成功，返回页面</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 关键点说明 -->
+                <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div class="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                        <p class="font-bold text-green-300 mb-2">🔑 全局会话 (Global Session)</p>
+                        <p class="text-slate-400">认证中心创建，所有子系统共享</p>
+                    </div>
+                    <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                        <p class="font-bold text-blue-300 mb-2">🔐 局部会话 (Local Session)</p>
+                        <p class="text-slate-400">各子系统独立创建，用于本地鉴权</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 免登访问流程 (时序图) -->
+    <section id="slide4" class="slide">
+        <div class="w-full max-w-6xl mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-green-400 to-emerald-400">OAuth 2.0 免登访问流程</h2>
+                <p class="mt-4 text-xl text-slate-400">利用"全局会话"实现的无感知自动登录。</p>
+            </div>
+            <div class="content-panel mt-8 p-6 md:p-12 border-green-500/30">
+                <div class="sequence-diagram">
+                    <!-- 参与者 -->
+                    <div class="sequence-actors">
+                        <div class="actor">
+                            <div class="actor-box">
+                                <div class="actor-icon text-sky-400">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <div class="actor-name">用户/浏览器</div>
+                            </div>
+                        </div>
+                        <div class="actor">
+                            <div class="actor-box">
+                                <div class="actor-icon text-emerald-400">
+                                    <i class="fa-solid fa-server"></i>
+                                </div>
+                                <div class="actor-name">系统 2</div>
+                            </div>
+                        </div>
+                        <div class="actor">
+                            <div class="actor-box diagram-node-good">
+                                <div class="actor-icon text-green-400">
+                                    <i class="fa-solid fa-check-circle"></i>
+                                </div>
+                                <div class="actor-name">认证中心</div>
+                                <div class="text-xs text-green-400 mt-1">全局会话存在✓</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 时序流程 -->
+                    <div class="sequence-flow" style="min-height: 500px;">
+                        <!-- 生命线 -->
+                        <div class="lifeline lifeline-1"></div>
+                        <div class="lifeline lifeline-2"></div>
+                        <div class="lifeline lifeline-3"></div>
+
+                        <!-- 消息1: 访问系统2 -->
+                        <div class="message" style="top: 30px;">
+                            <div class="step-badge bg-sky-500 text-white">1</div>
+                            <div class="message-line solid text-sky-400" style="left: 16.66%; width: 33.34%;"></div>
+                            <div class="message-arrow-right text-sky-400" style="right: 50%;"></div>
+                            <div class="message-label text-sky-400" style="left: 33.33%;">访问系统2</div>
+                        </div>
+
+                        <!-- 消息2: 重定向 -->
+                        <div class="message" style="top: 90px;">
+                            <div class="step-badge bg-amber-500 text-white">2</div>
+                            <div class="message-line solid text-amber-400" style="left: 50%; width: 33.33%;"></div>
+                            <div class="message-arrow-right text-amber-400" style="right: 16.67%;"></div>
+                            <div class="message-label text-amber-400" style="left: 66.66%;">重定向到认证中心</div>
+                        </div>
+
+                        <!-- 激活框: 认证中心检测全局会话 -->
+                        <div class="activation" style="left: 83.33%; top: 140px; height: 80px; background: rgba(34, 197, 94, 0.3); border-color: #22c55e;"></div>
+                        
+                        <!-- 消息3: 检测全局会话 (自调用) -->
+                        <div class="self-call text-green-400" style="left: 83.33%; top: 150px; height: 60px;">
+                            <div class="step-badge bg-green-500 text-white">3</div>
+                            <div class="self-call-label text-green-400" style="right: -20px;">检测全局会话<br/><strong>✓ 命中!</strong></div>
+                        </div>
+
+                        <!-- 消息4: 直接返回令牌 -->
+                        <div class="message" style="top: 260px;">
+                            <div class="step-badge bg-green-500 text-white">4</div>
+                            <div class="message-line solid text-green-400" style="left: 16.66%; width: 66.67%;"></div>
+                            <div class="message-arrow-left text-green-400" style="left: 16.66%;"></div>
+                            <div class="message-label text-green-400" style="left: 50%;">直接返回令牌(跳过登录)</div>
+                        </div>
+
+                        <!-- 消息5: 验证令牌 -->
+                        <div class="message" style="top: 320px;">
+                            <div class="step-badge bg-violet-500 text-white">5</div>
+                            <div class="message-line dashed text-violet-400" style="left: 50%; width: 33.33%;"></div>
+                            <div class="message-arrow-right text-violet-400" style="right: 16.67%;"></div>
+                            <div class="message-label text-violet-400" style="left: 66.66%;">验证令牌</div>
+                        </div>
+
+                        <!-- 消息6: 返回信息 -->
+                        <div class="message" style="top: 380px;">
+                            <div class="step-badge bg-violet-500 text-white">6</div>
+                            <div class="message-line dashed text-violet-400" style="left: 50%; width: 33.33%;"></div>
+                            <div class="message-arrow-left text-violet-400" style="left: 50%;"></div>
+                            <div class="message-label text-violet-400" style="left: 66.66%;">返回用户信息</div>
+                        </div>
+
+                        <!-- 激活框: 系统2创建局部会话 -->
+                        <div class="activation" style="left: 50%; top: 420px; height: 60px; background: rgba(59, 130, 246, 0.2); border-color: #3b82f6;"></div>
+                        
+                        <!-- 消息7: 创建局部会话 (自调用) -->
+                        <div class="self-call text-blue-400" style="left: 50%; top: 430px;">
+                            <div class="step-badge bg-blue-500 text-white">7</div>
+                            <div class="self-call-label text-blue-400">创建局部会话</div>
+                        </div>
+
+                        <!-- 消息8: 免登成功 -->
+                        <div class="message" style="top: 520px;">
+                            <div class="step-badge bg-green-500 text-white">8</div>
+                            <div class="message-line solid text-green-400" style="left: 16.66%; width: 33.34%;"></div>
+                            <div class="message-arrow-left text-green-400" style="left: 16.66%;"></div>
+                            <div class="message-label text-green-400" style="left: 33.33%;">免登成功，返回页面</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 核心亮点 -->
+                <div class="mt-12 bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-2 border-green-500/50 rounded-xl p-6 text-center">
+                    <p class="text-2xl font-bold text-green-300 mb-3">
+                        <i class="fa-solid fa-bolt text-yellow-400"></i> 核心优势：无感知登录
+                    </p>
+                    <p class="text-slate-300">用户无需重复输入密码，<span class="text-green-400 font-bold">全程自动完成</span>，体验如丝般顺滑！</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 单点退出流程 (时序图) -->
+    <section id="slide5" class="slide">
+        <div class="w-full max-w-7xl mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-rose-500 to-pink-500">单点退出 (Sign-Out) 流程</h2>
+                <p class="mt-4 text-xl text-slate-400">一次退出，所有系统同步销毁会话，确保安全。</p>
+            </div>
+            <div class="content-panel mt-8 p-6 md:p-12 border-rose-500/30">
+                <div class="sequence-diagram">
+                    <!-- 参与者 -->
+                    <div class="sequence-actors">
+                        <div class="actor">
+                            <div class="actor-box diagram-node-bad">
+                                <div class="actor-icon text-red-400">
+                                    <i class="fa-solid fa-user-slash"></i>
+                                </div>
+                                <div class="actor-name">用户</div>
+                            </div>
+                        </div>
+                        <div class="actor">
+                            <div class="actor-box">
+                                <div class="actor-icon text-slate-400">
+                                    <i class="fa-solid fa-server"></i>
+                                </div>
+                                <div class="actor-name">系统 1</div>
+                            </div>
+                        </div>
+                        <div class="actor">
+                            <div class="actor-box">
+                                <div class="actor-icon text-rose-400">
+                                    <i class="fa-solid fa-fire-extinguisher"></i>
+                                </div>
+                                <div class="actor-name">认证中心</div>
+                            </div>
+                        </div>
+                        <div class="actor">
+                            <div class="actor-box">
+                                <div class="actor-icon text-slate-400">
+                                    <i class="fa-solid fa-server"></i>
+                                </div>
+                                <div class="actor-name">系统 2...N</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 时序流程 -->
+                    <div class="sequence-flow" style="min-height: 500px;">
+                        <!-- 生命线 (4条) -->
+                        <div class="lifeline" style="left: 12.5%;"></div>
+                        <div class="lifeline" style="left: 37.5%;"></div>
+                        <div class="lifeline" style="left: 62.5%;"></div>
+                        <div class="lifeline" style="left: 87.5%;"></div>
+
+                        <!-- 消息1: 点击退出 -->
+                        <div class="message" style="top: 30px;">
+                            <div class="step-badge bg-red-500 text-white">1</div>
+                            <div class="message-line solid text-red-400" style="left: 12.5%; width: 25%;"></div>
+                            <div class="message-arrow-right text-red-400" style="right: 62.5%;"></div>
+                            <div class="message-label text-red-400" style="left: 25%;">点击退出</div>
+                        </div>
+
+                        <!-- 激活框: 系统1销毁局部会话 -->
+                        <div class="activation" style="left: 37.5%; top: 70px; height: 60px; background: rgba(239, 68, 68, 0.2); border-color: #ef4444;"></div>
+                        
+                        <!-- 消息2: 销毁局部会话 (自调用) -->
+                        <div class="self-call text-red-400" style="left: 37.5%; top: 80px;">
+                            <div class="step-badge bg-red-500 text-white">2</div>
+                            <div class="self-call-label text-red-400">销毁局部会话</div>
+                        </div>
+
+                        <!-- 消息3: 通知认证中心 -->
+                        <div class="message" style="top: 170px;">
+                            <div class="step-badge bg-rose-500 text-white">3</div>
+                            <div class="message-line solid text-rose-400" style="left: 37.5%; width: 25%;"></div>
+                            <div class="message-arrow-right text-rose-400" style="right: 37.5%;"></div>
+                            <div class="message-label text-rose-400" style="left: 50%;">通知退出</div>
+                        </div>
+
+                        <!-- 激活框: 认证中心销毁全局会话 -->
+                        <div class="activation" style="left: 62.5%; top: 210px; height: 80px; background: rgba(244, 63, 94, 0.3); border-color: #f43f5e;"></div>
+                        
+                        <!-- 消息4: 销毁全局会话 (自调用) -->
+                        <div class="self-call text-rose-400" style="left: 62.5%; top: 220px; height: 60px;">
+                            <div class="step-badge bg-rose-500 text-white">4</div>
+                            <div class="self-call-label text-rose-400">销毁全局会话</div>
+                        </div>
+
+                        <!-- 消息5: 广播通知系统2 -->
+                        <div class="message" style="top: 330px;">
+                            <div class="step-badge bg-orange-500 text-white">5</div>
+                            <div class="message-line dashed text-orange-400" style="left: 62.5%; width: 25%;"></div>
+                            <div class="message-arrow-right text-orange-400" style="right: 12.5%;"></div>
+                            <div class="message-label text-orange-400" style="left: 75%;">广播通知销毁</div>
+                        </div>
+
+                        <!-- 激活框: 系统2销毁 -->
+                        <div class="activation" style="left: 87.5%; top: 370px; height: 60px; background: rgba(239, 68, 68, 0.2); border-color: #ef4444;"></div>
+                        
+                        <!-- 消息6: 系统2销毁 (自调用) -->
+                        <div class="self-call text-red-400" style="left: 87.5%; top: 380px;">
+                            <div class="step-badge bg-red-500 text-white">6</div>
+                            <div class="self-call-label text-red-400">销毁局部会话</div>
+                        </div>
+
+                        <!-- 消息7: 确认 -->
+                        <div class="message" style="top: 470px;">
+                            <div class="step-badge bg-gray-500 text-white">7</div>
+                            <div class="message-line solid text-gray-400" style="left: 12.5%; width: 50%;"></div>
+                            <div class="message-arrow-left text-gray-400" style="left: 12.5%;"></div>
+                            <div class="message-label text-gray-400" style="left: 37.5%;">退出成功</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 安全机制 -->
+                <div class="mt-12 bg-gradient-to-r from-rose-900/30 to-red-900/30 border-2 border-rose-500/50 rounded-xl p-6">
+                    <p class="text-lg font-bold text-rose-300 mb-3">
+                        <i class="fa-solid fa-shield-halved text-red-400"></i> 安全机制
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-300">
+                        <p>✓ 全局会话销毁，防止令牌复用</p>
+                        <p>✓ 广播通知所有子系统同步退出</p>
+                        <p>✓ 局部会话全部失效，确保无残留</p>
+                        <p>✓ 用户需重新登录才能访问任何系统</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: OAuth 2.0 最佳实践与常见问题 -->
+    <section id="slide6" class="slide">
+        <div class="text-center w-full max-w-7xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-purple-400 to-indigo-400">OAuth 2.0 最佳实践 & 面试要点</h2>
+            <p class="mt-4 text-xl text-slate-400">从理论到实战，从设计到面试的关键知识点。</p>
+            
+            <div class="content-panel mt-8 p-8 md:p-12 border-indigo-500/30">
+                <!-- 最佳实践 - 修复图标与标题对齐 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                    <!-- 卡片1: 令牌安全管理 -->
+                    <div class="practice-card">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="practice-icon bg-gradient-to-br from-green-500 to-emerald-600">
+                                <i class="fa-solid fa-shield-halved text-white"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-green-300">令牌安全管理</h3>
+                        </div>
+                        <ul class="text-sm text-slate-400 space-y-2 text-left">
+                            <li>✓ Access Token 短期有效（15分钟-1小时）</li>
+                            <li>✓ Refresh Token 长期有效且加密存储</li>
+                            <li>✓ 使用 HTTPS 传输，防止中间人攻击</li>
+                            <li>✓ 实施 Token 轮换机制（Rotation）</li>
+                        </ul>
+                    </div>
+
+                    <!-- 卡片2: 会话存储策略 -->
+                    <div class="practice-card">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="practice-icon bg-gradient-to-br from-blue-500 to-cyan-600">
+                                <i class="fa-solid fa-database text-white"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-blue-300">会话存储策略</h3>
+                        </div>
+                        <ul class="text-sm text-slate-400 space-y-2 text-left">
+                            <li>✓ 全局会话：Redis集群（高可用）</li>
+                            <li>✓ 局部会话：各系统独立管理</li>
+                            <li>✓ 设置合理的过期时间（TTL）</li>
+                            <li>✓ 支持会话续期与主动销毁</li>
+                        </ul>
+                    </div>
+
+                    <!-- 卡片3: 授权码防护 -->
+                    <div class="practice-card">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="practice-icon bg-gradient-to-br from-amber-500 to-orange-600">
+                                <i class="fa-solid fa-code text-white"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-amber-300">授权码防护</h3>
+                        </div>
+                        <ul class="text-sm text-slate-400 space-y-2 text-left">
+                            <li>✓ Authorization Code 一次性使用</li>
+                            <li>✓ 添加 PKCE 扩展（移动端必备）</li>
+                            <li>✓ 验证 redirect_uri 白名单</li>
+                            <li>✓ 使用 state 参数防 CSRF 攻击</li>
+                        </ul>
+                    </div>
+
+                    <!-- 卡片4: 高可用架构 -->
+                    <div class="practice-card">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="practice-icon bg-gradient-to-br from-rose-500 to-pink-600">
+                                <i class="fa-solid fa-network-wired text-white"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-rose-300">高可用架构</h3>
+                        </div>
+                        <ul class="text-sm text-slate-400 space-y-2 text-left">
+                            <li>✓ 认证中心集群部署（负载均衡）</li>
+                            <li>✓ 数据库主从复制 + 读写分离</li>
+                            <li>✓ 限流熔断（防止恶意攻击）</li>
+                            <li>✓ 监控告警（响应时间、成功率）</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 面试高频问题 -->
+                <div class="bg-gradient-to-r from-indigo-900/30 to-purple-900/30 border-2 border-indigo-500/50 rounded-xl p-8">
+                    <h3 class="text-2xl font-bold text-indigo-300 mb-6 text-center">
+                        <i class="fa-solid fa-lightbulb text-yellow-400 mr-2"></i>
+                        面试官最爱问的5个 <strong class="text-pink-500"> SSO </strong>问题
+                    </h3>
+                    <div class="grid grid-cols-1 gap-4 text-left">
+                        <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                            <p class="font-bold text-sky-300 mb-2">Q1: OAuth 2.0 和 Session 的区别？</p>
+                            <p class="text-sm text-slate-400">A: OAuth 2.0 是<strong class="text-green-400">无状态</strong>的令牌机制，适合分布式；Session 是<strong class="text-amber-400">有状态</strong>的服务端存储，适合单体应用。</p>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                            <p class="font-bold text-sky-300 mb-2">Q2: 如何防止令牌被盗用？</p>
+                            <p class="text-sm text-slate-400">A: ① HTTPS传输 ② 短期过期 ③ IP/设备指纹绑定 ④ 异常登录检测 ⑤ Refresh Token轮换</p>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                            <p class="font-bold text-sky-300 mb-2">Q3: 全局会话存储在哪里？为什么？</p>
+                            <p class="text-sm text-slate-400">A: 存储在<strong class="text-green-400">Redis</strong>。原因：① 高性能（内存） ② 支持过期 ③ 集群共享 ④ 持久化备份</p>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                            <p class="font-bold text-sky-300 mb-2">Q4: 单点退出如何保证所有系统同步？</p>
+                            <p class="text-sm text-slate-400">A: ① 认证中心销毁全局会话 ② 通过<strong class="text-amber-400">消息队列</strong>（Kafka/RabbitMQ）广播 ③ 各系统监听并销毁局部会话</p>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                            <p class="font-bold text-sky-300 mb-2">Q5: SSO系统的核心设计原则是什么？</p>
+                            <p class="text-sm text-slate-400">A: <strong class="text-green-400">统一认证中心</strong> + <strong class="text-blue-400">全局会话管理</strong> + <strong class="text-purple-400">令牌信任机制</strong>，实现认证与业务解耦。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 总结金句 -->
+                <div class="mt-8 text-center">
+                    <p class="text-lg text-slate-300">
+                        <i class="fa-solid fa-quote-left text-indigo-400 mr-2"></i>
+                        <strong class="text-indigo-300">记住：</strong>
+                        SSO不是技术的堆砌，而是<span class="text-green-400 font-bold">信任体系</span>的构建。
+                        <i class="fa-solid fa-quote-right text-indigo-400 ml-2"></i>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+
+    <footer class="text-center py-8 text-slate-500">
+        <p>大白话从说明、设计、实现手把手带你设计一个SSO单点登录系统，通俗易懂！</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const navContainer = document.getElementById('nav-dots');
+            if (slides.length === 0) return;
+            
+            slides.forEach(slide => {
+                const dot = document.createElement('a');
+                dot.href = `#${slide.id}`; 
+                navContainer.appendChild(dot);
+            });
+            
+            const navDots = navContainer.querySelectorAll('a');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const activeDot = navContainer.querySelector(`a[href="#${entry.target.id}"]`);
+                        navDots.forEach(dot => dot.classList.remove('active'));
+                        if (activeDot) { activeDot.classList.add('active'); }
+                    }
+                });
+            }, { root: null, threshold: 0.5 });
+
+            slides.forEach(slide => { observer.observe(slide); });
+        });
+    </script>
+</body>
+</html>

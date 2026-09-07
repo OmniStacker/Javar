@@ -1,0 +1,862 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>线程池共享还是独享｜分页式PPT（强化图示版｜修复居中与入框）</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body { background: #0b1220; }
+    /* Tech background */
+    .tech-bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(900px 500px at 80% -10%, rgba(56,189,248,0.14), transparent 60%),
+        radial-gradient(900px 500px at 10% 110%, rgba(168,85,247,0.14), transparent 60%),
+        radial-gradient(600px 400px at 50% 50%, rgba(34,197,94,0.12), transparent 60%),
+        #0b1220;
+    }
+    .tech-grid::before {
+      content:""; position: absolute; inset:-150%;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 40px 40px, 40px 40px;
+      transform: rotate(0.001deg);
+      animation: grid 45s linear infinite;
+      filter: drop-shadow(0 0 10px rgba(59,130,246,0.18));
+    }
+    @keyframes grid { to { transform: translate(-40px,-40px) rotate(0.001deg); } }
+
+    /* Slide canvas: paginated PPT style (16:9) */
+    .stage {
+      position: relative; z-index: 1;
+      min-height: 100svh;
+      display: grid; place-items: center;
+      padding: 2rem 1rem;
+    }
+    .slide {
+      display: none;
+      width: min(96vw, 1400px);
+      height: calc(min(96vw, 1400px) * 9 / 16);
+      border-radius: 18px;
+      background: linear-gradient(to bottom right, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      border: 1px solid rgba(255,255,255,0.10);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 40px 80px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.04);
+      overflow: hidden;
+      position: relative;
+      padding: 24px;
+    }
+    .slide.active { display: block; }
+
+    /* Header / Footer */
+    .slide-header {
+      position: absolute; inset: 0 auto auto 0; right: 0; height: 56px;
+      display: flex; align-items: center; padding: 0 24px; gap: 12px;
+      background: linear-gradient(to right, rgba(59,130,246,0.18), rgba(168,85,247,0.12));
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+    .slide-footer {
+      position: absolute; inset: auto 0 0 0; height: 44px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; color: rgba(226,232,240,0.85);
+      background: linear-gradient(to right, rgba(2,6,23,0.7), rgba(2,6,23,0.4));
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+    }
+    .content { position: absolute; inset: 64px 16px 56px 16px; padding: 8px; overflow: hidden; }
+
+    /* Centering container for visualizations */
+    .viz {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .viz svg {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* Notes panel (toggle with N) */
+    .notes {
+      position: absolute; right: 12px; top: 72px; width: 300px; max-width: 38%;
+      background: rgba(2,6,23,0.85); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
+      padding: 10px 12px; font-size: 12px; color: rgba(226,232,240,0.9);
+      display: none;
+    }
+    .notes.show { display: block; }
+
+    /* Pager and progress */
+    .pager {
+      position: fixed; z-index: 3; bottom: 16px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(2,6,23,0.6); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 9999px; padding: 6px 10px;
+      backdrop-filter: blur(6px);
+    }
+    .pager button {
+      padding: 6px 10px; font-size: 12px; border-radius: 8px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      color: #e2e8f0;
+    }
+    .pager .dots button { width: 8px; height: 8px; border-radius: 9999px; border: none; }
+    .progress {
+      position: fixed; z-index: 2; bottom: 0; left: 0; height: 4px; width: 0%;
+      background: linear-gradient(90deg, #22d3ee, #a78bfa, #34d399);
+      box-shadow: 0 0 12px rgba(56,189,248,0.5);
+      transition: width 240ms ease;
+    }
+
+    /* Print as real pages */
+    @media print {
+      .tech-bg, .pager, .progress { display: none !important; }
+      .stage { padding: 0; }
+      .slide { display: block; width: 100%; height: 100vh; border-radius: 0; box-shadow: none; page-break-after: always; }
+      .notes { display: none !important; }
+    }
+
+    /* Tag styles */
+    .tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; font-size: 12px; border: 1px solid rgba(255,255,255,0.2); }
+    .tag-info { background: rgba(59,130,246,0.16); color: #dbeafe; border-color: rgba(59,130,246,0.35); }
+    .tag-ok { background: rgba(34,197,94,0.16); color: #bbf7d0; border-color: rgba(34,197,94,0.35); }
+    .tag-warn { background: rgba(244,63,94,0.16); color: #fecdd3; border-color: rgba(244,63,94,0.35); }
+
+    /* Visual details */
+    .pulse { animation: pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity:.9; } 50% { opacity: .6; } }
+    .lift { transition: transform .25s ease, box-shadow .25s ease; }
+    .lift:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,.25); }
+
+    /* SVG text helpers */
+    .svg-label { font: 12px/1.2 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #cbd5e1; }
+    .svg-label-strong { font: 600 13px/1.2 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #e2e8f0; }
+    .svg-muted { fill: #94a3b8; }
+    .svg-center { text-anchor: middle; dominant-baseline: middle; }
+
+    /* Mobile */
+    @media (max-width: 640px) {
+      .slide { padding: 16px; }
+      .slide-header { height: 48px; }
+      .slide-footer { height: 40px; font-size: 11px; }
+      .content { inset: 56px 10px 52px 10px; }
+    }
+  </style>
+</head>
+<body class="text-slate-100 antialiased">
+  <div class="tech-bg"><div class="tech-grid absolute inset-0"></div></div>
+
+  <div class="stage">
+
+    <!-- Slide 1: 封面 -->
+    <section class="slide active" data-title="线程池：共享还是独享？">
+      <header class="slide-header">
+        <span class="tag tag-info">白板速讲 · 面试高频</span>
+        <strong class="text-slate-100/95">线程池：共享还是独享？</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>主线：隔离 vs 复用 · 风险 · 落地</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content grid grid-cols-1 sm:grid-cols-2 gap-4 h-full place-content-center place-items-center">
+        <div class="viz">
+          <svg viewBox="0 0 540 300" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <radialGradient id="g1" cx="50%" cy="50%">
+                <stop offset="0%" stop-color="#60a5fa" stop-opacity=".6"/>
+                <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <circle cx="270" cy="150" r="120" fill="url(#g1)" opacity=".35"/>
+            <g stroke="#22d3ee" stroke-opacity=".45">
+              <ellipse cx="270" cy="150" rx="190" ry="70" fill="none"/>
+              <ellipse cx="270" cy="150" rx="120" ry="40" fill="none"/>
+              <ellipse cx="270" cy="150" rx="70" ry="24" fill="none"/>
+            </g>
+            <g class="pulse">
+              <circle cx="270" cy="150" r="26" fill="#22d3ee" fill-opacity=".8"/>
+              <text x="270" y="150" class="svg-label-strong svg-center">决策</text>
+            </g>
+            <g>
+              <circle cx="430" cy="100" r="18" fill="#34d399" fill-opacity=".8"/>
+              <text x="430" y="100" class="svg-label svg-center">隔离</text>
+            </g>
+            <g>
+              <circle cx="110" cy="100" r="18" fill="#a78bfa" fill-opacity=".85"/>
+              <text x="110" y="100" class="svg-label svg-center">复用</text>
+            </g>
+            <g>
+              <circle cx="430" cy="210" r="18" fill="#f472b6" fill-opacity=".85"/>
+              <text x="430" y="210" class="svg-label svg-center">风险</text>
+            </g>
+            <g>
+              <circle cx="110" cy="210" r="18" fill="#facc15" fill-opacity=".9"/>
+              <text x="110" y="210" class="svg-label svg-center">落地</text>
+            </g>
+            <g stroke="#94a3b8" stroke-opacity=".6">
+              <line x1="270" y1="150" x2="430" y2="100"/>
+              <line x1="270" y1="150" x2="110" y2="100"/>
+              <line x1="270" y1="150" x2="430" y2="210"/>
+              <line x1="270" y1="150" x2="110" y2="210"/>
+            </g>
+          </svg>
+        </div>
+        <div class="flex items-center">
+          <div class="w-full">
+            <h1 class="text-3xl sm:text-5xl font-extrabold leading-tight mb-3">别再说“看情况”</h1>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+                <div class="text-slate-300 text-sm">面试官想听</div>
+                <div class="text-slate-100 font-semibold">权衡 · 场景 · 风险</div>
+              </div>
+              <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+                <div class="text-slate-300 text-sm">默认策略</div>
+                <div class="text-slate-100 font-semibold">核心独享 · 常规共享</div>
+              </div>
+              <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+                <div class="text-slate-300 text-sm">关键防线</div>
+                <div class="text-slate-100 font-semibold">分池 · 限流 · 拒绝</div>
+              </div>
+              <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+                <div class="text-slate-300 text-sm">一句话</div>
+                <div class="text-slate-100 font-semibold">隔离与复用的平衡</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">四个节点文本已置于圆形内部；主图整体使用 viz 居中容器。</aside>
+      </div>
+    </section>
+
+    <!-- Slide 2: 三要素（三角图） -->
+    <section class="slide" data-title="面试官视角：三要素">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">面试官想听的三要素</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>权衡 · 场景 · 风险</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content">
+        <div class="viz">
+          <svg viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet">
+            <polygon points="320,60 90,290 550,290" fill="none" stroke="#60a5fa" stroke-opacity=".6" stroke-width="2"/>
+            <!-- Nodes -->
+            <g>
+              <circle cx="320" cy="60" r="18" fill="#60a5fa"/>
+              <text x="320" y="60" class="svg-label-strong svg-center">权衡</text>
+              <text x="320" y="100" class="svg-label svg-center svg-muted">隔离 vs 复用</text>
+            </g>
+            <g>
+              <circle cx="90" cy="290" r="18" fill="#34d399"/>
+              <text x="90" y="290" class="svg-label-strong svg-center">场景</text>
+              <text x="170" y="305" class="svg-label svg-muted">CPU/IO · 时长 · 峰值</text>
+            </g>
+            <g>
+              <circle cx="550" cy="290" r="18" fill="#f472b6"/>
+              <text x="550" y="290" class="svg-label-strong svg-center">风险</text>
+              <text x="470" y="305" class="svg-label svg-muted">同池依赖 · 饥饿</text>
+            </g>
+            <!-- Arrows -->
+            <g stroke="#94a3b8" stroke-opacity=".7" marker-end="url(#arrow)">
+              <defs>
+                <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                  <polygon points="0,0 8,4 0,8" fill="#94a3b8"/>
+                </marker>
+              </defs>
+              <line x1="320" y1="78" x2="100" y2="275"/>
+              <line x1="110" y1="275" x2="540" y2="275"/>
+              <line x1="540" y1="275" x2="320" y2="78"/>
+            </g>
+          </svg>
+        </div>
+        <aside class="notes">节点文本全部居中置入圆形；副标题说明留在圆外。</aside>
+      </div>
+    </section>
+
+    <!-- Slide 3: 概念对比（独享 vs 共享） -->
+    <section class="slide" data-title="概念对比：独享 vs 共享">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">概念对比：独享 vs 共享</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>隔离与复用的取舍</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content grid grid-cols-1 sm:grid-cols-2 gap-4 h-full place-content-center place-items-center">
+        <div class="bg-white/5 border border-emerald-300/20 rounded-2xl p-4 lift">
+          <div class="flex items-center justify-between mb-2">
+            <span class="tag tag-ok">独享（Dedicated）</span>
+            <span class="text-emerald-200 text-xs">强隔离 · 易调优</span>
+          </div>
+          <div class="viz" style="height: 220px;">
+            <svg viewBox="0 0 520 220" preserveAspectRatio="xMidYMid meet">
+              <rect x="10" y="10" width="500" height="200" rx="12" fill="none" stroke="#10b981" stroke-opacity=".4"/>
+              <g>
+                <rect x="30" y="30" width="140" height="160" rx="10" fill="#10b981" fill-opacity=".2" stroke="#10b981" stroke-opacity=".5"/>
+                <text x="100" y="110" class="svg-label-strong svg-center">CPU池</text>
+              </g>
+              <g>
+                <rect x="190" y="30" width="140" height="160" rx="10" fill="#10b981" fill-opacity=".2" stroke="#10b981" stroke-opacity=".5"/>
+                <text x="260" y="110" class="svg-label-strong svg-center">IO池</text>
+              </g>
+              <g>
+                <rect x="350" y="30" width="140" height="160" rx="10" fill="#10b981" fill-opacity=".2" stroke="#10b981" stroke-opacity=".5"/>
+                <text x="420" y="110" class="svg-label-strong svg-center">支付池</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+
+        <div class="bg-white/5 border border-sky-300/20 rounded-2xl p-4 lift">
+          <div class="flex items-center justify-between mb-2">
+            <span class="tag tag-info">共享（Shared）</span>
+            <span class="text-sky-200 text-xs">高利用率 · 管理简</span>
+          </div>
+          <div class="viz" style="height: 220px;">
+            <svg viewBox="0 0 520 220" preserveAspectRatio="xMidYMid meet">
+              <rect x="10" y="10" width="500" height="200" rx="12" fill="none" stroke="#38bdf8" stroke-opacity=".4"/>
+              <rect x="30" y="30" width="460" height="160" rx="12" fill="#38bdf8" fill-opacity=".12" stroke="#38bdf8" stroke-opacity=".45"/>
+              <text x="260" y="110" class="svg-label-strong svg-center">共享大池</text>
+              <!-- Tasks -->
+              <g>
+                <circle cx="90" cy="70" r="10" fill="#38bdf8"/>
+                <circle cx="140" cy="150" r="10" fill="#38bdf8"/>
+                <circle cx="200" cy="80" r="10" fill="#38bdf8"/>
+                <circle cx="260" cy="140" r="10" fill="#38bdf8"/>
+                <circle cx="320" cy="70" r="10" fill="#38bdf8"/>
+                <circle cx="380" cy="150" r="10" fill="#38bdf8"/>
+                <circle cx="440" cy="90" r="10" fill="#38bdf8"/>
+              </g>
+            </svg>
+          </div>
+        </div>
+        <aside class="notes">所有池名文本已置于矩形内部并居中；图示整体居中。</aside>
+      </div>
+    </section>
+
+    <!-- Slide 4: 决策矩阵 -->
+    <section class="slide" data-title="何时独享，何时共享（2×2）">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">选择矩阵（2×2）</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>重要性 × 时长</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content">
+        <div class="viz">
+          <svg viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet">
+            <line x1="80" y1="280" x2="560" y2="280" stroke="#94a3b8"/>
+            <line x1="80" y1="40" x2="80" y2="280" stroke="#94a3b8"/>
+            <text x="560" y="300" class="svg-label svg-center">时长短 → 长</text>
+            <text x="60" y="160" transform="rotate(-90 60,160)" class="svg-label svg-center">重要性低 → 高</text>
+            <rect x="80" y="160" width="240" height="120" fill="#38bdf8" fill-opacity=".15" />
+            <rect x="320" y="160" width="240" height="120" fill="#0ea5e9" fill-opacity=".18" />
+            <rect x="80" y="40" width="240" height="120" fill="#10b981" fill-opacity=".18" />
+            <rect x="320" y="40" width="240" height="120" fill="#059669" fill-opacity=".22" />
+            <text x="200" y="220" class="svg-label-strong svg-center">共享优先</text>
+            <text x="440" y="220" class="svg-label-strong svg-center">共享但限时</text>
+            <text x="200" y="100" class="svg-label-strong svg-center">独享更稳</text>
+            <text x="440" y="100" class="svg-label-strong svg-center">独享必选</text>
+            <text x="200" y="240" class="svg-label svg-center svg-muted">同质短任务</text>
+            <text x="440" y="240" class="svg-label svg-center svg-muted">后台批处理</text>
+            <text x="200" y="120" class="svg-label svg-center svg-muted">核心且短</text>
+            <text x="440" y="120" class="svg-label svg-center svg-muted">核心又长</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 5: 任务特性 CPU vs IO -->
+    <section class="slide" data-title="任务特性：CPU vs IO">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">任务特性：CPU vs IO</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>不同特性不同池</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content grid grid-cols-1 sm:grid-cols-2 gap-4 h-full place-content-center place-items-center">
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4 lift">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold">CPU 密集</h4>
+            <span class="tag tag-ok">独享</span>
+          </div>
+          <div class="viz" style="height: 180px;">
+            <svg viewBox="0 0 520 180" preserveAspectRatio="xMidYMid meet">
+              <path d="M60,140 A140,140 0 0 1 460,140" fill="none" stroke="#10b981" stroke-width="14" stroke-linecap="round" />
+              <path d="M60,140 A140,140 0 0 1 320,60" fill="none" stroke="#34d399" stroke-width="14" stroke-linecap="round" />
+              <circle cx="320" cy="60" r="8" fill="#34d399"/>
+              <text x="260" y="150" class="svg-label-strong svg-center">线程 ≈ (核心数 + 1)</text>
+              <text x="260" y="168" class="svg-label svg-center svg-muted">避免过度上下文切换</text>
+            </svg>
+          </div>
+          <div class="grid grid-cols-3 gap-2 mt-2">
+            <div class="h-2 bg-emerald-400/40 rounded"></div>
+            <div class="h-2 bg-emerald-400/40 rounded"></div>
+            <div class="h-2 bg-emerald-400/40 rounded"></div>
+          </div>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4 lift">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold">IO 密集</h4>
+            <span class="tag tag-info">共享/大池</span>
+          </div>
+          <div class="viz" style="height: 180px;">
+            <svg viewBox="0 0 520 180" preserveAspectRatio="xMidYMid meet">
+              <rect x="60" y="40" width="380" height="16" rx="8" fill="#38bdf8" fill-opacity=".45"/>
+              <rect x="60" y="70" width="440" height="16" rx="8" fill="#38bdf8" fill-opacity=".35"/>
+              <rect x="60" y="100" width="300" height="16" rx="8" fill="#38bdf8" fill-opacity=".55"/>
+              <rect x="60" y="130" width="420" height="16" rx="8" fill="#38bdf8" fill-opacity=".4"/>
+              <text x="260" y="160" class="svg-label-strong svg-center">线程数 > 核心数（高等待占比）</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 6: 同池依赖 = 死锁 -->
+    <section class="slide" data-title="同池依赖 = 死锁现场">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">同池依赖 = 死锁现场</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>A 同步等待 B</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content">
+        <div class="viz">
+          <svg viewBox="0 0 700 340" preserveAspectRatio="xMidYMid meet">
+            <g class="svg-label">
+              <text x="140" y="24" text-anchor="middle">请求A×10</text>
+              <text x="560" y="24" text-anchor="middle">任务B×10</text>
+            </g>
+            <line x1="140" y1="30" x2="140" y2="320" stroke="#94a3b8"/>
+            <line x1="560" y1="30" x2="560" y2="320" stroke="#94a3b8"/>
+            <g>
+              <rect x="90" y="50" width="100" height="220" rx="8" fill="#f43f5e" fill-opacity=".25" stroke="#f43f5e" stroke-opacity=".7"/>
+              <text x="140" y="280" class="svg-label svg-center">线程满</text>
+            </g>
+            <g stroke="#94a3b8" marker-end="url(#arrow2)">
+              <defs>
+                <marker id="arrow2" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                  <polygon points="0,0 8,4 0,8" fill="#94a3b8"/>
+                </marker>
+              </defs>
+              <line x1="140" y1="70" x2="560" y2="70"/>
+              <line x1="140" y1="110" x2="560" y2="110"/>
+              <line x1="140" y1="150" x2="560" y2="150"/>
+              <line x1="140" y1="190" x2="560" y2="190"/>
+              <line x1="140" y1="230" x2="560" y2="230"/>
+            </g>
+            <g>
+              <rect x="520" y="60" width="80" height="200" rx="10" fill="#38bdf8" fill-opacity=".12" stroke="#38bdf8" stroke-opacity=".5"/>
+              <circle cx="560" cy="90" r="8" fill="#38bdf8"/>
+              <circle cx="560" cy="120" r="8" fill="#38bdf8"/>
+              <circle cx="560" cy="150" r="8" fill="#38bdf8"/>
+              <circle cx="560" cy="180" r="8" fill="#38bdf8"/>
+              <circle cx="560" cy="210" r="8" fill="#38bdf8"/>
+              <text x="560" y="260" class="svg-label svg-center">B 排队</text>
+            </g>
+            <text x="350" y="320" text-anchor="middle" class="svg-label-strong">A 占满线程 → 同步等待 B → B 排队无法执行</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 7: 峰值与隔离（分流） -->
+    <section class="slide" data-title="峰值与隔离：削顶保护">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">峰值与隔离：削顶保护</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>独享池 + 限流/拒绝</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content">
+        <div class="viz">
+          <svg viewBox="0 0 700 320" preserveAspectRatio="xMidYMid meet">
+            <g>
+              <rect x="40" y="40" width="120" height="30" rx="8" fill="#38bdf8"/>
+              <rect x="40" y="80" width="120" height="30" rx="8" fill="#38bdf8"/>
+              <rect x="40" y="120" width="120" height="30" rx="8" fill="#38bdf8"/>
+              <text x="100" y="30" class="svg-label svg-center">突发流量</text>
+            </g>
+            <polygon points="200,60 260,100 200,140" fill="#94a3b8" fill-opacity=".2" stroke="#94a3b8"/>
+            <text x="230" y="100" class="svg-label-strong svg-center">分流</text>
+            <g>
+              <rect x="300" y="40" width="150" height="120" rx="12" fill="#10b981" fill-opacity=".18" stroke="#10b981"/>
+              <text x="375" y="80" class="svg-label-strong svg-center">核心池</text>
+              <text x="375" y="105" class="svg-label svg-center svg-muted">有限队列 · 拒绝策略</text>
+            </g>
+            <g>
+              <rect x="500" y="60" width="150" height="160" rx="12" fill="#38bdf8" fill-opacity=".16" stroke="#38bdf8"/>
+              <text x="575" y="95" class="svg-label-strong svg-center">共享池</text>
+              <text x="575" y="120" class="svg-label svg-center svg-muted">监控 + 限流</text>
+            </g>
+            <g stroke="#94a3b8" marker-end="url(#arrow3)">
+              <defs>
+                <marker id="arrow3" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                  <polygon points="0,0 8,4 0,8" fill="#94a3b8"/>
+                </marker>
+              </defs>
+              <line x1="160" y1="55" x2="200" y2="80"/>
+              <line x1="160" y1="95" x2="200" y2="100"/>
+              <line x1="160" y1="135" x2="200" y2="120"/>
+              <line x1="260" y1="100" x2="300" y2="90"/>
+              <line x1="260" y1="100" x2="500" y2="120"/>
+            </g>
+            <text x="350" y="300" class="svg-label-strong svg-center">核心稳定；非核心可降级/排队</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 8: 调优雷达图 -->
+    <section class="slide" data-title="线程池参数：雷达图">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">线程池调优：雷达图</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>核心参数一图掌握</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content">
+        <div class="viz">
+          <svg viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet">
+            <g transform="translate(320,180)">
+              <polygon points="0,-120 103,-60 103,60 0,120 -103,60 -103,-60" fill="none" stroke="#94a3b8" stroke-opacity=".6"/>
+              <polygon points="0,-80 69,-40 69,40 0,80 -69,40 -69,-40" fill="none" stroke="#94a3b8" stroke-opacity=".4"/>
+              <polygon points="0,-40 34,-20 34,20 0,40 -34,20 -34,-20" fill="none" stroke="#94a3b8" stroke-opacity=".3"/>
+              <text x="0" y="-140" class="svg-label svg-center">corePoolSize</text>
+              <text x="128" y="-60" class="svg-label">maxPoolSize</text>
+              <text x="128" y="70" class="svg-label">queueCapacity</text>
+              <text x="0" y="140" class="svg-label svg-center">keepAlive</text>
+              <text x="-135" y="70" text-anchor="end" class="svg-label">throughput</text>
+              <text x="-135" y="-60" text-anchor="end" class="svg-label">latency</text>
+              <polygon points="0,-100 90,-52 70,40 0,60 -60,34 -70,-32" fill="#22d3ee" fill-opacity=".25" stroke="#22d3ee"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 9: 拒绝策略 -->
+    <section class="slide" data-title="拒绝策略：怎么选">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">拒绝策略：怎么选</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>按业务重要性分流</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content">
+        <div class="viz">
+          <svg viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet">
+            <!-- 入口：队列满 -->
+            <g>
+              <rect x="50" y="140" width="140" height="50" rx="10" fill="#38bdf8" fill-opacity=".2" stroke="#38bdf8"/>
+              <text x="120" y="165" class="svg-label-strong svg-center">队列已满</text>
+            </g>
+            <!-- 中列：三策略（双行文本均在框内） -->
+            <g>
+              <rect x="260" y="60" width="160" height="50" rx="10" fill="#10b981" fill-opacity=".2" stroke="#10b981"/>
+              <text x="340" y="78" class="svg-label-strong svg-center">CallerRuns</text>
+              <text x="340" y="94" class="svg-label svg-center svg-muted">回退到调用线程</text>
+            </g>
+            <g>
+              <rect x="260" y="140" width="160" height="50" rx="10" fill="#f59e0b" fill-opacity=".18" stroke="#f59e0b"/>
+              <text x="340" y="158" class="svg-label-strong svg-center">DiscardOldest</text>
+              <text x="340" y="174" class="svg-label svg-center svg-muted">丢弃旧请求</text>
+            </g>
+            <g>
+              <rect x="260" y="220" width="160" height="50" rx="10" fill="#f43f5e" fill-opacity=".18" stroke="#f43f5e"/>
+              <text x="340" y="238" class="svg-label-strong svg-center">Abort</text>
+              <text x="340" y="254" class="svg-label svg-center svg-muted">直接抛错</text>
+            </g>
+            <!-- 右列：按重要性映射 -->
+            <g>
+              <rect x="500" y="60" width="170" height="50" rx="10" fill="#10b981" fill-opacity=".2" stroke="#10b981"/>
+              <text x="585" y="85" class="svg-label-strong svg-center">低重要/可降级</text>
+            </g>
+            <g>
+              <rect x="500" y="140" width="170" height="50" rx="10" fill="#38bdf8" fill-opacity=".2" stroke="#38bdf8"/>
+              <text x="585" y="165" class="svg-label-strong svg-center">适中/可丢弃</text>
+            </g>
+            <g>
+              <rect x="500" y="220" width="170" height="50" rx="10" fill="#f43f5e" fill-opacity=".2" stroke="#f43f5e"/>
+              <text x="585" y="245" class="svg-label-strong svg-center">高重要/报警</text>
+            </g>
+            <!-- 连线 -->
+            <g stroke="#94a3b8" marker-end="url(#arrow4)">
+              <defs>
+                <marker id="arrow4" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                  <polygon points="0,0 8,4 0,8" fill="#94a3b8"/>
+                </marker>
+              </defs>
+              <line x1="190" y1="165" x2="260" y2="85"/>
+              <line x1="190" y1="165" x2="260" y2="165"/>
+              <line x1="190" y1="165" x2="260" y2="245"/>
+              <line x1="420" y1="85" x2="500" y2="85"/>
+              <line x1="420" y1="165" x2="500" y2="165"/>
+              <line x1="420" y1="245" x2="500" y2="245"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 10: 监控与告警 -->
+    <section class="slide" data-title="监控与告警：看板">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">监控与告警：看板</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>长度 · 延迟 · 拒绝率</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content grid grid-cols-1 sm:grid-cols-3 gap-4 h-full place-content-center place-items-center">
+        <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm">队列长度</span>
+            <span class="text-emerald-300 text-xs">目标≤50</span>
+          </div>
+          <div class="viz" style="height: 80px;">
+            <svg viewBox="0 0 220 80" preserveAspectRatio="xMidYMid meet">
+              <polyline points="0,60 20,55 40,58 60,40 80,45 100,30 120,28 140,35 160,25 180,20 200,24" fill="none" stroke="#22d3ee" stroke-width="3"/>
+              <line x1="0" y1="40" x2="220" y2="40" stroke="#334155" stroke-dasharray="4 4"/>
+            </svg>
+          </div>
+          <div class="text-xs text-slate-400 mt-1">趋势下行：稳</div>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm">P95 延迟(ms)</span>
+            <span class="text-yellow-300 text-xs">目标≤200</span>
+          </div>
+          <div class="viz" style="height: 80px;">
+            <svg viewBox="0 0 220 80" preserveAspectRatio="xMidYMid meet">
+              <polyline points="0,50 20,52 40,46 60,48 80,42 100,44 120,38 140,36 160,32 180,30 200,28" fill="none" stroke="#f59e0b" stroke-width="3"/>
+              <line x1="0" y1="36" x2="220" y2="36" stroke="#334155" stroke-dasharray="4 4"/>
+            </svg>
+          </div>
+          <div class="text-xs text-slate-400 mt-1">轻微抖动：可接受</div>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm">拒绝率(%)</span>
+            <span class="text-rose-300 text-xs">目标=0</span>
+          </div>
+          <div class="viz" style="height: 80px;">
+            <svg viewBox="0 0 220 80" preserveAspectRatio="xMidYMid meet">
+              <rect x="10" y="40" width="40" height="30" fill="#ef4444" fill-opacity=".4"/>
+              <rect x="60" y="35" width="40" height="35" fill="#ef4444" fill-opacity=".5"/>
+              <rect x="110" y="30" width="40" height="40" fill="#ef4444" fill-opacity=".6"/>
+              <rect x="160" y="45" width="40" height="25" fill="#ef4444" fill-opacity=".35"/>
+            </svg>
+          </div>
+          <div class="text-xs text-slate-400 mt-1">告警阈值：连续3分钟>1%</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 11: 架构建议 -->
+    <section class="slide" data-title="架构建议：分层分池">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">架构建议：分层分池</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>核心独享 · 常规共享</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content">
+        <div class="viz">
+          <svg viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet">
+            <g>
+              <rect x="40" y="40" width="640" height="80" rx="12" fill="#10b981" fill-opacity=".16" stroke="#10b981"/>
+              <text x="360" y="70" class="svg-label-strong svg-center">核心业务专属池</text>
+              <text x="360" y="95" class="svg-label svg-center svg-muted">支付 · 订单 · 结算</text>
+            </g>
+            <g>
+              <rect x="40" y="140" width="640" height="80" rx="12" fill="#38bdf8" fill-opacity=".16" stroke="#38bdf8"/>
+              <text x="360" y="170" class="svg-label-strong svg-center">通用共享池</text>
+              <text x="360" y="195" class="svg-label svg-center svg-muted">Web请求 · 常规IO</text>
+            </g>
+            <g>
+              <rect x="40" y="240" width="640" height="60" rx="12" fill="#a78bfa" fill-opacity=".16" stroke="#a78bfa"/>
+              <text x="360" y="270" class="svg-label-strong svg-center">离线/批处理池</text>
+            </g>
+            <g stroke="#94a3b8" marker-end="url(#arrow5)">
+              <defs>
+                <marker id="arrow5" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                  <polygon points="0,0 8,4 0,8" fill="#94a3b8"/>
+                </marker>
+              </defs>
+              <line x1="120" y1="100" x2="120" y2="140"/>
+              <line x1="600" y1="220" x2="600" y2="240"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 12: 面试速答（视觉清单） -->
+    <section class="slide" data-title="面试速答模板（视觉清单）">
+      <header class="slide-header">
+        <strong class="text-slate-100/95">面试速答模板（视觉清单）</strong>
+      </header>
+      <footer class="slide-footer">
+        <span>原则 → 场景 → 风险 → 落地</span>
+        <span class="page"></span>
+      </footer>
+      <div class="content grid grid-cols-2 sm:grid-cols-4 gap-4 h-full place-content-center place-items-center">
+        <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+          <div class="text-slate-300 text-xs">原则</div>
+          <div class="text-slate-100 font-semibold">隔离×复用</div>
+          <div class="viz" style="height: 80px;">
+            <svg viewBox="0 0 180 80" preserveAspectRatio="xMidYMid meet">
+              <circle cx="70" cy="40" r="22" fill="#10b981" fill-opacity=".35"/>
+              <circle cx="100" cy="40" r="22" fill="#38bdf8" fill-opacity=".35"/>
+            </svg>
+          </div>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+          <div class="text-slate-300 text-xs">场景</div>
+          <div class="text-slate-100 font-semibold">CPU / IO</div>
+          <div class="viz" style="height: 80px;">
+            <svg viewBox="0 0 180 80" preserveAspectRatio="xMidYMid meet">
+              <rect x="20" y="50" width="60" height="12" rx="6" fill="#10b981"/>
+              <rect x="100" y="20" width="60" height="12" rx="6" fill="#38bdf8"/>
+              <rect x="100" y="40" width="60" height="12" rx="6" fill="#38bdf8"/>
+              <rect x="100" y="60" width="60" height="12" rx="6" fill="#38bdf8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+          <div class="text-slate-300 text-xs">风险</div>
+          <div class="text-slate-100 font-semibold">同池依赖</div>
+          <div class="viz" style="height: 80px;">
+            <svg viewBox="0 0 180 80" preserveAspectRatio="xMidYMid meet">
+              <line x1="20" y1="20" x2="160" y2="20" stroke="#94a3b8"/>
+              <line x1="20" y1="40" x2="160" y2="40" stroke="#94a3b8"/>
+              <line x1="20" y1="60" x2="160" y2="60" stroke="#94a3b8"/>
+              <rect x="75" y="18" width="30" height="44" rx="6" fill="#f43f5e" fill-opacity=".35"/>
+            </svg>
+          </div>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-3 lift">
+          <div class="text-slate-300 text-xs">落地</div>
+          <div class="text-slate-100 font-semibold">限流/拒绝</div>
+          <div class="viz" style="height: 80px;">
+            <svg viewBox="0 0 180 80" preserveAspectRatio="xMidYMid meet">
+              <polygon points="20,20 60,40 20,60" fill="#94a3b8" fill-opacity=".35"/>
+              <rect x="80" y="25" width="80" height="30" rx="8" fill="#10b981" fill-opacity=".35"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Pager -->
+  <div class="pager">
+    <button id="prevBtn" title="上一页">上一页</button>
+    <div class="dots flex items-center gap-2 mx-1" id="dots"></div>
+    <button id="nextBtn" title="下一页">下一页</button>
+    <span class="ml-2 text-xs text-slate-300/90">键盘：←/→ · N 讲解要点 · F 全屏</span>
+  </div>
+  <div class="progress" id="progress"></div>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const progress = document.getElementById('progress');
+    const dots = document.getElementById('dots');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    let idx = 0;
+    let showNotes = false;
+
+    function applyPageNumbers() {
+      slides.forEach((s, i) => {
+        const el = s.querySelector('.page');
+        if (el) el.textContent = `第 ${i + 1} / ${slides.length} 页`;
+      });
+    }
+
+    function renderDots() {
+      dots.innerHTML = "";
+      slides.forEach((_, i) => {
+        const b = document.createElement('button');
+        b.className = i === idx ? 'bg-sky-300 shadow' : 'bg-white/30 hover:bg-white/50';
+        b.title = `第 ${i+1} 页`;
+        b.addEventListener('click', () => go(i));
+        dots.appendChild(b);
+      });
+    }
+
+    function go(n) {
+      slides[idx].classList.remove('active');
+      idx = Math.max(0, Math.min(slides.length - 1, n));
+      slides[idx].classList.add('active');
+      progress.style.width = ((idx + 1) / slides.length) * 100 + '%';
+      renderDots();
+      syncNotes();
+      updateTitle();
+    }
+
+    function next() { go(idx + 1); }
+    function prev() { go(idx - 1); }
+
+    function toggleNotes() {
+      showNotes = !showNotes;
+      syncNotes();
+    }
+
+    function syncNotes() {
+      slides.forEach((s, i) => {
+        const notes = s.querySelector('.notes');
+        if (!notes) return;
+        notes.classList.toggle('show', showNotes && i === idx);
+      });
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    function updateTitle() {
+      const title = slides[idx].dataset.title || document.title;
+      document.title = `${title}｜分页式PPT（强化图示｜修复版）`;
+    }
+
+    prevBtn.addEventListener('click', prev);
+    nextBtn.addEventListener('click', next);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') next();
+      if (e.key === 'ArrowLeft') prev();
+      if (e.key === 'n' || e.key === 'N') toggleNotes();
+      if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+    });
+
+    applyPageNumbers();
+    renderDots();
+    go(0);
+  </script>
+</body>
+</html>
+

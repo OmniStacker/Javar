@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>这就是你的精通 Redis? Redis 架构演进都不知道！</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+        <style>
+        @keyframes slide-in-up {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5); }
+            50% { box-shadow: 0 0 20px 10px rgba(74, 222, 128, 0); }
+        }
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.5); }
+            50% { box-shadow: 0 0 20px 10px rgba(248, 113, 113, 0); }
+        }
+        @keyframes beat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        /* Optimized Shake Animation */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        @keyframes slide-in-left { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slide-in-right { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slide-in-bottom { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+
+        body { background-color: #0f172a; color: #e2e8f0; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 4rem 1.5rem; border-bottom: 2px solid #1e293b; animation: slide-in-up 0.8s ease-out forwards; }
+        .slide:last-child { border-bottom: none; }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; max-width: 72rem; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .gradient-fire { background-image: linear-gradient(to right, #f97316, #ef4444, #f59e0b); }
+        .gradient-sky { background-image: linear-gradient(to right, #38bdf8, #0ea5e9); }
+        .gradient-teal { background-image: linear-gradient(to right, #2dd4bf, #14b8a6); }
+        .gradient-green { background-image: linear-gradient(to right, #4ade80, #22c55e); }
+        .gradient-amber { background-image: linear-gradient(to right, #fbbF24, #f59e0b); }
+        .gradient-violet { background-image: linear-gradient(to right, #a78bfa, #8b5cf6); }
+        .gradient-blue { background-image: linear-gradient(to right, #60a5fa, #3b82f6); }
+        
+        .diagram-node { background-color: rgba(51, 65, 85, 0.5); border: 1px solid #64748b; border-radius: 0.75rem; padding: 1rem; text-align: center; font-weight: bold; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .diagram-node:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(99, 102, 241, 0.5); }
+        .diagram-node-good { background-color: rgba(34, 197, 94, 0.15); border-color: rgba(74, 222, 128, 0.6); color: #dcfce7; animation: pulse-green 2s infinite; }
+        
+        /* --- THIS IS THE LINE I CHANGED --- */
+        .diagram-node-bad { background-color: rgba(239, 68, 68, 0.15); border-color: rgba(248, 113, 113, 0.6); color: #fee2e2; animation: pulse-red 2s infinite, shake 2s infinite; } /* Changed shake from 0.8s to 2s */
+        
+        .arrow { font-size: 2.5rem; font-weight: bold; color: #64748b; display: flex; align-items: center; justify-content: center; padding: 0 1rem; }
+        .nav-dots { position: fixed; right: 1.5rem; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 1rem; z-index: 50; }
+        .nav-dot { width: 12px; height: 12px; background-color: #475569; border-radius: 9999px; transition: all 0.3s ease; }
+        .nav-dot.active { background-color: #60a5fa; transform: scale(1.5); }
+    </style>
+
+</head>
+<body class="bg-slate-900">
+
+    <nav class="nav-dots">
+        <a href="#slide1" class="nav-dot active"></a><a href="#slide2" class="nav-dot"></a><a href="#slide3" class="nav-dot"></a><a href="#slide4" class="nav-dot"></a><a href="#slide5" class="nav-dot"></a><a href="#slide6" class="nav-dot"></a><a href="#slide7" class="nav-dot"></a><a href="#slide8" class="nav-dot"></a>
+    </nav>
+
+    <!-- Slide 1: Homepage -->
+    <section id="slide1" class="slide">
+        <h2 class="text-4xl md:text-5xl font-bold mt-4 text-center text-slate-400">这就是你的精通 Redis?</h2>
+        <h1 class="text-6xl md:text-8xl font-extrabold tracking-tight text-center gradient-text gradient-fire my-6">Redis 架构演进都不知道！</h1>
+        <div class="mt-12 w-full max-w-4xl flex items-center justify-center gap-4 md:gap-8">
+            <div style="animation: slide-in-left 0.6s 0.2s backwards;" class="diagram-node flex flex-col items-center gap-2 w-40 h-40 justify-center">
+                <i class="fa-solid fa-database text-4xl text-sky-400" style="animation: beat 2s infinite 0.5s;"></i>
+                <span class="text-lg">持久化</span>
+            </div>
+            <div class="arrow" style="animation: slide-in-bottom 0.6s 0.4s backwards;">➡️</div>
+            <div style="animation: slide-in-bottom 0.6s 0.6s backwards;" class="diagram-node flex flex-col items-center gap-2 w-40 h-40 justify-center">
+                <i class="fa-solid fa-heart-pulse text-4xl text-green-400" style="animation: beat 2s infinite 1s;"></i>
+                <span class="text-lg">高可用</span>
+            </div>
+            <div class="arrow" style="animation: slide-in-bottom 0.6s 0.8s backwards;">➡️</div>
+            <div style="animation: slide-in-right 0.6s 1s backwards;" class="diagram-node flex flex-col items-center gap-2 w-40 h-40 justify-center">
+                <i class="fa-solid fa-expand-arrows-alt text-4xl text-violet-400" style="animation: beat 2s infinite 1.5s;"></i>
+                <span class="text-lg">可扩展</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Single Node -->
+    <section id="slide2" class="slide">
+        <div class="content-panel border-red-500/30">
+            <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-fire">① 单机版Redis: 辉煌与脆弱</h2>
+            <div class="flex flex-col md:flex-row items-center justify-center gap-6">
+                <div class="diagram-node w-48">🚀 应用</div>
+                <div class="arrow">↔️</div>
+                <div class="diagram-node-bad w-48 h-32 flex flex-col justify-center items-center">
+                    <i class="fa-brands fa-redis text-4xl mb-2"></i>
+                    <span>单机 Redis<br>(单点故障)</span>
+                </div>
+                <div class="arrow">↔️</div>
+                <div class="diagram-node w-48"><i class="fa-solid fa-database mr-2"></i> MySQL</div>
+            </div>
+            <p class="text-center mt-8 text-2xl font-semibold text-red-400">一旦宕机，数据丢失，服务雪崩！</p>
+        </div>
+    </section>
+
+    <!-- Slide 3: Persistence -->
+    <section id="slide3" class="slide">
+        <div class="content-panel border-amber-500/30">
+            <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-amber">② 数据保险箱: RDB vs AOF</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="flex flex-col items-center">
+                    <h3 class="text-3xl font-bold mb-4">RDB 快照</h3>
+                    <div class="diagram-node w-full h-64 flex flex-col justify-center items-center gap-4">
+                        <i class="fa-solid fa-camera text-6xl text-amber-400"></i>
+                        <p>定时拍快照</p>
+                        <i class="fa-solid fa-file-archive text-4xl text-slate-300"></i>
+                        <p class="font-normal text-slate-300">文件小，恢复快</p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-center">
+                    <h3 class="text-3xl font-bold mb-4">AOF 日志</h3>
+                    <div class="diagram-node w-full h-64 flex flex-col justify-center items-center gap-4">
+                        <i class="fa-solid fa-file-pen text-6xl text-amber-400"></i>
+                        <p>记录每条写命令</p>
+                        <i class="fa-solid fa-scroll text-4xl text-slate-300"></i>
+                        <p class="font-normal text-slate-300">数据全，恢复慢</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Slide 4: Mixed Persistence -->
+    <section id="slide4" class="slide">
+        <div class="content-panel border-teal-500/30">
+            <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-teal">③ 优化组合拳: 混合持久化</h2>
+            <div class="flex items-center justify-center gap-6">
+                <div class="text-center">
+                    <div class="diagram-node w-48 h-48 flex flex-col justify-center items-center"><i class="fa-solid fa-scroll text-6xl mb-2 text-red-300"></i><p>巨大的AOF文件</p></div>
+                    <p class="mt-2 text-red-400">恢复缓慢</p>
+                </div>
+                <div class="arrow text-4xl">➡️</div>
+                <div class="text-center">
+                    <div class="diagram-node-good w-64 h-48 flex flex-col justify-center items-center p-4">
+                        <div class="font-bold text-lg">AOF Rewrite + 混合持久化</div>
+                        <div class="mt-2 w-full bg-slate-800 rounded-lg p-2 flex items-center">
+                            <div class="bg-amber-500 text-black font-bold rounded px-2 py-1 text-sm">RDB</div>
+                            <div class="text-teal-300 font-mono text-sm ml-2">+ Incr CMDs</div>
+                        </div>
+                        <p class="mt-2 text-green-300">文件更小，恢复更快</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+        <!-- Slide 5: Master-Slave (Optimized Layout) -->
+    <section id="slide5" class="slide">
+        <div class="content-panel border-blue-500/30">
+            <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-blue">④ 高可用基石: 主从复制</h2>
+            
+            <!-- Optimized Diagram Container -->
+            <div class="flex flex-col items-center gap-6">
+                
+                <!-- Master Node -->
+                <div class="diagram-node-good w-56 h-32 flex flex-col justify-center items-center">
+                    <i class="fa-solid fa-crown text-2xl text-yellow-400 mb-2"></i>
+                    <span class="text-xl">Master (主)</span>
+                    <span class="text-sm font-normal">处理写请求</span>
+                </div>
+
+                <!-- Replication Arrow & Label -->
+                <div class="flex flex-col items-center">
+                    <i class="fa-solid fa-arrow-down-long text-4xl text-blue-400 animate-pulse"></i>
+                    <p class="text-sm text-blue-300 font-semibold mt-1">数据同步</p>
+                </div>
+
+                <!-- Slaves Container -->
+                <div class="w-full flex justify-center items-center gap-8 md:gap-16">
+                    <!-- Slave 1 -->
+                    <div class="diagram-node w-48 h-32 flex flex-col justify-center items-center">
+                        <i class="fa-solid fa-clone text-2xl mb-2 text-slate-400"></i>
+                        <span class="text-xl">Slave (从)</span>
+                        <span class="text-sm font-normal">分担读请求</span>
+                    </div>
+                    <!-- Slave 2 -->
+                    <div class="diagram-node w-48 h-32 flex flex-col justify-center items-center">
+                        <i class="fa-solid fa-clone text-2xl mb-2 text-slate-400"></i>
+                        <span class="text-xl">Slave (从)</span>
+                        <span class="text-sm font-normal">分担读请求</span>
+                    </div>
+                </div>
+                
+                <p class="text-center mt-4 text-2xl font-semibold text-blue-300">实现读写分离，但故障转移需人工！</p>
+            </div>
+        </div>
+    </section>
+
+
+     <!-- Slide 6: Sentinel Concept -->
+<section id="slide6" class="slide">
+    <div class="content-panel border-green-500/30">
+        <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-green">⑤ 自动驾驶仪: 哨兵模式</h2>
+        <div class="flex flex-col items-center gap-8">
+            <!-- Sentinels -->
+            <div class="flex gap-4">
+                <div class="diagram-node w-32 h-24 flex flex-col justify-center items-center"><i class="fa-solid fa-binoculars text-2xl mb-1 text-green-300"></i><span>哨兵 1</span></div>
+                <div class="diagram-node w-32 h-24 flex flex-col justify-center items-center"><i class="fa-solid fa-binoculars text-2xl mb-1 text-green-300"></i><span>哨兵 2</span></div>
+                <div class="diagram-node w-32 h-24 flex flex-col justify-center items-center"><i class="fa-solid fa-binoculars text-2xl mb-1 text-green-300"></i><span>哨兵 3</span></div>
+            </div>
+            <!-- Arrows to Master -->
+            <div class="text-green-400 text-3xl">↓ PING ↓</div>
+            <!-- Redis Nodes -->
+            <div class="flex items-end gap-8">
+                <div class="diagram-node w-48 h-32 flex flex-col justify-center items-center"><i class="fa-solid fa-clone text-2xl mb-2 text-slate-400"></i><span>Slave</span></div>
+                <div class="diagram-node-bad w-56 h-36 flex flex-col justify-center items-center">
+                    <i class="fa-solid fa-crown text-2xl text-yellow-400 mb-2"></i>
+                    <span class="text-xl">Master</span>
+                    <span class="text-sm font-normal text-red-300 mt-2">❌ 故障!</span>
+                </div>
+                <div class="diagram-node w-48 h-32 flex flex-col justify-center items-center"><i class="fa-solid fa-clone text-2xl mb-2 text-slate-400"></i><span>Slave</span></div>
+            </div>
+            <p class="text-center mt-4 text-2xl font-semibold text-green-300">哨兵集群发现故障，准备自动切换！</p>
+        </div>
+    </div>
+</section>
+
+<!-- Slide 7: Sentinel Election -->
+<section id="slide7" class="slide">
+    <div class="content-panel border-green-500/30">
+        <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-green">⑤.1 哨兵选举: 共识的力量</h2>
+        <div class="flex flex-col items-center gap-8">
+            <p class="text-xl text-slate-300">当Master客观下线后，哨兵们开始投票选举Leader...</p>
+            <div class="flex items-center justify-center gap-12">
+                <div class="diagram-node w-40 h-32 flex flex-col justify-center items-center">
+                    <i class="fa-solid fa-binoculars text-3xl mb-2 text-green-300"></i>
+                    <span>哨兵 A</span>
+                    <span class="text-sm font-normal">"投我一票!"</span>
+                </div>
+                <div class="diagram-node-good w-48 h-40 flex flex-col justify-center items-center">
+                    <i class="fa-solid fa-gavel text-4xl mb-2 text-yellow-400"></i>
+                    <span>哨兵 B (Leader)</span>
+                    <span class="text-sm font-normal">"我票数过半!"</span>
+                </div>
+                <div class="diagram-node w-40 h-32 flex flex-col justify-center items-center">
+                    <i class="fa-solid fa-binoculars text-3xl mb-2 text-green-300"></i>
+                    <span>哨兵 C</span>
+                    <span class="text-sm font-normal">"投我一票!"</span>
+                </div>
+            </div>
+            <p class="mt-4 text-2xl font-semibold text-green-300">Leader 诞生，负责执行故障转移！</p>
+        </div>
+    </div>
+</section>
+
+    <!-- Slide 8: Cluster (Optimized Colors) -->
+    <section id="slide8" class="slide">
+        <div class="content-panel border-violet-500/30">
+            <h2 class="text-4xl md:text-5xl font-bold text-center mb-8 gradient-text gradient-violet">⑥ 终极答案: 分片集群</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                
+                <!-- Redis Cluster -->
+                <div class="flex flex-col items-center p-4 border border-violet-700/50 rounded-xl bg-violet-950/20">
+                    <h3 class="text-2xl font-bold mb-4 text-violet-200">服务端分片 (Redis Cluster)</h3>
+                    <div class="w-full space-y-4">
+                        <div class="diagram-node">📱 智能客户端</div>
+                        <div class="text-center text-violet-400">↘ ↙</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="diagram-node h-24">M1<br>[0-5500]</div>
+                            <div class="diagram-node h-24">M2<br>[5501-11000]</div>
+                            <div class="diagram-node h-24">M3<br>[11001-16383]</div>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-center text-sm text-slate-300">客户端直连，去中心化，通过MOVED重定向。</p>
+                </div>
+
+                <!-- Proxy Cluster -->
+                <div class="flex flex-col items-center p-4 border border-violet-700/50 rounded-xl bg-violet-950/20">
+                    <h3 class="text-2xl font-bold mb-4 text-violet-200">代理分片 (Codis/Twemproxy)</h3>
+                     <div class="w-full space-y-4">
+                        <div class="diagram-node">📱 普通客户端</div>
+                        <div class="text-center text-violet-400">↓</div>
+                        <div class="diagram-node bg-violet-600/30 border-violet-400 text-violet-200 h-16 flex items-center justify-center">PROXY</div>
+                        <div class="text-center text-violet-400">↘ ↙</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="diagram-node h-24">Node 1</div>
+                            <div class="diagram-node h-24">Node 2</div>
+                            <div class="diagram-node h-24">Node 3</div>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-center text-sm text-slate-300">通过中间代理层，对客户端透明。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+<!-- Slide 9: Summary -->
+<section id="slide9" class="slide">
+    <div class="content-panel border-sky-500/30">
+        <h2 class="text-4xl md:text-5xl font-bold text-center mb-12 gradient-text gradient-sky">演进之路 总结</h2>
+        <div class="flex items-center justify-center flex-wrap gap-x-2 gap-y-4 text-lg md:text-xl font-bold">
+            <div class="diagram-node-bad p-4">单机</div>
+            <div class="arrow">➡️</div>
+            <div class="diagram-node p-4">持久化</div>
+            <div class="arrow">➡️</div>
+            <div class="diagram-node p-4">主从复制</div>
+            <div class="arrow">➡️</div>
+            <div class="diagram-node p-4">哨兵</div>
+            <div class="arrow">➡️</div>
+            <div class="diagram-node-good p-4">分片集群</div>
+        </div>
+        <p class="text-center mt-12 text-3xl font-semibold text-sky-300">从单兵作战，到分布式航母战斗群！</p>
+    </div>
+</section>
+
+<footer class="text-center text-slate-500 py-4 text-sm">
+    这就是你的精通 Redis? Redis 架构演进都不知道！ | 百里
+</footer>
+
+<script>
+    const sections = document.querySelectorAll('section');
+    const navDots = document.querySelectorAll('.nav-dot');
+
+    const observerOptions = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.5
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const id = entry.target.getAttribute('id');
+                const newActiveDot = document.querySelector(`.nav-dot[href="#${id}"]`);
+                navDots.forEach(dot => dot.classList.remove('active'));
+                if(newActiveDot) newActiveDot.classList.add('active');
+            }
+        });
+    }, observerOptions);
+
+    sections.forEach(section => {
+        observer.observe(section);
+    });
+</script>
+</body> 
+</html> 

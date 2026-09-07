@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双十一 秒杀重复支付多扣钱，怎么避免才不被用户骂？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes subtle-pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 50% { box-shadow: 0 0 20px 10px rgba(34, 197, 94, 0); } }
+        @keyframes subtle-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        @keyframes arrow-flow { 0% { opacity: 0; transform: translateX(-15px); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateX(15px); } }
+        @keyframes stress { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+        html { scroll-behavior: smooth; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .slide { min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem 1.5rem; opacity: 0; animation: slide-in-up 0.8s ease-out forwards; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .content-panel { background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(71, 85, 105, 0.3); border-radius: 1.5rem; padding: 2rem; width: 100%; }
+        .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .diagram-node { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 1.5rem; border-radius: 1rem; font-weight: 600; text-align: center; border: 1px solid; transition: all 0.3s ease; }
+        .diagram-node:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(148, 163, 184, 0.2); }
+        .diagram-arrow { font-size: 2.5rem; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 1rem; position: relative; }
+        .diagram-node-bad { animation: subtle-pulse-red 2.5s infinite ease-in-out, shake 3s infinite ease-in-out; }
+        .diagram-node-good { animation: subtle-pulse-green 2.5s infinite ease-in-out; }
+        
+        #nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index: 9999; }
+        #nav-dots a { width: 12px; height: 12px; background-color: rgba(148, 163, 184, 0.5); border-radius: 50%; transition: all 0.3s ease; }
+        #nav-dots a.active, #nav-dots a:hover { background-color: #f1f5f9; transform: scale(1.3); }
+        .annotation { position: absolute; background-color: rgba(239, 68, 68, 0.8); color: white; padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: bold; white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <div id="nav-dots"></div>
+
+    <!-- Slide 1: 开场：幂等性概念 -->
+    <!-- Slide 1: 开场：幂等性概念 -->
+<section id="slide1" class="slide">
+    <div class="text-center w-full max-w-6xl mx-auto">
+        <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight gradient-text bg-gradient-to-r from-amber-400 to-rose-500">双十一秒杀重复支付多扣钱！</h1>
+        <h2 class="text-2xl md:text-3xl font-bold mt-4 text-slate-300">一图看懂“幂等性”如何拯救你的钱包</h2>
+        <div class="content-panel mt-10 p-6 md:p-8 border-rose-500/30">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <!-- Before: 非幂等 -->
+                <div class="flex flex-col items-center gap-4">
+                    <h3 class="text-2xl font-bold text-red-400">❌ 非幂等接口</h3>
+                    <div class="flex items-center gap-4">
+                        <div class="diagram-node bg-slate-800/50 border-slate-600 p-4"><i class="fa-solid fa-mobile-screen-button text-4xl text-sky-300"></i><p>用户</p></div>
+                        <div class="diagram-arrow text-red-400 flex flex-col gap-2 items-center">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <p class="text-sm font-semibold">2次请求</p>
+                        </div>
+                        <div class="diagram-node diagram-node-bad border-red-500/80 bg-red-900/40 p-4" style="animation-duration: 2s, 3s;"><i class="fa-solid fa-server text-4xl text-red-300"></i><p>服务器</p></div>
+                    </div>
+                    <i class="fa-solid fa-arrow-down text-3xl text-red-400"></i>
+                    <div class="diagram-node bg-red-900/40 border-red-500 p-4 w-full"><i class="fa-solid fa-wallet text-4xl text-red-300"></i><h4 class="font-bold mt-2">扣款两次！</h4></div>
+                </div>
+                <!-- After: 幂等 -->
+                <div class="flex flex-col items-center gap-4">
+                    <h3 class="text-2xl font-bold text-green-400">✅ 幂等接口</h3>
+                    <div class="flex items-center gap-4">
+                        <div class="diagram-node bg-slate-800/50 border-slate-600 p-4"><i class="fa-solid fa-mobile-screen-button text-4xl text-sky-300"></i><p>用户</p></div>
+                         <div class="diagram-arrow text-green-400 flex flex-col gap-2 items-center">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <i class="fa-solid fa-paper-plane text-red-500/70" style="text-decoration: line-through; text-decoration-thickness: 3px;"></i>
+                            <p class="text-sm font-semibold">拦截1次</p>
+                        </div>
+                        <div class="diagram-node diagram-node-good border-green-500/80 bg-green-900/40 p-4"><i class="fa-solid fa-shield-halved text-4xl text-green-300"></i><p>幂等层</p></div>
+                    </div>
+                    <i class="fa-solid fa-arrow-down text-3xl text-green-400"></i>
+                    <div class="diagram-node bg-green-900/30 border-green-600/50 p-4 w-full"><i class="fa-solid fa-wallet text-4xl text-green-300"></i><h4 class="font-bold mt-2">只扣款一次</h4></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <!-- Slide 2: 三大来源 -->
+<section id="slide2" class="slide">
+    <div class="text-center w-full max-w-6xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-red-500 to-orange-400">探究重复请求的“三大来源”</h2>
+        <p class="mt-4 text-xl text-slate-400">用户手抖、网络颠簸、还是服务端的“好心办坏事”？</p>
+        <div class="content-panel mt-8 p-8 border-orange-500/30">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-white">
+                <!-- Element 1: User Action with Click Effect -->
+                <div class="diagram-node border-amber-500/80 bg-amber-900/40 p-6" style="animation: subtle-pulse-red 2.5s infinite, click-effect 2.5s infinite;">
+                    <i class="fa-solid fa-computer-mouse text-8xl text-amber-300"></i>
+                    <h4 class="font-bold mt-4 text-lg">用户端操作</h4>
+                    <p class="text-sm text-slate-400">快速双击、页面刷新</p>
+                </div>
+                <!-- Element 2: Network with Flicker Effect -->
+                <div class="diagram-node border-amber-500/80 bg-amber-900/40 p-6" style="animation: subtle-pulse-red 2.5s infinite, flicker-opacity 3s infinite;">
+                    <div class="relative w-full flex justify-center items-center h-24">
+                        <i class="fa-solid fa-cloud text-8xl text-amber-300"></i>
+                        <i class="fa-solid fa-rotate text-4xl text-slate-300 absolute fa-spin" style="animation-duration: 3s;"></i>
+                    </div>
+                    <h4 class="font-bold mt-4 text-lg">网络与网关</h4>
+                    <p class="text-sm text-slate-400">请求超时、Nginx重试</p>
+                </div>
+                <!-- Element 3: Server with Slow Shake Effect -->
+                <div class="diagram-node border-amber-500/80 bg-amber-900/40 p-6" style="animation: subtle-pulse-red 2.5s infinite, slow-shake 4s infinite ease-in-out;">
+                    <i class="fa-solid fa-repeat text-8xl text-amber-300"></i>
+                    <h4 class="font-bold mt-4 text-lg">服务端逻辑</h4>
+                    <p class="text-sm text-slate-400">MQ消息重复消费</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+    
+    <!-- Slide 3: 方案一：DB唯一键 -->
+    <section id="slide3" class="slide">
+        <div class="text-center w-full max-w-5xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-sky-400 to-cyan-300">方案一：数据库唯一键</h2>
+            <p class="mt-4 text-xl text-slate-400">最简单的防线，利用数据库自身特性拒绝重复。</p>
+            <div class="content-panel mt-8 p-8 border-sky-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-around gap-6">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6"><i class="fa-solid fa-server text-6xl text-sky-300"></i><h4 class="font-bold mt-2">应用服务器</h4></div>
+                    <div class="flex flex-col gap-4">
+                        <div class="flex items-center gap-4"><div class="diagram-arrow text-green-400" style="animation: arrow-flow 2s infinite;"><i class="fa-solid fa-right-long"></i></div><p class="font-mono text-green-300">INSERT ... order_sn='xxx' (第一次)</p></div>
+                        <div class="flex items-center gap-4"><div class="diagram-arrow text-red-400" style="animation: arrow-flow 2s infinite 1s;"><i class="fa-solid fa-right-long"></i></div><p class="font-mono text-red-400">INSERT ... order_sn='xxx' (第二次)</p></div>
+                    </div>
+                    <div class="relative diagram-node bg-slate-800/50 border-slate-600 p-6">
+                        <i class="fa-solid fa-database text-6xl text-sky-300"></i><h4 class="font-bold mt-2">数据库</h4>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <i class="fa-solid fa-shield-halved text-9xl text-green-500/50"></i>
+                        </div>
+                        <div class="annotation -bottom-6 text-sm bg-red-600/80">唯一键冲突！</div>
+                    </div>
+                </div>
+                 <p class="mt-8 text-center text-sky-300 font-bold text-xl">优点: 简单、可靠 <span class="text-slate-400 mx-4">|</span> 缺点: 仅限新增、不够通用</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: 方案二：状态机控制 -->
+    <section id="slide4" class="slide">
+        <div class="text-center w-full max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-fuchsia-500 to-purple-500">方案二：状态机控制</h2>
+            <p class="mt-4 text-xl text-slate-400">利用业务状态的单向流转，让重复操作“无路可走”。</p>
+            <div class="content-panel mt-8 p-8 border-violet-500/30">
+                <div class="flex flex-col items-center justify-center gap-4">
+                    <!-- Initial State -->
+                    <div class="diagram-node bg-sky-900/50 border-sky-600 p-4 w-48 state-machine-step step-1"><h4 class="font-bold">订单状态：待支付</h4></div>
+                    
+                    <!-- First Request -->
+                    <div class="flex items-center gap-4 state-machine-step step-2">
+                        <i class="fa-solid fa-arrow-down text-3xl text-green-400" style="animation: arrow-down-bounce 1.5s infinite 0.8s;"></i>
+                        <p class="font-mono text-green-300">支付请求 #1 (成功)</p>
+                    </div>
+
+                    <!-- Paid State -->
+                    <div class="diagram-node diagram-node-good border-green-500/80 bg-green-900/40 p-4 w-48 state-machine-step step-3"><h4 class="font-bold">订单状态：已支付</h4></div>
+
+                    <!-- Second Request -->
+                    <div class="flex items-center gap-4 mt-4 state-machine-step step-4">
+                        <i class="fa-solid fa-arrow-down text-3xl text-red-400" style="animation: arrow-down-bounce 1.5s infinite 2.2s;"></i>
+                         <p class="font-mono text-red-400">支付请求 #2 (重复)</p>
+                    </div>
+
+                    <!-- Rejected -->
+                    <div class="relative diagram-node border-red-500/80 bg-red-900/40 p-4 w-48 state-machine-step step-5" style="animation-name: pop-in, subtle-pulse-red; animation-duration: 0.5s, 2.5s; animation-delay: 3.0s, 3.5s; animation-timing-function: ease-out, infinite;">
+                        <i class="fa-solid fa-ban text-4xl text-red-300" style="animation: slow-shake 3s infinite 3.5s ease-in-out;"></i>
+                        <h4 class="font-bold mt-2">拒绝操作</h4>
+                        <div class="annotation -top-4 bg-red-600/80">状态不符</div>
+                    </div>
+                </div>
+                <p class="mt-8 text-center text-violet-300 font-bold text-xl">优点: 业务结合紧密 <span class="text-slate-400 mx-4">|</span> 缺点: 非通用方案</p>
+            </div>
+        </div>
+    </section>
+
+<!-- Slide 5: 方案三：全局Token机制 -->
+<section id="slide5" class="slide">
+    <div class="text-center w-full max-w-6xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-teal-400 to-emerald-400">方案三：全局Token机制</h2>
+        <p class="mt-4 text-xl text-slate-400">通用性最强的“王者”方案，为每次操作颁发“一次性门票”。</p>
+        <div class="content-panel mt-8 p-8 border-teal-500/30">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch text-center">
+                <!-- Step 1: Client -->
+                <div class="flex flex-col items-center gap-4">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6 h-full"><i class="fa-solid fa-mobile-screen-button text-6xl text-sky-300"></i><h4 class="font-bold mt-2">1. 客户端</h4></div>
+                    <p class="text-sm text-slate-400">发起业务操作前，先申请一个唯一Token。</p>
+                </div>
+                
+                <!-- Step 2: Server & Redis -->
+                <div class="flex flex-col items-center gap-4">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6 relative h-full">
+                        <i class="fa-solid fa-server text-6xl text-sky-300"></i>
+                        <i class="fa-brands fa-redis text-5xl text-red-400 absolute -bottom-4 -right-4"></i>
+                        <h4 class="font-bold mt-2">2. 服务端 & Redis</h4>
+                    </div>
+                    <p class="text-sm text-slate-400">生成Token存入Redis，并返回给客户端。</p>
+                </div>
+
+                <!-- Step 3: Validation -->
+                 <div class="flex flex-col items-center gap-4">
+                    <div class="diagram-node bg-slate-800/50 border-slate-600 p-6 h-full">
+                        <div class="relative">
+                           <i class="fa-solid fa-shield-halved text-6xl text-teal-300"></i>
+                           <i class="fa-solid fa-trash-can text-3xl text-red-400 absolute bottom-0 right-0 fa-beat" style="animation-duration: 2s;"></i>
+                        </div>
+                        <h4 class="font-bold mt-2">3. 验证 & 销毁</h4>
+                    </div>
+                    <p class="text-sm text-slate-400">收到带Token的请求，验证并立即删除Token（原子操作）。</p>
+                </div>
+            </div>
+            <div class="mt-8 text-center text-teal-300 font-bold text-xl">优点: 通用性强、防并发 <span class="text-slate-400 mx-4">|</span> 缺点: 增加额外请求、依赖外部存储</div>
+        </div>
+    </div>
+</section>
+
+<!-- Slide 6: 总结 -->
+<section id="slide6" class="slide">
+    <div class="text-center w-full max-w-6xl mx-auto">
+        <h2 class="text-4xl md:text-5xl font-bold gradient-text bg-gradient-to-r from-amber-400 to-yellow-300">总结：立体化幂等性保障方案</h2>
+        <p class="mt-4 text-xl text-slate-400">没有银弹，只有组合拳。根据场景选择最合适的策略。</p>
+        <div class="content-panel mt-8 p-6 md:p-8 border-amber-500/30">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-600">
+                            <th class="p-4 text-lg font-bold text-amber-300">方案</th>
+                            <th class="p-4 text-lg font-bold text-green-400">优点</th>
+                            <th class="p-4 text-lg font-bold text-red-400">缺点</th>
+                            <th class="p-4 text-lg font-bold text-sky-400">适用场景</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-slate-300">
+                        <tr class="border-b border-slate-700">
+                            <td class="p-4 font-bold">数据库唯一键</td>
+                            <td class="p-4">实现简单、成本低</td>
+                            <td class="p-4">仅限新增、对分库分表不友好</td>
+                            <td class="p-4">创建订单、用户注册</td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="p-4 font-bold">状态机控制</td>
+                            <td class="p-4">与业务结合紧密</td>
+                            <td class="p-4">非通用方案、需严谨设计</td>
+                            <td class="p-4">订单支付、状态更新</td>
+                        </tr>
+                        <tr class="border-b border-slate-700">
+                            <td class="p-4 font-bold">全局Token机制</td>
+                            <td class="p-4">通用性强、防并发好</td>
+                            <td class="p-4">增加额外请求、依赖Redis</td>
+                            <td class="p-4">支付、下单等关键写操作</td>
+                        </tr>
+                         <tr>
+                            <td class="p-4 font-bold">分布式锁</td>
+                            <td class="p-4">思路直接</td>
+                            <td class="p-4">性能开销大、可能死锁</td>
+                            <td class="p-4">并发不高的内部场景</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer class="text-center text-slate-500 py-8 text-sm">
+    双十一 秒杀重复支付多扣钱，怎么避免才不被用户骂？
+</footer>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const slides = document.querySelectorAll('.slide');
+        const navDotsContainer = document.getElementById('nav-dots');
+
+        if (!slides.length || !navDotsContainer) return;
+
+        // Create nav dots
+        slides.forEach(slide => {
+            const dot = document.createElement('a');
+            dot.href = `#${slide.id}`;
+            navDotsContainer.appendChild(dot);
+        });
+
+        const navDots = navDotsContainer.querySelectorAll('a');
+
+        // Intersection Observer to update active dot
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const activeId = entry.target.id;
+                    navDots.forEach(dot => {
+                        dot.classList.remove('active');
+                        if (dot.getAttribute('href') === `#${activeId}`) {
+                            dot.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, { threshold: 0.5 }); // 50% of the slide must be visible
+
+        slides.forEach(slide => {
+            observer.observe(slide);
+        });
+    });
+</script>
+</body> </html>

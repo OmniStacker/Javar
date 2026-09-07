@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>缓存穿透防御方案</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 全局排版重构：大字号、满填充 --- */
+        .reveal { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
+        
+        .reveal .slides > section {
+            height: 100% !important;
+            top: 0 !important;
+            padding: 0 !important;
+            display: flex !important;
+            flex-direction: column;
+        }
+
+        /* 玻璃卡片：更通透，边框更亮 */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 布局容器 */
+        .slide-layout {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 2rem 0; /* [修改] 移除左右 Padding，由内部容器控制 */
+            box-sizing: border-box;
+        }
+
+        /* 标题区：[修复] 增加最大宽度限制并居中，与内容对齐 */
+        .slide-header {
+            flex-shrink: 0;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            text-align: left;
+            
+            /* 关键修复代码 */
+            width: 100%;
+            max-width: 90rem; /* 与内容区 max-w-[90rem] 保持一致 */
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 1rem; /* 微调：保留一点内部呼吸感 */
+            padding-right: 1rem;
+        }
+
+        .slide-title {
+            font-size: 4.5rem !important;
+            font-weight: 900 !important;
+            margin: 0 !important;
+            line-height: 1.0 !important;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .slide-subtitle {
+            font-size: 1.8rem;
+            color: rgba(148, 163, 184, 0.9);
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 0.8rem;
+            font-weight: 500;
+        }
+
+        /* 内容区 */
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding-top: 1rem;
+        }
+
+        /* 动画微调 */
+        @keyframes scan-line {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* 自动播放提示 */
+        #start-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 20px;
+            border-radius: 99px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+    </style>
+</head>
+<body>
+    <div id="start-hint">自动播放中 (按任意键停止)</div>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: 封面 -->
+            <section data-background-gradient="linear-gradient(135deg, #020617 0%, #0f172a 100%)">
+                <div class="slide-layout justify-center items-center text-center relative overflow-hidden">
+                    <!-- 背景装饰 -->
+                    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div class="absolute inset-0" style="background-image: radial-gradient(rgba(56, 189, 248, 0.1) 1px, transparent 1px); background-size: 50px 50px; opacity: 0.3;"></div>
+                        <div class="absolute -top-[20%] left-[20%] w-[600px] h-[600px] bg-sky-500/10 rounded-full blur-[100px]"></div>
+                    </div>
+
+                    <div class="z-10 flex flex-col items-center w-full max-w-7xl mx-auto">
+                        <!-- 标签 -->
+                        <div class="mb-8 fragment fade-down">
+                            <div class="px-6 py-2 border border-sky-500/30 rounded-full bg-sky-950/50 text-sky-300 font-mono text-sm tracking-widest uppercase backdrop-blur-md shadow-[0_0_20px_rgba(14,165,233,0.3)]">
+                                <i class="fa-solid fa-shield-halved mr-3"></i>架构防御系列
+                            </div>
+                        </div>
+                        
+                        <!-- 标题 -->
+                        <h2 class="text-4xl text-slate-400 font-light tracking-wider mb-6 fragment fade-up">
+                            缓存穿透除了使用布隆过滤器
+                        </h2>
+                        <h1 class="text-[6rem] md:text-[7.5rem] font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-sky-100 to-sky-500 drop-shadow-[0_0_40px_rgba(14,165,233,0.5)] leading-[1.1] mb-16 fragment fade-up">
+                            还有什么<br>
+                            <span class="relative inline-block mt-2">
+                                更优雅的方案吗？
+                                <div class="absolute -bottom-4 left-0 w-full h-3 bg-sky-500/50 blur-md"></div>
+                            </span>
+                        </h1>
+                        
+                        <!-- 底部卡片 -->
+                        <div class="grid grid-cols-3 gap-8 w-full fragment fade-up" data-fragment-index="2">
+                            <div class="glass-card py-6 px-8 flex items-center justify-center gap-4 group hover:bg-amber-500/10 transition-colors">
+                                <i class="fa-regular fa-square-minus text-slate-400 text-3xl group-hover:text-amber-400"></i>
+                                <span class="text-slate-300 text-2xl font-bold group-hover:text-white">缓存空对象</span>
+                            </div>
+                            <div class="glass-card py-6 px-8 flex items-center justify-center gap-4 group hover:bg-cyan-500/10 transition-colors">
+                                <i class="fa-solid fa-compress text-slate-400 text-3xl group-hover:text-cyan-400"></i>
+                                <span class="text-slate-300 text-2xl font-bold group-hover:text-white">Roaring Bitmap</span>
+                            </div>
+                            <div class="glass-card py-6 px-8 flex items-center justify-center gap-4 group hover:bg-purple-500/10 transition-colors">
+                                <i class="fa-solid fa-shuffle text-slate-400 text-3xl group-hover:text-purple-400"></i>
+                                <span class="text-slate-300 text-2xl font-bold group-hover:text-white">布谷鸟过滤器</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 2: 危机 -->
+            <section data-background-gradient="linear-gradient(135deg, #1a0505 0%, #2b0a0a 100%)">
+                <div class="slide-layout">
+                    <div class="slide-header">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="px-3 py-1 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-mono font-bold animate-pulse">CRITICAL ALERT</span>
+                        </div>
+                        <h2 class="slide-title bg-gradient-to-r from-red-400 to-orange-400">危机：缓存穿透</h2>
+                        <p class="slide-subtitle">场景：海量恶意请求绕过缓存直击数据库</p>
+                    </div>
+
+                    <div class="slide-content">
+                        <div class="flex items-center justify-between w-full max-w-[90rem] mx-auto gap-10 h-full max-h-[600px]">
+                            
+                            <!-- 左：攻击源 -->
+                            <div class="w-1/4 h-full flex flex-col gap-4 fragment fade-right">
+                                <div class="glass-card bg-black/40 border-red-500/30 flex-1 relative group overflow-hidden flex flex-col">
+                                    <div class="h-10 bg-red-950/50 border-b border-red-500/20 flex items-center px-4 gap-2 shrink-0">
+                                        <div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+                                        <span class="ml-auto text-xs text-red-400/50 font-mono">BOTNET_TERMINAL</span>
+                                    </div>
+                                    <div class="p-6 font-mono text-sm text-red-400/80 leading-relaxed opacity-80 flex-1 overflow-hidden">
+                                        <div class="animate-[float_2s_linear_infinite]">
+                                            > target: DB_MASTER<br>
+                                            > threads: 50,000<br>
+                                            > method: RAND_UUID<br>
+                                            > status: <span class="text-red-400 font-bold bg-red-900/50 px-1">ATTACKING</span><br>
+                                            > sending_packets...<br>
+                                            > bypass_cache: YES
+                                        </div>
+                                    </div>
+                                    <i class="fa-solid fa-user-secret absolute bottom-4 right-4 text-8xl text-red-600/10"></i>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-red-300 font-bold text-2xl">恶意攻击者</div>
+                                    <div class="text-red-500/60 text-lg font-mono mt-1">QPS: 100,000+</div>
+                                </div>
+                            </div>
+
+                            <!-- 中：穿透路径 -->
+                            <div class="flex-1 h-full relative flex items-center justify-center fragment fade-in">
+                                <div class="absolute w-full h-1 bg-red-900/40"></div>
+                                <div class="absolute w-full h-24 flex items-center overflow-hidden">
+                                    <div class="flex gap-20 animate-[scan-line_0.8s_linear_infinite] w-full" style="animation-direction: normal; animation-name: slide-right;">
+                                        <div class="w-32 h-2 bg-gradient-to-r from-transparent via-red-500 to-transparent blur-[1px]"></div>
+                                        <div class="w-48 h-2 bg-gradient-to-r from-transparent via-red-400 to-transparent blur-[1px]"></div>
+                                    </div>
+                                </div>
+                                <style>@keyframes slide-right { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }</style>
+
+                                <!-- Redis (被穿透) -->
+                                <div class="glass-card w-48 h-48 bg-slate-900/60 border-slate-600 flex flex-col items-center justify-center relative z-10 opacity-50 grayscale backdrop-blur-sm">
+                                    <i class="fa-solid fa-server text-6xl text-slate-500 mb-4"></i>
+                                    <span class="text-lg text-slate-400 font-mono font-bold">Redis</span>
+                                    <div class="absolute -top-5 px-4 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-bold shadow-xl">MISS</div>
+                                </div>
+                            </div>
+
+                            <!-- 右：数据库 -->
+                            <div class="w-1/4 h-full flex flex-col gap-4 fragment fade-left">
+                                <div class="glass-card bg-red-950/30 border-red-500/60 flex-1 flex flex-col items-center justify-center relative animate-[float_0.1s_linear_infinite] shadow-[0_0_60px_rgba(220,38,38,0.3)]">
+                                    <i class="fa-solid fa-database text-8xl text-red-500 mb-6"></i>
+                                    <div class="w-3/4 h-3 bg-red-900 rounded-full overflow-hidden border border-red-500/30">
+                                        <div class="h-full bg-red-500 w-full animate-pulse"></div>
+                                    </div>
+                                    <div class="text-red-400 font-mono mt-2 text-sm">LOAD: 99%</div>
+                                    <div class="absolute top-4 right-4 text-yellow-500 text-4xl animate-bounce"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-red-300 font-bold text-2xl">核心数据库</div>
+                                    <div class="px-4 py-1 bg-red-600/20 border border-red-500/50 text-red-400 text-sm font-bold rounded inline-block mt-1">濒临宕机</div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 3: 缓存空对象 (修复 TTL 居中) -->
+            <section data-background-gradient="linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)">
+                <div class="slide-layout">
+                    <div class="slide-header">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="px-3 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm font-mono font-bold">SOLUTION A</span>
+                        </div>
+                        <h2 class="slide-title bg-gradient-to-r from-amber-200 to-orange-400">缓存空对象</h2>
+                        <p class="slide-subtitle">策略：以短暂的内存消耗换取 100% 的准确性</p>
+                    </div>
+
+                    <div class="slide-content">
+                        <div class="flex w-full max-w-[90rem] mx-auto gap-16 h-full max-h-[650px]">
+                            
+                            <!-- 左：流程步骤 -->
+                            <div class="w-3/5 flex flex-col justify-between h-full relative pl-8 py-4">
+                                <div class="absolute left-[2.5rem] top-8 bottom-8 w-1 bg-gradient-to-b from-amber-500/40 to-transparent border-l-2 border-dashed border-amber-500/30"></div>
+
+                                <!-- Step 1 -->
+                                <div class="flex items-center gap-8 fragment fade-up group">
+                                    <div class="w-16 h-16 rounded-2xl bg-amber-950 border-2 border-amber-500/40 flex items-center justify-center shrink-0 z-10 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                                        <span class="font-mono text-amber-400 font-bold text-2xl">1</span>
+                                    </div>
+                                    <div class="glass-card p-6 flex-1 border-l-8 border-l-amber-500/50 bg-slate-900/40">
+                                        <div class="text-amber-100 font-bold text-3xl mb-2">查询未命中</div>
+                                        <div class="text-xl text-slate-400 font-mono">DB 返回 Null，确认数据不存在</div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 2 -->
+                                <div class="flex items-center gap-8 fragment fade-up group">
+                                    <div class="w-16 h-16 rounded-2xl bg-amber-950 border-2 border-amber-500/40 flex items-center justify-center shrink-0 z-10 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                                        <span class="font-mono text-amber-400 font-bold text-2xl">2</span>
+                                    </div>
+                                    <div class="glass-card p-6 flex-1 border-l-8 border-l-amber-500/50 bg-slate-900/40">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <div class="text-amber-100 font-bold text-3xl">写入空值 + TTL</div>
+                                        </div>
+                                        <div class="bg-black/30 rounded px-4 py-3 font-mono text-xl text-slate-300 border border-white/5">
+                                            SET key="-1" val="null" <span class="text-amber-400 font-bold">EX 300</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 3 -->
+                                <div class="flex items-center gap-8 fragment fade-up group">
+                                    <div class="w-16 h-16 rounded-2xl bg-amber-950 border-2 border-amber-500/40 flex items-center justify-center shrink-0 z-10 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                                        <span class="font-mono text-amber-400 font-bold text-2xl">3</span>
+                                    </div>
+                                    <div class="glass-card p-6 flex-1 border-l-8 border-l-amber-500/50 bg-slate-900/40">
+                                        <div class="text-amber-100 font-bold text-3xl mb-2">拦截后续请求</div>
+                                        <div class="text-xl text-slate-400">Redis 直接返回空，保护数据库</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 右：可视化模型 -->
+                            <div class="w-2/5 flex flex-col items-center justify-center fragment zoom-in">
+                                <div class="w-full aspect-square max-w-[500px] glass-card bg-amber-950/20 border-amber-500/30 flex flex-col items-center justify-center relative overflow-hidden">
+                                    
+                                    <!-- 修复：TTL 倒计时组件容器 (Flex 居中) -->
+                                    <div class="absolute top-6 right-6 w-16 h-16 flex items-center justify-center">
+                                        <!-- 环形 SVG -->
+                                        <svg class="absolute inset-0 w-full h-full -rotate-90">
+                                            <circle cx="32" cy="32" r="28" stroke="rgba(251, 191, 36, 0.2)" stroke-width="4" fill="none"></circle>
+                                            <circle cx="32" cy="32" r="28" stroke="#fbbf24" stroke-width="4" fill="none" stroke-dasharray="175" stroke-dashoffset="0" class="animate-[countdown_5s_linear_infinite]"></circle>
+                                        </svg>
+                                        <!-- 文字 -->
+                                        <span class="text-amber-400 font-bold font-mono text-sm z-10 relative">TTL</span>
+                                    </div>
+                                    <style>@keyframes countdown { to { stroke-dashoffset: 175; } }</style>
+                                    
+                                    <i class="fa-solid fa-box-open text-[8rem] text-amber-500/80 mb-8 drop-shadow-[0_0_30px_rgba(245,158,11,0.4)]"></i>
+                                    <div class="text-5xl font-mono text-amber-100 font-bold tracking-wider">NULL_OBJ</div>
+                                    <div class="mt-4 text-xl text-amber-400/70 font-mono">Expire: 300s</div>
+                                    
+                                    <!-- 扫描线 -->
+                                    <div class="absolute top-0 w-full h-1 bg-amber-400/50 shadow-[0_0_20px_#fbbf24] animate-[scan-line_3s_linear_infinite]"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 4: Roaring Bitmap -->
+            <section data-background-gradient="linear-gradient(135deg, #0f172a 0%, #1e293b 100%)">
+                <div class="slide-layout">
+                    <div class="slide-header">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="px-3 py-1 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-sm font-mono font-bold">SOLUTION B</span>
+                        </div>
+                        <h2 class="slide-title bg-gradient-to-r from-cyan-200 to-blue-400">Roaring Bitmap</h2>
+                        <p class="slide-subtitle">适用整型 ID：高密度存储 & 零误判</p>
+                    </div>
+
+                    <div class="slide-content">
+                        <div class="flex w-full max-w-[90rem] mx-auto gap-10 h-full max-h-[650px]">
+                            
+                            <!-- 左：原理卡片 -->
+                            <div class="w-1/3 flex flex-col gap-6 h-full">
+                                <div class="glass-card p-8 border-l-8 border-l-cyan-500/50 flex flex-col justify-center gap-3 flex-1 fragment fade-right">
+                                    <div class="flex items-center gap-4 text-cyan-300 mb-2">
+                                        <i class="fa-solid fa-scissors text-3xl"></i>
+                                        <span class="font-bold text-3xl">分段存储</span>
+                                    </div>
+                                    <p class="text-xl text-slate-300 leading-relaxed">将 32 位整数切分为高 16 位（索引）和低 16 位（数据）。</p>
+                                </div>
+                                <div class="glass-card p-8 border-l-8 border-l-cyan-500/50 flex flex-col justify-center gap-3 flex-1 fragment fade-right" style="transition-delay: 100ms">
+                                    <div class="flex items-center gap-4 text-cyan-300 mb-2">
+                                        <i class="fa-solid fa-compress-arrows-alt text-3xl"></i>
+                                        <span class="font-bold text-3xl">动态压缩</span>
+                                    </div>
+                                    <p class="text-xl text-slate-300 leading-relaxed">稀疏数据用数组 (Array)，密集数据用位图 (Bitmap)。</p>
+                                </div>
+                                <div class="glass-card p-8 border-l-8 border-l-cyan-500/50 flex flex-col justify-center gap-3 flex-1 fragment fade-right" style="transition-delay: 200ms">
+                                    <div class="flex items-center gap-4 text-cyan-300 mb-2">
+                                        <i class="fa-solid fa-check-double text-3xl"></i>
+                                        <span class="font-bold text-3xl">零误判</span>
+                                    </div>
+                                    <p class="text-xl text-slate-300 leading-relaxed">精确存储，不存在 Hash 冲突导致的误判。</p>
+                                </div>
+                            </div>
+
+                            <!-- 右：结构图解 -->
+                            <div class="w-2/3 glass-card bg-slate-900/40 border-cyan-500/20 flex flex-col items-center justify-center relative fragment zoom-in h-full">
+                                <div class="absolute top-6 left-6 text-sm font-mono text-cyan-500/50">DATA_STRUCTURE_VIEW</div>
+                                
+                                <!-- 32位整数拆分 -->
+                                <div class="flex items-center gap-6 mb-16 scale-125">
+                                    <div class="flex flex-col items-center">
+                                        <div class="w-40 h-16 border border-cyan-500/60 bg-cyan-900/30 rounded flex items-center justify-center text-cyan-200 font-mono text-2xl shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                                            High 16
+                                        </div>
+                                        <div class="h-10 w-px bg-cyan-500/30"></div>
+                                        <div class="text-sm text-slate-400">Key (Index)</div>
+                                    </div>
+                                    <div class="text-slate-500 text-3xl">+</div>
+                                    <div class="flex flex-col items-center">
+                                        <div class="w-40 h-16 border border-cyan-500/60 bg-cyan-900/30 rounded flex items-center justify-center text-cyan-200 font-mono text-2xl shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                                            Low 16
+                                        </div>
+                                        <div class="h-10 w-px bg-cyan-500/30"></div>
+                                        <div class="text-sm text-slate-400">Value</div>
+                                    </div>
+                                </div>
+
+                                <!-- 容器选择 -->
+                                <div class="flex gap-16 items-end scale-110">
+                                    <div class="flex flex-col items-center gap-4 group">
+                                        <div class="w-36 h-48 border-4 border-dashed border-cyan-400/40 rounded bg-slate-800/50 flex flex-col items-center justify-center gap-3 p-4 group-hover:border-cyan-400 transition-colors">
+                                            <div class="w-full h-2 bg-cyan-500/50 rounded"></div>
+                                            <div class="w-full h-2 bg-cyan-500/50 rounded"></div>
+                                            <div class="w-full h-2 bg-cyan-500/20 rounded"></div>
+                                        </div>
+                                        <div class="text-xl text-cyan-300 font-bold">Array Container</div>
+                                        <div class="text-sm text-slate-500">稀疏 (< 4096)</div>
+                                    </div>
+                                    
+                                    <i class="fa-solid fa-arrow-right-arrow-left text-slate-600 text-3xl mb-16"></i>
+                                    
+                                    <div class="flex flex-col items-center gap-4 group">
+                                        <div class="w-36 h-48 border-4 border-solid border-cyan-400 rounded bg-cyan-900/20 grid grid-cols-4 gap-1 p-2 content-start group-hover:bg-cyan-900/40 transition-colors shadow-[0_0_30px_rgba(6,182,212,0.1)]">
+                                            <div class="bg-cyan-400 w-full aspect-square rounded-sm opacity-80"></div>
+                                            <div class="bg-cyan-400 w-full aspect-square rounded-sm opacity-40"></div>
+                                            <div class="bg-cyan-400 w-full aspect-square rounded-sm opacity-90"></div>
+                                            <div class="bg-cyan-400 w-full aspect-square rounded-sm opacity-20"></div>
+                                            <div class="bg-cyan-400 w-full aspect-square rounded-sm opacity-60"></div>
+                                            <div class="bg-cyan-400 w-full aspect-square rounded-sm opacity-80"></div>
+                                        </div>
+                                        <div class="text-xl text-cyan-300 font-bold">Bitmap Container</div>
+                                        <div class="text-sm text-slate-500">密集 (> 4096)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 5: 布谷鸟过滤器 (故事化重构版) -->
+            <section data-background-gradient="linear-gradient(135deg, #0f172a 0%, #2e1065 100%)">
+                <div class="slide-layout">
+                    <div class="slide-header">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="px-3 py-1 rounded bg-purple-500/10 border border-purple-500/30 text-purple-400 text-sm font-mono font-bold">SOLUTION C</span>
+                        </div>
+                        <h2 class="slide-title bg-gradient-to-r from-purple-300 to-pink-400">布谷鸟过滤器</h2>
+                        <p class="slide-subtitle">核心逻辑：位置被占 -> 踢出旧元素 -> 寻找新位置 (Max Kicks)</p>
+                    </div>
+
+                    <div class="slide-content">
+                        <div class="flex flex-col items-center justify-center w-full max-w-[90rem] mx-auto h-full gap-8">
+                            
+                            <!-- 演示舞台 -->
+                            <div class="w-full max-w-6xl flex justify-between items-stretch gap-8 h-[500px]">
+                                
+                                <!-- 左：Hash Table 1 -->
+                                <div class="w-1/4 glass-card border-purple-500/30 flex flex-col items-center py-6">
+                                    <div class="text-purple-300 font-mono text-xl mb-6 font-bold">Hash Table 1</div>
+                                    <div class="w-full px-6 flex flex-col gap-4 flex-1">
+                                        <div class="h-16 border border-purple-500/10 rounded bg-purple-900/10 flex items-center justify-center text-slate-600">Slot 0</div>
+                                        
+                                        <!-- Slot 1: 冲突发生地 (关键容器) -->
+                                        <div class="h-24 border-2 border-purple-500/30 rounded bg-purple-900/20 relative overflow-hidden group">
+                                            <!-- 1. 初始状态: A 在这里 -->
+                                            <div class="absolute inset-0 flex items-center justify-center">
+                                                <div class="w-[90%] h-[80%] bg-pink-600 rounded flex items-center justify-center shadow-lg">
+                                                    <span class="text-white font-bold text-xl">Item A</span>
+                                                </div>
+                                            </div>
+
+                                            <!-- 2. 覆盖层 (Fragment): B 挤进来了 -->
+                                            <div class="fragment fade-in absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
+                                                <div class="w-[90%] h-[80%] bg-cyan-600 rounded flex items-center justify-center shadow-lg border-2 border-cyan-300 animate-[pulse_0.5s]">
+                                                    <span class="text-white font-bold text-xl">Item B</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="h-16 border border-purple-500/10 rounded bg-purple-900/10 flex items-center justify-center text-slate-600">Slot 2</div>
+                                        <div class="h-16 border border-purple-500/10 rounded bg-purple-900/10 flex items-center justify-center text-slate-600">Slot 3</div>
+                                    </div>
+                                </div>
+
+                                <!-- 中：踢出路径与计数 -->
+                                <div class="flex-1 relative flex flex-col justify-between py-6">
+                                    <!-- 顶部：新元素提示 -->
+                                    <div class="h-16 flex items-center justify-center">
+                                        <div class="fragment fade-out absolute top-0 bg-cyan-900/80 text-cyan-300 px-4 py-2 rounded-full border border-cyan-500/50 font-mono text-sm animate-bounce">
+                                            <i class="fa-solid fa-arrow-down mr-2"></i>New Item B Arrives
+                                        </div>
+                                    </div>
+
+                                    <!-- 中部：飞行路径 -->
+                                    <div class="flex-1 relative">
+                                        <svg class="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
+                                            <path d="M 0,100 Q 200,-50 400,150" fill="none" stroke="#f472b6" stroke-width="4" stroke-dasharray="12,6" class="opacity-30"></path>
+                                        </svg>
+                                        
+                                        <!-- 飞行的 A (Fragment 1 出现) -->
+                                        <div class="fragment fade-in absolute top-0 left-1/2 -translate-x-1/2 w-40 h-16 bg-pink-600/80 backdrop-blur rounded flex items-center justify-center border-2 border-pink-400 rotate-6 shadow-[0_0_30px_rgba(219,39,119,0.4)]">
+                                            <span class="text-white font-bold">Item A (Kicked)</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- 底部：计数器 (Fragment 1 出现) -->
+                                    <div class="fragment fade-in h-20 flex items-center justify-center">
+                                        <div class="bg-red-950/80 border border-red-500 px-8 py-4 rounded-xl text-center shadow-2xl">
+                                            <div class="text-red-400 text-xs font-mono uppercase tracking-widest mb-1">Safety Guard</div>
+                                            <div class="text-2xl text-white font-mono font-bold">
+                                                Kick Count: <span class="text-red-400">1</span> / 500
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 右：Hash Table 2 -->
+                                <div class="w-1/4 glass-card border-purple-500/30 flex flex-col items-center py-6">
+                                    <div class="text-purple-300 font-mono text-xl mb-6 font-bold">Hash Table 2</div>
+                                    <div class="w-full px-6 flex flex-col gap-4 flex-1">
+                                        <div class="h-16 border border-purple-500/10 rounded bg-purple-900/10 flex items-center justify-center text-slate-600">Slot 0</div>
+                                        <div class="h-16 border border-purple-500/10 rounded bg-purple-900/10 flex items-center justify-center text-slate-600">Slot 1</div>
+                                        
+                                        <!-- Slot 2: 新家 (关键容器) -->
+                                        <div class="h-24 border-2 border-dashed border-green-500/30 rounded bg-green-900/10 relative overflow-hidden">
+                                            <div class="absolute inset-0 flex items-center justify-center text-green-700/50 font-mono text-sm">
+                                                Candidate Slot
+                                            </div>
+
+                                            <!-- 3. 落户层 (Fragment): A 搬进来了 -->
+                                            <div class="fragment fade-in absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
+                                                <div class="w-[90%] h-[80%] bg-pink-600 rounded flex items-center justify-center shadow-lg border-2 border-green-400">
+                                                    <span class="text-white font-bold text-xl">Item A</span>
+                                                    <i class="fa-solid fa-check ml-2 text-green-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="h-16 border border-purple-500/10 rounded bg-purple-900/10 flex items-center justify-center text-slate-600">Slot 3</div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- 底部说明 -->
+                            <div class="w-full max-w-4xl glass-card p-4 flex justify-between items-center border-t-4 border-purple-500 bg-slate-900/50 fragment fade-up">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold">!</div>
+                                    <div>
+                                        <div class="text-white font-bold">防死循环机制</div>
+                                        <div class="text-sm text-slate-400">若踢出次数超过阈值，说明空间过满，需执行扩容 (Rehash)。</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 6: 立体防御 (高亮核心版) -->
+            <section data-background-gradient="linear-gradient(135deg, #022c22 0%, #0f172a 100%)">
+                <div class="slide-layout">
+                    <div class="slide-header">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="px-3 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-mono font-bold">ARCHITECTURE</span>
+                        </div>
+                        <h2 class="slide-title bg-gradient-to-r from-emerald-300 to-teal-400">立体防御架构</h2>
+                        <p class="slide-subtitle">分层防御：网关限流 -> 业务校验 -> 缓存保护</p>
+                    </div>
+
+                    <div class="slide-content">
+                        <div class="flex flex-col items-center w-full max-w-5xl mx-auto gap-6 relative h-full justify-center">
+                            
+                            <!-- Layer 1: Gateway (外层防御 - 绿色) -->
+                            <div class="w-full h-32 glass-card bg-emerald-950/60 border-emerald-500/50 flex items-center justify-between px-10 z-30 fragment fade-down hover:scale-105 transition-transform shadow-lg">
+                                <div class="flex items-center gap-8">
+                                    <div class="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                                        <i class="fa-solid fa-torii-gate text-3xl text-emerald-400"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-emerald-100 font-bold text-3xl mb-1">网关 / 防火墙</div>
+                                        <div class="text-xl text-emerald-400/70">IP 限流 & 黑名单过滤</div>
+                                    </div>
+                                </div>
+                                <div class="text-emerald-500 font-mono text-xl font-bold opacity-50">LAYER 01</div>
+                            </div>
+
+                            <!-- 连接线 -->
+                            <div class="h-8 w-1 bg-gradient-to-b from-emerald-500/50 to-teal-500/50 fragment fade-in"></div>
+
+                            <!-- Layer 2: App Check (中层防御 - 青色) -->
+                            <div class="w-[90%] h-32 glass-card bg-teal-900/40 border-teal-500/40 flex items-center justify-between px-10 z-20 fragment fade-down hover:scale-105 transition-transform shadow-lg">
+                                <div class="flex items-center gap-8">
+                                    <div class="w-16 h-16 rounded-full bg-teal-500/10 flex items-center justify-center border border-teal-500/20 shadow-[0_0_15px_rgba(20,184,166,0.2)]">
+                                        <i class="fa-solid fa-code text-3xl text-teal-300"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-teal-50 font-bold text-3xl mb-1">应用层前置校验</div>
+                                        <div class="text-xl text-teal-300/60">ID 格式检查 & Token 鉴权</div>
+                                    </div>
+                                </div>
+                                <div class="text-teal-500 font-mono text-xl font-bold opacity-50">LAYER 02</div>
+                            </div>
+
+                            <!-- 连接线 -->
+                            <div class="h-8 w-1 bg-gradient-to-b from-teal-500/50 to-blue-500/50 fragment fade-in"></div>
+
+                            <!-- Layer 3: Cache & DB (核心资产 - 蓝色高亮) -->
+                            <!-- 修复点：移除 opacity-60，改为深蓝背景 + 高亮边框 + 阴影发光 -->
+                            <div class="w-[80%] h-32 glass-card bg-blue-950/60 border-blue-400/50 flex items-center justify-between px-10 z-10 fragment fade-down hover:scale-105 transition-transform shadow-[0_0_40px_rgba(59,130,246,0.2)]">
+                                <div class="flex items-center gap-8">
+                                    <div class="w-16 h-16 rounded-full bg-blue-600/20 flex items-center justify-center border border-blue-400/40 shadow-[0_0_20px_rgba(59,130,246,0.4)]">
+                                        <i class="fa-solid fa-database text-3xl text-blue-300"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-blue-50 font-bold text-3xl mb-1">缓存 & 数据库</div>
+                                        <div class="text-xl text-blue-200/80">核心数据资源 (Protected)</div>
+                                    </div>
+                                </div>
+                                <div class="text-blue-400 font-mono text-xl font-bold opacity-70">CORE</div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 7: 决策矩阵 -->
+            <section data-background-gradient="linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)">
+                <div class="slide-layout">
+                    <div class="slide-header">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="px-3 py-1 rounded bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-sm font-mono font-bold">SUMMARY</span>
+                        </div>
+                        <h2 class="slide-title bg-gradient-to-r from-indigo-300 to-blue-400">决策矩阵</h2>
+                        <p class="slide-subtitle">根据业务场景选择最适合的防御工具</p>
+                    </div>
+
+                    <div class="slide-content">
+                        <div class="grid grid-cols-2 gap-8 w-full max-w-[90rem] mx-auto h-full max-h-[650px]">
+                            
+                            <!-- Card 1 -->
+                            <div class="glass-card p-8 flex flex-col justify-between border-t-8 border-t-amber-500 bg-slate-900/40 hover:bg-amber-900/10 fragment fade-up h-full">
+                                <div>
+                                    <div class="flex justify-between items-start mb-6">
+                                        <h3 class="text-3xl font-bold text-white">缓存空对象</h3>
+                                        <i class="fa-regular fa-star text-amber-400 text-3xl"></i>
+                                    </div>
+                                    <p class="text-slate-400 text-xl leading-relaxed">实现成本最低，无误判风险。需注意设置 TTL 防止内存浪费。</p>
+                                </div>
+                                <div class="mt-6 px-4 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm font-mono rounded w-fit">
+                                    推荐：常规业务 / 代码求简
+                                </div>
+                            </div>
+
+                            <!-- Card 2 -->
+                            <div class="glass-card p-8 flex flex-col justify-between border-t-8 border-t-cyan-500 bg-slate-900/40 hover:bg-cyan-900/10 fragment fade-up h-full" style="transition-delay: 100ms">
+                                <div>
+                                    <div class="flex justify-between items-start mb-6">
+                                        <h3 class="text-3xl font-bold text-white">Roaring Bitmap</h3>
+                                        <i class="fa-solid fa-compress text-cyan-400 text-3xl"></i>
+                                    </div>
+                                    <p class="text-slate-400 text-xl leading-relaxed">极致的空间压缩率，查询极快且无误判。仅适用于整型 ID。</p>
+                                </div>
+                                <div class="mt-6 px-4 py-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-sm font-mono rounded w-fit">
+                                    推荐：海量用户 ID / 标签
+                                </div>
+                            </div>
+
+                            <!-- Card 3 -->
+                            <div class="glass-card p-8 flex flex-col justify-between border-t-8 border-t-purple-500 bg-slate-900/40 hover:bg-purple-900/10 fragment fade-up h-full" style="transition-delay: 200ms">
+                                <div>
+                                    <div class="flex justify-between items-start mb-6">
+                                        <h3 class="text-3xl font-bold text-white">布谷鸟过滤器</h3>
+                                        <i class="fa-solid fa-shuffle text-purple-400 text-3xl"></i>
+                                    </div>
+                                    <p class="text-slate-400 text-xl leading-relaxed">弥补了布隆过滤器不可删除的缺陷，空间利用率极高。</p>
+                                </div>
+                                <div class="mt-6 px-4 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-300 text-sm font-mono rounded w-fit">
+                                    推荐：动态增删的数据集
+                                </div>
+                            </div>
+
+                            <!-- Card 4 -->
+                            <div class="glass-card p-8 flex flex-col justify-between border-t-8 border-t-red-500 bg-slate-900/40 hover:bg-red-900/10 fragment fade-up h-full" style="transition-delay: 300ms">
+                                <div>
+                                    <div class="flex justify-between items-start mb-6">
+                                        <h3 class="text-3xl font-bold text-white">布隆过滤器</h3>
+                                        <i class="fa-solid fa-filter text-red-400 text-3xl"></i>
+                                    </div>
+                                    <p class="text-slate-400 text-xl leading-relaxed">经典的“空间换时间”方案。存在误判，且不支持删除。</p>
+                                </div>
+                                <div class="mt-6 px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-300 text-sm font-mono rounded w-fit">
+                                    推荐：读多写少 / 历史去重
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            width: 1920, /* 增加基准宽度以适配大屏 */
+            height: 1080,
+            margin: 0.0, /* 0 边距，全屏填充 */
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: false,
+            progress: false,
+            center: true,
+            hash: true,
+            transition: 'convex',
+            backgroundTransition: 'zoom',
+            fragments: true,
+        });
+
+        // 自动播放逻辑
+        (function() {
+            let autoPlayInterval;
+            const autoPlaySpeed = 3000;
+            let isAttractMode = true;
+
+            function startAttractMode() {
+                if (!isAttractMode) return;
+                Reveal.configure({ loop: true });
+                autoPlayInterval = setInterval(() => {
+                    Reveal.next();
+                }, autoPlaySpeed);
+            }
+
+            function stopAttractMode() {
+                if (!isAttractMode) return;
+                isAttractMode = false;
+                clearInterval(autoPlayInterval);
+                Reveal.slide(0);
+                Reveal.configure({ loop: false });
+                
+                const hint = document.getElementById('start-hint');
+                if(hint) {
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.remove(), 500);
+                }
+            }
+
+            window.addEventListener('keydown', stopAttractMode);
+            window.addEventListener('click', stopAttractMode);
+            
+            setTimeout(() => {
+                const hint = document.getElementById('start-hint');
+                if(hint) hint.style.opacity = '1';
+                startAttractMode();
+            }, 1000);
+        })();
+    </script>
+</body>
+</html>

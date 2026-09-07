@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MySQL B+ vs MongoDB B-Tree</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 全局字体与重置 */
+        .reveal { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
+        
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none !important; letter-spacing: -0.02em; }
+        
+        /* 强制每页 Slide 占满高度 */
+        .reveal .slides > section {
+            height: 100% !important;
+            top: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 玻璃拟态核心类 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .glass-panel:hover {
+            transform: translateY(-5px) scale(1.02);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* 布局辅助 */
+        .slide-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 4rem 2rem 2rem 2rem; 
+            box-sizing: border-box;
+        }
+
+        .slide-container.cover-layout {
+            justify-content: center !important;
+            padding: 0 !important;
+        }
+
+        .slide-content-wrapper {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .slide-title {
+            font-size: 3rem !important;
+            font-weight: 800 !important;
+            margin: 0 !important;
+            padding-bottom: 2rem !important;
+            flex-shrink: 0;
+            line-height: 1.1 !important;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            text-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* 节点连接线动画 */
+        .tree-link {
+            position: absolute;
+            background: rgba(255,255,255,0.2);
+            z-index: 0;
+            transform-origin: top left;
+        }
+
+        /* Start Hint Overlay */
+        #start-hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 99px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        /* 主题色变量 */
+        .slide-intro { --gradient-start: #60a5fa; --gradient-end: #3b82f6; } /* Blue */
+        .slide-struct { --gradient-start: #22d3ee; --gradient-end: #06b6d4; } /* Cyan */
+        .slide-mysql { --gradient-start: #fbbf24; --gradient-end: #f59e0b; } /* Amber */
+        .slide-mongo { --gradient-start: #34d399; --gradient-end: #10b981; } /* Emerald */
+        .slide-truth { --gradient-start: #a78bfa; --gradient-end: #7c3aed; } /* Violet */
+        .slide-summary { --gradient-start: #f472b6; --gradient-end: #db2777; } /* Pink */
+
+    </style>
+</head>
+<body>
+    <div id="start-hint">PRESS ANY KEY TO START</div>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: Cover (红色警告标签置底版) -->
+<section class="slide-intro" data-background-gradient="linear-gradient(135deg, #0f172a 0%, #1e293b 100%)">
+    <div class="slide-container cover-layout relative overflow-hidden">
+        <!-- Background Elements -->
+        <div class="absolute inset-0 opacity-20 pointer-events-none" 
+             style="background-image: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.2) 0%, transparent 50%);">
+        </div>
+        
+        <!-- Rotating Tree Abstract -->
+        <div class="absolute right-[-10%] top-[-10%] w-[800px] h-[800px] border border-blue-500/10 rounded-full animate-[spin_60s_linear_infinite] pointer-events-none flex items-center justify-center">
+            <div class="w-[600px] h-[600px] border border-blue-400/20 rounded-full animate-[spin_40s_linear_infinite_reverse]"></div>
+            <div class="absolute w-4 h-4 bg-blue-500 rounded-full top-0 shadow-[0_0_20px_#3b82f6]"></div>
+        </div>
+
+        <div class="z-10 text-center flex flex-col items-center">
+            <!-- Database Badges -->
+            <div class="flex items-center gap-6 mb-8 fragment fade-down">
+                <div class="glass-panel px-6 py-3 flex items-center gap-3 border-blue-400/30">
+                    <i class="fa-solid fa-database text-blue-400 text-2xl"></i>
+                    <span class="font-bold text-blue-100">MySQL</span>
+                </div>
+                <span class="text-2xl font-black text-gray-500 italic">VS</span>
+                <div class="glass-panel px-6 py-3 flex items-center gap-3 border-green-400/30">
+                    <i class="fa-solid fa-leaf text-green-400 text-2xl"></i>
+                    <span class="font-bold text-green-100">MongoDB</span>
+                </div>
+            </div>
+
+            <!-- Main Title -->
+            <h1 class="text-6xl font-black text-white mb-4 drop-shadow-2xl leading-tight fragment fade-up" data-fragment-index="1">
+                为什么 MySQL 用 <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">B+ 树</span>
+            </h1>
+            <h1 class="text-6xl font-black text-white mb-6 drop-shadow-2xl leading-tight fragment fade-up" data-fragment-index="1">
+                MongoDB 用 <span class="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">B 树</span>？
+            </h1>
+            
+            <div class="w-32 h-2 bg-gradient-to-r from-blue-500 to-green-500 rounded-full mb-10"></div>
+
+            <!-- 反常识标签 (置底，作为最后冲击) -->
+            <div class="fragment fade-up" data-fragment-index="2">
+                <div class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 rounded-full shadow-[0_0_30px_rgba(239,68,68,0.5)] animate-pulse">
+                    <i class="fa-solid fa-triangle-exclamation text-yellow-300 text-xl"></i>
+                    <span class="text-white font-black text-lg tracking-wider uppercase">90% 的人都答错了</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+            <!-- Slide 2: Structural DNA -->
+            <section class="slide-struct" data-background-gradient="linear-gradient(135deg, #083344 0%, #155e75 100%)">
+                <div class="slide-container">
+                    <h2 class="slide-title">🧬 结构 DNA 对比</h2>
+                    <div class="slide-content-wrapper w-full">
+                        <div class="grid grid-cols-2 gap-12 w-full max-w-6xl h-[500px]">
+                            
+                            <!-- B-Tree Side -->
+                            <div class="glass-panel p-8 flex flex-col items-center border-cyan-500/30 bg-cyan-950/30 fragment fade-right">
+                                <div class="text-cyan-300 font-bold mb-6 text-xl flex items-center gap-2">
+                                    <i class="fa-solid fa-network-wired"></i> B-Tree (MongoDB)
+                                </div>
+                                <div class="flex-1 w-full flex flex-col items-center justify-center relative px-4">
+                                    <!-- Root Node -->
+                                    <div class="w-40 h-16 border-2 border-cyan-400 rounded-lg flex items-center justify-center bg-cyan-900/80 z-10 shadow-[0_0_20px_rgba(34,211,238,0.4)] relative">
+                                        <div class="absolute -top-2 -right-2 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-[10px] font-bold text-black">D</div>
+                                        <span class="text-sm font-mono text-cyan-100">Key + <span class="text-yellow-400 font-bold">Data</span></span>
+                                    </div>
+                                    
+                                    <!-- Connection Lines Layer -->
+                                    <div class="w-full h-16 flex justify-center items-center relative my-1">
+                                        <svg class="absolute w-full h-full" style="overflow: visible;">
+                                            <!-- Left Line -->
+                                            <line x1="50%" y1="0%" x2="25%" y2="100%" 
+                                                  stroke="rgba(34, 211, 238, 0.5)" 
+                                                  stroke-width="2" 
+                                                  class="animate-pulse"/>
+                                            <!-- Middle Line -->
+                                            <line x1="50%" y1="0%" x2="50%" y2="100%" 
+                                                  stroke="rgba(34, 211, 238, 0.5)" 
+                                                  stroke-width="2" 
+                                                  class="animate-pulse"
+                                                  style="animation-delay: 0.1s"/>
+                                            <!-- Right Line -->
+                                            <line x1="50%" y1="0%" x2="75%" y2="100%" 
+                                                  stroke="rgba(34, 211, 238, 0.5)" 
+                                                  stroke-width="2" 
+                                                  class="animate-pulse"
+                                                  style="animation-delay: 0.2s"/>
+                                        </svg>
+                                    </div>
+                                    
+                                    <!-- Child Nodes -->
+                                    <div class="flex gap-6 justify-center w-full">
+                                        <div class="w-28 h-12 border-2 border-cyan-500/70 rounded-lg flex items-center justify-center bg-cyan-900/60 shadow-[0_0_10px_rgba(34,211,238,0.2)] relative">
+                                            <div class="absolute -top-2 -right-2 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center text-[8px] font-bold text-black">D</div>
+                                            <span class="text-[11px] font-mono text-cyan-200">K+<span class="text-yellow-400 font-bold">Data</span></span>
+                                        </div>
+                                        <div class="w-28 h-12 border-2 border-cyan-500/70 rounded-lg flex items-center justify-center bg-cyan-900/60 shadow-[0_0_10px_rgba(34,211,238,0.2)] relative">
+                                            <div class="absolute -top-2 -right-2 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center text-[8px] font-bold text-black">D</div>
+                                            <span class="text-[11px] font-mono text-cyan-200">K+<span class="text-yellow-400 font-bold">Data</span></span>
+                                        </div>
+                                        <div class="w-28 h-12 border-2 border-cyan-500/70 rounded-lg flex items-center justify-center bg-cyan-900/60 shadow-[0_0_10px_rgba(34,211,238,0.2)] relative">
+                                            <div class="absolute -top-2 -right-2 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center text-[8px] font-bold text-black">D</div>
+                                            <span class="text-[11px] font-mono text-cyan-200">K+<span class="text-yellow-400 font-bold">Data</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-6 text-sm text-cyan-200/80 text-center px-4 leading-relaxed">
+                                    <span class="text-yellow-400 font-bold">数据</span>分布在<span class="text-cyan-300 font-bold">所有节点</span><br>
+                                    <span class="text-emerald-400">运气好 O(1) 命中</span>
+                                </div>
+                            </div>
+
+                            <!-- B+ Tree Side -->
+                            <div class="glass-panel p-8 flex flex-col items-center border-blue-500/30 bg-blue-950/30 fragment fade-left">
+                                <div class="text-blue-300 font-bold mb-6 text-xl flex items-center gap-2">
+                                    <i class="fa-solid fa-sitemap"></i> B+ Tree (MySQL)
+                                </div>
+                                <div class="flex-1 w-full flex flex-col items-center justify-center relative px-4">
+                                    <!-- Root Node (Index Only) -->
+                                    <div class="w-40 h-16 border-2 border-blue-400 rounded-lg flex items-center justify-center bg-blue-900/80 z-10 shadow-[0_0_20px_rgba(59,130,246,0.4)]">
+                                        <span class="text-sm font-mono text-blue-100">Key <span class="text-gray-500 text-xs">(Index)</span></span>
+                                    </div>
+                                    
+                                    <!-- Connection Lines Layer -->
+                                    <div class="w-full h-16 flex justify-center items-center relative my-1">
+                                        <svg class="absolute w-full h-full" style="overflow: visible;">
+                                            <!-- Left Line -->
+                                            <line x1="50%" y1="0%" x2="25%" y2="100%" 
+                                                  stroke="rgba(59, 130, 246, 0.5)" 
+                                                  stroke-width="2" 
+                                                  class="animate-pulse"/>
+                                            <!-- Middle Line -->
+                                            <line x1="50%" y1="0%" x2="50%" y2="100%" 
+                                                  stroke="rgba(59, 130, 246, 0.5)" 
+                                                  stroke-width="2" 
+                                                  class="animate-pulse"
+                                                  style="animation-delay: 0.1s"/>
+                                            <!-- Right Line -->
+                                            <line x1="50%" y1="0%" x2="75%" y2="100%" 
+                                                  stroke="rgba(59, 130, 246, 0.5)" 
+                                                  stroke-width="2" 
+                                                  class="animate-pulse"
+                                                  style="animation-delay: 0.2s"/>
+                                        </svg>
+                                    </div>
+                                    
+                                    <!-- Leaf Nodes (Data Layer) with Enhanced Linked List -->
+                                    <div class="flex gap-3 justify-center w-full relative">
+                                        
+                                        <!-- Leaf Node 1 -->
+                                        <div class="w-28 h-14 border-2 border-blue-400 bg-blue-900/90 rounded-lg flex flex-col items-center justify-center z-10 shadow-[0_0_20px_rgba(59,130,246,0.5)] relative group">
+                                            <div class="absolute -top-2 -right-2 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center text-[8px] font-bold text-black">D</div>
+                                            <span class="text-[10px] text-gray-400">Leaf</span>
+                                            <span class="text-xs font-mono text-yellow-400 font-bold">Data</span>
+                                            
+                                            <!-- Right Arrow (pointing to next node) -->
+                                            <div class="absolute -right-[14px] top-1/2 transform -translate-y-1/2 z-20">
+                                                <div class="flex items-center">
+                                                    <div class="w-3 h-[2px] bg-blue-400"></div>
+                                                    <div class="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[6px] border-l-blue-400"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Animated flow particle -->
+                                            <div class="absolute -right-[14px] top-1/2 w-1.5 h-1.5 bg-blue-300 rounded-full shadow-[0_0_8px_#60a5fa] animate-[flowRight_1.5s_ease-in-out_infinite]"></div>
+                                        </div>
+                                        
+                                        <!-- Leaf Node 2 -->
+                                        <div class="w-28 h-14 border-2 border-blue-400 bg-blue-900/90 rounded-lg flex flex-col items-center justify-center z-10 shadow-[0_0_20px_rgba(59,130,246,0.5)] relative group">
+                                            <div class="absolute -top-2 -right-2 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center text-[8px] font-bold text-black">D</div>
+                                            <span class="text-[10px] text-gray-400">Leaf</span>
+                                            <span class="text-xs font-mono text-yellow-400 font-bold">Data</span>
+                                            
+                                            <!-- Left Arrow (pointing back) -->
+                                            <div class="absolute -left-[14px] top-[35%] transform -translate-y-1/2 z-20">
+                                                <div class="flex items-center">
+                                                    <div class="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-r-[6px] border-r-blue-400/60"></div>
+                                                    <div class="w-3 h-[2px] bg-blue-400/60"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Right Arrow (pointing to next node) -->
+                                            <div class="absolute -right-[14px] top-[65%] transform -translate-y-1/2 z-20">
+                                                <div class="flex items-center">
+                                                    <div class="w-3 h-[2px] bg-blue-400"></div>
+                                                    <div class="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[6px] border-l-blue-400"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Animated flow particles (bidirectional) -->
+                                            <div class="absolute -right-[14px] top-[65%] w-1.5 h-1.5 bg-blue-300 rounded-full shadow-[0_0_8px_#60a5fa] animate-[flowRight_1.5s_ease-in-out_infinite_0.5s]"></div>
+                                            <div class="absolute -left-[14px] top-[35%] w-1.5 h-1.5 bg-blue-300/60 rounded-full shadow-[0_0_8px_#60a5fa] animate-[flowLeft_1.5s_ease-in-out_infinite_0.5s]"></div>
+                                        </div>
+                                        
+                                        <!-- Leaf Node 3 -->
+                                        <div class="w-28 h-14 border-2 border-blue-400 bg-blue-900/90 rounded-lg flex flex-col items-center justify-center z-10 shadow-[0_0_20px_rgba(59,130,246,0.5)] relative group">
+                                            <div class="absolute -top-2 -right-2 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center text-[8px] font-bold text-black">D</div>
+                                            <span class="text-[10px] text-gray-400">Leaf</span>
+                                            <span class="text-xs font-mono text-yellow-400 font-bold">Data</span>
+                                            
+                                            <!-- Left Arrow (pointing back) -->
+                                            <div class="absolute -left-[14px] top-1/2 transform -translate-y-1/2 z-20">
+                                                <div class="flex items-center">
+                                                    <div class="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-r-[6px] border-r-blue-400/60"></div>
+                                                    <div class="w-3 h-[2px] bg-blue-400/60"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Animated flow particle -->
+                                            <div class="absolute -left-[14px] top-1/2 w-1.5 h-1.5 bg-blue-300/60 rounded-full shadow-[0_0_8px_#60a5fa] animate-[flowLeft_1.5s_ease-in-out_infinite]"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Linked List Label -->
+                                    <div class="mt-4 glass-panel px-3 py-1 border-blue-400/50 bg-blue-500/20">
+                                        <span class="text-xs text-blue-300 font-mono flex items-center gap-1">
+                                            <i class="fa-solid fa-link"></i> Doubly Linked List
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="mt-4 text-sm text-blue-200/80 text-center px-4 leading-relaxed">
+                                    数据全在<span class="text-blue-400 font-bold">叶子层</span><br>
+                                    <span class="text-yellow-400 font-bold">双向链表</span>串联 → <span class="text-emerald-400">范围查询快</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <style>
+                @keyframes flowRight {
+                    0% { transform: translateX(-8px) translateY(-50%); opacity: 0; }
+                    20% { opacity: 1; }
+                    80% { opacity: 1; }
+                    100% { transform: translateX(20px) translateY(-50%); opacity: 0; }
+                }
+                
+                @keyframes flowLeft {
+                    0% { transform: translateX(20px) translateY(-50%); opacity: 0; }
+                    20% { opacity: 1; }
+                    80% { opacity: 1; }
+                    100% { transform: translateX(-8px) translateY(-50%); opacity: 0; }
+                }
+            </style>
+
+            <!-- Slide 3: MySQL Logic -->
+<section class="slide-mysql" data-background-gradient="linear-gradient(135deg, #451a03 0%, #78350f 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">⚡ MySQL: 范围查询的王者</h2>
+        
+        <div class="slide-content-wrapper w-full h-full flex flex-col justify-start items-center py-2 gap-6">
+            
+            <!-- 1. SQL Query Box (Index 1) -->
+            <div class="w-full flex justify-center fragment fade-down z-30 shrink-0" data-fragment-index="1">
+                <div class="glass-panel px-8 py-3 border-amber-500/50 bg-amber-900/60 shadow-[0_0_30px_rgba(245,158,11,0.3)] flex flex-col justify-center transform hover:scale-105 transition-transform">
+                    <div class="flex items-center gap-3 mb-1">
+                        <i class="fa-solid fa-terminal text-amber-400 text-xs"></i>
+                        <span class="text-[10px] text-amber-300/70 font-mono uppercase tracking-wider">SQL Query</span>
+                    </div>
+                    <code class="font-mono text-amber-200 text-xl font-bold">SELECT * FROM users WHERE id > 100</code>
+                </div>
+            </div>
+
+            <!-- 2. The Tree Structure (Middle) -->
+            <div class="flex-1 w-full max-w-6xl flex flex-col items-center justify-center relative min-h-[300px]">
+                
+                <!-- Layer 1 & 2: Root & Index (Index 2 - Search Path) -->
+                <div class="flex flex-col items-center w-full fragment fade-in" data-fragment-index="2">
+                    <!-- Root -->
+                    <div class="relative z-20 mb-1">
+                        <div class="w-28 h-10 border-2 border-amber-500/40 rounded-lg bg-amber-900/40 flex items-center justify-center shadow-lg backdrop-blur-sm">
+                            <span class="text-xs text-amber-100/80 font-mono font-bold">Root Page</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Connector 1-2 -->
+                    <div class="w-[400px] h-8 relative opacity-40 mb-1">
+                        <svg class="w-full h-full overflow-visible">
+                            <path d="M200 0 L100 32" stroke="rgba(245, 158, 11, 0.5)" stroke-width="2" fill="none"/>
+                            <path d="M200 0 L200 32" stroke="rgba(245, 158, 11, 0.5)" stroke-width="2" fill="none"/>
+                            <path d="M200 0 L300 32" stroke="rgba(245, 158, 11, 0.5)" stroke-width="2" fill="none"/>
+                        </svg>
+                    </div>
+                    
+                    <!-- Index Nodes -->
+                    <div class="flex justify-center gap-12 z-20 mb-1">
+                        <div class="w-20 h-8 border border-amber-500/30 rounded bg-amber-900/30 flex items-center justify-center">
+                            <span class="text-[10px] text-amber-400/60 font-mono">Index</span>
+                        </div>
+                        <div class="w-20 h-8 border border-amber-500/30 rounded bg-amber-900/30 flex items-center justify-center">
+                            <span class="text-[10px] text-amber-400/60 font-mono">Index</span>
+                        </div>
+                        <div class="w-20 h-8 border border-amber-500/30 rounded bg-amber-900/30 flex items-center justify-center">
+                            <span class="text-[10px] text-amber-400/60 font-mono">Index</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Connector 2-3 -->
+                    <div class="w-[600px] h-10 relative opacity-40 mb-2">
+                        <svg class="w-full h-full overflow-visible">
+                            <path d="M170 0 L140 40" stroke="rgba(245, 158, 11, 0.3)" stroke-width="1.5" fill="none"/>
+                            <path d="M170 0 L200 40" stroke="rgba(245, 158, 11, 0.3)" stroke-width="1.5" fill="none"/>
+                            <path d="M300 0 L260 40" stroke="rgba(245, 158, 11, 0.3)" stroke-width="1.5" fill="none"/>
+                            <path d="M300 0 L340 40" stroke="rgba(245, 158, 11, 0.3)" stroke-width="1.5" fill="none"/>
+                            <path d="M430 0 L400 40" stroke="rgba(245, 158, 11, 0.3)" stroke-width="1.5" fill="none"/>
+                            <path d="M430 0 L460 40" stroke="rgba(245, 158, 11, 0.3)" stroke-width="1.5" fill="none"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Layer 3: Leaves (Index 3 - Data Scan) -->
+                <div class="flex justify-center items-center gap-6 relative z-20 fragment fade-in" data-fragment-index="3">
+                    
+                    <!-- Scanner Animation -->
+                    <div class="absolute h-24 -top-2 border-2 border-amber-400/50 bg-amber-500/10 rounded-xl shadow-[0_0_40px_rgba(245,158,11,0.4)] animate-[scanRange_4s_ease-in-out_infinite] z-0 pointer-events-none backdrop-blur-[2px]"></div>
+
+                    <!-- Node 99 -->
+                    <div class="w-28 h-16 glass-panel border-amber-600/20 bg-amber-950/40 flex flex-col items-center justify-center z-10 opacity-40 grayscale">
+                        <span class="text-[9px] text-gray-500">Leaf Page</span>
+                        <span class="text-sm text-gray-400 font-mono">ID: 99</span>
+                    </div>
+                    
+                    <!-- Node 100 (Start) -->
+                    <div class="w-28 h-16 glass-panel border-amber-400 bg-amber-900/90 flex flex-col items-center justify-center z-10 relative shadow-[0_0_20px_rgba(245,158,11,0.3)] transform scale-105">
+                        <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 z-20">
+                            <div class="px-2 py-0.5 bg-emerald-500 text-white text-[9px] font-bold rounded-full shadow-lg animate-bounce">START</div>
+                        </div>
+                        <span class="text-[9px] text-amber-300/80">Leaf Page</span>
+                        <span class="text-lg text-amber-300 font-bold font-mono">ID:100</span>
+                        <div class="absolute -right-5 top-1/2 transform -translate-y-1/2 text-amber-500 animate-pulse">
+                            <i class="fa-solid fa-angles-right text-lg filter drop-shadow-[0_0_5px_rgba(245,158,11,0.8)]"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Node 101 -->
+                    <div class="w-28 h-16 glass-panel border-amber-400 bg-amber-900/90 flex flex-col items-center justify-center z-10 relative shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                        <span class="text-[9px] text-amber-300/80">Leaf Page</span>
+                        <span class="text-lg text-amber-300 font-bold font-mono">ID:101</span>
+                        <div class="absolute -right-5 top-1/2 transform -translate-y-1/2 text-amber-500 animate-pulse" style="animation-delay: 0.1s">
+                            <i class="fa-solid fa-angles-right text-lg filter drop-shadow-[0_0_5px_rgba(245,158,11,0.8)]"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Node 102 -->
+                    <div class="w-28 h-16 glass-panel border-amber-400 bg-amber-900/90 flex flex-col items-center justify-center z-10 relative shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                        <span class="text-[9px] text-amber-300/80">Leaf Page</span>
+                        <span class="text-lg text-amber-300 font-bold font-mono">ID:102</span>
+                        <div class="absolute -right-5 top-1/2 transform -translate-y-1/2 text-amber-500/50">
+                            <i class="fa-solid fa-ellipsis text-lg"></i>
+                        </div>
+                    </div>
+
+                    <!-- Node ... -->
+                    <div class="w-28 h-16 glass-panel border-amber-600/20 bg-amber-950/40 flex flex-col items-center justify-center z-10 opacity-60">
+                        <span class="text-sm text-amber-400/50 font-mono tracking-widest">...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Feature Cards (Index 4) -->
+            <div class="w-full flex justify-center gap-12 h-20 shrink-0 fragment fade-up" data-fragment-index="4">
+                <div class="glass-panel px-6 py-3 border-l-4 border-amber-500 bg-amber-900/40 flex items-center gap-4 hover:bg-amber-900/60 transition-colors cursor-default">
+                    <div class="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
+                        <i class="fa-solid fa-layer-group text-amber-400 text-lg"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-amber-100 font-bold text-base">矮胖树结构</div>
+                        <div class="text-amber-300/60 text-xs font-mono">Low Tree Height</div>
+                    </div>
+                </div>
+                
+                <div class="glass-panel px-6 py-3 border-l-4 border-emerald-500 bg-emerald-900/40 flex items-center gap-4 hover:bg-emerald-900/60 transition-colors cursor-default">
+                    <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                        <i class="fa-solid fa-forward text-emerald-400 text-lg"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-emerald-100 font-bold text-base">顺序 I/O 读取</div>
+                        <div class="text-emerald-300/60 text-xs font-mono">Sequential Scan</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <style>
+        @keyframes scanRange {
+            0% { left: 28%; width: 120px; opacity: 0; }
+            15% { opacity: 1; width: 130px; }
+            50% { width: 480px; }
+            85% { opacity: 1; }
+            100% { left: 65%; width: 120px; opacity: 0; }
+        }
+    </style>
+</section>
+
+<!-- Slide 4: MongoDB Logic (Child Nodes 优化版) -->
+<section class="slide-mongo" data-background-gradient="linear-gradient(135deg, #064e3b 0%, #065f46 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">🍃 MongoDB: 极致单点速度</h2>
+        
+        <div class="slide-content-wrapper w-full h-full flex flex-col items-center justify-start py-6 relative">
+            
+            <!-- 1. Request Object & Beam (Index 1) -->
+            <div class="z-30 mb-2 fragment fade-down" data-fragment-index="1">
+                <div class="px-6 py-3 bg-emerald-600/90 text-white rounded-full font-mono text-lg shadow-[0_0_30px_rgba(16,185,129,0.6)] flex items-center gap-3 border border-emerald-400/50">
+                    <i class="fa-solid fa-magnifying-glass text-emerald-200 text-sm"></i>
+                    <span class="font-bold">db.users.findOne({_id: 1})</span>
+                </div>
+            </div>
+
+            <!-- Connection Beam (Index 1 - With Request) -->
+            <div class="h-16 w-[2px] bg-gradient-to-b from-emerald-400 to-transparent relative overflow-hidden mb-[-4px] z-20 fragment fade-in" data-fragment-index="1">
+                <div class="absolute top-0 left-0 w-full h-1/2 bg-white blur-[2px] animate-[beamDrop_1.5s_infinite]"></div>
+            </div>
+
+            <!-- 2. The B-Tree Structure (Static Base) -->
+            <div class="relative flex flex-col items-center w-full max-w-5xl">
+                
+                <!-- Root Node (The Hero) -->
+                <div class="relative z-20 mb-2 group">
+                    <!-- Glow Effect -->
+                    <div class="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse"></div>
+                    
+                    <div class="w-80 glass-panel border-2 border-emerald-400 bg-emerald-900/90 p-5 flex flex-col relative shadow-[0_0_60px_rgba(16,185,129,0.3)] transform transition-transform hover:scale-105">
+                        
+                        <!-- Header -->
+                        <div class="flex justify-between items-center mb-3 border-b border-emerald-500/30 pb-2">
+                            <span class="text-xs text-emerald-300 font-bold uppercase tracking-wider">Root Page</span>
+                            <div class="px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded shadow animate-pulse">HIT!</div>
+                        </div>
+
+                        <!-- JSON Content -->
+                        <div class="font-mono text-sm leading-relaxed text-left">
+                            <div class="text-emerald-200"><span class="text-emerald-500">{</span></div>
+                            <div class="pl-4 text-emerald-100">"_id": <span class="text-yellow-400 font-bold">1</span>,</div>
+                            <div class="pl-4 text-emerald-100">"name": <span class="text-emerald-300">"Alice"</span>,</div>
+                            <div class="pl-4 text-emerald-100">"role": <span class="text-emerald-300">"Admin"</span>,</div>
+                            <div class="pl-4 text-gray-400 text-xs">// Data is HERE</div>
+                            <div class="text-emerald-200"><span class="text-emerald-500">}</span></div>
+                        </div>
+
+                        <!-- Return Arrow (Index 2) -->
+                        <div class="absolute -right-16 top-1/2 transform -translate-y-1/2 flex flex-col items-center fragment fade-left" data-fragment-index="2">
+                            <svg width="60" height="40" viewBox="0 0 60 40" fill="none" class="mb-1">
+                                <path d="M0 40 Q 30 40 30 10 L 30 0" stroke="#34d399" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                                <defs>
+                                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                                        <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+                                    </marker>
+                                </defs>
+                            </svg>
+                            <span class="text-emerald-300 text-xs font-bold">Return</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connectors to Children (增强可见度) -->
+                <div class="w-[500px] h-12 relative opacity-50">
+                    <svg class="w-full h-full overflow-visible">
+                        <path d="M250 0 L100 48" stroke="#34d399" stroke-width="2" stroke-dasharray="4 4"/>
+                        <path d="M250 0 L250 48" stroke="#34d399" stroke-width="2" stroke-dasharray="4 4"/>
+                        <path d="M250 0 L400 48" stroke="#34d399" stroke-width="2" stroke-dasharray="4 4"/>
+                    </svg>
+                </div>
+
+                <!-- Children (优化版 - 更清晰) -->
+                <div class="flex gap-8 opacity-60 transition-all duration-500 hover:opacity-100">
+                    <div class="w-36 h-24 border-2 border-emerald-500/50 rounded-lg bg-emerald-900/40 flex flex-col items-center justify-center backdrop-blur-sm shadow-lg">
+                        <span class="text-sm text-emerald-400 font-bold mb-1">Child Node</span>
+                        <span class="text-xs text-emerald-300/70 font-mono">未命中</span>
+                    </div>
+                    <div class="w-36 h-24 border-2 border-emerald-500/50 rounded-lg bg-emerald-900/40 flex flex-col items-center justify-center backdrop-blur-sm shadow-lg">
+                        <span class="text-sm text-emerald-400 font-bold mb-1">Child Node</span>
+                        <span class="text-xs text-emerald-300/70 font-mono">未命中</span>
+                    </div>
+                    <div class="w-36 h-24 border-2 border-emerald-500/50 rounded-lg bg-emerald-900/40 flex flex-col items-center justify-center backdrop-blur-sm shadow-lg">
+                        <span class="text-sm text-emerald-400 font-bold mb-1">Child Node</span>
+                        <span class="text-xs text-emerald-300/70 font-mono">未命中</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 3. Explanation Card (Index 3 - 终极优化版) -->
+            <div class="absolute left-[8%] top-[38%] max-w-md fragment fade-right z-30" data-fragment-index="3">
+                <div class="glass-panel p-7 border-l-4 border-emerald-400 bg-emerald-900/80 backdrop-blur-md shadow-[0_0_50px_rgba(16,185,129,0.4)]">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg ring-2 ring-emerald-300/50">
+                            <span class="text-white font-black text-lg">O(1)</span>
+                        </div>
+                        <h4 class="text-emerald-50 font-black text-2xl">极致单点访问</h4>
+                    </div>
+                    <p class="text-lg text-emerald-50 leading-relaxed mb-4">
+                        数据与索引共存 <span class="text-emerald-300 font-bold">(Data Locality)</span><br>
+                        命中根节点时，<span class="text-white font-black">无需下沉</span>，直接返回完整文档
+                    </p>
+                    <!-- 关键信息超大高亮块 -->
+                    <div class="mt-5 px-4 py-3 bg-gradient-to-r from-emerald-500/30 to-yellow-500/20 border-2 border-emerald-300/60 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-bolt text-yellow-300 text-xl drop-shadow-[0_0_8px_rgba(253,224,71,0.8)] animate-pulse"></i>
+                            <span class="text-lg text-white font-black uppercase tracking-wider drop-shadow-lg">
+                                No Disk Seek Required
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <style>
+        @keyframes beamDrop {
+            0% { top: -100%; opacity: 0; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+    </style>
+</section>
+
+
+            <!-- Slide 5: The Truth (WiredTiger) -->
+<section class="slide-truth" data-background-gradient="linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)">
+    <div class="slide-container">
+        <h2 class="slide-title">⚠️ 架构师视角：真相</h2>
+        
+        <div class="slide-content-wrapper w-full h-full flex items-center justify-center">
+            <!-- Perspective Container -->
+            <div class="relative w-[700px] h-[450px] perspective-1000">
+                
+                <!-- 1. The Reality (Back Layer - WiredTiger) -->
+                <!-- Always visible, but covered initially -->
+                <div class="absolute inset-0 glass-panel bg-violet-950/80 border-violet-400/50 flex flex-col items-center justify-center z-10 overflow-hidden shadow-[0_0_50px_rgba(124,58,237,0.3)]">
+                    
+                    <!-- Background Circuit Pattern -->
+                    <div class="absolute inset-0 opacity-20" 
+                         style="background-image: radial-gradient(#a78bfa 1px, transparent 1px); background-size: 20px 20px;">
+                    </div>
+                    
+                    <!-- Content -->
+                    <div class="relative z-20 flex flex-col items-center">
+                        <div class="w-20 h-20 bg-violet-500/20 rounded-full flex items-center justify-center mb-6 border border-violet-400 shadow-[0_0_30px_#8b5cf6] animate-pulse">
+                            <i class="fa-solid fa-microchip text-4xl text-violet-200"></i>
+                        </div>
+                        
+                        <h3 class="text-4xl font-black text-white tracking-tight mb-2">WiredTiger 引擎</h3>
+                        <div class="text-violet-300 text-sm font-mono mb-8 tracking-widest uppercase">Default Storage Engine</div>
+
+                        <!-- The Core Reveal -->
+                        <div class="flex gap-4">
+                            <div class="px-6 py-3 bg-violet-600 rounded-lg border border-violet-400 shadow-lg flex flex-col items-center">
+                                <span class="text-xs text-violet-200 uppercase">On Disk</span>
+                                <span class="text-xl font-bold text-white font-mono">B+ Tree</span>
+                            </div>
+                            <div class="px-6 py-3 bg-gray-800/50 rounded-lg border border-gray-600 flex flex-col items-center opacity-50">
+                                <span class="text-xs text-gray-400 uppercase">In Memory</span>
+                                <span class="text-sm font-bold text-gray-300 font-mono">SkipList / B-Tree</span>
+                            </div>
+                        </div>
+
+                        <!-- Why? -->
+                        <div class="mt-8 px-8 py-3 bg-violet-900/50 rounded border-l-4 border-pink-500 text-left w-full max-w-md">
+                            <div class="text-pink-400 text-xs font-bold mb-1">WHY? 物理定律的胜利</div>
+                            <p class="text-sm text-gray-300 leading-snug">
+                                为了利用 OS 的 <span class="text-white font-bold">预读 (Read-Ahead)</span> 和 <span class="text-white font-bold">顺序写</span>，工业界最终还是向 B+ 树妥协。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. The Mask (Front Layer - Theory) -->
+                <!-- fragment fade-out: 点击后消失，配合 CSS 实现开门效果 -->
+                <div class="fragment fade-out absolute inset-0 glass-panel bg-slate-800 border-slate-600 flex flex-col items-center justify-center z-20 origin-top-left transition-all duration-1000 ease-in-out transform-style-3d shadow-2xl">
+                    
+                    <div class="absolute top-4 right-4 border-2 border-red-500/50 text-red-500/50 px-2 py-1 rounded text-xs font-black uppercase rotate-12">
+                        Theoretical
+                    </div>
+
+                    <i class="fa-solid fa-book-bookmark text-6xl text-slate-500 mb-6 drop-shadow-lg"></i>
+                    
+                    <h3 class="text-4xl font-bold text-slate-200 mb-2">教科书理论</h3>
+                    
+                    <div class="w-16 h-1 bg-slate-600 rounded-full mb-6"></div>
+                    
+                    <p class="text-xl text-slate-400 font-mono">MongoDB == B-Tree ?</p>
+                    
+                    <div class="absolute bottom-8 text-sm text-slate-500 flex items-center gap-2 animate-bounce">
+                        <i class="fa-solid fa-hand-pointer"></i>
+                        <span>Click to reveal Reality</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        .perspective-1000 { 
+            perspective: 2000px; 
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+        /* 
+           Reveal.js 的 fragment fade-out 机制：
+           默认状态：opacity: 1
+           激活状态（.visible）：opacity: 0
+           
+           我们重写 .visible 状态，不仅让它透明，还让它像门一样旋转打开
+        */
+        .fragment.fade-out.visible {
+            opacity: 0;
+            transform: rotateY(-110deg) scale(1.1);
+            pointer-events: none;
+        }
+    </style>
+</section>
+
+
+        <!-- Slide 6: Summary Matrix (Compact Version) -->
+<section class="slide-summary" data-background-gradient="linear-gradient(135deg, #2a0a18 0%, #4a1028 100%)">
+    <div class="slide-container">
+        <!-- 减小标题下边距 -->
+        <h2 class="slide-title" style="padding-bottom: 1rem !important; font-size: 2.5rem !important;">🏆 终极对决总结</h2>
+        
+        <div class="slide-content-wrapper w-full flex items-center justify-center">
+            <div class="w-full max-w-7xl">
+                
+                <!-- Table Header -->
+                <!-- 减小 gap 和 mb -->
+                <div class="grid grid-cols-12 gap-4 mb-4 text-center">
+                    <div class="col-span-2"></div> 
+                    
+                    <!-- MySQL Header -->
+                    <div class="col-span-5 fragment fade-down" data-fragment-index="0">
+                        <!-- 减小 py -->
+                        <div class="glass-panel py-3 border-t-4 border-amber-500 bg-gradient-to-b from-amber-900/80 to-amber-950/80 flex flex-col items-center shadow-[0_0_30px_rgba(245,158,11,0.2)]">
+                            <i class="fa-solid fa-database text-amber-400 text-2xl mb-1"></i>
+                            <div class="text-amber-100 font-black text-xl">MySQL</div>
+                            <div class="text-[10px] text-amber-300/80 font-mono tracking-wider">InnoDB (B+ Tree)</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mongo Header -->
+                    <div class="col-span-5 fragment fade-down" data-fragment-index="0">
+                        <div class="glass-panel py-3 border-t-4 border-emerald-500 bg-gradient-to-b from-emerald-900/80 to-emerald-950/80 flex flex-col items-center shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                            <i class="fa-solid fa-leaf text-emerald-400 text-2xl mb-1"></i>
+                            <div class="text-emerald-100 font-black text-xl">MongoDB</div>
+                            <div class="text-[10px] text-emerald-300/80 font-mono tracking-wider">Theory (B-Tree)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 1: Core Scenario -->
+                <div class="grid grid-cols-12 gap-4 mb-3 items-center fragment fade-right" data-fragment-index="1">
+                    <div class="col-span-2 text-right pr-4 text-pink-200/80 font-bold text-xs uppercase tracking-widest">核心场景</div>
+                    
+                    <div class="col-span-5">
+                        <div class="glass-panel py-2 text-center border-amber-500/30 bg-amber-900/40 backdrop-blur-md">
+                            <span class="text-amber-100 font-bold text-base">复杂事务 / 报表</span>
+                        </div>
+                    </div>
+                    <div class="col-span-5">
+                        <div class="glass-panel py-2 text-center border-emerald-500/30 bg-emerald-900/40 backdrop-blur-md">
+                            <span class="text-emerald-100 font-bold text-base">高并发 / 单点读写</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2: Data Location -->
+                <div class="grid grid-cols-12 gap-4 mb-3 items-center fragment fade-right" data-fragment-index="2">
+                    <div class="col-span-2 text-right pr-4 text-pink-200/80 font-bold text-xs uppercase tracking-widest">数据位置</div>
+                    
+                    <div class="col-span-5">
+                        <div class="glass-panel py-2 text-center border-white/10 bg-white/5">
+                            <span class="text-gray-200 text-sm">仅在 <strong class="text-amber-400 text-base mx-1">叶子节点</strong></span>
+                        </div>
+                    </div>
+                    <div class="col-span-5">
+                        <div class="glass-panel py-2 text-center border-white/10 bg-white/5">
+                            <span class="text-gray-200 text-sm">分布在 <strong class="text-emerald-400 text-base mx-1">所有节点</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 3: Range Query (Winner Row) -->
+                <div class="grid grid-cols-12 gap-4 mb-3 items-center fragment fade-right" data-fragment-index="3">
+                    <div class="col-span-2 text-right pr-4 text-white font-black text-sm uppercase tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">范围查询</div>
+                    
+                    <!-- MySQL Winner Cell -->
+                    <div class="col-span-5 relative z-10">
+                        <div class="absolute -left-3 top-1/2 -translate-y-1/2 text-xl animate-bounce filter drop-shadow-lg">👑</div>
+                        <div class="glass-panel py-3 text-center border-amber-400 bg-gradient-to-r from-amber-700 to-orange-600 shadow-[0_0_25px_rgba(245,158,11,0.5)] transform scale-105">
+                            <div class="flex justify-center gap-1 text-yellow-300 text-[10px] mb-1">
+                                <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                            </div>
+                            <span class="text-white font-black text-xl tracking-wide">极快 (顺序 I/O)</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Mongo Loser Cell -->
+                    <div class="col-span-5">
+                        <div class="glass-panel py-3 text-center border-gray-600 bg-gray-900/60">
+                            <div class="flex justify-center gap-1 text-gray-600 text-[10px] mb-1">
+                                <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                            </div>
+                            <span class="text-gray-400 text-base font-bold">较慢 (随机 I/O)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 4: Disk I/O -->
+                <div class="grid grid-cols-12 gap-4 items-center fragment fade-right" data-fragment-index="4">
+                    <div class="col-span-2 text-right pr-4 text-pink-200/80 font-bold text-xs uppercase tracking-widest">磁盘 I/O</div>
+                    
+                    <div class="col-span-5">
+                        <div class="glass-panel py-2 text-center border-white/10 bg-white/5">
+                            <span class="text-gray-200 text-sm">稳定 (树矮胖)</span>
+                        </div>
+                    </div>
+                    <div class="col-span-5">
+                        <div class="glass-panel py-2 text-center border-white/10 bg-white/5">
+                            <span class="text-gray-200 text-sm">波动 (看运气)</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+<script>
+    Reveal.initialize({
+        width: 1280,
+        height: 720,
+        margin: 0.04,
+        minScale: 0.2,
+        maxScale: 2.0,
+        controls: false,
+        progress: false,
+        center: false,
+        hash: true,
+        transition: 'convex',
+        backgroundTransition: 'zoom',
+        fragments: true,
+    });
+
+    /* Attract Mode Logic */
+    (function() {
+        let autoPlayInterval;
+        const autoPlaySpeed = 3000; 
+        let isAttractMode = true;
+
+        function startAttractMode() {
+            if (!isAttractMode) return;
+            Reveal.configure({ loop: true });
+            autoPlayInterval = setInterval(() => {
+                Reveal.next();
+            }, autoPlaySpeed);
+        }
+
+        function stopAttractMode() {
+            if (!isAttractMode) return;
+            isAttractMode = false;
+            clearInterval(autoPlayInterval);
+            Reveal.slide(0);
+            Reveal.configure({ loop: false });
+            const hint = document.getElementById('start-hint');
+            if(hint) {
+                hint.style.opacity = '0';
+                setTimeout(() => hint.remove(), 500);
+            }
+        }
+
+        window.addEventListener('keydown', stopAttractMode);
+        window.addEventListener('click', stopAttractMode);
+        startAttractMode();
+    })();
+</script>
+</body> </html>
+

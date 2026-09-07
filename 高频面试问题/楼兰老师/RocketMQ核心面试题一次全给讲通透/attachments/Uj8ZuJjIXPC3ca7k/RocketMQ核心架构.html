@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RocketMQ 架构面试全解析</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+        :root {
+            --bg-color: #0c0c1d;
+            --card-bg: #1a1a3a;
+            --primary-color: #4d7cff;
+            --secondary-color: #ffca28;
+            --text-color: #e0e0e0;
+            --text-muted: #9e9e9e;
+            --border-color: #33335a;
+        }
+
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container { width: 100%; max-width: 1600px; margin: 0 auto; padding: 0 50px; }
+        .step {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 100px 0;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .step.visible { opacity: 1; transform: translateY(0); }
+
+        .title { text-align: center; margin-bottom: 80px; }
+        .title h1 { font-size: 3.8rem; font-weight: 700; color: var(--primary-color); margin: 0 0 15px 0; }
+        .title p { font-size: 1.6rem; color: var(--text-muted); margin: 0; font-weight: 300; }
+        
+        /* --- Start Module --- */
+        #step0 { text-align: center; }
+        .main-title { font-size: 6rem; font-weight: 700; background: linear-gradient(45deg, var(--primary-color), var(--secondary-color), #00e676); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 25px; animation: glow 2s ease-in-out infinite alternate; }
+        @keyframes glow { from { text-shadow: 0 0 10px #fff, 0 0 20px var(--primary-color), 0 0 30px var(--primary-color); } to { text-shadow: 0 0 20px #fff, 0 0 30px var(--secondary-color), 0 0 40px var(--secondary-color); } }
+        .subtitle { font-size: 1.8rem; color: var(--text-muted); margin-bottom: 50px; }
+        .tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; max-width: 1000px; }
+        .tag { background: var(--card-bg); color: var(--text-color); padding: 12px 24px; border-radius: 25px; font-size: 1.1rem; border: 1px solid var(--border-color); transition: all 0.3s ease; }
+        .tag:hover { transform: scale(1.1); background: var(--primary-color); color: var(--bg-color); }
+
+        /* --- Image Placeholder --- */
+        .image-placeholder {
+            width: 100%;
+            max-width: 1200px; /* Increased width */
+            height: 650px; /* Increased height */
+            border: 3px dashed var(--border-color);
+            border-radius: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(26, 26, 58, 0.3);
+            color: var(--text-muted);
+            font-size: 2.5rem; /* Increased font size */
+            font-weight: 500;
+            text-align: center;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .image-placeholder:hover {
+            background-color: rgba(26, 26, 58, 0.5);
+            border-color: var(--primary-color);
+        }
+
+        /* --- Bonus Questions (Step 5) --- */
+        .questions-container {
+            width: 100%;
+            max-width: 1100px; /* Increased width */
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        .question-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 40px; /* Increased padding */
+            border-left: 6px solid var(--secondary-color);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .question-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(255, 202, 40, 0.15);
+        }
+        .question-card h3 {
+            margin: 0 0 20px 0;
+            font-size: 1.6rem; /* Increased font size */
+            color: var(--secondary-color);
+        }
+        .question-card p {
+            margin: 0;
+            font-size: 1.15rem; /* Increased font size */
+            color: var(--text-muted);
+            line-height: 1.9; /* Increased line height for readability */
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="step visible" id="step0">
+        <h1 class="main-title">一图搞定RocketMQ 架构面试</h1><p class="subtitle">从入门到精通，一次性讲通透</p>
+        <div class="tags"><span class="tag">削峰填谷</span><span class="tag">性能扩展</span><span class="tag">高可用</span><span class="tag">主从架构</span><span class="tag">Broker集群</span><span class="tag">NameServer</span><span class="tag">生产者组</span><span class="tag">消费者组</span><span class="tag">顺序消息</span><span class="tag">事务消息</span></div>
+    </div>
+
+    <div class="container step" id="step1">
+        <div class="title"><h1>第一问：什么是队列？</h1><p>一个先进先出（FIFO）的数据结构，通过偏移量（Offset）保证顺序</p></div>
+        <div class="image-placeholder"><img width="100%" src=".\RocketMQ1.png"/></div>
+    </div>
+
+    <div class="container step" id="step2">
+        <div class="title"><h1>第二问：如何扩展性能？</h1><p>一个Topic包含多个Queue，由一个消费者组内的多个Consumer并行消费</p></div>
+        <div class="image-placeholder"><img width="100%" src=".\RocketMQ2.png"/></div>
+        <div class="image-placeholder"><img width="100%" src=".\RocketMQ5.png"/></div>
+    </div>
+
+    <div class="container step" id="step3">
+        <div class="title"><h1>第三问：如何保证高可用？</h1><p>通过Broker主从集群，Master负责读写，Slave负责备份</p></div>
+        <div class="image-placeholder"><img width="100%" src=".\RocketMQ3.png"/></div>
+    </div>
+    
+    <div class="container step" id="step4">
+        <div class="title"><h1>第四问：RocketMQ的完整结构</h1><p>引入 NameServer 作为路由中心，协调所有组件</p></div>
+        <div class="image-placeholder"><img height="100%" src=".\RocketMQ4.png"/></div>
+    </div>
+    
+    <div class="container step" id="step5">
+        <div class="title"><h1>面试加分项</h1><p>深度进阶问题</p></div>
+        <div class="questions-container">
+        		 <div class="question-card">
+                <h3>RocketMQ为什么要设计生产者组（Producer Group）？</h3>
+                <p>主要用于支持事务消息。当一个生产者在发送事务消息并执行本地事务时，如果该生产者实例崩溃，Broker可以通过回查同一生产者组内的其他实例来确定事务的最终状态（提交或回滚），保证了分布式事务的一致性。</p>
+            </div>
+        		<div class="question-card">
+                <h3>如何保证消息不丢失？</h3>
+                <p>通过三个环节保证：1. 生产端：使用同步发送或事务消息。2. Broker端：配置同步刷盘（SYNC_FLUSH）和同步主从复制（SYNC_MASTER）。3. 消费端：消费成功后再提交ack（确认消费位点），若消费失败则进行重试。</p>
+            </div>
+            <div class="question-card">
+                <h3>如何处理消息积压问题？</h3>
+                <p>1. 紧急扩容：增加消费者实例数量，提高并行处理能力（前提是Topic的队列数足够多）。2. 优化消费逻辑：检查消费代码是否有性能瓶颈，如数据库慢查询。3. 临时队列：如果积压严重，可以临时将新消息路由到新的Topic/队列，让消费者先处理积压，再处理新消息。</p>
+            </div>
+            <div class="question-card">
+            		<h3>如何设计死信队列？</h3>
+                <p>当消费者处理消息失败时，RocketMQ会往消费者组重复投递消息。多次投递都处理失败，RocketMQ就会将消息推送到消费者组对应的死信队列中。死信队列中的消息需要手动进行处理。</p>
+            		<h3>如何设计延迟队列？</h3>
+                <p>生产者发送延迟消息时，RocketMQ会把消息转移到一个内部特定的延迟队列中。然后定期扫描延迟队列中的消息，将到时间的消息重新转回到生产者预订的对列中。对于指定时间的延迟消息，还会使用时间轮算法实现消息的定时转发。</p>
+            </div>
+            
+            <div class="question-card">
+                <h3>消息消费的两种模式：Push和Pull，有什么区别？</h3>
+                <p>Push模式由Broker主动推送消息给消费者，实时性好但可能压垮消费者。Pull模式由消费者主动向Broker拉取消息，消费者可以根据自身处理能力控制节奏，但实时性稍差。RocketMQ的Push模式在底层实际上是基于Pull模式的“长轮询”实现的，兼顾了实时性和消费者自主性。</p>
+            		<h3>RocketMQ针对长轮询是如何进行优化的？如何防止消费者没有消息时的空轮询？</h3>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const steps = document.querySelectorAll('.step');
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1 }); /* Adjusted threshold for large elements */
+
+            steps.forEach(step => {
+                observer.observe(step);
+            });
+        });
+    </script>
+
+</body>
+</html>

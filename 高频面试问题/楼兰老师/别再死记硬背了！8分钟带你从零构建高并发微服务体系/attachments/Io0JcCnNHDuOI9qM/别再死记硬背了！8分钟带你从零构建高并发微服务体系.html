@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百万并发架构设计看板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Slide Transitions */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        .slide.prev {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
+
+        /* Step Animations */
+        .step {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease-out;
+        }
+
+        .step.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Custom Effects */
+        .glow-text {
+            text-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+        }
+        
+        .card-glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+        }
+
+        .pulse-ring {
+            animation: pulse-ring 3s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(56, 189, 248, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+        }
+
+        /* Gradient Text */
+        .text-gradient {
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-image: linear-gradient(to right, #38bdf8, #818cf8);
+        }
+        
+        .text-gradient-danger {
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-image: linear-gradient(to right, #f87171, #fbbf24);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-grid"></div>
+
+    <!-- Slide 1: Intro -->
+    <div class="slide active" id="slide-1">
+        <div class="absolute top-10 left-10 flex items-center gap-3 opacity-70">
+            <i data-lucide="cpu" class="w-8 h-8 text-blue-400"></i>
+            <span class="text-xl font-bold tracking-widest">SYSTEM ARCHITECTURE</span>
+        </div>
+        
+        <div class="text-center space-y-8 relative z-10">
+            <div class="inline-block px-6 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-2xl font-bold mb-4 animate-pulse">
+                面试硬核实战
+            </div>
+            <h1 class="text-[7rem] font-black leading-tight glow-text">
+                百万并发<br>
+                <span class="text-gradient">系统怎么抗？</span>
+            </h1>
+            <p class="text-4xl text-slate-400 font-light mt-6">
+                拒绝死记硬背 · 掌握<span class="text-white font-bold">体系化</span>架构思维
+            </p>
+        </div>
+        
+        <div class="absolute bottom-10 animate-bounce text-slate-500 flex flex-col items-center">
+            <span class="text-lg">按 ↓ 开始拆解</span>
+            <i data-lucide="chevron-down" class="w-8 h-8"></i>
+        </div>
+    </div>
+
+    <!-- Slide 2: Context/Problem -->
+    <div class="slide" id="slide-2">
+        <h2 class="text-6xl font-bold mb-16 text-center">面试现状：<span class="text-red-400">点状思维</span> vs <span class="text-green-400">体系思维</span></h2>
+        
+        <div class="flex w-full max-w-7xl gap-12 h-[60vh]">
+            <!-- Left: Wrong Way -->
+            <div class="step flex-1 card-glass rounded-3xl p-10 flex flex-col items-center justify-center border-red-500/30 relative overflow-hidden">
+                <div class="absolute inset-0 bg-red-500/5 z-0"></div>
+                <i data-lucide="x-circle" class="w-32 h-32 text-red-500 mb-8 z-10"></i>
+                <h3 class="text-5xl font-bold text-red-400 mb-6 z-10">报菜名</h3>
+                <ul class="text-3xl space-y-4 text-slate-300 z-10 text-center">
+                    <li>"我会 Redis"</li>
+                    <li>"我会 MQ"</li>
+                    <li>"我会 SpringCloud"</li>
+                </ul>
+                <div class="mt-8 px-4 py-2 bg-red-500/20 text-red-300 rounded text-xl z-10">
+                    ❌ 缺乏逻辑闭环
+                </div>
+            </div>
+
+            <!-- Right: Right Way -->
+            <div class="step flex-1 card-glass rounded-3xl p-10 flex flex-col items-center justify-center border-green-500/30 relative overflow-hidden">
+                <div class="absolute inset-0 bg-green-500/5 z-0"></div>
+                <i data-lucide="network" class="w-32 h-32 text-green-500 mb-8 z-10"></i>
+                <h3 class="text-5xl font-bold text-green-400 mb-6 z-10">架构师视角</h3>
+                <ul class="text-3xl space-y-4 text-slate-300 z-10 text-center">
+                    <li>流量入口 → 数据库</li>
+                    <li>拆分 · 缓冲 · 防御</li>
+                    <li>设计哲学 + 落地工具</li>
+                </ul>
+                <div class="mt-8 px-4 py-2 bg-green-500/20 text-green-300 rounded text-xl z-10">
+                    ✅ 全链路方案
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: Strategy 1 - Split -->
+    <div class="slide" id="slide-3">
+        <div class="absolute top-10 left-10 text-8xl font-black text-slate-800 select-none">01</div>
+        <h2 class="text-7xl font-bold mb-12"><span class="text-blue-400">第一招：拆分</span> <span class="text-4xl text-slate-400 font-normal">（分而治之）</span></h2>
+
+        <div class="grid grid-cols-2 gap-16 w-full max-w-7xl">
+            <!-- Service Split -->
+            <div class="step space-y-6">
+                <div class="card-glass p-8 rounded-2xl border-l-8 border-blue-500">
+                    <div class="flex items-center gap-6 mb-4">
+                        <i data-lucide="layers" class="w-16 h-16 text-blue-400"></i>
+                        <h3 class="text-5xl font-bold">服务拆分</h3>
+                    </div>
+                    <p class="text-3xl text-slate-300 leading-relaxed">单体 → 微服务</p>
+                </div>
+                
+                <div class="card-glass p-8 rounded-2xl bg-blue-500/10">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-2xl text-blue-300 block mb-2">落地工具</span>
+                            <span class="text-5xl font-bold text-white">Nacos</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xl text-slate-400 block">核心价值</span>
+                            <span class="text-2xl text-white">注册发现 / 动态配置</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Split -->
+            <div class="step space-y-6">
+                <div class="card-glass p-8 rounded-2xl border-l-8 border-purple-500">
+                    <div class="flex items-center gap-6 mb-4">
+                        <i data-lucide="database" class="w-16 h-16 text-purple-400"></i>
+                        <h3 class="text-5xl font-bold">数据拆分</h3>
+                    </div>
+                    <p class="text-3xl text-slate-300 leading-relaxed">垂直分库 + 水平分表</p>
+                </div>
+
+                <div class="card-glass p-8 rounded-2xl bg-purple-500/10">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-2xl text-purple-300 block mb-2">落地工具</span>
+                            <span class="text-4xl font-bold text-white">ShardingSphere</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xl text-slate-400 block">避坑指南</span>
+                            <span class="text-2xl text-white">Seata 分布式事务</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Strategy 2 - Buffer -->
+    <div class="slide" id="slide-4">
+        <div class="absolute top-10 left-10 text-8xl font-black text-slate-800 select-none">02</div>
+        <h2 class="text-7xl font-bold mb-8"><span class="text-yellow-400">第二招：缓冲</span> <span class="text-4xl text-slate-400 font-normal">（以柔克刚）</span></h2>
+
+        <div class="flex flex-col items-center w-full max-w-6xl gap-6">
+            
+            <!-- Traffic Flow -->
+            <div class="step w-full flex justify-center">
+                <div class="bg-red-500/20 text-red-400 px-12 py-4 rounded-full text-3xl font-bold animate-pulse flex items-center gap-4">
+                    <i data-lucide="zap" class="w-8 h-8"></i> 瞬时洪峰流量
+                </div>
+            </div>
+            
+            <i data-lucide="arrow-down" class="step w-12 h-12 text-slate-500"></i>
+
+            <!-- Layer 1: Redis -->
+            <div class="step w-full card-glass p-8 rounded-2xl border-l-8 border-red-500 flex justify-between items-center">
+                <div class="flex items-center gap-6">
+                    <div class="bg-red-500 p-4 rounded-xl">
+                        <i data-lucide="shield-check" class="w-12 h-12 text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-4xl font-bold text-white">第一层：缓存前置</h3>
+                        <p class="text-2xl text-slate-400 mt-2">Redis 过滤无效请求 / 读热点</p>
+                    </div>
+                </div>
+                <div class="text-right space-y-2">
+                    <div class="px-4 py-1 bg-slate-700 rounded text-lg text-slate-300">防穿透 (Bloom Filter)</div>
+                    <div class="px-4 py-1 bg-slate-700 rounded text-lg text-slate-300">防击穿 (互斥锁)</div>
+                    <div class="px-4 py-1 bg-slate-700 rounded text-lg text-slate-300">防雪崩 (随机过期)</div>
+                </div>
+            </div>
+
+            <i data-lucide="arrow-down" class="step w-12 h-12 text-slate-500"></i>
+
+            <!-- Layer 2: MQ -->
+            <div class="step w-full card-glass p-8 rounded-2xl border-l-8 border-orange-500 flex justify-between items-center">
+                <div class="flex items-center gap-6">
+                    <div class="bg-orange-500 p-4 rounded-xl">
+                        <i data-lucide="container" class="w-12 h-12 text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-4xl font-bold text-white">第二层：异步削峰</h3>
+                        <p class="text-2xl text-slate-400 mt-2">RocketMQ / Kafka</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-3xl font-bold text-orange-400">同步 转 异步</div>
+                    <div class="text-xl text-slate-400 mt-1">注意：幂等性设计</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Slide 5: Strategy 3 - Defense -->
+    <div class="slide" id="slide-5">
+        <div class="absolute top-10 left-10 text-8xl font-black text-slate-800 select-none">03</div>
+        <h2 class="text-7xl font-bold mb-12"><span class="text-green-400">第三招：防御</span> <span class="text-4xl text-slate-400 font-normal">（底线思维）</span></h2>
+
+        <div class="relative w-[800px] h-[600px] flex items-center justify-center">
+            
+            <!-- Outer Ring: Gateway -->
+            <div class="step absolute inset-0 border-4 border-dashed border-slate-600 rounded-full flex items-start justify-center pt-10">
+                <div class="bg-slate-800 px-6 py-2 rounded-full -mt-6 border border-slate-600 flex items-center gap-3">
+                    <i data-lucide="globe" class="w-8 h-8 text-blue-400"></i>
+                    <span class="text-2xl font-bold text-blue-400">网关防线 (Nginx)</span>
+                </div>
+                <div class="absolute top-32 text-xl text-slate-400">IP 限流 / 防爬虫</div>
+            </div>
+
+            <!-- Inner Ring: App -->
+            <div class="step absolute inset-[100px] border-4 border-green-500/30 bg-green-500/5 rounded-full flex items-start justify-center pt-10 pulse-ring">
+                <div class="bg-green-900 px-6 py-2 rounded-full -mt-6 border border-green-500 flex items-center gap-3">
+                    <i data-lucide="server" class="w-8 h-8 text-green-400"></i>
+                    <span class="text-2xl font-bold text-green-400">应用防线 (Sentinel)</span>
+                </div>
+            </div>
+
+            <!-- Core Actions -->
+            <div class="step grid grid-cols-3 gap-6 z-10 w-[80%]">
+                <div class="bg-slate-800 p-6 rounded-xl text-center border border-slate-600">
+                    <i data-lucide="octagon" class="w-12 h-12 text-red-400 mx-auto mb-3"></i>
+                    <h3 class="text-3xl font-bold">限流</h3>
+                    <p class="text-slate-400">QPS 保护</p>
+                </div>
+                <div class="bg-slate-800 p-6 rounded-xl text-center border border-slate-600">
+                    <i data-lucide="scissors" class="w-12 h-12 text-yellow-400 mx-auto mb-3"></i>
+                    <h3 class="text-3xl font-bold">熔断</h3>
+                    <p class="text-slate-400">防雪崩</p>
+                </div>
+                <div class="bg-slate-800 p-6 rounded-xl text-center border border-slate-600">
+                    <i data-lucide="arrow-down-circle" class="w-12 h-12 text-blue-400 mx-auto mb-3"></i>
+                    <h3 class="text-3xl font-bold">降级</h3>
+                    <p class="text-slate-400">保核心</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: Summary -->
+    <div class="slide" id="slide-6">
+        <h2 class="text-6xl font-bold mb-10 text-center">百万并发架构 <span class="text-gradient">全景总结</span></h2>
+        
+        <div class="grid grid-cols-3 gap-8 w-full max-w-[90vw] h-[60vh]">
+            <!-- Column 1 -->
+            <div class="step card-glass rounded-2xl p-8 flex flex-col items-center border-t-8 border-blue-500">
+                <h3 class="text-5xl font-bold mb-8 text-blue-400">拆分层</h3>
+                <div class="flex-1 w-full space-y-6">
+                    <div class="bg-slate-800 p-6 rounded-xl flex items-center gap-4">
+                        <span class="text-4xl font-bold text-white">Nacos</span>
+                        <span class="text-xl text-slate-400">服务治理</span>
+                    </div>
+                    <div class="bg-slate-800 p-6 rounded-xl flex items-center gap-4">
+                        <span class="text-4xl font-bold text-white">Sharding</span>
+                        <span class="text-xl text-slate-400">分库分表</span>
+                    </div>
+                </div>
+                <div class="mt-auto text-2xl text-slate-500 font-bold">解决：扩展性</div>
+            </div>
+
+            <!-- Column 2 -->
+            <div class="step card-glass rounded-2xl p-8 flex flex-col items-center border-t-8 border-yellow-500">
+                <h3 class="text-5xl font-bold mb-8 text-yellow-400">缓冲层</h3>
+                <div class="flex-1 w-full space-y-6">
+                    <div class="bg-slate-800 p-6 rounded-xl flex items-center gap-4">
+                        <span class="text-4xl font-bold text-white">Redis</span>
+                        <span class="text-xl text-slate-400">三座大山</span>
+                    </div>
+                    <div class="bg-slate-800 p-6 rounded-xl flex items-center gap-4">
+                        <span class="text-4xl font-bold text-white">RocketMQ</span>
+                        <span class="text-xl text-slate-400">削峰填谷</span>
+                    </div>
+                </div>
+                <div class="mt-auto text-2xl text-slate-500 font-bold">解决：吞吐量</div>
+            </div>
+
+            <!-- Column 3 -->
+            <div class="step card-glass rounded-2xl p-8 flex flex-col items-center border-t-8 border-green-500">
+                <h3 class="text-5xl font-bold mb-8 text-green-400">防御层</h3>
+                <div class="flex-1 w-full space-y-6">
+                    <div class="bg-slate-800 p-6 rounded-xl flex items-center gap-4">
+                        <span class="text-4xl font-bold text-white">Nginx</span>
+                        <span class="text-xl text-slate-400">网关限流</span>
+                    </div>
+                    <div class="bg-slate-800 p-6 rounded-xl flex items-center gap-4">
+                        <span class="text-4xl font-bold text-white">Sentinel</span>
+                        <span class="text-xl text-slate-400">熔断降级</span>
+                    </div>
+                </div>
+                <div class="mt-auto text-2xl text-slate-500 font-bold">解决：稳定性</div>
+            </div>
+        </div>
+
+        <div class="step mt-12 flex items-center gap-4 opacity-70">
+            <i data-lucide="thumbs-up" class="w-10 h-10 text-blue-400"></i>
+            <span class="text-3xl font-bold">关注我，下期见！</span>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        // Map to track current step for each slide
+        const slideSteps = new Array(totalSlides).fill(-1);
+
+        function updateSlides() {
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active', 'prev');
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                } else if (index < currentSlide) {
+                    slide.classList.add('prev');
+                }
+            });
+        }
+
+        function nextStep() {
+            const currentSlideEl = slides[currentSlide];
+            const steps = currentSlideEl.querySelectorAll('.step');
+            
+            if (slideSteps[currentSlide] < steps.length - 1) {
+                // Reveal next step in current slide
+                slideSteps[currentSlide]++;
+                steps[slideSteps[currentSlide]].classList.add('visible');
+            } else {
+                // Move to next slide
+                if (currentSlide < totalSlides - 1) {
+                    currentSlide++;
+                    updateSlides();
+                }
+            }
+        }
+
+        function prevStep() {
+            const currentSlideEl = slides[currentSlide];
+            const steps = currentSlideEl.querySelectorAll('.step');
+
+            if (slideSteps[currentSlide] >= 0) {
+                // Hide current step
+                steps[slideSteps[currentSlide]].classList.remove('visible');
+                slideSteps[currentSlide]--;
+            } else {
+                // Move to previous slide
+                if (currentSlide > 0) {
+                    currentSlide--;
+                    updateSlides();
+                }
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                nextStep();
+            } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                prevStep();
+            }
+        });
+    </script>
+</body>
+</html>
