@@ -84,14 +84,3 @@
 
 **<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">所谓的“包装”，不是让你去编造没做过的事。</font>**<font style="color:rgb(0, 0, 0);"> 而是让你学会</font>**<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">戴着“显微镜”看项目</font>**<font style="color:rgb(0, 0, 0);">。不要因为现在的 CRUD 而自卑，深挖下去，全是黄金。</font>
 
-![1769319849779-9b54a85d-3314-49db-b9c6-076422eb1f1a.png](./img/oxkapznd_pdGdvRj/1769319849779-9b54a85d-3314-49db-b9c6-076422eb1f1a-113059.png)
-
-**<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">🔥</font>****<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">评论区互动福利</font>****<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">🔥</font>**
-
-**<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">评论区留言：你的 CRUD 项目里，藏着什么可以深挖的技术点？</font>**<font style="color:rgb(0, 0, 0);"> （比如：一个简单的导入功能，是不是用到了异步线程池？一个简单的查询，是不是用到了索引优化？）</font>
-
-**<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">我会从评论区精选 3 位回答最走心的兄弟，免费为你一对一深度修改简历！</font>**
-
-<font style="color:rgb(0, 0, 0);">觉得这篇干货对你有用的，</font>**<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">点个赞，转发</font>**<font style="color:rgb(0, 0, 0);">给身边正在找工作的兄弟。</font>
-
-<font style="color:rgb(0, 0, 0);">我是Fox，关注公众号【</font>**<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">Fox 爱分享</font>**<font style="color:rgb(0, 0, 0);">】，只讲书上不写的实战坑、面试避坑技巧，带你少走弯路、轻松拿高薪！</font>

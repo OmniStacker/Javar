@@ -12,10 +12,5 @@ RestTemplate是通过建立http连接进行远程访问的，其实http连接也
 
 当然
 
-<font style="color:rgb(77, 77, 77);">1.http连接池不是万能的,过多的长连接会占用服务器资源,导致其他服务受阻</font>  
 <font style="color:rgb(77, 77, 77);">2.http连接池只适用于请求是经常访问同一主机(或同一个接口)的情况下</font>  
 <font style="color:rgb(77, 77, 77);">3.并发数不高的情况下资源利用率低下</font>
-
-<font style="color:rgb(77, 77, 77);"></font>
-
-<font style="color:rgb(77, 77, 77);">好如果视频对你有帮助可以三连支持， 需要RestTemplate连接池示例代码可以评论区扣666</font>

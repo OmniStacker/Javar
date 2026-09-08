@@ -690,7 +690,6 @@ WHERE
 
 **<font style="color:black;">觉得有用的兄弟，</font>****<font style="color:black;">点个赞，收藏起来</font>****<font style="color:black;">，万一下次面试就用上了呢！</font>**
 
-**<font style="color:black;">关注公众号【Fox爱分享】，只讲那些书上不写的实战坑。</font>**
 
 <font style="color:black;">  
 </font>

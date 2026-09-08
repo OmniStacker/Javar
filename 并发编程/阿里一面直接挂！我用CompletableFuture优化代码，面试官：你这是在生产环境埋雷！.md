@@ -169,6 +169,4 @@ CompletableFuture.supplyAsync(..., executor)
 
 **<font style="color:rgb(130, 127, 196);">觉得这篇真的能帮你避坑的，点个赞，收藏起来。</font>**<font style="color:rgb(0, 0, 0);"> 别等生产环境炸了，才想起来回来翻这篇救命文。</font>
 
-<font style="color:rgb(0, 0, 0);">想了解更多高频面试题，欢迎关注微信公众号【</font>**<font style="color:rgb(130, 127, 196);">Fox爱分享</font>**<font style="color:rgb(0, 0, 0);">】，领取百万字面试宝典。</font>
 
-> <font style="color:rgb(0, 0, 0);">文章首发地址：</font><https://mp.weixin.qq.com/s/6X_TS5CC1Itzx5YuXWD0WQ>

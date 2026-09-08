@@ -506,4 +506,4 @@ public class ExpenseStateMachine {
 #### <font style="color:rgb(79, 79, 79);">五、相关阅读</font>
 拓展阅读 ： [一文分清OA、CRM、ERP、MES、HRM、SCM、WMS、KMS等](https://www.yuque.com/tulingzhouyu/db22bv/csngc0dv7p5vi2fg)
 
-<font style="color:rgb(77, 77, 77);">后记：如有补充和纠错请在评论区指出，如有小伙伴有类似项目可以发在评论区。</font>
+

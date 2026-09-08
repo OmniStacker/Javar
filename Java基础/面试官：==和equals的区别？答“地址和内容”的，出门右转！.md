@@ -189,8 +189,6 @@ public static Integer valueOf(int i) {
 
 **<font style="color:rgb(130, 127, 196);">觉得有收获的兄弟，点个“在看”，这就是对我最大的支持！</font>**
 
-<font style="color:rgb(0, 0, 0);">关注公众号【</font>**<font style="color:rgb(130, 127, 196);">Fox爱分享</font>**<font style="color:rgb(0, 0, 0);">】，只讲那些书上不写的实战坑。</font>
 
 <font style="color:rgb(0, 0, 0);"></font>
 
-> <font style="color:rgb(0, 0, 0);">文章首发地址：</font><https://mp.weixin.qq.com/s/8OZj3l_RGZDdvRqwAImvKQ>
