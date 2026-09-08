@@ -1,4 +1,4 @@
-# 分库分表后如何进行跨库 Join？从青铜到王者的五大解决方案
+﻿# 分库分表后如何进行跨库 Join？从青铜到王者的五大解决方案
 
 <font style="color:rgb(38, 38, 38);">在微服务架构和海量数据存储的驱动下，数据库的“分库分表”已从一个高级选项，演变为许多系统的标准配置。它极大地提升了系统的水平扩展能力和写入性能。然而，凡事有利必有弊，曾经在单体数据库中简单至极的 </font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">JOIN</font></code><font style="color:rgb(38, 38, 38);"> 操作，在数据被物理分割到不同数据库实例后，变成了一个棘手且无法回避的难题。</font>
 
@@ -111,7 +111,3 @@
 * **<font style="color:rgb(38, 38, 38);">临时、低频的后台查询</font>**<font style="color:rgb(38, 38, 38);">：</font>**<font style="color:rgb(38, 38, 38);">应用层整合</font>**<font style="color:rgb(38, 38, 38);">作为一种简单快速的方案，偶尔也能派上用场。</font>
 
 <font style="color:rgb(38, 38, 38);">理解并掌握这五种方案的精髓与权衡，你就能在面对分库分表带来的 </font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">JOIN</font></code><font style="color:rgb(38, 38, 38);"> 难题时，游刃有余，稳操胜券。</font>
-
-
-> 更新: 2025-10-22 14:21:23  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ggzs2b9buf7n2xqd>

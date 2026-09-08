@@ -1,4 +1,4 @@
-# 接入AI网关Higress实现多个AI大模型的无缝切换，比如当deepseek调用失败，可以降级调用qwq-32b
+﻿# 接入AI网关Higress实现多个AI大模型的无缝切换，比如当deepseek调用失败，可以降级调用qwq-32b
 
 <font style="color:rgb(6, 6, 7);">近期，通义千问发布了一款全新的推理模型 QwQ-32B。在各类基准测试中，这个拥有 320 亿参数的模型展现出了与 DeepSeek-R1（6710 亿参数）相当的性能。这意味着：</font>
 
@@ -163,7 +163,3 @@ public class ChatModelController {
 4）测试
 
 ![1741765469155-163d5d69-d4e7-44dd-bfbd-469f7ed6dda1.png](./img/0L-CuNkt1mXzFGRf/1741765469155-163d5d69-d4e7-44dd-bfbd-469f7ed6dda1-056111.png)
-
-
-> 更新: 2025-04-07 17:02:39  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lca70bns0cpw7sgl>

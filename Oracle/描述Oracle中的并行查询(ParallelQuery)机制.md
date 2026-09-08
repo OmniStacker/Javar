@@ -1,4 +1,4 @@
-# 描述Oracle中的并行查询(Parallel Query)机制
+﻿# 描述Oracle中的并行查询(Parallel Query)机制
 
 #### <font style="color:rgba(6, 8, 31, 0.88);">1. 并行查询基本概念</font>
 <font style="color:rgba(6, 8, 31, 0.88);">并行查询是Oracle数据库提供的一种高级查询优化技术，通过将单个查询任务分解为多个可并行执行的子任务，利用多CPU/多核处理器同时工作，显著提高大规模数据处理的性能。</font>
@@ -189,8 +189,3 @@ public class ParallelQueryBenchmark {
 + <font style="color:rgba(6, 8, 31, 0.88);">平衡系统资源开销</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">在Java应用中，需要结合Oracle JDBC驱动和数据库端配置，精细控制并行查询的执行策略。</font>
-
-
-
-> 更新: 2025-01-25 13:57:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ozc5dldz8dof72wl>

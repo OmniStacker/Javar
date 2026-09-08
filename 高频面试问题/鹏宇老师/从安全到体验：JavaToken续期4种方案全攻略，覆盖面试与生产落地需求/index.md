@@ -1,4 +1,4 @@
-# 从安全到体验：Java Token 续期 4 种方案全攻略，覆盖面试与生产落地需求
+﻿# 从安全到体验：Java Token 续期 4 种方案全攻略，覆盖面试与生产落地需求
 
 ## <font style="color:rgb(0, 0, 0);">一、引言</font>
 
@@ -549,7 +549,3 @@ request.interceptors.response.use(
 * <font style="color:rgb(0, 0, 0);">内部系统可简化为滑动窗口机制，降低开发成本。</font>
 
 <font style="color:rgb(0, 0, 0);">同时，需注意 Token 的存储安全（如 Access Token 存内存、Refresh Token 存 HttpOnly Cookie）、黑名单管理（Redis 实现）、异常监控（如异地续期告警），进一步提升系统安全性。</font>
-
-
-> 更新: 2025-10-08 17:29:25  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/uzpnpipmoxzszuti>

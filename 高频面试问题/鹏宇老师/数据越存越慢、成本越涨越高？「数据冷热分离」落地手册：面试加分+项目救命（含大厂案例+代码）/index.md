@@ -1,4 +1,4 @@
-# 数据越存越慢、成本越涨越高？「数据冷热分离」落地手册：面试加分 + 项目救命（含大厂案例 + 代码）
+﻿# 数据越存越慢、成本越涨越高？「数据冷热分离」落地手册：面试加分 + 项目救命（含大厂案例 + 代码）
 
 <font style="color:rgb(0, 0, 0);">在业务爆发期，你是否遇到过这样的困境：</font>
 
@@ -538,7 +538,3 @@ PARTITION BY RANGE (TO_DAYS(create_time)) (
 <font style="color:rgb(0, 0, 0);background-color:rgba(0, 0, 0, 0);">按照本文的方案，你可以快速在项目中落地冷热分离，既解决性能问题，又控制成本 —— 下次面试官再问，你就能自信地从原理讲到代码了！</font>
 
 ![1761902851530-78055b51-c2b9-4964-aabb-a178cc77cef3.png](./img/Hu3lwreh16CT56wD/1761902851530-78055b51-c2b9-4964-aabb-a178cc77cef3-969886.png)
-
-
-> 更新: 2025-10-31 17:27:45  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xaforhfbkvay9cgg>

@@ -1,4 +1,4 @@
-# 什么情况线程会进入 WAITING 状态
+﻿# 什么情况线程会进入 WAITING 状态
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -85,7 +85,3 @@ public class WaitingStateDemo {
 **3. 问：JUC 的 **<code>**ReentrantLock.lock()**</code>** 拿不到锁时，线程是什么状态？**
 
 **Fox：** 这是高阶坑！ 虽然 `synchronized` 拿不到锁是 BLOCKED，但 **JUC 的锁**底层用的是 `LockSupport.park()`。 所以，`ReentrantLock` 等待锁时，线程状态实际上是 **WAITING**（或者 TIMED\_WAITING），而不是 BLOCKED！这一点能直接证明你看过 AQS 源码。
-
-
-> 更新: 2026-01-08 14:16:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/nfaeqg2m5a0klggo>

@@ -1,4 +1,4 @@
-# PostgreSQL中的WAL（预写日志）机制是什么？它如何保证数据的持久性和一致性？
+﻿# PostgreSQL中的WAL（预写日志）机制是什么？它如何保证数据的持久性和一致性？
 
 <font style="color:rgba(6, 8, 31, 0.88);">PostgreSQL的WAL（Write-Ahead Logging）机制是数据库事务处理和持久性的核心保障机制。下面我将详细解释WAL的工作原理和重要性。</font>
 
@@ -148,7 +148,3 @@ public class WALSimulator {
 * <font style="color:rgba(6, 8, 31, 0.88);">大规模在线事务处理系统</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">总的来说，WAL是PostgreSQL确保数据可靠性和一致性的关键机制，通过精细的日志记录和恢复策略，为数据库提供了强大的故障保护能力。</font>
-
-
-> 更新: 2025-01-25 13:20:10  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bx898gexoe27o53g>

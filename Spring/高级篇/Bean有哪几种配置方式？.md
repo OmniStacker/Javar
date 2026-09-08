@@ -1,4 +1,4 @@
-# Bean有哪几种配置方式？
+﻿# Bean有哪几种配置方式？
 
 <font style="color:rgb(36, 41, 47);">在Spring框架中，有以下几种常见的Bean配置方式：</font>
 
@@ -13,7 +13,3 @@
 6. <font style="color:rgb(36, 41, 47);">JSR-330：</font><font style="color:rgb(77, 77, 77);">Spring提供了对JSR-330标准注释(</font>[<font style="color:rgb(36, 41, 47);">依赖注入</font>](https://so.csdn.net/so/search?q=%E4%BE%9D%E8%B5%96%E6%B3%A8%E5%85%A5\&spm=1001.2101.3001.7020)<font style="color:rgb(77, 77, 77);">)的支持，</font><font style="color:rgb(36, 41, 47);">可以使用</font><font style="color:rgb(86, 101, 115);background-color:rgb(246, 248, 250);">@Named 或 @ManagedBean替代</font><font style="color:rgb(36, 41, 47);">@Component，但是需要</font><code><font style="color:rgb(0, 0, 0);background-color:rgb(250, 250, 250);">javax.inject</font></code><font style="color:rgb(0, 0, 0);background-color:rgb(250, 250, 250);">依赖。</font>
 
 <font style="color:rgb(36, 41, 47);">这些配置方式可以单独使用，也可以结合使用，根据项目需求和个人偏好选择适合的配置方式。</font>
-
-
-> 更新: 2023-09-06 21:21:05  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/kguwdz5lfcw6kxsg>

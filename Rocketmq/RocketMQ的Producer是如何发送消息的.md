@@ -1,4 +1,4 @@
-# RocketMQ的Producer是如何发送消息的
+﻿# RocketMQ的Producer是如何发送消息的
 
 <font style="color:rgba(0, 0, 0, 0.82);">RocketMQ的Producer发送消息过程涉及多个步骤，包括初始化、消息创建、发送方式选择等。让我们通过代码示例来详细解析这个过程。</font>
 
@@ -146,7 +146,3 @@ producer.setRetryTimesWhenSendAsyncFailed(3);  // 异步发送失败时重试3�
 5. <font style="color:rgba(0, 0, 0, 0.82);">Producer实例线程安全：可在多线程环境中共享。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过以上详细说明和代码示例，我们可以看到RocketMQ的Producer发送消息涉及多个方面，包括初始化、消息创建、多种发送方式、批量发送等。正确理解和使用这些特性，可以帮助开发者更好地利用RocketMQ来构建高效、可靠的消息传输系统。</font>
-
-
-> 更新: 2024-08-18 21:05:05  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ws61ctgxr8kv3378>

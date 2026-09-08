@@ -1,4 +1,4 @@
-# XXL-Job 分布式锁疑云：为何主键约束在高并发下“失效”？
+﻿# XXL-Job 分布式锁疑云：为何主键约束在高并发下“失效”？
 
 ### <font style="color:rgb(38, 38, 38);">引言：一个“本不该发生”的并发问题</font>
 
@@ -102,7 +102,3 @@ public void processTask(Task task) {
 * **<font style="color:rgb(38, 38, 38);">信任但要核实</font>**<font style="color:rgb(38, 38, 38);">：不要想当然地认为框架或数据库会帮你搞定一切。</font>
 
 <font style="color:rgb(38, 38, 38);">下一次，当遇到类似的“灵异事件”时，不妨从这三个角度切入，或许就能迅速找到那个隐藏在代码深处的“魔鬼”。</font>
-
-
-> 更新: 2025-10-24 13:11:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lfgs8qbq2pawghcw>

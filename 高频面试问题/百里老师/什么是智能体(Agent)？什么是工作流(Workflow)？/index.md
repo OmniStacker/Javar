@@ -1,4 +1,4 @@
-# 什么是智能体 (Agent)？什么是工作流 (Workflow)？
+﻿# 什么是智能体 (Agent)？什么是工作流 (Workflow)？
 
 <font style="color:rgb(38, 38, 38);">在 AI 应用落地的过程中，我们经常听到这三个词：Workflow（工作流）、Agent（智能体）和 Multi-Agent（多智能体）。它们不仅仅是技术名词的堆砌，更代表了 AI 解决问题时三种截然不同的思维范式。</font>
 
@@ -64,8 +64,3 @@
 ---
 
 **<font style="color:rgb(38, 38, 38);">总结</font>**<font style="color:rgb(38, 38, 38);">：AI 架构的进化并非替代关系，而是包容关系。成熟的 AI 应用往往是混合架构——在 Workflow 的骨架中嵌入 Agent 的大脑，在需要的时候通过 Multi-Agent 进行协作。</font>
-
-
-
-> 更新: 2025-12-29 22:11:00  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ogcuc5h9b657gxyu>

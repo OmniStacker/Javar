@@ -1,4 +1,4 @@
-# JVM 调优，到底是调什么？
+﻿# JVM 调优，到底是调什么？
 
 <font style="color:rgb(38, 38, 38);">Java 虚拟机（JVM）是一个高度复杂的运行时环境，其性能表现取决于内存管理、垃圾回收算法以及即时编译器的协同工作。对于资深开发者而言，调优不应止步于对启动参数的试错，而应建立对底层机制的深刻理解。</font>
 
@@ -65,7 +65,3 @@
   * **<font style="color:rgb(38, 38, 38);">架构缺陷</font>**<font style="color:rgb(38, 38, 38);">：缺乏缓存层导致数据库击穿。</font>
 
 **<font style="color:rgb(38, 38, 38);">总结</font>**<font style="color:rgb(38, 38, 38);"> JVM 调优不应本末倒置。在调整任何 JVM 参数之前，首先应利用 Profiler 工具（如 JProfiler, Async-profiler）排查代码层面的热点和瓶颈。只有当代码逻辑和架构设计均已优化，且问题依然存在时，JVM 参数调优才具有真正的价值。</font>
-
-
-> 更新: 2025-12-18 21:42:30  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gee9n3oo80xpsgvg>

@@ -1,4 +1,4 @@
-# 说下类加载器机制与双亲委派
+﻿# 说下类加载器机制与双亲委派
 
 <font style="color:rgba(0, 0, 0, 0.82);">Java 的类加载器机制与双亲委派模型是 Java 虚拟机（JVM）加载类文件时采用的一种体系结构。它用于确保 Java 应用程序中类的单一性、安全性和加载顺序。</font>
 
@@ -88,7 +88,3 @@ public class CustomClassLoader extends ClassLoader {
 * **<font style="color:rgba(0, 0, 0, 0.82);">安全性</font>**<font style="color:rgba(0, 0, 0, 0.82);">：双亲委派模型帮助防止加载非法类或重复类，保证核心库的安全。</font>
 * **<font style="color:rgba(0, 0, 0, 0.82);">扩展性</font>**<font style="color:rgba(0, 0, 0, 0.82);">：自定义类加载器允许开发者改变类加载行为（如从数据库、网络等加载类），在插件系统中非常有用。</font>
 * **<font style="color:rgba(0, 0, 0, 0.82);">单一性</font>**<font style="color:rgba(0, 0, 0, 0.82);">：确保核心类由一个统一的类加载器进行加载，避免冲突和不一致。在大多数情况下，开发者不需要实现自己的类加载器，但了解它的机制对于深入理解 Java 执行环境是十分有益的。</font>
-
-
-> 更新: 2024-08-09 16:01:44  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hgkf3zbuut09l7ig>

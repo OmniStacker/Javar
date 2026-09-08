@@ -1,4 +1,4 @@
-# Sentinel 与Hystrix的区别是什么
+﻿# Sentinel 与Hystrix的区别是什么
 
 #### **一、 标准面试回答模版（建议背诵）**
 
@@ -71,7 +71,3 @@ try {
 * **Sentinel：** 可以配置**热点参数规则**。它能自动识别出 `id=A` 的请求 QPS 超高，只对 A 限流，而 `id=B` 的请求依然流畅通过。 **这就是技术的业务价值！**”
 
 **3. 总结一句（满分收尾）：** “**Hystrix 是熔断器的先驱，值得尊敬；但 Sentinel 才是云原生时代的统治者。在高性能、微服务生态集成以及精细化流控上，Sentinel 是降维打击。**”
-
-
-> 更新: 2026-01-19 19:38:10  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mwr22wwg7p40zbfi>

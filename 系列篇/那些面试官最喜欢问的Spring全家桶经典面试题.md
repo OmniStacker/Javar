@@ -1,4 +1,4 @@
-# 🔥那些面试官最喜欢问的Spring全家桶经典面试题
+﻿# 🔥那些面试官最喜欢问的Spring全家桶经典面试题
 
 ## 单例Bean是单例模式吗？
 ![画板](./img/cxYXMQXjUem-9uqd/1675060239249-8eec8c4a-fcca-497a-b58e-ac35fec3e647-066319.jpeg)
@@ -349,7 +349,3 @@ SpringBoot在启动的过程中，会找出项目中所有的spring.factories文
 4. 而如果SpringMVC接收到一个请求，并进行处理后，发现要进行重定向，此时SpringMVC会向浏览器响应303，同时会告诉浏览器要重定向的路径，表示告诉浏览器要访问另外一个路径，由浏览器自己来访问，所以重定向是需要浏览器参与的，是不同的两个请求
 
 ## 
-
-
-> 更新: 2024-12-04 19:39:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/as67zos69fxr6zc0>

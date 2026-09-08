@@ -1,4 +1,4 @@
-# IDEA集成满血DeepSeek，写代码比抄作业还快！
+﻿# IDEA集成满血DeepSeek，写代码比抄作业还快！
 
 # 1、使用 Continue 插件
 
@@ -86,7 +86,3 @@ URL：填入 **<font style="color:rgb(0, 82, 255);">https://api.deepseek.com/bet
 “这是一个 orc 的实现逻辑，请优化识别效率与正确率”
 
 ![1738827116562-9d069555-946d-490b-8f8d-91c712817989.png](./img/IZgVRkEqdbsTeaL-/1738827116562-9d069555-946d-490b-8f8d-91c712817989-977001.png)
-
-
-> 更新: 2025-02-06 15:41:36  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mdm69mxldu64dfld>

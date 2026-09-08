@@ -1,4 +1,4 @@
-# Java 虚拟机的年轻代，为什么要划分两个 Survivor 区？
+﻿# Java 虚拟机的年轻代，为什么要划分两个 Survivor 区？
 
 <font style="color:rgb(64, 64, 64);">在Java虚拟机（JVM）的年轻代（Young Generation）中，划分两个Survivor区（通常称为S0和S1）是为了</font>**<font style="color:rgb(64, 64, 64);">优化垃圾回收（Garbage Collection, GC）的效率</font>**<font style="color:rgb(64, 64, 64);">，尤其是通过</font>**<font style="color:rgb(64, 64, 64);">复制算法（Copying Algorithm）</font>**<font style="color:rgb(64, 64, 64);">来减少内存碎片、降低GC停顿时间，并高效管理对象的存活周期。以下是具体原因和实现逻辑：</font>
 
@@ -79,8 +79,3 @@
 3. **<font style="color:rgb(64, 64, 64);">优化内存利用率</font>**<font style="color:rgb(64, 64, 64);">，平衡性能与资源消耗。</font>
 
 <font style="color:rgb(64, 64, 64);">这种设计是JVM对“</font>**<font style="color:rgb(64, 64, 64);">弱分代假说（Weak Generational Hypothesis）</font>**<font style="color:rgb(64, 64, 64);">”的实践，即大部分对象生命周期短暂，通过年轻代的高效回收机制显著提升GC效率。</font>
-
-
-
-> 更新: 2025-05-28 21:28:00  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vuzh472dhqz50xyh>

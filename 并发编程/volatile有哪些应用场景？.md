@@ -1,4 +1,4 @@
-# volatile有哪些应用场景？
+﻿# volatile有哪些应用场景？
 
 ## 一、 标准面试回答模版（建议背诵）
 
@@ -98,7 +98,3 @@ public class Singleton {
 5. **结果：** 线程 B 访问该对象属性时，可能会报错或读到错误的数据（空指针或默认值）。
 
 **结论：** 加上 `volatile` 后，会插入**内存屏障（Memory Barrier）**，强制禁止步骤 2 和 3 的重排序，保证了‘先初始化好，再把引用指过去’，从而保证了线程安全。”
-
-
-> 更新: 2026-01-08 16:22:58  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mxa0qbe0utm8m6kf>

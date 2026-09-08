@@ -1,4 +1,4 @@
-# JVM为什么使用元空间替换了永久代
+﻿# JVM为什么使用元空间替换了永久代
 
 <font style="color:rgba(0, 0, 0, 0.82);">在 Java 8 中，JVM 对内存管理进行了一个重要的变化，就是用元空间（Metaspace）替代了永久代（PermGen）。这个变更解决了一些持久性的问题，并提供了更多的灵活性和稳定性。</font>
 
@@ -32,7 +32,3 @@
 ### <font style="color:rgba(0, 0, 0, 0.82);">总结</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">引入元空间的设计变化让虚拟机层面对类元数据的存储和管理更有效率、灵活性更强，同时降低调试和运维复杂度，提升了 JVM 的性能和稳定性。这使得开发人员不再需要担心 PermGen 的调优及相应的内存管理问题，能更专注于应用的业务逻辑开发。</font>
-
-
-> 更新: 2024-08-09 16:05:49  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wkzrrp97dyetxr0v>

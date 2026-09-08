@@ -1,4 +1,4 @@
-# Synchronized与ReentrantLock的区别
+﻿# Synchronized与ReentrantLock的区别
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -118,7 +118,3 @@ public class LockDemo {
 “在并发竞争不激烈，且不需要高级功能（如公平锁、中断响应）时，\*\*首选 \*\*<code>**synchronized**</code>，因为它是 JVM 原生支持的，代码更简洁，且 JDK 1.6 之后引入了锁升级，性能和 `ReentrantLock` 差不多。
 
 只有当我们需要**精细化控制**（比如尝试加锁 `tryLock`、需要公平锁、或者需要 `Condition` 实现复杂的生产消费模型）时，才使用 `ReentrantLock`。”
-
-
-> 更新: 2026-01-08 13:41:04  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/siagvwuiuod0c9w1>

@@ -1,4 +1,4 @@
-# 两个100亿URL的文件怎么找交集？
+﻿# 两个100亿URL的文件怎么找交集？
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">在大厂后端、存储或大数据方向的面试中，“100 亿 URL 文件求交集” 是一道典型的 “看似简单，实则考察系统设计能力” 的高频题。很多候选人仅能说出 “用布隆过滤器” 这一单点技术，却在面试官的追问下暴露对 “海量数据处理逻辑、工程落地细节、可扩展性设计” 的认知短板 。本文将从</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">问题痛点拆解→常见误区分析→工业级方案落地→面试考察能力</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">四个维度，带你掌握这道题的完整解题思路。</font>
 
@@ -127,7 +127,3 @@
 * <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">面对扩展性要求，最后想 “用分布式架构（分片、读写分离）突破单机瓶颈”。</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">只有从 “单点技术思维” 升级为 “系统设计思维”，才能在大厂面试中脱颖而出 —— 这正是 “50 万年薪与 100 万年薪工程师” 的核心差距。</font>
-
-
-> 更新: 2025-10-07 14:13:48  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dg0vts3m4augvwvb>

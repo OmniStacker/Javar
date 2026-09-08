@@ -1,4 +1,4 @@
-# 分布式高频面试题：为什么深度分页是ES性能杀手？
+﻿# 分布式高频面试题：为什么深度分页是ES性能杀手？
 
 <font style="color:rgb(38, 38, 38);">在分布式搜索领域，Elasticsearch (ES) 以其强大的性能和可扩展性备受青睐。然而，一个看似无害的操作——</font>**<font style="color:rgb(38, 38, 38);">深度分页</font>**<font style="color:rgb(38, 38, 38);">（Deep Pagination），却常常成为潜伏在系统中的性能杀手。当用户请求跳转到搜索结果的第1000页、甚至10000页时，ES集群的CPU和内存可能会瞬间飙升，响应时间急剧恶化，严重时甚至导致集群假死。</font>
 
@@ -81,7 +81,3 @@
 * <code>**<font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">scroll</font>**</code><font style="color:rgb(38, 38, 38);">：是为特定任务——海量数据批量导出——而设计的专用工具，不应被用于常规的在线分页。</font>
 
 <font style="color:rgb(38, 38, 38);">最终，</font>**<font style="color:rgb(38, 38, 38);">“浅层用 </font>**<code>**<font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">from/size</font>**</code>**<font style="color:rgb(38, 38, 38);">，深层用 </font>**<code>**<font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">search_after</font>**</code>**<font style="color:rgb(38, 38, 38);">”</font>**<font style="color:rgb(38, 38, 38);"> 的动态切换策略，是在当今复杂的业务需求下，平衡用户体验与系统性能的最佳实战范式。掌握并善用它，将使您的Elasticsearch应用更加健壮和高效。</font>
-
-
-> 更新: 2025-11-04 17:12:37  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bv29gblq5s2k96og>

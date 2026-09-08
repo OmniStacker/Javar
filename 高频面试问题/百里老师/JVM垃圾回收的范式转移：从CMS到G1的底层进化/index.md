@@ -1,4 +1,4 @@
-# JVM 垃圾回收的范式转移：从 CMS 到 G1 的底层进化
+﻿# JVM 垃圾回收的范式转移：从 CMS 到 G1 的底层进化
 
 <font style="color:rgb(38, 38, 38);">在 Java 性能调优的历史长河中，从 CMS (Concurrent Mark Sweep) 到 G1 (Garbage-First) 的过渡，不仅仅是算法的升级，更是一次内存管理思想的</font>**<font style="color:rgb(38, 38, 38);">范式转移</font>**<font style="color:rgb(38, 38, 38);">。本文将结合可视化的架构图，深入剖析这两代垃圾回收器在内存布局、算法内核及执行模型上的本质差异。</font>
 
@@ -87,7 +87,3 @@
 3. **<font style="color:rgb(38, 38, 38);">告别 CMS</font>**<font style="color:rgb(38, 38, 38);">：除非维护遗留的 JDK 8 系统且无法升级，否则不应再将 CMS 作为新项目的选择。</font>
 
 <font style="color:rgb(38, 38, 38);">G1 的出现，通过 Region 化布局、可预测停顿模型和 SATB 算法，完美解决了大内存时代的 GC 痛点，是目前 JVM 生态中当之无愧的</font>**<font style="color:rgb(38, 38, 38);">中流砥柱</font>**<font style="color:rgb(38, 38, 38);">。</font>
-
-
-> 更新: 2025-12-09 20:22:54  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ehkrth2k904dhs4s>

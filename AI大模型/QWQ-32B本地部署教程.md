@@ -1,4 +1,4 @@
-# QWQ-32B本地部署教程
+﻿# QWQ-32B本地部署教程
 
 <font style="color:rgba(0, 0, 0, 0.9);">deepseek国内大模型一哥的位置都没坐热， 阿里就推出了qwq-32b， 性能差不多，相比deepeseek满血版的6710亿参数， qwq-32b只有320亿参数， 成本降低了20倍，本地部署成本只需要一张消费级显卡RXT8090即可，</font>**<font style="color:rgba(0, 0, 0, 0.9);">那么本地部署的需求也随之而来，很多人是有这个需求的。</font>**
 
@@ -75,8 +75,3 @@
 点击右下角的设置，设置好模型，选择Ollama API，最后选择已经安装好的模型就可以了。
 
 ![1741268365398-edf0eea2-420d-4094-8cc4-bb3e4be914a8.png](./img/2KsFD2gXYAk9XFcE/1741268365398-edf0eea2-420d-4094-8cc4-bb3e4be914a8-239192.png)
-
-
-
-> 更新: 2025-03-06 22:34:28  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gtahqihnugqkn5g4>

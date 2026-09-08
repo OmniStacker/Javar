@@ -1,4 +1,4 @@
-# AI Code Reviewer 技术详细设计文档
+﻿# AI Code Reviewer 技术详细设计文档
 
 ## 一、系统概述
 
@@ -764,7 +764,3 @@ cors:
 5. **可扩展架构**：预留多语言支持、换模型、加字段的演进空间
 
 > 这不是一个玩具 Demo，而是一个可以继续打磨、真正上线给团队用的 AI 代码审查工具骨架。
-
-
-> 更新: 2025-12-18 14:36:39  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/md6mx341hvcq539y>

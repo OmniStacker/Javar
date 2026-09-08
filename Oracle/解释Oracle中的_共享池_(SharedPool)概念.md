@@ -1,4 +1,4 @@
-# 解释Oracle中的"共享池"(Shared Pool)概念
+﻿# 解释Oracle中的"共享池"(Shared Pool)概念
 
 #### <font style="color:rgba(6, 8, 31, 0.88);">1. 共享池的基本概念</font>
 <font style="color:rgba(6, 8, 31, 0.88);">共享池是Oracle数据库内存结构中的关键组件，位于系统全局区域(SGA)，负责缓存和管理多种数据库对象。其主要目标是通过重用已解析的SQL语句、执行计划和数据库对象来提高系统性能。</font>
@@ -155,8 +155,3 @@ public class OptimizedConnectionPool {
 + <font style="color:rgba(6, 8, 31, 0.88);">定期监控和调优</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">需要注意的是，共享池的优化是一个持续的过程，需要根据具体业务场景和系统负载进行动态调整。</font>
-
-
-
-> 更新: 2025-01-25 13:42:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lkxy26iw6eg9ibkc>

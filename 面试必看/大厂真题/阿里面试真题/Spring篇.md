@@ -1,4 +1,4 @@
-# Spring篇
+﻿# Spring篇
 
 <font style="color:rgb(255, 129, 36);">设计思想&Beans</font>
 
@@ -333,10 +333,3 @@ mybatis如何防止sql注入？
 **<font style="color:rgb(62, 62, 62);">观察者模式：</font>**<font style="color:rgb(62, 62, 62);"> Spring 事件驱动模型就是观察者模式很经典的⼀个应⽤。</font>
 
 **<font style="color:rgb(62, 62, 62);">适配器模式：</font>**<font style="color:rgb(62, 62, 62);">Spring AOP 的增强或通知(Advice)使⽤到了适配器模式、spring MVC 中也是⽤到了适配器模式适配 Controller 。</font>
-
-
-
-
-
-> 更新: 2025-04-22 13:44:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vx7ltk4d4imugfzh>

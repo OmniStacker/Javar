@@ -1,4 +1,4 @@
-# MySQL自增id用完怎么办？
+﻿# MySQL自增id用完怎么办？
 
 <font style="color:rgb(59, 67, 81);">MySQL 里有很多自增的 id，每个自增 id 都是定义了初始值，然后不停地往上加步长。虽然自然数是没有上限的，但是在计算机里，只要定义了表示这个数的字节长度，那它就有上限。比如，无符号整型 (unsigned int) 是 4 个字节，上限就是2的32次方。</font>
 
@@ -205,7 +205,3 @@ do {
 2. <font style="color:rgb(59, 67, 81);">row\_id 达到上限后，则会归 0 再重新递增，如果出现相同的 row\_id，后写的数据会覆盖之前的数据。</font>
 
 <font style="color:rgb(59, 67, 81);">当然，在 MySQL 里还有别的自增 id，比如 x\_id、thread\_id、table\_id等等，如果用完了又会发生什么呢？大家可以一起在评论区咱们一起聊聊。下期再会~</font>
-
-
-> 更新: 2025-01-08 16:37:00  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/te3xwgo1cr4ostea>

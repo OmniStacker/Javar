@@ -1,4 +1,4 @@
-# 三步构建自然语言查询数据库：SQLChat + Ollama + OneAPI 实战指南
+﻿# 三步构建自然语言查询数据库：SQLChat + Ollama + OneAPI 实战指南
 
 ## <font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">引言：从SQL到自然语言的进化</font>
 
@@ -252,7 +252,3 @@ FROM orders o
 JOIN order_details od ON o.order_id = od.order_id
 GROUP BY o.order_id, o.total_amount
 ```
-
-
-> 更新: 2025-03-23 20:26:24  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hql2dtxeks54xxgp>

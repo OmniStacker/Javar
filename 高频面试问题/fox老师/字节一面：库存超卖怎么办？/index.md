@@ -1,4 +1,4 @@
-# 字节一面：库存超卖怎么办？
+﻿# 字节一面：库存超卖怎么办？
 
 ## <font style="color:rgb(38, 38, 38);">前言：一道让你与大厂失之交臂的题</font>
 
@@ -180,7 +180,3 @@ return 0
 ***
 
 **<font style="color:rgb(89, 89, 89);">最后，留个思考题：</font>**<font style="color:rgb(89, 89, 89);"> 如果使用Redis方案，如何解决Redis库存与数据库库存的最终一致性问题？欢迎在评论区留下你的见解！</font>
-
-
-> 更新: 2026-01-15 15:18:35  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/muvhom4oi6fz7t3y>

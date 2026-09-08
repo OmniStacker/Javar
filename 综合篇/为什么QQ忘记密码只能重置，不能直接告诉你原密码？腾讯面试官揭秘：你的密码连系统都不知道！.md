@@ -1,4 +1,4 @@
-# 为什么QQ忘记密码只能重置，不能直接告诉你原密码？腾讯面试官揭秘：你的密码连系统都不知道！
+﻿# 为什么QQ忘记密码只能重置，不能直接告诉你原密码？腾讯面试官揭秘：你的密码连系统都不知道！
 
 #### **<font style="color:rgb(64, 64, 64);">一个让千万网友抓狂的瞬间</font>**
 
@@ -113,7 +113,3 @@ System.out.println("SHA-256 Hash: " + hexString.toLowerCase());
 > <font style="color:rgb(64, 64, 64);">✅</font><font style="color:rgb(64, 64, 64);"> 校长信箱被塞满《重修爱情》小黄文</font>
 >
 > 教授含泪补刀：这届学生用密码的水平，还不如ATM机密码「666666」安全！
-
-
-> 更新: 2025-02-27 17:08:26  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gnf8lg73ncl1kg29>

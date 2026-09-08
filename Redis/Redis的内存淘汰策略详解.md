@@ -1,4 +1,4 @@
-# Redis的内存淘汰策略详解
+﻿# Redis的内存淘汰策略详解
 
 Redis中的内存淘汰策略用于在内存不足时选择要淘汰的键，以释放内存空间。以下是几种常见的内存淘汰策略：
 
@@ -213,10 +213,3 @@ uint8_t LFULogIncr(uint8_t counter) {
 <font style="color:rgb(51, 51, 51);">最后自己可以再看看官网， 两参的对照表 点击数与 factor分布 是不是很好理解了。</font>
 
 <font style="color:rgb(51, 51, 51);">现在面试官问你：redis怎么解决时效性问题？或者LFU/LFU算法怎么实现的？你应该能讲的出来了吧？</font>
-
-
-
-
-
-> 更新: 2025-06-19 08:59:21  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fn1agyxs0t15wlvu>

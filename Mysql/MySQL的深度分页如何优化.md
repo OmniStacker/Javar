@@ -1,4 +1,4 @@
-# MySQL的深度分页如何优化
+﻿# MySQL的深度分页如何优化
 
 <font style="color:rgba(0, 0, 0, 0.82);">在MySQL中，当涉及到深度分页时（offset较大），性能可能会显著下降。这是因为MySQL需要扫描和跳过大量行才能到达所需的偏移量。这会导致大量的磁盘I/O和内存消耗，进而影响查询性能。以下是一些常用的优化深度分页的方法：</font>
 
@@ -40,8 +40,3 @@ JOIN (
 <font style="color:rgba(0, 0, 0, 0.82);"></font>
 
 [bilibili](https://player.bilibili.com/player.html?bvid=BV1kFpue5Ehj&p=9&page=9&autoplay=0)
-
-
-
-> 更新: 2024-09-13 19:59:26  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/oqryrca5gyvy0y8q>

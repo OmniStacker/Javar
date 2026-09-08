@@ -1,4 +1,4 @@
-# 阿里面试：Redis缓存穿透怎么解决？别再只答缓存空值了
+﻿# 阿里面试：Redis缓存穿透怎么解决？别再只答缓存空值了
 
 # 
 大家好，我是Fox。
@@ -90,12 +90,3 @@
 
 > [文章首发地址](https://mp.weixin.qq.com/s/7Cpe6k-saIgSGNFr5sQQHA)
 >
-
-
-
-
-
-
-
-> 更新: 2026-03-13 13:38:59  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gnqg602y67rbn3he>

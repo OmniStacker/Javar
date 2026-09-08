@@ -1,4 +1,4 @@
-# IDEA + Spring Boot 的三种热加载方案，看完弄懂，不用加班
+﻿# IDEA + Spring Boot 的三种热加载方案，看完弄懂，不用加班
 
 ## **背景**
 
@@ -121,7 +121,3 @@
 插件市场搜索安装 Jrebel。然后试用 OR 想办法激活。
 
 使用时 采用 jrebel 启动，而不是 idea 原生启动，这个时候修改了文件内容，就会触发热部署。
-
-
-> 更新: 2024-09-27 20:42:47  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/orglz6qr4ggvgcuz>

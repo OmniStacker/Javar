@@ -1,4 +1,4 @@
-# Base理论
+﻿# Base理论
 
 <font style="color:rgb(74, 74, 74);">BASE（Basically Available、Soft state、Eventual consistency）是基于CAP理论逐步演化而来的，核心思想是即便不能达到强一致性（Strong consistency），也可以根据应用特点采用适当的方式来达到最终一致性（Eventual consistency）的效果。</font>
 
@@ -134,7 +134,3 @@
   * <font style="color:rgba(6, 8, 31, 0.88);">写优先设计，允许短暂的不一致性，最终确保分布式节点的完整同步。</font>
 
 ![1733908924769-3e7c9611-7b15-4632-a402-7d5f261584b6.png](./img/IQWZ2uUtdP7xcXkb/1733908924769-3e7c9611-7b15-4632-a402-7d5f261584b6-214639.png)
-
-
-> 更新: 2024-12-11 21:14:02  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vgzeyhvtsbc1u6ex>

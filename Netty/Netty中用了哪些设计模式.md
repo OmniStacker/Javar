@@ -1,4 +1,4 @@
-# Netty中用了哪些设计模式
+﻿# Netty中用了哪些设计模式
 
 <font style="color:rgba(0, 0, 0, 0.82);">Netty 作为一个高性能、异步事件驱动的网络框架，其实现中运用了多种设计模式，以提高代码复用性、可维护性以及系统的灵活性和可扩展性。下面列出了一些 Netty 中主要的设计模式及其实现：</font>
 
@@ -116,7 +116,3 @@ pipeline.addLast("handler", new MyBusinessLogicHandler());
 ```
 
 <font style="color:rgba(0, 0, 0, 0.82);">这些设计模式在 Netty 中被有机结合使用，使得 Netty 成为一个功能强大、灵活且高性能的网络通信框架。通过这些设计模式，Netty 能够更好地应对不同的应用场景和需求，提高开发效率与代码质量。</font>
-
-
-> 更新: 2024-08-05 20:39:28  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/yhaq1qke0gp6lf9l>

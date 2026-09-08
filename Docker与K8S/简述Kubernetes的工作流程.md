@@ -1,4 +1,4 @@
-# 简述Kubernetes的工作流程
+﻿# 简述Kubernetes的工作流程
 
 Kubernetes的工作流程可以分为以下几个步骤：
 
@@ -10,8 +10,3 @@ Kubernetes的工作流程可以分为以下几个步骤：
 6. Kubelet监控数据库变化，管理后续Pod的生命周期，发现被分配到它所在的节点上运行的那些Pod。如果找到新Pod，则会在该节点上运行这个新Pod。例如当有数据发送到主机时，将其路由到正确的pod或容器。
 
 Kubernetes通过以上步骤实现了自动化容器应用的管理和协调，使得容器部署更加简单、可靠和高效。
-
-
-
-> 更新: 2023-09-05 17:20:30  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/aynuopfh38rslxms>

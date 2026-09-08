@@ -1,4 +1,4 @@
-# Redis集群下主节点挂了会导致超卖吗？
+﻿# Redis集群下主节点挂了会导致超卖吗？
 
 <font style="color:rgb(36, 41, 47);">在Redis集群环境下，主节点挂掉确实可能导致超卖问题，主要原因在于Redis主从同步的异步机制和分布式锁的失效风险。以下是详细分析：</font>
 
@@ -34,7 +34,3 @@
 <font style="color:rgb(36, 41, 47);">Redis集群主节点挂掉</font>**<font style="color:rgb(36, 41, 47);">可能引发超卖</font>**<font style="color:rgb(36, 41, 47);">，核心风险在于</font>**<font style="color:rgb(36, 41, 47);">异步同步机制</font>**<font style="color:rgb(36, 41, 47);">和</font>**<font style="color:rgb(36, 41, 47);">分布式锁的局限性</font>**<font style="color:rgb(36, 41, 47);">。</font>
 
 <font style="color:rgb(36, 41, 47);">需通过RedLock、原子操作、Lua脚本等方案确保操作的原子性与锁的强一致性，从而规避超卖风险。</font>
-
-
-> 更新: 2025-05-22 13:16:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ao2fxqchp8pz5pss>

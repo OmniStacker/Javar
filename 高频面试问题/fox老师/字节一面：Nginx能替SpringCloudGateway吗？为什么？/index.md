@@ -1,4 +1,4 @@
-# 字节一面：Nginx 能替 Spring Cloud Gateway 吗？为什么？
+﻿# 字节一面：Nginx 能替 Spring Cloud Gateway 吗？为什么？
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">生成在后端面试中，“Nginx 和 Spring Cloud Gateway 能否互相替代” 是一道高频题，也是很多候选人容易栽跟头的地方 —— 如果只简单答 “能” 或 “不能”，大概率只能拿到基础分；但要是讲清二者的定位差异、能力边界和协作逻辑，就能让面试官眼前一亮。今天我们就从 “破题逻辑” 到 “实战方案”，彻底讲透这个问题。</font>
 
@@ -79,7 +79,3 @@
 <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">所以结论是：二者不是替代关系，而是协作关系，共同支撑微服务的流量治理。”</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">把这套逻辑讲清楚，面试官不仅能看到你对技术的理解，还能感受到你的实战思维 —— 这才是面试中真正的加分项。</font>
-
-
-> 更新: 2025-09-30 15:37:54  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pe1puy9tq2hbknes>

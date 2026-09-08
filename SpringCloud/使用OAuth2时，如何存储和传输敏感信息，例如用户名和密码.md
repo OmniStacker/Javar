@@ -1,4 +1,4 @@
-# 使用OAuth2时，如何存储和传输敏感信息，例如用户名和密码
+﻿# 使用OAuth2时，如何存储和传输敏感信息，例如用户名和密码
 
 #### **一、 标准面试回答模版（建议背诵）**
 
@@ -71,7 +71,3 @@ public class PasswordStorageDemo {
 4. **进阶大杀器 —— Token Rotation（令牌轮转）：** 为了极致安全，我们会在使用 Refresh Token 换取新 Access Token 时，**强制更换 Refresh Token**。 如果黑客偷了 Refresh Token 并在用户之前使用了它，当合法用户再来刷新时，服务器发现‘这个旧 Token 已经被用过了’，说明被盗了，直接**强制该用户下线**。这就是**侦测盗用的能力**。”
 
 **总结：** “所以在 OAuth2 里，密码是‘核武器’，必须锁死在授权服务器的数据库里；而 Token 是‘临时通行证’，通过 HTTPS、BFF 和 轮转机制来降低风险。**这才是分布式安全的精髓。**”
-
-
-> 更新: 2026-01-19 19:34:33  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gu2sx82aq99rqpxq>

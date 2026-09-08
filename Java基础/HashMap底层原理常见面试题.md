@@ -1,4 +1,4 @@
-# HashMap底层原理常见面试题
+﻿# HashMap底层原理常见面试题
 
 ### <font style="color:#595959;">1、HashMap 的底层数据结构</font>
 在 **<font style="color:#74B602;">JDK 1.7 </font>**中 HashMap 是以**「数组加链表」**的形式组成的，**<font style="color:#DF2A3F;">JDK 1.8</font>** 之后新增了**「红黑树」**的组成结构，**「当链表长度大于 8 并且 hash 桶的容量大于 64 时，链表结构会转换成红黑树结构」**。所以，它的组成结构如下图所示：
@@ -435,8 +435,3 @@ void transfer(Entry[] newTable, boolean rehash) {
 
 ### <font style="color:#595959;">10、总结</font>
 HashMap 是 Java 基础中的重点。可以说无论是在工作中还是面试中都很常用，小伙伴们必须做到熟练运用、信手拈来才算是过关的。本篇文章基本说到了 HashMap 的所有重点，因为篇幅原因红黑树没有展开说，在我们架构课中会详细讲解。另外，如果发现本文有啥错误，欢迎友善指正。
-
-
-
-> 更新: 2025-01-13 22:06:40  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/flzcleillddvwrm2>

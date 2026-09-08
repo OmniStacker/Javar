@@ -1,4 +1,4 @@
-# 分布式协议Gossip
+﻿# 分布式协议Gossip
 
 Gossip Protocol也叫Epidemic Protocol（流行病协议），还有其他名称，如**流言算法、疫情传播算法**等。
 
@@ -181,12 +181,3 @@ Gossip是一个**多主协议**，所有写操作可以由不同节点发起，�
 + **消息冗余** 节点定期随机选择周围节点发送消息，而收到消息的节点也会重复该步骤；不可避免的引起同一节点消息多次接收，增加消息处理压力，一般通过**文件校验和、缓存节点列表**等方式来进行优化减少数据对比带来的性能损耗
 
 基于以上优缺点分析，Gossip协议满足**CAP**分布式理论中基于**AP**场景的数据最终一致性处理，常见应用有：P2P网络通信、Apache Cassandra、Redis Cluster、Consul等，还有Apache Gossip框架的开源实现供Gossip协议的学习。
-
-
-
-
-
-
-
-> 更新: 2023-09-07 19:56:25  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wpogs3206ta8ff72>

@@ -1,4 +1,4 @@
-# 为什么有了HTTP，还需要WebSocket？从“请求-响应”到“双向奔赴”的协议演进
+﻿# 为什么有了HTTP，还需要WebSocket？从“请求-响应”到“双向奔赴”的协议演进
 
 <font style="color:rgb(38, 38, 38);">在构建现代Web应用的征途中，我们时常会遇到一个经典问题：当HTTP协议已经如此普及和强大时，我们为什么还需要引入WebSocket？答案的核心在于一个词：</font>**<font style="color:rgb(38, 38, 38);">实时性</font>**<font style="color:rgb(38, 38, 38);">。本文将带您层层深入，从HTTP的固有局限出发，探索为实现“伪实时”而诞生的各种变通方案，并最终揭示WebSocket作为终极解决方案的革命性意义。</font>
 
@@ -71,7 +71,3 @@
 * **<font style="color:rgb(38, 38, 38);">WebSocket</font>**<font style="color:rgb(38, 38, 38);">：当之无愧的现代实时Web应用首选。无论是</font>**<font style="color:rgb(38, 38, 38);">在线聊天、金融行情、协同编辑、实时游戏</font>**<font style="color:rgb(38, 38, 38);">还是</font>**<font style="color:rgb(38, 38, 38);">物联网数据上报</font>**<font style="color:rgb(38, 38, 38);">，它都是实现高性能、低延迟交互的最佳选择。</font>
 
 <font style="color:rgb(38, 38, 38);">因此，当面试官问你：“如果WebSocket连接失败怎么办？”。你的标准答案应该是：“</font>**<font style="color:rgb(38, 38, 38);">设计优雅降级机制，在WebSocket不可用时，自动切换到长轮询方案，以保证核心功能的可用性。</font>**<font style="color:rgb(38, 38, 38);">” 这不仅体现了你对协议的深刻理解，更展现了你在工程实践中的成熟与完备性。</font>
-
-
-> 更新: 2025-10-27 13:27:21  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wue67oykz0ilmhle>

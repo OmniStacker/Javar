@@ -1,4 +1,4 @@
-# Zookeeper 集群中是怎样选举leader的
+﻿# Zookeeper 集群中是怎样选举leader的
 
 ## <font style="color:rgb(18, 18, 18);">zookeeper集群中服务器被划分为以下四种状态：</font>
 + <font style="color:rgb(18, 18, 18);">LOOKING：寻找Leader状态。</font>**<font style="color:rgb(18, 18, 18);">处于该状态的服务器会认为集群中没有Leader，需要进行Leader选举</font>**<font style="color:rgb(18, 18, 18);">；</font>
@@ -59,8 +59,3 @@
 2. <font style="color:rgb(18, 18, 18);">处理投票；</font>
 3. <font style="color:rgb(18, 18, 18);">统计投票；</font>
 4. <font style="color:rgb(18, 18, 18);">改变服务器的状态，此时server4成为新的Leader。</font>
-
-
-
-> 更新: 2023-09-04 15:20:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bbdebhegggl2f2x6>

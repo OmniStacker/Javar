@@ -1,4 +1,4 @@
-# DDD 中的贫血模型和充血模型有什么区别
+﻿# DDD 中的贫血模型和充血模型有什么区别
 
 <font style="color:rgb(5, 7, 59);">DDD中的贫血模型和充血模型都是领域模型的表现形式，但是它们在设计和实现上有着显著的区别。</font>**<font style="color:rgb(6, 6, 7);">主要区别在于领域对象是否包含业务逻辑</font>**<font style="color:rgb(6, 6, 7);">。</font>
 
@@ -46,8 +46,3 @@
 <font style="color:rgb(5, 7, 59);">总的来说，贫血模型更注重简单性和易上手，而充血模型更注重业务复杂的系统开发。选择使用哪种模型取决于具体的业务需求和开发团队的技术能力。</font>
 
 <font style="color:rgb(6, 6, 7);">在实际开发中，选择哪种模型应根据系统的复杂度、业务需求和团队的技术偏好综合考虑。</font>
-
-
-
-> 更新: 2025-02-19 13:55:56  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mq2vkccbiqgss7kg>

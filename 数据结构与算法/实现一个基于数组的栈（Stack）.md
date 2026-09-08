@@ -1,4 +1,4 @@
-# 实现一个基于数组的栈（Stack）
+﻿# 实现一个基于数组的栈（Stack）
 
 <font style="color:rgba(0, 0, 0, 0.82);">实现一个基于数组的栈需要定义一个类来管理栈的基本操作，如入栈、出栈、查看栈顶元素等。以下是一个简单的基于数组的栈实现：</font>
 
@@ -89,7 +89,3 @@ public class ArrayStack {
 * **<font style="color:rgba(0, 0, 0, 0.82);">获取栈大小</font>**<code>**<font style="color:rgba(0, 0, 0, 0.82);">size</font>**</code><font style="color:rgba(0, 0, 0, 0.82);">：返回当前栈中元素的数量。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">这种基于数组的栈实现简单且高效，但需要注意栈的容量限制。如果需要动态调整栈的大小，可以考虑使用动态数组（如</font><code><font style="color:rgba(0, 0, 0, 0.82);">ArrayList</font></code><font style="color:rgba(0, 0, 0, 0.82);">）或链表来实现。</font>
-
-
-> 更新: 2024-08-30 22:18:02  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dovgvw2vx40m0e9x>

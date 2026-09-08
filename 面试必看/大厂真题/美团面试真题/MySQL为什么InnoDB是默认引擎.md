@@ -1,4 +1,4 @@
-# MySQL 为什么 InnoDB 是默认引擎
+﻿# MySQL 为什么 InnoDB 是默认引擎
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">MySQL中的InnoDB引擎是默认引擎，主要基于以下几个原因：</font>
 
@@ -8,8 +8,3 @@
 4. <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">崩溃恢复：InnoDB具备崩溃恢复的能力，能够在数据库、服务器或系统发生故障时，恢复到崩溃前的状态。这是因为InnoDB引擎使用了redo日志和undo日志来记录数据的修改操作，确保数据的持久性。</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">虽然InnoDB是默认引擎，但MySQL也支持其他引擎，如MyISAM、Memory等。选择合适的引擎需要根据具体应用的需求进行权衡和选择。</font>
-
-
-
-> 更新: 2023-08-24 20:29:11  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ea6i8e7zsdfdzd6c>

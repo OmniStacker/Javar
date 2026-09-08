@@ -1,4 +1,4 @@
-# Spring框架中的单例bean是线程安全的吗
+﻿# Spring框架中的单例bean是线程安全的吗
 
 <font style="color:rgb(36, 41, 47);">在Spring框架中, 由于单例Bean在整个Spring上下文只有一个实例，因此在多线程环境下访问该实例时，需要确保Bean的状态是线程安全的。如果单例Bean的状态是可变的，并且多个线程同时修改该状态，</font>**<font style="color:rgb(36, 41, 47);">可能会导致线程安全问题</font>**<font style="color:rgb(36, 41, 47);">。</font>
 
@@ -10,8 +10,3 @@
 4. <font style="color:rgb(36, 41, 47);">采用多例Bean。将bean的作用域改为"property"即每次使用创建一个新的实例，这样可以有效避免单例共享造成线程不安全。</font>
 
 <font style="color:rgb(36, 41, 47);"> </font>
-
-
-
-> 更新: 2023-09-06 16:05:13  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gk3euld7vtuy172e>

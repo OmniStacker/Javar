@@ -1,4 +1,4 @@
-# 👍 一小时快速入门数据同步神器-Canal
+﻿# 👍 一小时快速入门数据同步神器-Canal
 
 # <font style="color:rgb(0, 0, 0);">前言</font>
 <font style="color:rgb(36, 41, 46);">之前在讲解 Redis、MySQL 双写一致性问题的时候，提到我们可以采用 canal 组件，来</font><font style="color:rgb(38, 38, 38);">实现数据一致性，那本文就带大家快速上手 canal 组件的使用。</font>
@@ -652,8 +652,3 @@ public class CanalListener {
 
 
 <font style="color:rgb(64, 64, 64);"></font>
-
-
-
-> 更新: 2025-04-13 22:17:07  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ugdfg4q0ccqo0r28>

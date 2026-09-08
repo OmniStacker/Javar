@@ -1,4 +1,4 @@
-# 订单服务调用时间从200ms飙升至1.5s，如何排查？
+﻿# 订单服务调用时间从200ms飙升至1.5s，如何排查？
 
 ### ![1760250411207-cf5f638f-19da-4d8a-8411-1c2dc8212da5.png](./img/TDzekBWJG2C017Pa/1760250411207-cf5f638f-19da-4d8a-8411-1c2dc8212da5-239520.png)<font style="color:rgb(38, 38, 38);">一、事故背景：风平浪静下的告警风暴</font>
 
@@ -103,7 +103,3 @@
 4. **<font style="color:rgb(38, 38, 38);">监控告警增强</font>**<font style="color:rgb(38, 38, 38);">：除了CPU、内存等基础指标，将</font>**<font style="color:rgb(38, 38, 38);">数据库连接池的等待线程数</font>**<font style="color:rgb(38, 38, 38);">和</font>**<font style="color:rgb(38, 38, 38);">JVM老年代使用率的增长速率</font>**<font style="color:rgb(38, 38, 38);">也纳入核心告警指标。</font>
 
 <font style="color:rgb(38, 38, 38);">通过这次深刻的教训，我们不仅修复了一个隐蔽的Bug，更重要的是完善了我们的技术流程和监控体系，让系统变得更加健壮。</font>
-
-
-> 更新: 2025-10-12 14:37:15  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qug6wm6gzy3s62zq>

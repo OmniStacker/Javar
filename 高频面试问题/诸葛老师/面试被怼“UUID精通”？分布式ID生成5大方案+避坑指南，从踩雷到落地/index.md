@@ -1,4 +1,4 @@
-# 面试被怼 “UUID 精通”？分布式 ID 生成 5 大方案 + 避坑指南，从踩雷到落地
+﻿# 面试被怼 “UUID 精通”？分布式 ID 生成 5 大方案 + 避坑指南，从踩雷到落地
 
 <font style="color:rgba(0, 0, 0, 0.85) !important;">面试官盯着简历上 “精通分布式 ID 生成，用 UUID 支撑千万级订单系统” 的字样，抬眼就是三连暴击：“上线半个月订单 ID 撞车，用户付两次钱咋解释？100 万数据后查询从 0.2 秒飙到 0.8 秒，问题在哪？大促每秒 5 万 ID 生成超时，UUID 性能坑咋破？”</font>
 
@@ -178,7 +178,3 @@
 * <font style="color:rgba(0, 0, 0, 0.85) !important;">上线前的碰撞测试、监控告警我做过吗？</font>
 
 <font style="color:rgba(0, 0, 0, 0.85) !important;">把这些问题想透，再聊 ID 生成，才是真正的 “精通”。</font>
-
-
-> 更新: 2025-09-21 23:03:57  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/sa4f46ixv9146wk5>

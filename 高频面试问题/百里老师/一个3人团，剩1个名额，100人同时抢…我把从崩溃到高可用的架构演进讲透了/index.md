@@ -1,4 +1,4 @@
-# 一个3人团，剩1个名额，100人同时抢…我把从崩溃到高可用的架构演进讲透了
+﻿# 一个3人团，剩1个名额，100人同时抢…我把从崩溃到高可用的架构演进讲透了
 
 ![1758464510363-e6118aca-0be1-4b8e-bee2-4b00e0f28a0b.png](./img/j_3VIsUDKBDF36qJ/1758464510363-e6118aca-0be1-4b8e-bee2-4b00e0f28a0b-711998.png)
 
@@ -59,7 +59,3 @@
 3. **<font style="color:rgb(38, 38, 38);">底层</font>**<font style="color:rgb(38, 38, 38);">：所有状态最终都将持久化到数据库中。</font>
 
 <font style="color:rgb(38, 38, 38);">通过这套组合拳，我们构建的系统，才能在复杂多变的生产环境中，稳如泰山。</font>
-
-
-> 更新: 2025-09-21 22:22:49  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/os3td0ggzxmspnx8>

@@ -1,4 +1,4 @@
-# Java 面试高频题｜吃透 MySQL InnoDB 与 MyISAM 差异：从原理到落地（附 SQL/Java 实例 + PPT 图文）
+﻿# Java 面试高频题｜吃透 MySQL InnoDB 与 MyISAM 差异：从原理到落地（附 SQL/Java 实例 + PPT 图文）
 
 <font style="color:rgb(0, 0, 0);">在 Java 后端面试中，“MySQL 存储引擎 InnoDB 和 MyISAM 的差异” 是一道绕不开的高频题。不是面试官 “偏爱” 这道题，而是它能从</font>**<font style="color:rgb(0, 0, 0) !important;">底层原理、生产落地、细节把控</font>**<font style="color:rgb(0, 0, 0);">三个维度，快速判断候选人是否具备 “能干活、懂原理” 的核心能力 —— 既要看你是否停留在 “写 SQL” 的表层，更要看你能否结合业务场景做技术选型。</font>
 
@@ -346,7 +346,3 @@ public void createOrderWithoutForeignKey(Long productId, Long userId) {
 10. **<font style="color:rgb(0, 0, 0) !important;">性能并发</font>**<font style="color:rgb(0, 0, 0);">：InnoDB 读写可并发（性能随核数增长），MyISAM 读写互斥。</font>
 
 <font style="color:rgb(0, 0, 0);">通过本文的完整拆解，你不仅能应对 “引擎差异” 的面试题，更能理解 “为什么生产环境选 InnoDB” 的底层逻辑。记住：面试不是 “背答案”，而是 “讲清楚原理 + 结合业务”—— 当你能说出 “订单表选 InnoDB 是因为要事务原子性 + 行锁高并发”，而非 “InnoDB 好”，面试官才会认可你的深度。</font>
-
-
-> 更新: 2025-10-27 19:48:32  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fmb9giic196cgdkk>

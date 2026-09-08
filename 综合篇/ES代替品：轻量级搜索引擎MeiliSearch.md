@@ -1,4 +1,4 @@
-# ES代替品：轻量级搜索引擎MeiliSearch
+﻿# ES代替品：轻量级搜索引擎MeiliSearch
 
 > 谈到搜索引擎，可能大家最先想到的是Elasicsearch。Elasticsearch是一个分布式、高扩展、高实时的搜索与数据分析引擎，能够在大量的数据中搜索、分析和探索需要的数据。
 
@@ -142,7 +142,3 @@ curl  -X POST 'http://localhost:7700/indexes/movies/documents?primaryKey=id'   -
 总的来说，对于数据量不是很大的中小型企业来说（几百万到几千万的数据），都可以使用 MeiliSearch 搜索引擎。同时，它的使用场景基本可以覆盖当前主流的平台和技术，如管理后台搜索、小程序搜索等场景中。是一款真正轻量级安装部署、搜索速度快到极致，名副其实的轻量级且美丽搜索引擎。
 
 ‘
-
-
-> 更新: 2023-09-07 19:54:21  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/umueacgcmg5gvwpn>

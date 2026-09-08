@@ -1,4 +1,4 @@
-# 🚛 RocketMQ5.x教程-从安装到实战到经典面试题
+﻿# 🚛 RocketMQ5.x教程-从安装到实战到经典面试题
 
 ## 1.RocketMQ介绍
 RocketMQ是一款由阿里巴巴开源的分布式消息中间件。它具有低延迟、高吞吐量、高可用性和高可靠性等特点，适用于构建具有海量消息堆积和异步解耦功能的应用系统。
@@ -2192,16 +2192,3 @@ nohup java -jar rocketmq-dashboard-1.0.0.jar &
 
 ### 8.5.整体文件目录结构
 ![1682310143055-1f5bf414-23f2-4162-afef-b32dcac62ce3.png](./img/U7oNw09TxmhWUJpv/1682310143055-1f5bf414-23f2-4162-afef-b32dcac62ce3-408805.png)
-
-
-
-
-
-
-
-
-
-
-
-> 更新: 2025-04-14 15:32:55  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pcztmw6gdpmg3l83>

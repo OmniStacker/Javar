@@ -1,4 +1,4 @@
-# 说说你对lambda表达式的理解
+﻿# 说说你对lambda表达式的理解
 
 ### <font style="color:rgba(0, 0, 0, 0.9);">1. </font>**<font style="color:rgba(0, 0, 0, 0.9);">什么是 Lambda 表达式？</font>**
 
@@ -171,7 +171,3 @@ button.addActionListener(event -> System.out.println("Button clicked!"));
 ### <font style="color:rgba(0, 0, 0, 0.9);">总结</font>
 
 <font style="color:rgba(0, 0, 0, 0.9);">Lambda 表达式是 Java 8 的重要特性，它通过简化匿名类的实现，使得代码更简洁、更易读。在面试中，理解 Lambda 表达式的语法、函数式接口的关系以及应用场景是非常重要的。希望这些内容能帮助你在面试中自信地回答 Lambda 表达式相关的问题！如果还有其他疑问，可以继续提问。</font>
-
-
-> 更新: 2025-04-15 19:17:36  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/br69nkevyo91ikxa>

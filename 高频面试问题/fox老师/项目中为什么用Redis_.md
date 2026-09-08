@@ -1,4 +1,4 @@
-# 项目中为什么用Redis?
+﻿# 项目中为什么用Redis?
 
 
 
@@ -68,10 +68,3 @@
 当你能这样结构化、数据化、有深度地回答问题时，面试官只会有一个反应：点头，然后给你一个大大的“PASS”！
 
 <font style="color:rgb(89, 89, 89);">关于Redis的面试技巧就分享到这里。</font>大家还有什么问题，可以评论区聊聊。
-
-
-
-
-
-> 更新: 2025-11-05 13:12:14  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/nrhzy8vg00xwwnix>

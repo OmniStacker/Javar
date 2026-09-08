@@ -1,4 +1,4 @@
-# 面试官：MySQL 里有 1 亿条加密数据，如何设计索引？
+﻿# 面试官：MySQL 里有 1 亿条加密数据，如何设计索引？
 
 ![1766714736151-d6b52429-a964-47a6-bfbf-08b6764d3b59.png](./img/R7gA0ZVef8_ReB-x/1766714736151-d6b52429-a964-47a6-bfbf-08b6764d3b59-262789.png)
 
@@ -74,7 +74,3 @@
    * **<font style="color:rgb(38, 38, 38);">推荐方案</font>**<font style="color:rgb(38, 38, 38);">：</font>**<font style="color:rgb(38, 38, 38);">异构索引 (Elasticsearch)</font>**
    * **<font style="color:rgb(38, 38, 38);">理由</font>**<font style="color:rgb(38, 38, 38);">：不要难为 MySQL。MySQL 的 B+ 树本身就不擅长左模糊查询，更别提加密数据了。</font>
    * **<font style="color:rgb(38, 38, 38);">流程</font>**<font style="color:rgb(38, 38, 38);">：将数据同步到 Elasticsearch，利用 ES 的分词加密插件或特定的搜索加密方案（如可搜索加密 SSE，虽然复杂但可行）来处理。对于常规业务，通常建议对非敏感字段分词，敏感字段依然走精确匹配。</font>
-
-
-> 更新: 2025-12-26 13:30:32  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qx7ycbfzcrorctz3>

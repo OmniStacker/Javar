@@ -1,4 +1,4 @@
-# 什么是 DeepSeek 的 MLA？它的优势是什么？
+﻿# 什么是 DeepSeek 的 MLA？它的优势是什么？
 
 ![1766650356004-6887c8f8-d4cb-47b4-b0e5-ddd222d188c8.png](./img/eOMbDoFWOdwfZXGw/1766650356004-6887c8f8-d4cb-47b4-b0e5-ddd222d188c8-530708.png)<font style="color:rgb(38, 38, 38);">在大模型推理的战场上，长期存在一个艰难的抉择：是为了最强的模型智力保留完整的记忆（MHA），还是为了更快的速度牺牲一部分脑容量（MQA/GQA）？</font>
 
@@ -66,7 +66,3 @@
 1. **<font style="color:rgb(38, 38, 38);">1/8 KV Cache</font>**<font style="color:rgb(38, 38, 38);">：对于 7B 甚至 67B 的模型，这意味着在同样的硬件上，你可以运行比以前长 8 倍的上下文，或者部署成本直接砍半。</font>
 2. **<font style="color:rgb(38, 38, 38);">Max Throughput</font>**<font style="color:rgb(38, 38, 38);">：显存不再是瓶颈，计算单元（GPU Core）可以被喂得更饱，Token 生成速度大幅提升，带来更丝滑的交互体验。</font>
 3. **<font style="color:rgb(38, 38, 38);">100% Performance</font>**<font style="color:rgb(38, 38, 38);">：最重要的是，这是一场没有牺牲的胜利。MLA 证明了，通过数学上的等价变换，我们完全可以在物理世界中打破所谓的“不可能三角”。</font>
-
-
-> 更新: 2025-12-25 21:54:19  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fvge5i5phuvgbb9f>

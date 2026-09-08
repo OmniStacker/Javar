@@ -1,4 +1,4 @@
-# 每天批次导入1000万订单数据到MySql经常出现死锁
+﻿# 每天批次导入1000万订单数据到MySql经常出现死锁
 
 # MySQL 8.0.18 REPLACE INTO 死锁问题深度解析
 
@@ -663,7 +663,3 @@ Record lock, heap no 5 PHYSICAL RECORD: n_fields 2; ...
 ***
 
 **作者注**：本文基于 MySQL 8.0 源码分析和实际测试编写，涉及的源码版本为 MySQL 8.0.18 ~ 8.0.19。实际生产环境请根据具体情况调整和测试。
-
-
-> 更新: 2025-11-11 16:47:56  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dsqww90tyg2uqaga>

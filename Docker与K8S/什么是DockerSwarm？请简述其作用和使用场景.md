@@ -1,4 +1,4 @@
-# 什么是Docker Swarm？请简述其作用和使用场景
+﻿# 什么是Docker Swarm？请简述其作用和使用场景
 
 **Docker Swarm是Docker公司推出的用于管理Docker集群的工具**，可以将多个Docker节点组织成一个单一的虚拟主机，实现对Docker资源的统一管理和调度。
 
@@ -17,8 +17,3 @@ Docker Swarm的作用主要有以下几点：
 4. 需要自动化部署和管理容器服务，以提高效率。
 
 <font style="color:rgb(5, 7, 59);background-color:rgb(253, 253, 254);"></font>
-
-
-
-> 更新: 2023-09-05 14:28:30  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bens87u0rux44l4t>

@@ -1,4 +1,4 @@
-# OOM一定会导致JVM退出吗
+﻿# OOM一定会导致JVM退出吗
 
 <font style="color:rgba(0, 0, 0, 0.82);">在Java中，发生了OutOfMemoryError（OOM）不一定会导致整个JVM退出。是否退出取决于发生OOM错误的线程和错误处理逻辑。这是一个复杂的问题，具体行为会因应用程序实现方式、错误发生的情境以及错误处理策略而异。</font>
 
@@ -79,7 +79,3 @@ Exception in thread "main" java.lang.OutOfMemoryError: Requested array size exce
 
 * <font style="color:rgba(0, 0, 0, 0.82);">不建议频繁捕获OOM并继续执行程序，因为这样可能表明程序有严重的内存管理问题，应尽量优化内存使用。</font>
 * <font style="color:rgba(0, 0, 0, 0.82);">在关键路径中发生OOM时，通常应记录日志并考虑安全停机，因为无法保证系统在内存压力下的正确性。</font>
-
-
-> 更新: 2024-08-11 15:03:50  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ruez0eorf445inye>

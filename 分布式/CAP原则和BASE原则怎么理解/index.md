@@ -1,4 +1,4 @@
-# CAP原则和BASE原则怎么理解
+﻿# CAP原则和BASE原则怎么理解
 
 <font style="color:rgba(0, 0, 0, 0.82);">CAP原则和BASE原则都是在分布式系统设计中常用的概念。</font>
 
@@ -59,8 +59,3 @@
 + <font style="color:rgba(0, 0, 0, 0.82);">对于可以容忍短期不一致，但需要高可用的场景（如社交网络的点赞功能），可能更适合选择AP（可用性和分区容错性）并遵循BASE原则。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">在实际应用中，我们可能会使用各种技术和框架来实现这些原则，如分布式事务、最终一致性等。理解这些原则对于设计可靠的分布式系统至关重要。</font>
-
-
-
-> 更新: 2024-08-21 21:35:26  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/yy6maco9ampyrei3>

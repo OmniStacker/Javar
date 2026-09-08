@@ -1,4 +1,4 @@
-# 拒绝慢查询：MySQL 8.0 高性能优化实战指南
+﻿# 拒绝慢查询：MySQL 8.0 高性能优化实战指南
 
 <font style="color:rgb(38, 38, 38);">在现代高并发架构中，数据库往往是系统最脆弱的瓶颈。很多开发者习惯于“先实现功能，再考虑性能”，导致上线后一条烂 SQL 就能引发 CPU 飙升、连接池耗尽甚至服务雪崩。</font>
 
@@ -123,7 +123,3 @@ SELECT * FROM orders WHERE id > 1000000 ORDER BY id LIMIT 10;
    * <font style="color:rgb(38, 38, 38);">能用批量插入 (Batch Insert) 代替循环插入，能用一条复杂 SQL 代替应用层的多次查询循环，就能显著减少网络往返耗时 (RTT)。</font>
 
 <font style="color:rgb(38, 38, 38);">掌握这三大基石，你就能在面对复杂的慢查询日志时，迅速定位病灶，开出精准的“药方”。</font>
-
-
-> 更新: 2025-12-14 20:12:52  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rysnr83y2l8vk0o1>

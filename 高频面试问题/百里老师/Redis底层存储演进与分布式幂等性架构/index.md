@@ -1,4 +1,4 @@
-# Redis 底层存储演进与分布式幂等性架构
+﻿# Redis 底层存储演进与分布式幂等性架构
 
 #### **<font style="color:rgb(38, 38, 38);">引言</font>**
 
@@ -91,7 +91,3 @@
 3. **<font style="color:rgb(38, 38, 38);">回归架构决策的本质</font>**<font style="color:rgb(38, 38, 38);">：在做技术选型时，需要反复拷问自己三个核心问题：系统对</font>**<font style="color:rgb(38, 38, 38);">数据丢失的容忍度</font>**<font style="color:rgb(38, 38, 38);">是多少？**服务恢复时间（RTO）**要求多高？</font>**<font style="color:rgb(38, 38, 38);">幂等性需要保证到哪个边界</font>**<font style="color:rgb(38, 38, 38);">？</font>
 
 <font style="color:rgb(38, 38, 38);">技术选型没有银弹。只有深刻理解其底层原理、优势和局限，我们才能在复杂的业务场景中做出最精准的权衡与决策。</font>
-
-
-> 更新: 2025-12-02 20:06:30  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xozi6999zarzngu3>

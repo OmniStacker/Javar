@@ -1,4 +1,4 @@
-# 哪些场景可以利用索引覆盖来优化SQL
+﻿# 哪些场景可以利用索引覆盖来优化SQL
 
 <font style="color:rgb(36, 41, 47);">在SQL查询优化中，索引覆盖（Covering Index）是一种通过索引直接提供查询所需数据而无需回表的技术，可显著提升性能。以下是适用场景及具体说明：</font>
 
@@ -109,7 +109,3 @@ LEFT JOIN titles t ON e.emp_no = t.emp_no;
 * **<font style="color:rgb(36, 41, 47);">维护成本</font>**<font style="color:rgb(36, 41, 47);">：覆盖索引可能增加写入开销，需权衡读写比例</font><font style="color:rgb(36, 41, 47);">。</font>
 
 <font style="color:rgb(36, 41, 47);">通过合理设计索引覆盖上述场景，可显著减少I/O和CPU消耗，是SQL性能优化的核心手段之一。</font>
-
-
-> 更新: 2025-05-19 22:09:37  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xztwyi8t0gufceba>

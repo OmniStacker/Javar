@@ -1,4 +1,4 @@
-# MySQL 索引底层结构为什么使用 B+树
+﻿# MySQL 索引底层结构为什么使用 B+树
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">MySQL索引底层结构使用B+树的主要原因有以下几点：</font>
 
@@ -9,8 +9,3 @@
 5. <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">支持数据的有序存储和范围查找：B+树的特点是有序性，这对于范围查询非常有利。通过B+树的索引，可以快速定位起始位置和结束位置，进行范围查询等操作。</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">综上所述，B+树结构在存储大量数据、支持范围查询、有序性和高效的插入删除操作等方面具有优势，因此被广泛应用于MySQL索引的底层结构。</font>
-
-
-
-> 更新: 2023-08-24 20:29:53  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/zbuoqncc5w52hv3h>

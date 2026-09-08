@@ -1,4 +1,4 @@
-# Kafka中的Topic和Partition有什么关系？
+﻿# Kafka中的Topic和Partition有什么关系？
 
 Kafka 的设计哲学是构建一个高吞吐量、低延迟、可伸缩的分布式消息系统。Topic 和 Partition 是实现这一目标的核心抽象。理解它们的紧密关系是掌握 Kafka 的基石。
 
@@ -389,7 +389,3 @@ public class TopicAdminClient {
 4. **"分区数量只能增加，不能减少"**: 一旦创建了 Topic 的分区，只能增加分区数量，不能减少。所以初始规划很重要。
 
 通过理解和合理利用 Topic 和 Partition 的关系，您可以更好地设计和优化您的 Kafka 消息系统。
-
-
-> 更新: 2026-01-22 16:12:48  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gy9dxx8cf1bgzw8o>

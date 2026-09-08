@@ -1,4 +1,4 @@
-# 秋招热点：如何保证MySQL与Redis数据一致性
+﻿# 秋招热点：如何保证MySQL与Redis数据一致性
 
 <font style="color:rgb(38, 38, 38);">在构建高性能应用时，Redis 作为高速缓存，MySQL 作为持久化存储，是一对黄金搭档。但只要引入了多个数据源，就必然会面对一个经典的分布式难题：</font>**<font style="color:rgb(38, 38, 38);">如何保证它们之间的数据一致性？</font>**
 
@@ -141,7 +141,3 @@ public void onMessage(Message message) {
    * <font style="color:rgb(38, 38, 38);">如果是，并且可以容忍极端情况下的数据丢失，那么</font>**<font style="color:rgb(38, 38, 38);">数据回写方案</font>**<font style="color:rgb(38, 38, 38);">将为你提供最极致的性能。</font>
 
 <font style="color:rgb(38, 38, 38);">技术的本质是在约束中寻找最优解。没有最好的方案，只有最合适的方案。希望这篇文章能帮助你透彻理解数据一致性的挑战，并在未来的面试和工作中游刃有余。</font>
-
-
-> 更新: 2025-10-16 16:55:53  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/oxayz76xt46szloh>

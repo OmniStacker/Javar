@@ -1,4 +1,4 @@
-# 11、Tomcat骚操作：Log4j两个版本打架，它凭啥能劝和？| 面试官深度揭秘
+﻿# 11、Tomcat骚操作：Log4j两个版本打架，它凭啥能劝和？| 面试官深度揭秘
 
 <font style="color:rgba(0, 0, 0, 0.96);">前两天我面试一位候选人，小伙子简历不错，基础也扎实。聊得差不多了，我抛出了一个压轴题：</font>
 
@@ -148,7 +148,3 @@ public class WebAppClassLoader extends URLClassLoader {
 4. **<font style="color:rgba(0, 0, 0, 0.96);">对双亲委派的改良</font>**<font style="color:rgba(0, 0, 0, 0.96);">：为了强化隔离性，</font><code><font style="color:rgba(0, 0, 0, 0.96);background-color:rgba(175, 184, 193, 0.2);">WebAppClassLoader</font></code><font style="color:rgba(0, 0, 0, 0.96);">打破了传统的双亲委派模型。它采用“先己后亲”的策略，优先加载应用自身的类，只有在找不到时才向上委派给父加载器。这保证了应用依赖的最高优先级，避免了被共享库意外覆盖的问题。</font>
 
 <font style="color:rgba(0, 0, 0, 0.96);">这套“</font>**<font style="color:rgba(0, 0, 0, 0.96);">隔离+反向委派</font>**<font style="color:rgba(0, 0, 0, 0.96);">”的组合拳打下来，Tomcat就优雅地解决了多应用间的依赖冲突问题，这也是它能成为业界最流行的Web容器之一的重要原因。</font>
-
-
-> 更新: 2025-10-28 19:05:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/zogk255go4e3062f>

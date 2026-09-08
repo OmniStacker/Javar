@@ -1,4 +1,4 @@
-# AI 智能代码评审与优势产品技术说明文档
+﻿# AI 智能代码评审与优势产品技术说明文档
 
 **版本**: v1.0\
 **更新日期**: 2025-12-26\
@@ -1352,7 +1352,3 @@ export default defineConfig({
 **文档结束**
 
 *本文档由 AI Code Reviewer 团队维护，如有问题或建议，请联系开发团队。*
-
-
-> 更新: 2025-12-29 20:40:16  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lsd4lf1sx55c3g0f>

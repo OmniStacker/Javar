@@ -1,4 +1,4 @@
-# 亿级任务调度：时间轮算法的革命性重构
+﻿# 亿级任务调度：时间轮算法的革命性重构
 
 ![1763711425778-e9655ba8-4900-4f99-9aae-2270eb672ab2.png](./img/beqd42zTuwOA6DoR/1763711425778-e9655ba8-4900-4f99-9aae-2270eb672ab2-962951.png)
 
@@ -80,7 +80,3 @@
 3. **<font style="color:rgb(38, 38, 38);">无限扩展</font>**<font style="color:rgb(38, 38, 38);">：通过多级结构，理论上可以支持任意时间跨度的任务调度。</font>
 
 <font style="color:rgb(38, 38, 38);">目前，这一算法广泛应用于 </font>**<font style="color:rgb(38, 38, 38);">Netty</font>**<font style="color:rgb(38, 38, 38);"> 的 </font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">HashedWheelTimer</font></code><font style="color:rgb(38, 38, 38);">、</font>**<font style="color:rgb(38, 38, 38);">Kafka</font>**<font style="color:rgb(38, 38, 38);"> 的延时操作处理以及 </font>**<font style="color:rgb(38, 38, 38);">Dubbo</font>**<font style="color:rgb(38, 38, 38);"> 的超时重试机制中，是构建高性能分布式系统的基石。</font>
-
-
-> 更新: 2025-11-21 21:38:10  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/daozwvz77rfdfv3o>

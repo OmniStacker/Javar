@@ -1,4 +1,4 @@
-# MyBatis一、二级缓存和Spring一二级缓存有什么关系。
+﻿# MyBatis一、二级缓存和Spring一二级缓存有什么关系。
 
 是的， 一个八竿子打不着的东西， 今天有同学去面试被问到了。hold on hold on ,，  这个问题完全是糊弄人的啊。
 
@@ -19,11 +19,3 @@
 当然这个问题后面可能有一大堆雷等着你踩， 如果你把SSM的源码完整学过的话， 问这些问题都是送分题哈。
 
 <font style="color:#FFFFFF;">好如果视频对你有帮助可以一键三连哦， 我们下期见</font>
-
-  
-
-
-
-
-> 更新: 2024-06-20 16:50:59  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fzgs2m4ske91g2a3>

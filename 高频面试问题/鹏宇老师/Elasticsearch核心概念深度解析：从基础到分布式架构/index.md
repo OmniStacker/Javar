@@ -1,4 +1,4 @@
-# Elasticsearch 核心概念深度解析：从基础到分布式架构
+﻿# Elasticsearch 核心概念深度解析：从基础到分布式架构
 
 <font style="color:rgb(0, 0, 0);">在大数据检索与存储场景中，Elasticsearch（简称 ES）凭借其分布式特性、高效全文检索能力，成为日志分析、电商搜索等领域的核心中间件。本文将结合可视化图表（对应 PPT 截图位置已标注），从 “是什么”“核心概念”“关键技术”“分布式架构” 四个维度，系统拆解 ES 的核心逻辑，适合初学者入门与开发者巩固基础。</font>
 
@@ -188,7 +188,3 @@
 
 * <font style="color:rgb(0, 0, 0);">官方文档：</font>[<font style="color:rgb(9, 105, 218);">Elasticsearch 官方指南</font>](https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html)<font style="color:rgb(0, 0, 0);">（最权威，更新及时）；</font>
 * <font style="color:rgb(0, 0, 0);">工具：Kibana（可视化）、Elasticsearch Head（浏览器插件，查看集群状态）。</font>
-
-
-> 更新: 2025-09-28 19:19:38  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/icg06374o8ceggk7>

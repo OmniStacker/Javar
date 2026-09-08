@@ -1,4 +1,4 @@
-# Redis如何高效安全的遍历所有key
+﻿# Redis如何高效安全的遍历所有key
 
 <font style="color:rgba(0, 0, 0, 0.82);">在 Redis 中高效且安全地遍历所有键时，通常使用 </font><code><font style="color:rgba(0, 0, 0, 0.82);">SCAN</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 命令，这是因为 </font><code><font style="color:rgba(0, 0, 0, 0.82);">SCAN</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 可以避免一次性加载所有 Key 到内存中（这会耗费大量内存和阻塞服务器），并且它支持增量式迭代。以下是使用 Java 和 Jedis 库来遍历 Redis 中所有键的示例：</font>
 
@@ -71,7 +71,3 @@ public class RedisKeyScanner {
 * **<font style="color:rgba(0, 0, 0, 0.82);">避免大规模操作风险</font>**<font style="color:rgba(0, 0, 0, 0.82);">：</font><code><font style="color:rgba(0, 0, 0, 0.82);">SCAN</font></code><font style="color:rgba(0, 0, 0, 0.82);"> </font><font style="color:rgba(0, 0, 0, 0.82);">允许服务器在轻度负载下的分批次地遍历数据集合。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过这种方式，您可以在不影响 Redis 性能的情况下安全地遍历所有键，并有效地处理大型数据集。一旦数据规模变得相当大，推荐增加扫描频率参数以适应场景需要。</font>
-
-
-> 更新: 2024-08-07 20:33:56  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/eszavn6v6cw9n77i>

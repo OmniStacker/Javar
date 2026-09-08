@@ -1,4 +1,4 @@
-# Restful API设计最佳实践
+﻿# Restful API设计最佳实践
 
 **本次分享内容**
 
@@ -568,7 +568,3 @@ Content-Type: application/json
 将这些最佳实践付诸实践是很重要的，这样您不仅可以创建功能强大的应用程序，而且使其简单可靠，易于使用。
 
 当然，本次讲解的最佳实践也并非您的必然选择。无论您选择哪种方式去实现自己的 REST API，重要的是与团队风格保持一致性，以确保 API 的易用性、可读性和可维护性。
-
-
-> 更新: 2024-07-15 22:21:21  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hv7t6xfxra7cpusi>

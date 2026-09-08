@@ -1,4 +1,4 @@
-# 👍 Spring6.0从入门到精通系列教程
+﻿# 👍 Spring6.0从入门到精通系列教程
 
 ## What？Why？
 
@@ -1375,7 +1375,3 @@ private ConfigurableApplicationContext createContext() {
 创建完容器后，就会找到MyApplication\_\_ApplicationContextInitializer，开始向容器中注册BeanDefinition。
 
 后续就是创建Bean对象了。
-
-
-> 更新: 2024-12-04 19:40:05  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xuggztenwamomqyg>

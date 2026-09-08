@@ -1,4 +1,4 @@
-# Java中止线程的三种方式
+﻿# Java中止线程的三种方式
 
 停止一个线程通常意味着在线程处理任务完成之前停掉正在做的操作，也就是放弃当前的操作。
 
@@ -177,7 +177,3 @@ public void run() {
 
 Thread.sleep() 方法会抛出一个 InterruptedException 异常，当线程被 sleep() 休眠时，如果被中断，这会就抛出这个异常。\
 （注意：Thread.sleep() 方法由于中断而抛出的异常，是会清除中断标记的。）
-
-
-> 更新: 2024-10-28 20:16:25  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pf0y1xsbv1g3zb29>

@@ -1,4 +1,4 @@
-# 领导：谁再用Redis处理过期订单，立马走人！
+﻿# 领导：谁再用Redis处理过期订单，立马走人！
 
 ## <font style="color:rgba(6, 8, 31, 0.88);">引言</font>
 <font style="color:rgba(6, 8, 31, 0.88);">在电商和支付场景中，处理用户订单的延时关闭是至关重要的。然而，有些方案看似简单却潜藏危险，尤其是使用</font><font style="color:rgba(6, 8, 31, 0.88);"> </font>**<font style="color:rgba(6, 8, 31, 0.88);">Redis</font>**<font style="color:rgba(6, 8, 31, 0.88);"> </font><font style="color:rgba(6, 8, 31, 0.88);">做过期订单关闭。身为团队的一员，切记：</font>**<font style="color:rgba(6, 8, 31, 0.88);">谁再用Redis处理过期订单，立马走人！</font>**
@@ -69,8 +69,3 @@
 **<font style="color:#DF2A3F;">注意：永远不要使用 Redis 的过期监听来实现定时任务</font>**<font style="color:rgba(6, 8, 31, 0.88);">，因为它不具备可靠性和一致性保障，容易导致任务丢失。</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">希望这篇文章能帮助你更好地理解延时任务的实现方式及其最佳实践！如有疑问，欢迎交流讨论。</font>
-
-
-
-> 更新: 2025-04-15 20:28:11  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xc858dvm27dcanyx>

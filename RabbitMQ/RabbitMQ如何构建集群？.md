@@ -1,4 +1,4 @@
-# RabbitMQ 如何构建集群？
+﻿# RabbitMQ 如何构建集群？
 
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">RabbitMQ 支持两种主要类型的集群：普通集群（Classic Cluster）和镜像集群（Mirrored Cluster）。他们之间有一些重要的区别：</font>
 
@@ -10,8 +10,3 @@
 
 
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);"></font>
-
-
-
-> 更新: 2023-09-11 17:40:04  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rn1ucrofyz7yt0d5>

@@ -1,4 +1,4 @@
-# 【GIT】你还不知道Merge和Rebase的区别吗？
+﻿# 【GIT】你还不知道Merge和Rebase的区别吗？
 
 ## ![1762345666523-f0fda9ab-0281-4864-9061-dbb5b43d793b.png](./img/lBCDanmB8nUPSic4/1762345666523-f0fda9ab-0281-4864-9061-dbb5b43d793b-011524.png)<font style="color:rgb(38, 38, 38);">前言：为何要关心分支合并策略？</font>
 
@@ -78,7 +78,3 @@ git merge feature # 此处为Fast-forward，无合并提交
 <font style="color:rgb(38, 38, 38);">理解了这一点，最终的决策就变得简单明了。记住这个秘诀，你就能自信应对任何合并场景：</font>
 
 **<font style="color:rgb(38, 38, 38);">用 </font>**<code>**<font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">rebase</font>**</code>**<font style="color:rgb(38, 38, 38);"> 整理本地“草稿”，用 </font>**<code>**<font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">merge</font>**</code>**<font style="color:rgb(38, 38, 38);"> 发表最终“定稿”。</font>**
-
-
-> 更新: 2025-11-07 13:29:34  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ggapefm27n8gcuie>

@@ -1,4 +1,4 @@
-# RocketMQ生产环境如何优化
+﻿# RocketMQ生产环境如何优化
 
 <font style="color:rgba(0, 0, 0, 0.82);">RocketMQ在生产环境中的优化是一个多方面的任务，涉及到系统配置、应用代码、监控和运维等多个层面。以下是一些关键的优化策略，并附带相关的代码和配置示例：</font>
 
@@ -125,7 +125,3 @@ msg.setCompressed(true);
 ```
 
 <font style="color:rgba(0, 0, 0, 0.82);">这些优化策略涵盖了RocketMQ的多个方面，包括生产者、消费者、Broker配置、网络、JVM、存储等。在实际应用中，需要根据具体的业务场景和硬件环境来选择合适的优化策略。同时，优化是一个持续的过程，需要不断监控、测试和调整，以达到最佳的性能表现。</font>
-
-
-> 更新: 2024-08-19 17:05:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pplrbbzufrv01z8q>

@@ -1,4 +1,4 @@
-# Redisson 如果续锁失败怎么办
+﻿# Redisson 如果续锁失败怎么办
 
 <font style="color:rgba(0, 0, 0, 0.82);">我们在使用 </font>**<font style="color:rgba(0, 0, 0, 0.82);">Redisson</font>**<font style="color:rgba(0, 0, 0, 0.82);"> 实现分布式锁时，通常会依赖它的看门狗机制进行锁续命，避免业务执行期间锁提前释放，但如果说续锁失败了，就可能会影响系统的正确性。因此，我们需要了解续锁失败的原因以及相应的应对措施，以确保系统健壮性。</font>
 
@@ -89,7 +89,3 @@ try {
 ```
 
 <font style="color:rgba(0, 0, 0, 0.82);">在这种设计中，续锁失败时，虽然锁自动释放了，但全局业务还能得以回滚或补偿处理。</font>
-
-
-> 更新: 2025-04-24 20:02:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pg9hdtvg17f1o6mq>

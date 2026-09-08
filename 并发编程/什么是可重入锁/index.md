@@ -1,4 +1,4 @@
-# 什么是可重入锁
+﻿# 什么是可重入锁
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -71,7 +71,3 @@ AQS 里有一个核心变量 `volatile int state`。
 * **完全释放**：只有当 `state` 减回到 0 时，AQS 才会把 `exclusiveOwnerThread` 置空，并唤醒后面排队的线程。
 
 所以，`lock()` 了几次，就必须 `unlock()` 几次，少一次都会导致锁无法释放，这就叫‘配对原则’。”
-
-
-> 更新: 2026-01-08 14:51:14  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gfgf63i7ox8ocvov>

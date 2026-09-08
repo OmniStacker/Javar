@@ -1,4 +1,4 @@
-# Java AI 全栈实战：智能代码重构助手 (AI Code Reviewer) 项目说明书
+﻿# Java AI 全栈实战：智能代码重构助手 (AI Code Reviewer) 项目说明书
 
 **<font style="color:rgb(26, 28, 30);">项目代号</font>**<font style="color:rgb(26, 28, 30);">：</font><font style="color:rgb(50, 48, 44);">Java-AI-Reviewer-v1.0</font><font style="color:rgb(26, 28, 30);">  
 </font>**<font style="color:rgb(26, 28, 30);">适用人群</font>**<font style="color:rgb(26, 28, 30);">：Java 开发者、Spring Boot 学习者、AI 应用探索者  
@@ -173,8 +173,3 @@ while (true) {
 
 **<font style="color:rgb(26, 28, 30);">版权声明</font>**<font style="color:rgb(26, 28, 30);">：本项目由 [伯乐] 原创开发，仅供学习交流。  
 </font>**<font style="color:rgb(26, 28, 30);">获取源码</font>**<font style="color:rgb(26, 28, 30);">：关注 [伯乐讲技术] 回复 "AI源码"。</font>
-
-
-
-> 更新: 2025-12-16 10:47:30  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dg94e24c5ahlygfk>

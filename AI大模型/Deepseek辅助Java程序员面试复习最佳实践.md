@@ -1,4 +1,4 @@
-# Deepseek辅助Java程序员面试复习最佳实践
+﻿# Deepseek辅助Java程序员面试复习最佳实践
 
 ## <font style="color:rgba(6, 8, 31, 0.88);">一、基础知识复习</font>
 ### <font style="color:rgba(6, 8, 31, 0.88);">1. Java核心知识点梳理</font>
@@ -222,8 +222,3 @@ PS：这部分可以上传Deepseek你的简历，然后再输入下面的提示�
 + <font style="color:rgba(6, 8, 31, 0.88);">强调可量化的效果和收益</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">这样的准备可以帮助你在高级技术面试中更好地展示自己的综合能力。</font>
-
-
-
-> 更新: 2025-02-07 16:52:34  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rpssghgbyoepud6l>

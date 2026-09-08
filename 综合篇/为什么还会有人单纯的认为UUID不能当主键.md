@@ -1,4 +1,4 @@
-# 为什么还会有人单纯的认为 UUID 不能当主键
+﻿# 为什么还会有人单纯的认为 UUID 不能当主键
 
 很多小伙伴对 UUID 都有一种刻板印象，就是不能用于 MySQL 主键 ID，因为他们 会认为 UUID 只能是随机无序的，这样会导致 MySQL 频繁出现叶节点的分裂，重构，影响 MySQL 整体性能，但实质上这是对 UUID 的片面认识，UUID 不仅仅只能是随机无序，接下来我们通过几分钟全面认识下 UUID。
 
@@ -242,7 +242,3 @@ public class UuidVersion7Example {
 对于大多数日常应用，Java 自带的 `UUID.randomUUID()`（版本 4）就足够了。但如果你对数据库性能有极致要求，或者需要生成可预测的 UUID，那么引入 `uuid-creator` 库并使用版本 6、7 或 5 是非常好的选择。
 
 <font style="color:rgb(0, 0, 0);"></font>
-
-
-> 更新: 2025-07-08 19:19:36  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/farmvkhs8gnu2z9e>

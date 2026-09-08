@@ -1,4 +1,4 @@
-# 谈谈你对Spring的理解
+﻿# 谈谈你对Spring的理解
 
 可以从2个层面理解Spring:
 
@@ -19,10 +19,3 @@
 <font style="color:rgb(36, 41, 47);"></font>
 
 <font style="color:rgb(44, 62, 80);">总结一句话：</font>**<font style="color:rgb(74, 74, 74);">它是一个轻量级、非入侵式的控制反转 (IoC) 和面向切面 (AOP) 的容器框架。</font>**
-
- 
-
-
-
-> 更新: 2023-09-06 14:36:04  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/raaan4q8yg1zulg3>

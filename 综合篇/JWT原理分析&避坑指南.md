@@ -1,4 +1,4 @@
-# JWT原理分析 & 避坑指南
+﻿# JWT原理分析 & 避坑指南
 
 # 为什么会有JWT的出现？
 
@@ -93,7 +93,3 @@ JWT指定有七个默认字段供选择：
 
 * 在Web应用中，不能把JWT当作Session使用，绝大多数情况下，传统的cookie-session机制工作得更好
 * JWT适合一次性的命令认证，颁发一个有效期极短的JWT，即使暴露了危险也很小，由于每次操作都会生成新的JWT，因此也没必要保存JWT，真正实现无状态。
-
-
-> 更新: 2023-09-07 19:55:31  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ms1gpvnvnnxci5zx>

@@ -1,4 +1,4 @@
-# 说下Fork/Join框架，与传统线程池有何不同
+﻿# 说下Fork/Join框架，与传统线程池有何不同
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -109,7 +109,3 @@ public class ForkJoinDemo extends RecursiveTask<Long> {
 “虽然 Fork/Join 听起来很牛，但在实际业务中，我**严禁**用它来处理 **IO 密集型任务**（比如读数据库、调 RPC）。
 
 **为什么？** 因为 Fork/Join 的所有线程都是守护线程，且默认线程数等于 CPU 核心数。一旦任务里有阻塞 IO，线程卡住，又没有多余的线程来补位，整个 CPU 算力就浪费了，甚至导致系统吞吐量暴跌。 **IO 密集型任务，请老老实实使用 **<code>**ThreadPoolExecutor**</code>**！**”
-
-
-> 更新: 2026-01-08 13:45:11  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dhtcg0ffl7ssyp1t>

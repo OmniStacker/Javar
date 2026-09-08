@@ -1,4 +1,4 @@
-# 高性能RPC框架设计：10万QPS毫秒级调用实现方案
+﻿# 高性能RPC框架设计：10万QPS毫秒级调用实现方案
 
 ## 场景分析 (Situation)
 ### 性能目标
@@ -787,8 +787,3 @@ public class RPCFrameworkBenchmark {
     - 方法调用缓存优化反射性能
 
 通过以上优化策略，该RPC框架能够实现10万QPS的高并发处理能力，同时保持毫秒级的调用延迟，满足高性能业务场景的需求。
-
-
-
-> 更新: 2025-10-24 09:27:20  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tgeu3ln223h1fgym>

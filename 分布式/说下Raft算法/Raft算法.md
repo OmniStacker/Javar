@@ -1,4 +1,4 @@
-# Raft算法
+﻿# Raft算法
 
 # Raft算法简介
 
@@ -204,7 +204,3 @@ Raft与Multi-Paxos的不同:
 <http://www.kailing.pub/raft/index.html>
 
 > 来自: 分布式算法 - Raft算法 | Java 全栈知识体系
-
-
-> 更新: 2024-11-25 21:28:37  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xy54cm3e0bn80edm>

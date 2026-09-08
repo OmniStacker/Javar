@@ -1,4 +1,4 @@
-# Netty如何处理粘包与拆包
+﻿# Netty如何处理粘包与拆包
 
 <font style="color:rgba(0, 0, 0, 0.82);">在网络编程中，粘包和拆包是常见的问题，特别是在使用TCP协议进行通讯时。Netty作为一个高性能的网络框架，提供了多种方法来处理粘包和拆包问题。</font>
 
@@ -118,7 +118,3 @@ public class MyChannelInitializer extends ChannelInitializer<SocketChannel> {
 * <font style="color:rgba(0, 0, 0, 0.82);">通过合理配置ChannelPipeline，可以高效地解决TCP通信中的粘包和拆包问题。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">这些处理方法结合了Netty强大的内存管理和高效的网络IO，使得Netty在处理高并发网络通信时表现出色。</font>
-
-
-> 更新: 2024-08-05 20:37:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rexk3p7tkufftatu>

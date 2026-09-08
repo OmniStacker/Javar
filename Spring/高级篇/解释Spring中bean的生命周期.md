@@ -1,4 +1,4 @@
-# 解释Spring中bean的生命周期
+﻿# 解释Spring中bean的生命周期
 
 Bean生命周期：指定的就是Bean从创建到销毁的整个过程: 分4大步：
 
@@ -23,8 +23,3 @@ Bean生命周期：指定的就是Bean从创建到销毁的整个过程: 分4大
 <font style="color:rgb(0, 0, 0);">这4大步组成了Bean的生命周期</font>
 
 <font style="color:rgb(0, 0, 0);"></font>
-
-
-
-> 更新: 2023-09-06 21:39:04  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xp7igarg3iivvs54>

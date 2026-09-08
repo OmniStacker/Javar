@@ -1,4 +1,4 @@
-# 大厂弃用 ClickHouse？Doris 凭什么成新宠？
+﻿# 大厂弃用 ClickHouse？Doris 凭什么成新宠？
 
 <font style="color:rgb(38, 38, 38);">在实时 OLAP 领域，ClickHouse 曾是当之无愧的“流量之王”。它快，快得不讲道理，单机性能足以让很多大数据组件汗颜。</font>
 
@@ -87,8 +87,3 @@
 + <font style="color:rgb(38, 38, 38);">你希望</font>**<font style="color:rgb(38, 38, 38);">运维省心</font>**<font style="color:rgb(38, 38, 38);">，不想半夜起来修集群。</font>
 
 <font style="color:rgb(38, 38, 38);">选型不是看谁跑分高，而是看谁能让你的团队少加班，让业务跑得更顺畅。</font>
-
-
-
-> 更新: 2025-12-31 15:14:05  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gqyrre5xo3erhxmz>

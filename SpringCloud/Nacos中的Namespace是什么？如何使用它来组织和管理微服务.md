@@ -1,4 +1,4 @@
-# Nacos中的Namespace是什么？如何使用它来组织和管理微服务
+﻿# Nacos中的Namespace是什么？如何使用它来组织和管理微服务
 
 #### **一、 标准面试回答模版（建议背诵）**
 
@@ -69,7 +69,3 @@ spring:
    * 例如：`order-service-prod.yaml`。
 
 **总结：Namespace 定乾坤（环境），Group 分天下（业务），DataId 锁目标（具体配置）。** 搞懂了这个三元组，你的微服务配置管理才算真正入门。”
-
-
-> 更新: 2026-01-19 19:41:01  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hcnphqavvzuggvow>

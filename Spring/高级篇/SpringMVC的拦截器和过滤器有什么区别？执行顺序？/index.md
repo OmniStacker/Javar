@@ -1,4 +1,4 @@
-# SpringMVC的拦截器和过滤器有什么区别？执行顺序？
+﻿# SpringMVC的拦截器和过滤器有什么区别？执行顺序？
 
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">拦截器和过滤器在Web应用中都扮演着请求和响应处理的角色，但它们之间存在一些关键区别。</font>
 
@@ -15,8 +15,3 @@
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);"></font>
 
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">视频：</font>[<font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">https://www.bilibili.com/video/BV1mf4y1c7cV?p=72&vd_source=fa810d8b8d6765676cb343ada918d6eb</font>](https://www.bilibili.com/video/BV1mf4y1c7cV?p=72&vd_source=fa810d8b8d6765676cb343ada918d6eb)
-
-
-
-> 更新: 2024-03-08 10:40:53  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ls1c6qxmrgedfwvf>

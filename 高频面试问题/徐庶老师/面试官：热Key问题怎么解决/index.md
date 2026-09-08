@@ -1,4 +1,4 @@
-# 面试官：热Key问题怎么解决
+﻿# 面试官：热Key问题怎么解决
 
 <font style="color:rgba(0, 0, 0, 0.96);"> 高并发场景下，大家都可能遇到的经典难题——Redis的热点Key问题。</font>
 
@@ -68,7 +68,3 @@
 2. **<font style="color:rgba(0, 0, 0, 0.96);">对于写请求</font>**<font style="color:rgba(0, 0, 0, 0.96);">（比如扣减库存）：我们用‘热点分散’策略。将写操作的压力均匀地分散到后端的各个Redis节点，避免单点过载。</font>
 
 <font style="color:rgba(0, 0, 0, 0.96);">通过这样‘读写分离’、‘层层过滤’的组合策略，我们就能从容应对高并发下的热点访问问题，保证我们Java系统的稳定和高可用。 </font>
-
-
-> 更新: 2025-10-20 22:44:27  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wopye211c4anr8bl>

@@ -1,4 +1,4 @@
-# 说下CAP原则
+﻿# 说下CAP原则
 
 <font style="background-color:#FBDE28;">薪资：8·k-15k</font>
 
@@ -122,7 +122,3 @@
 <font style="color:rgb(79, 79, 79);">分区容错性特点：</font>
 
 > <font style="color:rgb(85, 86, 102);background-color:rgb(238, 240, 244);">分区容忍性分是布式系统具备的基本能力。</font>
-
-
-> 更新: 2023-10-15 19:39:30  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/eav93qvg0qcgmgv3>

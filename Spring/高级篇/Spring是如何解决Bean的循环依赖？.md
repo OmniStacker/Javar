@@ -1,4 +1,4 @@
-# Spring是如何解决Bean的循环依赖？
+﻿# Spring是如何解决Bean的循环依赖？
 
 ## 引入：<font style="color:rgba(0, 0, 0, 0.87);">循环依赖的场景</font>
 
@@ -709,7 +709,3 @@ protected Object getEarlyBeanReference(String beanName, RootBeanDefinition mbd, 
 <font style="color:rgba(0, 0, 0, 0.87);"></font>
 
 <font style="color:rgba(0, 0, 0, 0.87);"></font>
-
-
-> 更新: 2025-04-28 14:46:36  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ys4ul3b33vkyl82e>

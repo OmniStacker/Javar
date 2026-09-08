@@ -1,4 +1,4 @@
-# 谈谈Ribbon和Feign区别
+﻿# 谈谈Ribbon和Feign区别
 
 在分布式系统的微服务构建中，Ribbon和Feign都是Netflix开发的Java库。
 
@@ -9,8 +9,3 @@
 Ribbon和Feign都用于构建分布式系统中的微服务，但两者在用途、编程模型和集成上存在差异。**Ribbon更注重负载均衡**，需要配合其他库如RestTemplate来发送http请求，而Feign则采用声明式编程模型，只需编写接口和注解即可。此外，Ribbon提供了自定义负载均衡策略的能力，而**Feign通常与Ribbon一起使用以实现负载均衡**。
 
 总的来说，如果你需要更多的控制和自定义负载均衡策略，可以选择Ribbon；如果你更喜欢简洁的声明式编程模型，可以选择Feign。
-
-
-
-> 更新: 2023-09-11 13:32:19  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hlz5p0zurwcgag11>

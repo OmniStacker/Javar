@@ -1,4 +1,4 @@
-# MySQL中NULL 和 NOT NULL 一定不走索引？
+﻿# MySQL中NULL 和 NOT NULL 一定不走索引？
 
 <font style="color:rgba(6, 8, 31, 0.88);">在 MySQL 中，字段是否允许为 NULL 以及字段的定义方式会直接影响查询条件 </font><code><font style="color:rgba(6, 8, 31, 0.88);">IS NULL</font></code><font style="color:rgba(6, 8, 31, 0.88);"> 和 </font><code><font style="color:rgba(6, 8, 31, 0.88);">IS NOT NULL</font></code><font style="color:rgba(6, 8, 31, 0.88);"> 是否使用索引。此外，字段中 NULL 值的分布占比也会显著影响查询性能和优化器的决策。</font>
 
@@ -382,7 +382,3 @@ ANALYZE TABLE test;
    * <font style="color:rgba(6, 8, 31, 0.88);">二级索引扫描行数过多时，回表成本可能高于全表扫描。</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">在实际开发中，可以通过强制索引、覆盖索引等方式优化查询性能，同时定期更新统计信息，避免优化器误判。</font>
-
-
-> 更新: 2024-12-17 22:19:44  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/sm47fo5o5k271hzx>

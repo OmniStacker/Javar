@@ -1,4 +1,4 @@
-# 说说Redis的持久化机制
+﻿# 说说Redis的持久化机制
 
 #### 简答
 
@@ -302,7 +302,3 @@ Short read or OOM loading DB. Unrecoverable error，aborting now.
 <font style="color:rgb(51, 51, 51);">1、RDB 文件是二进制文件，无论是要把 RDB 写入磁盘，还是要通过网络传输 RDB，IO效率都比记录和传输 AOF 的高。</font>
 
 <font style="color:rgb(51, 51, 51);">2、在从库端进行恢复时，用 RDB 的恢复效率要高于用 AOF。</font>
-
-
-> 更新: 2025-06-18 16:35:25  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lefz0ffra2wp5veg>

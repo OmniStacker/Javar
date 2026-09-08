@@ -1,4 +1,4 @@
-# 两个对象 hashCode（）相同，则equals（）否也一定为true？
+﻿# 两个对象 hashCode（）相同，则equals（）否也一定为true？
 
 **不一定。**
 
@@ -11,8 +11,3 @@ equals()方法用于比较两个对象的内容是否相等，而hashCode()方�
 **总结：**
 
 两个对象的hashCode()方法返回相同的值，并不能保证它们的equals()方法一定返回true，因此在比较对象的相等性时，需要同时使用equals()方法和hashCode()方法。
-
-
-
-> 更新: 2023-09-04 14:51:29  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gnv3dsz1q549gauk>

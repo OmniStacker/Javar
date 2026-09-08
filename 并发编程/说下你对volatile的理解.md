@@ -1,4 +1,4 @@
-# 说下你对volatile的理解
+﻿# 说下你对volatile的理解
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -103,7 +103,3 @@ public class VolatileAtomicityDemo {
 拓展视频：
 
 [volatile 不保证原子性？那你把 long和double 置于何地？](https://open.douyin.com/player/video?vid=7578407384561880335\&autoplay=0)
-
-
-> 更新: 2026-01-08 16:20:35  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/nme2ic6x1l8v70vc>

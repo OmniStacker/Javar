@@ -1,4 +1,4 @@
-# Java中读写锁的应用场景是什么
+﻿# Java中读写锁的应用场景是什么
 
 <code><font style="color:rgba(0, 0, 0, 0.82);">ReadWriteLock</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 是 Java 提供的一种用于解决并发读写问题的锁机制，其主要目的在于提高在</font>**<font style="color:rgba(0, 0, 0, 0.82);">读多写少的场景</font>**<font style="color:rgba(0, 0, 0, 0.82);">下的并发性能。</font><code><font style="color:rgba(0, 0, 0, 0.82);">ReadWriteLock</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 允许多个线程同时读取共享资源，但是对写操作是独占的。这意味着在一个线程写入数据时，其他线程既不能读取也不能写入。</font>
 
@@ -93,7 +93,3 @@ public class ReadWriteLockExample {
 * **<font style="color:rgba(0, 0, 0, 0.82);">易于使用</font>**<font style="color:rgba(0, 0, 0, 0.82);">：</font><code><font style="color:rgba(0, 0, 0, 0.82);">ReadWriteLock</font></code><font style="color:rgba(0, 0, 0, 0.82);"> </font><font style="color:rgba(0, 0, 0, 0.82);">提供了清晰的语义分离（读与写），使得代码更具可读性和维护性。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">在高并发应用中，通过合理使用 </font><code><font style="color:rgba(0, 0, 0, 0.82);">ReadWriteLock</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 可以在保持数据一致性的同时大幅提高程序的并发性能。</font>
-
-
-> 更新: 2024-08-11 21:26:18  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qaxss082u4y1akmm>

@@ -1,4 +1,4 @@
-# Kafka与RabbitMQ相比有什么优势？
+﻿# Kafka与RabbitMQ相比有什么优势？
 
 # 1) 核心定位与架构差异
 
@@ -340,7 +340,3 @@ public class SimpleConsumerRabbit {
 Kafka 和 RabbitMQ 都是业界优秀的消息中间件，但它们的设计哲学、核心优势和适用场景各有侧重。作为 Java 开发者，理解这些差异，并结合具体业务需求进行技术选型至关重要。没有绝对的“好”或“坏”，只有“合适”与“不合适”。希望这份详细的对比能帮助你在设计分布式系统时做出最符合项目需求的选择。
 
 如果你有更具体的业务场景，或者想深入了解某一特定方面（例如，Kafka Streams 的代码示例、RabbitMQ 的 RPC 实现等），请随时提出，我很乐意为你提供进一步的帮助。
-
-
-> 更新: 2026-01-22 13:19:16  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qrdqrru7h9zzgaxg>

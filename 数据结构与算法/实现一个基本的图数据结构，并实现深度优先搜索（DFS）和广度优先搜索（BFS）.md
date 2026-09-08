@@ -1,4 +1,4 @@
-# 实现一个基本的图数据结构，并实现深度优先搜索（DFS）和广度优先搜索（BFS）
+﻿# 实现一个基本的图数据结构，并实现深度优先搜索（DFS）和广度优先搜索（BFS）
 
 <font style="color:rgba(0, 0, 0, 0.82);">实现一个基本的图数据结构可以使用邻接表来表示图。邻接表是一种常用的图表示方法，其中每个节点都有一个列表，存储与其相邻的节点。我们将实现图的基本结构，并提供深度优先搜索（DFS）和广度优先搜索（BFS）算法。以下是详细的代码示例和解释：</font>
 
@@ -106,7 +106,3 @@ public class Graph {
    * <font style="color:rgba(0, 0, 0, 0.82);">调用</font><code><font style="color:rgba(0, 0, 0, 0.82);">dfs</font></code><font style="color:rgba(0, 0, 0, 0.82);">和</font><code><font style="color:rgba(0, 0, 0, 0.82);">bfs</font></code><font style="color:rgba(0, 0, 0, 0.82);">方法从节点0开始遍历图，并打印结果。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过这种实现，我们可以创建一个简单的图数据结构，并使用DFS和BFS算法遍历图。</font>
-
-
-> 更新: 2024-08-30 22:40:40  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vfdpb50bh04diqwy>

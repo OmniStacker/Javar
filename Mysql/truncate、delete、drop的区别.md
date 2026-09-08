@@ -1,4 +1,4 @@
-# truncate、delete、drop的区别
+﻿# truncate、delete、drop的区别
 
 <code><font style="color:rgba(0, 0, 0, 0.82);">TRUNCATE</font></code><font style="color:rgba(0, 0, 0, 0.82);">、</font><code><font style="color:rgba(0, 0, 0, 0.82);">DELETE</font></code><font style="color:rgba(0, 0, 0, 0.82);">和</font><code><font style="color:rgba(0, 0, 0, 0.82);">DROP</font></code><font style="color:rgba(0, 0, 0, 0.82);">都是SQL中的数据操作语句，用于删除数据或表结构，但它们在功能、性能和使用场景上有显著的区别：</font>
 
@@ -71,7 +71,3 @@ DROP TABLE table_name;
 <font style="color:rgba(0, 0, 0, 0.82);"></font>
 
 [bilibili](https://player.bilibili.com/player.html?bvid=BV1kFpue5Ehj\&p=10\&page=10\&autoplay=0)
-
-
-> 更新: 2024-09-13 19:59:46  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gcl128ydou9pzlp0>

@@ -1,4 +1,4 @@
-# 告别冗长，拥抱优雅——用 Lambda 重构你的 Java 应用
+﻿# 告别冗长，拥抱优雅——用 Lambda 重构你的 Java 应用
 
 **<font style="color:rgb(38, 38, 38);">前言</font>**
 
@@ -87,7 +87,3 @@ List<String> emails = users.stream()             // 1. 获取流
 **<font style="color:rgb(38, 38, 38);">结论</font>**
 
 <font style="color:rgb(38, 38, 38);">Lambda 表达式和 Stream API 不仅仅是语法糖，它们是 Java 语言向函数式编程范式迈出的重要一步。掌握它们，意味着你能够编写出更简洁、更具表现力、更不容易出错的现代化 Java 代码。希望本文能成为你重构之旅的起点，开始享受函数式编程带来的优雅与高效吧！</font>
-
-
-> 更新: 2025-10-29 21:02:38  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gpk04out0n7padmq>

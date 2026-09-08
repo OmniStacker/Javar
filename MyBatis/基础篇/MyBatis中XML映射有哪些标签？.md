@@ -1,4 +1,4 @@
-# MyBatis中XML映射有哪些标签？
+﻿# MyBatis中XML映射有哪些标签？
 
 除了常见的`select`、`insert`、`update`和`delete`标签，MyBatis的XML映射文件中还有一些其他标签用于更复杂的操作和配置。以下是一些常见的额外标签：
 
@@ -16,7 +16,3 @@
 12. **insert、update、delete的flushCache、useGeneratedKeys、keyProperty属性：** 用于配置插入、更新和删除操作的一些属性。
 
 这些标签和属性可以让你更灵活地配置和使用MyBatis，从而适应不同的需求和场景。
-
-
-> 更新: 2023-08-24 19:18:15  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ha8ant9tvyi5hp2v>

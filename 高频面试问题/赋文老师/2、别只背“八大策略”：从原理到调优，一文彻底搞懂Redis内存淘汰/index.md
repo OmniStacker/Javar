@@ -1,4 +1,4 @@
-# 2、别只背“八大策略”：从原理到调优，一文彻底搞懂 Redis 内存淘汰
+﻿# 2、别只背“八大策略”：从原理到调优，一文彻底搞懂 Redis 内存淘汰
 
 ### **<font style="color:rgba(6, 8, 31, 0.88);">面试官的核心考核意图</font>**
 
@@ -111,7 +111,3 @@
 4. **<font style="color:rgba(6, 8, 31, 0.88);">Ops</font>**<font style="color:rgba(6, 8, 31, 0.88);">：最后落到运维监控，讲明白</font>**<font style="color:rgba(6, 8, 31, 0.88);">内存碎片率</font>**<font style="color:rgba(6, 8, 31, 0.88);">和</font>**<font style="color:rgba(6, 8, 31, 0.88);">缓存命中率</font>**<font style="color:rgba(6, 8, 31, 0.88);">这两个核心指标，并给出</font><font style="color:rgba(6, 8, 31, 0.88);"> </font><code><font style="color:rgba(6, 8, 31, 0.88);background-color:rgba(175, 184, 193, 0.2);">lazy-free</font></code><font style="color:rgba(6, 8, 31, 0.88);"> </font><font style="color:rgba(6, 8, 31, 0.88);">这样的实战调优大招。</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">掌握了这套逻辑，你不仅能从容应对面试，更能让你在实际工作中对 Redis 的使用得心应手。</font>
-
-
-> 更新: 2025-09-19 14:28:07  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qv1syzkb03yt5pt3>

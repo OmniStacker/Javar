@@ -1,4 +1,4 @@
-# Netty中无锁串行化是怎么设计的
+﻿# Netty中无锁串行化是怎么设计的
 
 <font style="color:rgba(0, 0, 0, 0.82);">Netty 的无锁串行化设计是其高性能和高并发处理能力的核心之一。无锁串行化设计的主要思想是每条连接对应一个独立的 ChannelPipeline，每个 ChannelPipeline 在特定的 EventLoop 中运行，该 EventLoop 在单一线程中处理所有事件。这种设计避免了多线程竞争和锁的开销，从而提高了系统的吞吐量和响应性能。</font>
 
@@ -77,7 +77,3 @@ class MyChannelHandler extends io.netty.channel.ChannelInboundHandlerAdapter {
 3. **<font style="color:rgba(0, 0, 0, 0.82);">无锁串行化的实现</font>**<font style="color:rgba(0, 0, 0, 0.82);">: 由于 Netty 确保了每个 Channel 的所有 I/O 操作都由同一个 EventLoop 处理，并且是串行执行的，因此不需要使用锁机制来保证线程安全。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">这种设计极大地简化了并发编程的复杂性，在高并发环境下提升了系统的性能和可扩展性。</font>
-
-
-> 更新: 2024-08-05 20:39:08  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/annknow3d9saprw9>

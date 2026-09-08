@@ -1,4 +1,4 @@
-# 🚛 轻量高效的Excel处理工具-EEC
+﻿# 🚛 轻量高效的Excel处理工具-EEC
 
 **<font style="color:#01B2BC;">让JAVA操作excel更简单</font>**
 
@@ -2252,9 +2252,3 @@ public static class GroupStyleProcessor2<U extends Group & Summary> implements S
 | [<font style="color:rgb(31, 35, 40);">0.4.8</font>](https://github.com/wangguanquan/eec/releases/tag/v0.4.8) | <font style="color:rgb(31, 35, 40);">2020-10-09   </font><font style="color:rgb(31, 35, 40);">- ExcelColumn注解增加format属性来支持自定义单元格格式化   </font><font style="color:rgb(31, 35, 40);">- 为减少数据泄露风险，现在对象属性必须明确指定   </font><font style="color:rgb(31, 35, 40);">ExcelColumn注解才会被导出</font> | <font style="color:rgb(31, 35, 40);">0.4.6</font> |
 | [<font style="color:rgb(31, 35, 40);">0.4.7</font>](https://github.com/wangguanquan/eec/releases/tag/v0.4.7) | <font style="color:rgb(31, 35, 40);">2020-08-14   </font><font style="color:rgb(31, 35, 40);">- 安全更新，修复dom4j小于2.1.3版本可能启用XXE攻击。   </font><font style="color:rgb(31, 35, 40);">- ExcelColumn注解增加comment属性，允许在Excel列头添加“批注”功能   </font><font style="color:rgb(31, 35, 40);">- 修复一些已知BUG</font> | |
 | [<font style="color:rgb(31, 35, 40);">0.4.6</font>](https://github.com/wangguanquan/eec/releases/tag/v0.4.4) | <font style="color:rgb(31, 35, 40);">2020-04-20   </font><font style="color:rgb(31, 35, 40);">- 优化SharedStringTable   </font><font style="color:rgb(31, 35, 40);">- 支持读取Excel97~2003文件(需要依懒eec-e3-support)   </font><font style="color:rgb(31, 35, 40);">- 修复一些已知BUG</font> | |
-
-
-
-
-> 更新: 2024-12-31 20:31:15  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gghp2hsgd58g071n>

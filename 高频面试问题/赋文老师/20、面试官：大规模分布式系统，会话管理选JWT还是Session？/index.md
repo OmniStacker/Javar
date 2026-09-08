@@ -1,4 +1,4 @@
-# 20、面试官：大规模分布式系统，会话管理选JWT还是Session？
+﻿# 20、面试官：大规模分布式系统，会话管理选JWT还是Session？
 
 <font style="color:rgb(0, 0, 0);">90% 的程序员面试被问 “大规模分布式系统用 JWT 还是 Session” 时，都栽在了 “只说优缺点” 上 —— 要么干巴巴罗列 “Session 有状态、JWT 无状态”，要么直接拍板 “选 JWT”，却没 get 到面试官的核心诉求：</font>**<font style="color:rgb(0, 0, 0) !important;">你是否懂分布式系统的痛点，能否结合场景做权衡，还能规避落地坑</font>**<font style="color:rgb(0, 0, 0);">。</font>
 
@@ -263,8 +263,3 @@ public class JwtBlacklistUtil {
 3. <font style="color:rgb(0, 0, 0);">如果既想要 JWT 的无状态，又需要主动失效，会用 JWT + Redis 黑名单：登出时把 Token 加入黑名单，验证时先查黑名单，兼顾扩展性和安全性。</font>
 
 <font style="color:rgb(0, 0, 0);">总结下来，没有最好的方案，只有最适合业务的 —— 关键是理解每种方案的利弊，结合场景做权衡，同时规避落地坑（比如 Session 的 Redis 集群配置、JWT 的密钥管理）。”</font>
-
-
-
-> 更新: 2025-11-24 21:46:03  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fpd7f5yzn0fodcx8>

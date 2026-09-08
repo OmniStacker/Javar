@@ -1,4 +1,4 @@
-# 💎 Java面试题大全
+﻿# 💎 Java面试题大全
 
 ## JDK、JRE、JVM之间的区别
 
@@ -2277,7 +2277,3 @@ MySQL官方团队对于在8.0版本中彻底移除Query Cache的决策做出了�
 如下图所示，MySQL官方给出了使用ProxySQL 对比原生Query Cache 性能报告，从图中可以清晰的看到，ProxySQL 的查询性能完胜原生的Query Cache。
 
 ![1670317738162-e224abb6-ea76-479c-a861-4e762f47d2a9.png](./img/rQ74o8W65QSsoCPH/1670317738162-e224abb6-ea76-479c-a861-4e762f47d2a9-356590.png)
-
-
-> 更新: 2025-02-19 16:14:50  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/nksbg1bfv63039ga>

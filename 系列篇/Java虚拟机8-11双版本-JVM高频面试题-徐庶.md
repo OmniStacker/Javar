@@ -1,4 +1,4 @@
-# 👍Java虚拟机8-11双版本 -JVM高频面试题-徐庶👍
+﻿# 👍Java虚拟机8-11双版本 -JVM高频面试题-徐庶👍
 
 ## 
 # 类加载
@@ -1237,7 +1237,3 @@ Heap dump file created
     2. <font style="color:rgb(1, 1, 1);">dump 文件分析</font>
 
 ##  
-
-
-> 更新: 2024-05-06 14:15:00  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/td5a84ty4vel22ge>

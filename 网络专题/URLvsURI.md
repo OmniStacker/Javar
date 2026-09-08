@@ -1,4 +1,4 @@
-# URL vs URI
+﻿# URL vs URI
 
 ## ![1727678251778-b9d71c5e-974c-4468-aa40-6fd522bba1a6.jpeg](./img/3LH0sQvhFS_SbEOk/1727678251778-b9d71c5e-974c-4468-aa40-6fd522bba1a6-982049.jpeg)
 
@@ -57,8 +57,3 @@
 
 ## **结论**
 <font style="color:rgb(34, 34, 34);">URI 和 URL 是与互联网密切相关的重要概念，由于它们之间的相似性，二者常常被互相替代和关联使用。</font>
-
-
-
-> 更新: 2024-10-06 21:15:44  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bcbdogqk962elhbz>

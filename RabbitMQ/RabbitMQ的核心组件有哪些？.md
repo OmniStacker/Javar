@@ -1,4 +1,4 @@
-# RabbitMQ 的核心组件有哪些？
+﻿# RabbitMQ 的核心组件有哪些？
 
 <font style="color:rgb(5, 7, 59);">RabbitMQ的核心组件包括以下几部分，他们共同构成了 RabbitMQ 的基本架构：</font>
 
@@ -13,8 +13,3 @@
 <font style="color:rgb(5, 7, 59);">此外，生产者和消费者也是RabbitMQ的核心组件，生产者负责发送消息到Exchange或者 Queue，消费者负责从Queue中订阅和处理消息。</font>
 
 <font style="color:rgb(5, 7, 59);">这些核心组件共同构建了 RabbitMQ 的消息传递系统，他们协同工作才能实现消息的可靠传递、路由和业务处理等功能。</font>
-
-
-
-> 更新: 2023-09-11 17:30:28  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mwg1n1q0us2fqegp>

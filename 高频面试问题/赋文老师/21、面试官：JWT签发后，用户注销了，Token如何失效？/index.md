@@ -1,4 +1,4 @@
-# 21、面试官：JWT签发后，用户注销了，Token如何失效？
+﻿# 21、面试官：JWT签发后，用户注销了，Token如何失效？
 
 <font style="color:rgb(0, 0, 0);">“面试官：‘JWT 签发后，用户点击注销，Token 怎么让它失效？’ 你是不是心里一慌：JWT 是无状态的，一旦签发没法主动撤回啊！”</font>
 
@@ -599,7 +599,3 @@ public void revokeAllTokens(String userId) {
 ## <font style="color:rgb(0, 0, 0);">五、总结 </font>
 
 <font style="color:rgb(0, 0, 0);">回到面试题本身：JWT 注销后 Token 失效的核心，是</font>**<font style="color:rgb(0, 0, 0) !important;">在 “无状态” 基础上增加 “业务校验层”</font>**<font style="color:rgb(0, 0, 0);"> 。面试官要的不是你背一个方案，而是你能根据场景选择最优解 —— 比如中小规模用黑名单，高并发用双 Token，分布式用撤销中心。</font>
-
-
-> 更新: 2025-11-24 15:20:18  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pg86cc288ow7gyrc>

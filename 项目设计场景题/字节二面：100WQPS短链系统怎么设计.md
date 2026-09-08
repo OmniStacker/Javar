@@ -1,4 +1,4 @@
-# 字节二面：100W QPS 短链系统怎么设计
+﻿# 字节二面：100W QPS 短链系统怎么设计
 
 :::info <font style="color:rgb(23, 35, 63);">这道场景设计题，看上去业务简单，其实，覆盖的知识点非常多：</font>
 
@@ -455,7 +455,3 @@ www.weibo.com/abcdef
 ### **<font style="color:rgb(6, 6, 7);">7. 监控与统计</font>**
 
 <font style="color:rgb(6, 6, 7);">在重定向过程中，可以收集短链的访问信息，如PV/UV、来源、浏览器类型等，并进行数据可视化分析。</font>
-
-
-> 更新: 2025-06-27 13:05:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/nflpkbn9gnasdysh>

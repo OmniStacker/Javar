@@ -1,4 +1,4 @@
-# synchronized的实现原理
+﻿# synchronized的实现原理
 
 **synchronized是Java语言中最基本的线程同步机制，它通过互斥锁来控制线程对共享变量的访问。**
 
@@ -10,8 +10,3 @@
 4. 在JVM内部，每个Java对象都有头信息，其中包含了对象的一些元信息和状态标志。synchronized通过修改头信息的状态标志来实现锁的获取和释放。
 5. synchronized还支持可重入性，即在同一个线程中可以多次获取同一个锁，这样可以避免死锁问题。
 6. Java虚拟机会通过锁升级的方式来提升synchronized的效率，比如偏向锁、轻量级锁和重量级锁等机制，使得在竞争不激烈的情况下，synchronized的性能可以达到与非同步代码相当的水平。
-
-
-
-> 更新: 2023-09-05 21:26:33  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/uou4g1qccpxzmzow>

@@ -1,4 +1,4 @@
-# GC是任意时候都能进行的吗
+﻿# GC是任意时候都能进行的吗
 
 <font style="color:rgba(0, 0, 0, 0.82);">GC垃圾收集只能在</font>**<font style="color:rgba(0, 0, 0, 0.82);">安全点</font>**<font style="color:rgba(0, 0, 0, 0.82);">才能进行。在Java虚拟机（JVM）中，**安全点（Safe Point）**是程序执行的某些特定位置。JVM只能在安全点安全地暂停执行，从而进行垃圾回收（GC）等操作。安全点的设定确保了当线程暂停时，程序的状态是可知和一致的。</font>
 
@@ -45,8 +45,3 @@ public class SafePointExample {
 + **<font style="color:rgba(0, 0, 0, 0.82);">性能和一致性</font>**<font style="color:rgba(0, 0, 0, 0.82);">：安全点设计能够确保为GC等需要程序一致性暂停的操作提供合适控制，同时尽可能保持程序性能。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">总体来说，安全点是JVM优化执行环境的一部分，不同JVM实现可能有不同的安全点管理策略以权衡性能与系统一致性。</font>
-
-
-
-> 更新: 2024-08-11 16:27:01  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/visq4rsmvfgex14b>

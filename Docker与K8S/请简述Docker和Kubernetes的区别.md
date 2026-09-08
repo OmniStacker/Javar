@@ -1,4 +1,4 @@
-# 请简述Docker和Kubernetes的区别
+﻿# 请简述Docker和Kubernetes的区别
 
 Docker和Kubernetes都是开源的容器化技术，但它们在设计理念、功能和应用场景上存在明显的区别。
 
@@ -7,8 +7,3 @@ Docker和Kubernetes都是开源的容器化技术，但它们在设计理念、�
 3. 应用场景：对于单个应用或小型应用集群，Docker可以提供足够的支持。但对于大型的、复杂的容器化应用，Kubernetes在管理、调度、资源分配等方面具有更强的优势。
 
 总之，Docker更适合小型应用或开发环境，而Kubernetes更适合大型生产环境和复杂的容器化应用。
-
-
-
-> 更新: 2023-09-04 20:06:18  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lcyfvxvbyer7rfvz>

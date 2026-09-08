@@ -1,4 +1,4 @@
-# 如何保证Redis与MySQL数据一致性
+﻿# 如何保证Redis与MySQL数据一致性
 
 [bilibili](https://player.bilibili.com/player.html?bvid=BV1FG411Z7Wk\&autoplay=0)
 
@@ -91,7 +91,3 @@
   * **<font style="color:rgba(6, 8, 31, 0.88);">最终一致性</font>**<font style="color:rgba(6, 8, 31, 0.88);">：同样存在延迟，延迟程度取决于整个链路的处理速度。</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);"></font>
-
-
-> 更新: 2025-11-02 15:56:01  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fmiy93ilp2ca0hwy>

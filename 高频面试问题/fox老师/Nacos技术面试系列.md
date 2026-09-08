@@ -1,4 +1,4 @@
-# Nacos技术面试系列
+﻿# Nacos技术面试系列
 
 
 
@@ -112,8 +112,3 @@ Look at me! Nacos 提供了 **命名空间（Namespace）** 、**分组（Group�
 现在你知道 Nacos 的坑有多深了吗？服务注册、心跳机制、临时实例、永久实例、保护阈值、配置推送、长轮询、长连接、AP 模式、CP 模式、Distro 协议、Raft 协议、命名空间、数据持久化——这才是你简历上应该写的"精通 Nacos"！
 
 下次面试官再问你 Nacos，你就这么回答，保证他对你刮目相看！Look at me，记住了吗？
-
-
-
-> 更新: 2025-10-30 13:53:55  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/eno1ik1d3t12l8zs>

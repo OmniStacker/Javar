@@ -1,4 +1,4 @@
-# BeanFactory 和FactoryBean有什么区别？
+﻿# BeanFactory 和FactoryBean有什么区别？
 
 * <code>**<font style="color:rgb(51, 51, 51);">BeanFactory</font>**</code><font style="color:rgb(36, 41, 47);">是Spring框架的核心接口之一，用于管理和获取Bean对象亦陈为bean的容器。</font><font style="color:rgb(51, 51, 51);">使用了简单工厂模式，提供getBean方法用来获取bean。 </font>
 * <code>**<font style="color:rgb(51, 51, 51);">FactoryBean</font>**</code><font style="color:rgb(51, 51, 51);">是一个bean，但是它是一个特殊的bean。</font>
@@ -18,7 +18,3 @@
 <font style="color:rgb(51, 51, 51);"></font>
 
 <font style="color:rgb(51, 51, 51);">        所以他们直接没有什么关系， 实在要扯上点关系那就是BeanFactory管理了</font><font style="color:rgb(36, 41, 47);">FactoryBean</font><font style="color:rgb(51, 51, 51);">，</font>
-
-
-> 更新: 2023-09-06 20:49:40  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hhw8tg1drwp3yczn>

@@ -1,4 +1,4 @@
-# ElasticSearch 如何做性能优化
+﻿# ElasticSearch 如何做性能优化
 
 ElasticSearch可以采取以下性能优化措施：
 
@@ -14,8 +14,3 @@ ElasticSearch可以采取以下性能优化措施：
 10. 监控和优化Elasticsearch的性能指标：通过监控系统跟踪集群的健康状况和性能指标，根据监控数据调整配置参数，优化查询性能。
 
 综上所述，通过以上措施可以有效地优化ElasticSearch的性能，提高系统的稳定性和查询效率。
-
-
-
-> 更新: 2023-09-04 19:45:31  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/kykhsusdqt2hohuh>

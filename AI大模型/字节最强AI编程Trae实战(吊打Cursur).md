@@ -1,4 +1,4 @@
-# 字节最强AI编程Trae实战(吊打Cursur)
+﻿# 字节最强AI编程Trae实战(吊打Cursur)
 
 **<font style="color:rgb(0, 82, 255);">AI编程的发展</font>**
 
@@ -120,8 +120,3 @@ Builder模式：通过自然语言需求描述，自动完成从项目初始化�
 在Cursor、Windsurf盛行的当下，这款Ai IDE也是有很大的舞台的，从功能上来看，它也有着自己的优点。特别是当下它可以免费使用。当然也有潜力成为更加理解中文的开发工具，所以未来可期。
 
 如果你已经使用过其他的类似工具，比如Cursor，欢迎来试试这一款，无论是专业开发者还是新手开发或者产品，都能来体验Trae带来的效率提升。
-
-
-
-> 更新: 2025-02-07 14:51:36  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/uvea9x6gz6akkuh3>

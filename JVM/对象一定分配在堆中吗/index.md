@@ -1,4 +1,4 @@
-# 对象一定分配在堆中吗
+﻿# 对象一定分配在堆中吗
 
 <font style="color:rgba(0, 0, 0, 0.82);">在Java中，传统上我们认为对象是在堆上分配内存的。但是，随着JVM优化技术的发展，尤其是在引入即时编译器（JIT）和逃逸分析（Escape Analysis）技术后，并非所有对象都一定在堆上分配内存。这有以下一些细节：</font>
 
@@ -41,7 +41,3 @@ public class EscapeAnalysisExample {
 
 <font style="color:rgb(0, 0, 0);">  
 </font>
-
-
-> 更新: 2024-08-09 14:43:11  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/io1zauwmbp314aa4>

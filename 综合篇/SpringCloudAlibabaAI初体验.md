@@ -1,4 +1,4 @@
-# Spring Cloud Alibaba AI 初体验
+﻿# Spring Cloud Alibaba AI 初体验
 
 
 
@@ -481,8 +481,3 @@ D:\open_sources\sca-ai\spring-ai\04-29-22-44-22.wav
 <font style="color:rgb(53, 56, 65);">至此，Spring Cloud Alibaba AI 提供的三种基本功能已经体验完成，后续您还可以通过设置一些个性化的参数来使大模型生成各种各样的图片和音频等。</font>
 
 <font style="color:rgb(53, 56, 65);">更多配置项可以参考：</font>[https://help.aliyun.com/zh/dashscope/developer-reference/api-details。社区相关的文档正在完善，更多功能正在开发中！](https://help.aliyun.com/zh/dashscope/developer-reference/api-details%E3%80%82%E7%A4%BE%E5%8C%BA%E7%9B%B8%E5%85%B3%E7%9A%84%E6%96%87%E6%A1%A3%E6%AD%A3%E5%9C%A8%E5%AE%8C%E5%96%84%EF%BC%8C%E6%9B%B4%E5%A4%9A%E5%8A%9F%E8%83%BD%E6%AD%A3%E5%9C%A8%E5%BC%80%E5%8F%91%E4%B8%AD%EF%BC%81)
-
-
-
-> 更新: 2024-06-16 21:38:55  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/edess91kt504q4ou>

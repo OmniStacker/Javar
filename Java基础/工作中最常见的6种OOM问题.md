@@ -1,4 +1,4 @@
-# 工作中最常见的6种OOM问题
+﻿# 工作中最常见的6种OOM问题
 
 ## 前言
 
@@ -231,7 +231,3 @@ public class MetaspaceOOMTest {
 程序最后会报java.lang.OutOfMemoryError: Metaspace的元空间OOM。
 
 这个问题一般是由于加载到内存中的类太多，或者类的体积太大导致的。
-
-
-> 更新: 2026-01-15 15:35:32  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rsgaomnxz4iidrbg>

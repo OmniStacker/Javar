@@ -1,4 +1,4 @@
-# SSO单点登录设计方案及落地
+﻿# SSO单点登录设计方案及落地
 
 ## 什么是SSO？
 
@@ -75,7 +75,3 @@
 ![dba2475d-87a3-423f-8286-5bab286f1077.png](./img/ehm5_G2YoV7zT4l5/1737452404622-3a27f8b0-1718-4bb2-ac15-1b8105db6dc4-015661.png)
 
 ![b841ac39-57e3-490f-b260-285140c46d3b.png](./img/ehm5_G2YoV7zT4l5/1737452404666-ef960462-dfdb-4889-98f1-71a6707e01b0-972550.png)
-
-
-> 更新: 2025-01-21 16:50:26  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bn0ynk3vqm0gptmx>

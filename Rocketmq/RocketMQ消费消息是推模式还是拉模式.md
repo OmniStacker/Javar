@@ -1,4 +1,4 @@
-# RocketMQ消费消息是推模式还是拉模式
+﻿# RocketMQ消费消息是推模式还是拉模式
 
 <font style="color:rgba(0, 0, 0, 0.82);">RocketMQ实际上同时支持推模式和拉模式来消费消息，但这里有一个有趣的细节：虽然RocketMQ提供了所谓的"推模式"消费者，但在底层实现上，它仍然是基于拉模式的。让我们详细探讨这两种模式，并通过代码示例来解释它们的工作原理。</font>
 
@@ -117,8 +117,3 @@ public class PullConsumerExample {
 <font style="color:rgba(0, 0, 0, 0.82);">虽然RocketMQ提供了所谓的"推模式"，但实际上它是基于拉模式实现的。对于大多数应用场景，使用DefaultMQPushConsumer就足够了，因为它提供了一个类似推模式的简单接口。只有在需要精细控制消息消费过程时，才需要考虑使用拉模式。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">无论选择哪种模式，理解它们的底层工作原理都是很重要的，这样可以在遇到性能问题或特殊需求时做出正确的选择和优化。</font>
-
-
-
-> 更新: 2024-08-18 21:31:38  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/iz20l15657osg030>

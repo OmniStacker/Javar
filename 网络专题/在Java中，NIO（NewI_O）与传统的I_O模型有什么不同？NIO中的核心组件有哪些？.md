@@ -1,4 +1,4 @@
-# 在Java中，NIO（New I/O）与传统的I/O模型有什么不同？NIO中的核心组件有哪些？
+﻿# 在Java中，NIO（New I/O）与传统的I/O模型有什么不同？NIO中的核心组件有哪些？
 
 嗨！当然可以解释。Java中的NIO（New I/O）与传统的I/O（Input/Output）模型有些不同。我来用通俗口语来解释一下：
 
@@ -18,8 +18,3 @@ NIO的核心组件包括：
 
 
 总之，NIO使得你的代码在处理多个I/O操作时更高效，不会因为一个操作阻塞了其他操作。希望这解释清楚了NIO的基本概念！如果还有疑问，随时问我。
-
-
-
-> 更新: 2023-08-27 19:51:57  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mlqnvm1z367ha4h5>

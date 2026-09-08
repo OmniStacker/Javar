@@ -1,4 +1,4 @@
-# 缓存穿透：除了布隆过滤器，我们还能怎么“优雅”地防御？
+﻿# 缓存穿透：除了布隆过滤器，我们还能怎么“优雅”地防御？
 
 ![1764759660617-08aa1a04-713e-4ee4-892d-68c8dd930469.png](./img/0Zi0xBfzH2bNaDst/1764759660617-08aa1a04-713e-4ee4-892d-68c8dd930469-987706.png)
 
@@ -82,7 +82,3 @@
 * **<font style="color:rgb(38, 38, 38);">ID 是整数，且数据量极大（亿级）？</font>**<font style="color:rgb(38, 38, 38);"> </font><font style="color:rgb(38, 38, 38);">-> 选</font><font style="color:rgb(38, 38, 38);"> </font>**<font style="color:rgb(38, 38, 38);">Roaring Bitmap</font>**<font style="color:rgb(38, 38, 38);">。</font>
 * **<font style="color:rgb(38, 38, 38);">数据需要频繁增删，且对空间敏感？</font>**<font style="color:rgb(38, 38, 38);"> </font><font style="color:rgb(38, 38, 38);">-> 选</font><font style="color:rgb(38, 38, 38);"> </font>**<font style="color:rgb(38, 38, 38);">布谷鸟过滤器</font>**<font style="color:rgb(38, 38, 38);">。</font>
 * **<font style="color:rgb(38, 38, 38);">传统业务，读多写少，能容忍少量误判？</font>**<font style="color:rgb(38, 38, 38);"> -> 老牌的 </font>**<font style="color:rgb(38, 38, 38);">布隆过滤器</font>**<font style="color:rgb(38, 38, 38);"> 依然能打。</font>
-
-
-> 更新: 2025-12-03 19:24:49  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/kp66sgg43r2vap3n>

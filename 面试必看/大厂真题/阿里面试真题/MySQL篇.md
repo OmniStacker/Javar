@@ -1,4 +1,4 @@
-# MySQL篇
+﻿# MySQL篇
 
 **<font style="color:rgb(255, 106, 0);">WhyMysql?</font>**
 
@@ -1504,8 +1504,3 @@ select * from user where 1=1
 ```plain
 int getUserSize() {        List<User> users = dao.getAllUser();
 ```
-
-
-
-> 更新: 2024-04-29 20:14:05  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pn9pgf6ffmdupig0>

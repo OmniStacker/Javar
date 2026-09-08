@@ -1,4 +1,4 @@
-# MySQL 执行一条 SQL 语句的完整流程：从底层架构到核心步骤
+﻿# MySQL 执行一条 SQL 语句的完整流程：从底层架构到核心步骤
 
 <font style="color:rgb(0, 0, 0);">面试官问 “MySQL 是怎么执行一条 SQL 语句的”，本质是考察你对 MySQL 底层架构的理解，以及能否将 “SQL 语句” 与 “数据库内部协同逻辑” 关联起来 —— 这不仅是基础理论的检验，更是后续排查 SQL 性能问题、设计优化方案的核心能力。本文结合 MySQL 架构特点，分别拆解</font>**<font style="color:rgb(0, 0, 0) !important;">查询语句</font>**<font style="color:rgb(0, 0, 0);">与</font>**<font style="color:rgb(0, 0, 0) !important;">增删改语句</font>**<font style="color:rgb(0, 0, 0);">的执行流程，并对比两者核心差异，帮你彻底理清底层逻辑。</font>
 
@@ -138,7 +138,3 @@
 3. **<font style="color:rgb(0, 0, 0) !important;">增删改靠 “日志” 保一致</font>**<font style="color:rgb(0, 0, 0);">：Undo Log 负责回滚，Redo Log 负责崩溃恢复，Binlog 负责主从同步，两阶段提交确保三者一致性。</font>
 
 <font style="color:rgb(0, 0, 0);">掌握以上流程，不仅能应对面试，更能在实际工作中快速定位问题（如慢查询可能是优化器选错索引，数据不一致可能是两阶段提交异常）。</font>
-
-
-> 更新: 2025-09-19 16:14:29  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ul4142beq8pcsg9n>

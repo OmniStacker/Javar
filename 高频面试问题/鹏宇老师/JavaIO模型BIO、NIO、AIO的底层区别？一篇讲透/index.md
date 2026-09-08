@@ -1,4 +1,4 @@
-# Java IO 模型 BIO、NIO、AIO 的底层区别？一篇讲透
+﻿# Java IO 模型 BIO、NIO、AIO 的底层区别？一篇讲透
 
 <font style="color:rgb(0, 0, 0);">在 Java 面试中，“IO 模型区别” 是高频硬核题 —— 很多人只停留在 “BIO 阻塞、NIO 非阻塞、AIO 异步” 的表面认知，却答不出</font>**<font style="color:rgb(0, 0, 0) !important;">Java IO 与操作系统 IO 模型的底层关联</font>**<font style="color:rgb(0, 0, 0);">。今天结合 PPT 图文（已标注对应截图位置），从 “操作系统 IO 模型” 这个 “地基” 讲起，补全所有逻辑链条，帮你彻底搞懂三者的底层差异。</font>
 
@@ -157,7 +157,3 @@
 <font style="color:rgb(0, 0, 0);">被问 “Java IO 模型底层区别” 时，按 “</font>**<font style="color:rgb(0, 0, 0) !important;">Java IO→对应系统 IO 模型→同步 / 阻塞属性→核心特点→适用场景</font>**<font style="color:rgb(0, 0, 0);">” 的逻辑答，比如讲解 NIO：“Java NIO 的现行实现是 IO 多路复用，底层对应操作系统的 IO 多路复用模型（Linux 下是 epoll）；它属于同步非阻塞模型 —— 应用通过 Selector 将所有连接注册，1 次 select () 调用监控所有连接，无数据时线程休眠，有数据才唤醒处理，仅在数据拷贝阶段短暂阻塞；这种模型能靠 1 个线程处理万级连接，是高并发场景的首选，比如 Netty 框架就是基于此实现的。”</font>
 
 <font style="color:rgb(0, 0, 0);">这样答既覆盖了 “Java IO 与系统 IO 的底层关联”，又讲清了核心差异，比单纯背诵 “阻塞 / 非阻塞” 更显深度，面试官会认为你真正理解了 IO 模型的本质。</font>
-
-
-> 更新: 2025-10-10 15:26:14  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/yiq5swevx9gdsmkp>

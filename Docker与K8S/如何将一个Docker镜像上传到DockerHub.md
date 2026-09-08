@@ -1,4 +1,4 @@
-# 如何将一个Docker镜像上传到Docker Hub
+﻿# 如何将一个Docker镜像上传到Docker Hub
 
 <font style="color:rgb(5, 7, 59);background-color:rgb(253, 253, 254);">要将一个Docker镜像上传到Docker Hub，可以按照以下步骤进行操作：</font>
 
@@ -42,8 +42,3 @@ docker push fox666/tulingmall-product:0.0.1
 ```
 
 <font style="color:rgb(5, 7, 59);background-color:rgb(253, 253, 254);">上传过程中，Docker将会逐层上传镜像的每个层，并计算每个层的SHA256哈希值。在上传完成后，可以在Docker Hub上看到已上传的镜像。</font>
-
-
-
-> 更新: 2023-09-05 14:23:48  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/aikcw5e9saiqvo1y>

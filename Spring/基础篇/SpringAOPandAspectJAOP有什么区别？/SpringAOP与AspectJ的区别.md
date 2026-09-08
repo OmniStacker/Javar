@@ -1,4 +1,4 @@
-# Spring AOP 与 AspectJ 的区别
+﻿# Spring AOP 与 AspectJ 的区别
 
 ## <font style="color:rgba(6, 8, 31, 0.88);">Spring AOP的实现原理</font>
 
@@ -118,7 +118,3 @@ public class AppConfig {
   * <font style="color:rgba(6, 8, 31, 0.88);">对性能有极高要求</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">Spring AOP满足了大多数企业应用的AOP需求，而AspectJ则提供了更强大但复杂度更高的AOP能力。两者各有优势，可根据实际需求选择。</font>
-
-
-> 更新: 2025-04-14 20:30:26  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hthr1488kgh8xhgz>

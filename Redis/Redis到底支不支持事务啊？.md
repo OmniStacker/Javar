@@ -1,4 +1,4 @@
-# Redis到底支不支持事务啊？
+﻿# Redis到底支不支持事务啊？
 
 先说答案：**redis 是支持事务的，****<font style="color:rgb(6, 6, 7);">但是它与传统的关系型数据库中的事务是有所不同的</font>**<font style="color:rgb(6, 6, 7);">。</font>
 
@@ -45,8 +45,3 @@
 2、入队：将多个命令入队到事务中，接到这些命令并不会立即执行，而是放到等待执行的事务队列里面
 
 3、执行：由 exec 命令触发事务
-
-
-
-> 更新: 2025-02-24 19:26:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gkremwy573nv23r3>

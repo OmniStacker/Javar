@@ -1,4 +1,4 @@
-# 如何对SpringBoot配置文件和代码加密
+﻿# 如何对SpringBoot配置文件和代码加密
 
 ## 如何对SpringBoot的配置文件进行加密？
 
@@ -154,7 +154,3 @@ java -javaagent:xxx-encrypted.jar='-pwd=密码'-jar xxx-encrypted.jar
 ```
 
 ![1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449.png](./img/2s7h5TL8oDk3lO6U/1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449-498667.png)
-
-
-> 更新: 2026-01-11 13:36:15  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wyvnprq4ddp5575i>

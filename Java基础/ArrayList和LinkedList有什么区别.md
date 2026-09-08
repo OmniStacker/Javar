@@ -1,4 +1,4 @@
-# ArrayList和LinkedList有什么区别
+﻿# ArrayList和LinkedList有什么区别
 
 ArrayList和LinkedList是Java集合框架中List接口的两个常见实现类，它们在底层实现和性能特点上有以下几点区别：
 
@@ -8,8 +8,3 @@ ArrayList和LinkedList是Java集合框架中List接口的两个常见实现类�
 4. **内存占用：**ArrayList在每个元素都需要存储一个引用和一个额外的数组空间，因此内存占用比较高。而LinkedList由于需要存储前后节点的引用，相对于ArrayList占用的内存更多。
 
 综上所述，如果需要频繁进行随机访问操作或在尾部进行插入和删除操作，可以选择ArrayList。如果需要频繁进行中间位置的插入和删除操作，或者对内存占用有一定限制，可以选择LinkedList。
-
-
-
-> 更新: 2023-09-20 14:37:11  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wcdss8mhkqiohbkg>

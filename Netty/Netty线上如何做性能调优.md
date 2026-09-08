@@ -1,4 +1,4 @@
-# Netty线上如何做性能调优
+﻿# Netty线上如何做性能调优
 
 <font style="color:rgba(0, 0, 0, 0.82);">进行 Netty 程序的性能调优，可以从多个方面入手，包括线程模型、内存管理、数据压缩和连接管理等。以下是一些关键的性能调优策略和常见的坑：</font>
 
@@ -163,7 +163,3 @@ try {
 
 ```java
 ```
-
-
-> 更新: 2024-08-05 20:41:05  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ihqntb112grs4ag2>

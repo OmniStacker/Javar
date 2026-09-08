@@ -1,4 +1,4 @@
-# Redis 缓存失效三大经典场景
+﻿# Redis 缓存失效三大经典场景
 
 <font style="color:rgb(38, 38, 38);">在分布式高并发系统的设计中，Redis 无疑是提升性能的银弹。它通过内存的高速读写，为脆弱的数据库挡下了成千上万的 QPS。然而，引入缓存层也引入了新的复杂性。当缓存因为某些原因“失效”或“被绕过”时，流量会瞬间像洪水一样冲击数据库，导致系统雪崩。</font>
 
@@ -134,7 +134,3 @@ public Object getData(String key) {
 * **<font style="color:rgb(38, 38, 38);">雪崩</font>**<font style="color:rgb(38, 38, 38);">是“全线崩塌”，重点在于分散压力（随机 TTL）和架构容灾。</font>
 
 <font style="color:rgb(38, 38, 38);">理解这三大场景背后的原理，并根据业务量级选择合适的防御方案，是每一位后端架构师的必修课。</font>
-
-
-> 更新: 2025-12-28 19:20:22  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wp03tigs47ksen42>

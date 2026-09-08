@@ -1,4 +1,4 @@
-# Spring-AOP通知和执行顺序？
+﻿# Spring-AOP通知和执行顺序？
 
 <font style="color:rgb(77, 77, 77);">Spring切面可以应用5种类型的通知：</font>
 
@@ -25,8 +25,3 @@
 <font style="color:rgb(51, 51, 51);"></font>
 
 <font style="color:rgb(51, 51, 51);"></font>
-
-
-
-> 更新: 2023-09-17 15:12:19  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xfezqv82xny1nep5>

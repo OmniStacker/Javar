@@ -1,4 +1,4 @@
-# 你是如何排查线上OOM问题的
+﻿# 你是如何排查线上OOM问题的
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">排查线上OOM问题是一个复杂的过程，需要综合运维经验、日志分析和性能监控等多个方面的信息。下面是一般的排查步骤：</font>
 
@@ -11,8 +11,3 @@
 7. **<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">预防措施</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">：根据排查结果，制定预防措施，避免类似的OOM问题再次发生。例如，改进代码质量、加强内存管理、优化资源使用等。</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">需要注意的是，排查OOM问题需要综合运维经验和技术知识，有时需要借助专业的工具和专家的帮助。同时，也要注意及时备份和保留相关的日志和转储文件，以便后续的分析和排查。</font>
-
-
-
-> 更新: 2023-08-28 22:42:41  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/etd8gymgwyli8xnw>

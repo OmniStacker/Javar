@@ -1,4 +1,4 @@
-# RocketMQ 消息积压不用慌！Java 工程师实战指南：从应急止损到架构根治（含代码 + 面试考点）
+﻿# RocketMQ 消息积压不用慌！Java 工程师实战指南：从应急止损到架构根治（含代码 + 面试考点）
 
 <font style="color:rgb(0, 0, 0);">在 Java 后端开发中，RocketMQ 作为高频使用的消息中间件，“消息积压” 是生产环境绕不开的坑 —— 大促峰值流量冲垮消费端、慢 SQL 阻塞业务执行、下游接口超时导致消息堆积…… 这些问题轻则引发业务延迟，重则导致系统雪崩。更棘手的是，面试时面试官还会追问 “怎么处理积压”，光说 “扩容” 根本拿不到高分。</font>
 
@@ -541,7 +541,3 @@ public void handlePaymentCallback(OrderCallbackDTO dto) {
 <font style="color:rgb(0, 0, 0);">【此处插入 PPT 截图 8：总结页（核心观点：控制积压在业务可接受范围，从临时到架构优化）】</font>
 
 <font style="color:rgb(0, 0, 0);">掌握这套流程，既能搞定生产故障，又能在面试中脱颖而出 —— 毕竟，面试官要的不是 “会扩容” 的执行者，而是 “懂原理、能设计” 的工程师。</font>
-
-
-> 更新: 2025-10-22 14:32:02  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/zzbbgvpbmuwym7tz>

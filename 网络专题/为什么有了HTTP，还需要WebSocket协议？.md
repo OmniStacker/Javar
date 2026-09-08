@@ -1,4 +1,4 @@
-# 为什么有了HTTP，还需要WebSocket协议？
+﻿# 为什么有了HTTP，还需要WebSocket协议？
 
 **HTTP**是基于TCP协议的，同一时间里，客户端和服务器只能有一方主动发数据，是半双工通信。
 
@@ -48,8 +48,3 @@ WebSocket 连接是可以加密的，可以使用 TLS（Transport Layer Security
 另外，需要注意的是，WebSocket不是基于HTTP的新协议，因为WebSocket只有在建立连接时才用到了HTTP，升级完成之后就跟HTTP不再有任何关系。
 
 ![1725363712558-bcf47d92-99fb-4b46-a0fe-94e0df25ca8f.jpeg](./img/E62M8E6Z_xSBsiU4/1725363712558-bcf47d92-99fb-4b46-a0fe-94e0df25ca8f-249383.jpeg)
-
-
-
-> 更新: 2024-09-04 13:10:24  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xk3gf97y8262m7qu>

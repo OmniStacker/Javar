@@ -1,4 +1,4 @@
-# 什么是流（Stream）？Java中的InputStream和OutputStream分别用于什么目的？
+﻿# 什么是流（Stream）？Java中的InputStream和OutputStream分别用于什么目的？
 
 在Java中，有两种主要类型的流：输入流（InputStream）和输出流（OutputStream）。
 
@@ -10,8 +10,3 @@
 
 
 总之，InputStream用于读取数据，而OutputStream用于写入数据。它们就像是连接你的程序与外部数据源或目的地的管道，让你可以方便地进行数据传输和处理。
-
-
-
-> 更新: 2023-08-27 19:54:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/spb2raphmgdxbqd4>

@@ -1,4 +1,4 @@
-# ConcurrentSkipList系列原理
+﻿# ConcurrentSkipList系列原理
 
 ConcurrentSkipList是有序的容器
 
@@ -113,8 +113,3 @@ ConcurrentSkipListMap使用跳表结构来保存链表的顺序，解决了在�
 更多源码解析可参考:
 
 [https://www.cnblogs.com/skywang12345/p/3498634.html](https://www.cnblogs.com/skywang12345/p/3498634.html)
-
-
-
-> 更新: 2025-01-24 14:59:46  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ln9qeqinrwe13ugn>

@@ -1,4 +1,4 @@
-# 添加索引真的不会锁表吗？（online DDL）
+﻿# 添加索引真的不会锁表吗？（online DDL）
 
 # 1.MySQL DDL执行方式
 <font style="color:rgb(100, 100, 100);">MySQL5.5以及之前的版本，通常更改数据表结构操作(DDL)会阻塞对表数据的增删改操作(DML)。</font>
@@ -154,8 +154,3 @@ show processlist;
 + 进行DDL操作时尽量在业务低峰期进行操作。
 + 在操作之前最好确认对要操作的表没有任何进行中的操作、没有未提交事务、也没有显式事务中的报错语句。
 + 设置超时时间lock_wait_timeout，避免长时间的metedata锁等待。
-
-
-
-> 更新: 2025-07-14 13:48:32  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/kg0v6b4qtul15k1p>

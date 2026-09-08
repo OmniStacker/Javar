@@ -1,4 +1,4 @@
-# HashMap 源码深度解析：为何“8”是链表转树的临界点？
+﻿# HashMap 源码深度解析：为何“8”是链表转树的临界点？
 
 ![1764165548795-831447c3-55d7-44cd-a4fa-631555520ea8.png](./img/JnMnoW9qxaW6buLd/1764165548795-831447c3-55d7-44cd-a4fa-631555520ea8-216560.png)<font style="color:rgb(38, 38, 38);">在 Java 面试中，</font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">HashMap</font></code><font style="color:rgb(38, 38, 38);"> 几乎是必考题。而其中最刁钻的一个追问往往是：</font>**<font style="color:rgb(38, 38, 38);">“在 JDK 1.8 中，为什么链表转红黑树的阈值（TREEIFY\_THRESHOLD）被设定为 8？”</font>**
 
@@ -78,7 +78,3 @@
 <font style="color:rgb(38, 38, 38);">HashMap 对“8”的选择，绝非偶然。它是</font>**<font style="color:rgb(38, 38, 38);">安全底线（Hash DoS）、资源权衡（空间 vs 时间）与数学概率（泊松分布）</font>**<font style="color:rgb(38, 38, 38);">三者在工程实践中的完美交汇点。</font>
 
 <font style="color:rgb(38, 38, 38);">下次面试再被问到这个问题，请不要只回答一个数字。试着在脑海中展开这几张架构图，从这四个维度讲出它的设计之美。</font>
-
-
-> 更新: 2025-11-28 15:39:36  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fm2zg75apnci5pzi>

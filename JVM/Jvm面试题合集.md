@@ -1,4 +1,4 @@
-# 💎 Jvm面试题合集
+﻿# 💎 Jvm面试题合集
 
 # <font style="color:#01B2BC;">如何判断对象可以被回收</font>
 <font style="color:rgb(55, 65, 81);">在Java中，对象是否可以被回收通常由垃圾回收器决定。垃圾回收器使用一种称为"</font>**<font style="color:rgb(55, 65, 81);">可达性分析</font>**<font style="color:rgb(55, 65, 81);">"的算法来确定对象是否可被回收。可达性分析是指如果一个对象无法从任何</font>**<font style="color:rgb(55, 65, 81);">GC Roots</font>**<font style="color:rgb(55, 65, 81);">直接或间接访问到，它就被认为是不可达的，可以被垃圾回收。</font>
@@ -75,8 +75,3 @@
 <font style="color:rgb(0, 0, 0);">需要注意的是，TLAB的大小是可以配置的，可以根据实际应用的需求进行调整。过小的TLAB可能会导致频繁的垃圾回收，而过大的TLAB可能会浪费内存空间。</font>
 
 <font style="color:rgb(0, 0, 0);">总结来说，TLAB是Java虚拟机中的一种优化技术，用于提高对象分配的效率。每个线程都有自己的TLAB，对象分配在TLAB中进行，可以减少线程同步、提高分配速度和提高局部性。TLAB的大小可以配置，需要根据实际需求进行调整。</font>
-
-
-
-> 更新: 2026-05-14 15:03:24  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wn5gggtb3uqsehng>

@@ -1,4 +1,4 @@
-# MySQL 日志架构深度解析：原子性与数据一致性的基石
+﻿# MySQL 日志架构深度解析：原子性与数据一致性的基石
 
 <font style="color:rgb(38, 38, 38);">在数据库系统的设计权衡中，性能与可靠性往往是一对矛盾体。为了解决内存读写速度与磁盘持久化之间的巨大鸿沟，同时保证事务的 ACID 特性，MySQL 构建了一套精密的日志系统。</font>
 
@@ -75,7 +75,3 @@
 * **<font style="color:rgb(38, 38, 38);">Bin Log (逻辑归档)</font>**<font style="color:rgb(38, 38, 38);">：解决的是</font>**<font style="color:rgb(38, 38, 38);">数据分发与灾备</font>**<font style="color:rgb(38, 38, 38);">的问题。它是 MySQL 生态系统中数据流转的源头。</font>
 
 <font style="color:rgb(38, 38, 38);">掌握这三者，便掌握了 MySQL 数据安全的命脉。</font>
-
-
-> 更新: 2025-12-01 13:30:45  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ehm6h9r3038021e6>

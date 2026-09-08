@@ -1,4 +1,4 @@
-# RocketMQ的集群架构是怎样的
+﻿# RocketMQ的集群架构是怎样的
 
 <font style="color:rgba(0, 0, 0, 0.82);">RocketMQ的集群架构设计旨在提高系统的可用性、可靠性和可扩展性。它通过多种组件协同工作，实现消息的生产、存储、分发和消费。以下是关于RocketMQ集群架构及其使用场景的详细说明。</font>
 
@@ -118,7 +118,3 @@ public class ClusterConsumerExample {
 ### <font style="color:rgba(0, 0, 0, 0.82);">总结</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">RocketMQ的集群架构通过NameServer、Broker的灵活组合，实现了高可用、弹性伸缩和负载均衡，适用于各种规模的分布式系统。通过合理配置和使用，RocketMQ可以支持广泛的应用场景，如在线业务系统、异步处理和事件驱动架构。</font>
-
-
-> 更新: 2024-08-18 20:26:01  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/whblnk2iu56i25po>

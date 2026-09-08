@@ -1,4 +1,4 @@
-# 如何优化线程池的性能
+﻿# 如何优化线程池的性能
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -90,7 +90,3 @@ public class DynamicThreadPoolDemo {
 3. **上下文切换陷阱**：
 
 “优化不仅仅是‘加大参数’。 如果线程数开得太大（比如几千个），**Context Switch**（上下文切换）的开销会吃光 CPU。 我会结合 `vmstat` 命令查看系统的 `cs`（context switch）指标。如果 `cs` 过高但 CPU利用率不高，说明线程开多了，反而要**减小**线程池。”
-
-
-> 更新: 2026-01-08 17:16:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ewvu87q55ri8uit9>

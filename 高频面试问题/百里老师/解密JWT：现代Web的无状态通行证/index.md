@@ -1,4 +1,4 @@
-# 解密JWT：现代Web的无状态通行证
+﻿# 解密JWT：现代Web的无状态通行证
 
 **<font style="color:rgb(38, 38, 38);">摘要：</font>**<font style="color:rgb(38, 38, 38);"> 随着微服务、前后端分离架构的盛行，传统的Session认证模式在可扩展性上遇到了瓶颈。JWT (JSON Web Token) 作为一种轻量、自包含的认证规范，正成为现代应用身份认证的更优解。本文将从其核心优势出发，深入剖析其内部构造、认证流程、核心风险与防御策略，最终为您提供一个清晰的选型指南。</font>
 
@@ -84,7 +84,3 @@
 * **<font style="color:rgb(38, 38, 38);">传统Session</font>**<font style="color:rgb(38, 38, 38);"> 更适用于</font>**<font style="color:rgb(38, 38, 38);">单体应用、有状态的服务</font>**<font style="color:rgb(38, 38, 38);">，尤其是一些后台管理系统。它的状态管理集中在服务端，使得主动失效等操作变得非常简单，但牺牲了水平扩展的能力。</font>
 
 **<font style="color:rgb(38, 38, 38);">结论：</font>**<font style="color:rgb(38, 38, 38);"> 技术选型没有绝对的银弹，但在构建面向未来的、可扩展的Web服务时，JWT无疑提供了更符合趋势的解决方案。它不仅仅是一种技术，更是一种面向无状态架构的设计哲学。</font>
-
-
-> 更新: 2025-10-28 15:12:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fm0drq05ad6rcpm7>

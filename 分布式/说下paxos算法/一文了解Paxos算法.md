@@ -1,4 +1,4 @@
-# 一文了解Paxos 算法
+﻿# 一文了解Paxos 算法
 
 本文主要介绍了 Paxos 算法，包括 Basic Paxos 和 Multi Paxos。
 
@@ -150,8 +150,3 @@ Google 分布式锁 Chubby 实现了 Multi Paxos 算法。Chubby 的 Multi Paxos
 ![1732105647806-4d20b4e0-68dc-461b-8c59-cd0be103409e.jpeg](./img/q2w0nN_UtdgP0lI_/1732105647806-4d20b4e0-68dc-461b-8c59-cd0be103409e-634642.jpeg)
 
 另外，需要指出的是，Basic Paxos 是经过证明的算法。Multi Paxos 是一种思想但缺乏实现算法所需的编程细节，因此，Multi Paxos 的算法实现，是建立在一个未经证明的基础之上。实现 Multi Paxos 算法，最大的挑战是如何证明它是正确的。
-
-
-
-> 更新: 2025-05-27 16:17:00  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xerhnrqtnau1p77w>

@@ -1,4 +1,4 @@
-# 两分钟IDEA完美接入满血deepseek R1模型，基于continue插件+硅基流动实现
+﻿# 两分钟IDEA完美接入满血deepseek R1模型，基于continue插件+硅基流动实现
 
 
 
@@ -172,8 +172,3 @@
 <font style="color:rgb(6, 6, 7);"></font>
 
 <font style="color:rgb(6, 6, 7);"></font>
-
-
-
-> 更新: 2026-03-13 14:07:57  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rcf7oafywcn39h0p>

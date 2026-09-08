@@ -1,4 +1,4 @@
-# 吃透多端登录强制下线：Java 后端 3 大核心方案（附完整代码 / 伪代码）+ 面试高频避坑点
+﻿# 吃透多端登录强制下线：Java 后端 3 大核心方案（附完整代码 / 伪代码）+ 面试高频避坑点
 
 ## <font style="color:rgb(0, 0, 0);">一、需求背景与核心概念</font>
 
@@ -696,7 +696,3 @@ public class DeviceSession implements Serializable {
 <font style="color:rgb(0, 0, 0);">在面试或实际开发中，需不仅能讲清技术方案，更能结合业务背景说明选型理由，同时规避技术缺陷（如 Session 的分布式问题、JWT 的主动失效问题），才能体现出完整的技术思考能力。</font>
 
 ![1760537775504-051b132e-237d-4483-bf5a-674718c84ef9.png](./img/4iwY9f6gbW2DMfTe/1760537775504-051b132e-237d-4483-bf5a-674718c84ef9-578443.png)
-
-
-> 更新: 2025-10-15 22:16:18  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/syrk6fzgi1nslay8>

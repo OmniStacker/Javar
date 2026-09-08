@@ -1,4 +1,4 @@
-# 电商大促如何落地 TCC 事务，避免“钱扣了，货没发”？
+﻿# 电商大促如何落地 TCC 事务，避免“钱扣了，货没发”？
 
 ![1759845843692-b8aca6d1-03df-4f6e-b91f-af46547fcfe8.png](./img/i2MO15gM0U8BbQsl/1759845843692-b8aca6d1-03df-4f6e-b91f-af46547fcfe8-092745.png)
 
@@ -153,7 +153,3 @@ public void try(String tx_id, BusinessData data) {
 <font style="color:rgb(38, 38, 38);">然而，工具能为我们铺平道路，但不能替代我们对脚下土地的认知。深刻理解TCC的这些核心原理，才是您真正的“底气”所在。当遇到复杂的线上问题时，当需要进行关键的架构选型时，正是这份对原理的精通，能让您拨开云雾，直达问题本质，做出最专业、最可靠的决策。</font>
 
 **<font style="color:rgb(38, 38, 38);">黄金法则：拥抱框架，但精通原理。</font>**
-
-
-> 更新: 2025-10-07 22:05:23  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fd68ztyku4etr57v>

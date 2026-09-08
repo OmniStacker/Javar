@@ -1,4 +1,4 @@
-# 💎 MySQL面试题合集
+﻿# 💎 MySQL面试题合集
 
 # <font style="color:#01B2BC;">说说你对 MySQL 锁的理解</font>
 
@@ -2731,7 +2731,3 @@ select * from information_schema.optimizer_trace;
 * <font style="color:rgb(0, 50, 60);">rowid 排序：sort\_buffer 可以放更多数据，但是需要再回到原表去取数据，比全字段排序多一次</font>**<font style="color:rgb(0, 50, 60);">回表</font>**<font style="color:rgb(0, 50, 60);">。</font>
 
 <font style="color:rgb(0, 50, 60);">一般情况下，对于 InnoDB 存储引擎，会优先使</font>**<font style="color:rgb(0, 50, 60);">用全字段</font>**<font style="color:rgb(0, 50, 60);">排序。可以发现 </font>**<font style="color:rgb(0, 50, 60);">max\_length\_for\_sort\_data</font>**<font style="color:rgb(0, 50, 60);"> 参数设置为 1024，这个数比较大的。一般情况下，排序字段不会超过这个值，也就是都会走</font>**<font style="color:rgb(0, 50, 60);">全字段</font>**<font style="color:rgb(0, 50, 60);">排序。</font>
-
-
-> 更新: 2026-05-11 14:45:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/so6mi5fptaanzosx>

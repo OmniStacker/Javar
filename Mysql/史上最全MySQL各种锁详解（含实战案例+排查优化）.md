@@ -1,4 +1,4 @@
-# 史上最全MySQL各种锁详解（含实战案例+排查优化）
+﻿# 史上最全MySQL各种锁详解（含实战案例+排查优化）
 
 # **<font style="color:black;">一、前言：为什么需要锁？</font>**
 
@@ -694,7 +694,3 @@ WHERE
 
 <font style="color:black;">  
 </font>
-
-
-> 更新: 2026-04-08 15:29:04  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tz18319lfzvb4dbr>

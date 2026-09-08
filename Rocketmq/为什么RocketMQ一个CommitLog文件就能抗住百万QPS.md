@@ -1,4 +1,4 @@
-# 为什么 RocketMQ 一个 CommitLog文件就能抗住百万QPS
+﻿# 为什么 RocketMQ 一个 CommitLog文件就能抗住百万QPS
 
 很多初学者觉得不可思议：**磁盘 IO 那么慢，数据库插入几万条都费劲，RocketMQ 凭什么往一个文件里写数据能抗住百万 QPS？**
 
@@ -140,7 +140,3 @@ RocketMQ 采用了 **自旋锁 (SpinLock)** 和 **ReentrantLock** 双重策略�
 5. **堆外内存池 (TransientStorePool)**：实现写入与刷盘的彻底解耦。
 
 **一句话总结**：RocketMQ 并不是真的在“写磁盘”，它其实是在**并发写内存（PageCache/堆外内存）**，然后由操作系统在后台偷偷把数据落盘。这就是它快的本质！
-
-
-> 更新: 2026-01-09 16:49:35  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wp0sptu2ox10kgwl>

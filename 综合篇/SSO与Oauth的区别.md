@@ -1,4 +1,4 @@
-# SSO 与 Oauth 的区别
+﻿# SSO 与 Oauth 的区别
 
 # <font style="color:rgb(0, 82, 255);">前言</font>
 <font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">在数字化浪潮深度渗透的现代生活中，用户每天需要与数十个网络应用进行交互。从企业级管理系统到社交娱乐平台，使用便捷性与数据安全性已成为评估数字服务的黄金标准。</font>
@@ -98,10 +98,3 @@ OAuth 2.0 有四种授权模式：
 + **移动应用授权**
 
 在移动应用领域，OAuth 也被广泛应用。例如，一些移动支付应用需要访问用户的银行账户信息，通过 OAuth 可以在保证安全的前提下获取用户的授权。
-
-
-
-
-
-> 更新: 2025-03-14 19:54:04  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bfiqnz5gam9yqb6o>

@@ -1,4 +1,4 @@
-# 让你设计一个“迷你滴滴”，你会怎么做？
+﻿# 让你设计一个“迷你滴滴”，你会怎么做？
 
 <font style="color:rgb(38, 38, 38);">在系统设计（System Design）面试中，“设计一个打车软件”是出现频率极高的题目。它不仅考察候选人对高并发的理解，还涉及地理位置服务（LBS）、实时消息推送、分布式锁等多个硬核技术点。</font>
 
@@ -99,7 +99,3 @@
 4. **<font style="color:rgb(38, 38, 38);">冷热分离</font>**<font style="color:rgb(38, 38, 38);"> </font><font style="color:rgb(38, 38, 38);">解决了海量数据的存储成本问题。</font>
 
 <font style="color:rgb(38, 38, 38);">掌握这套架构组合拳，足以应对大多数 LBS 类应用的系统设计挑战。</font>
-
-
-> 更新: 2025-12-08 19:08:39  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ssz519y5uneo7wdp>

@@ -1,4 +1,4 @@
-# Spring Boot 实现OCR图片文字识别
+﻿# Spring Boot 实现OCR图片文字识别
 
 ## 1、前言
 
@@ -202,7 +202,3 @@ public class OcrController {
 通过以上步骤，我们成功地在 Spring Boot 项目中集成了 Tess4J，实现了图片文字识别功能。
 
 本文详细介绍了从项目初始化、服务类和控制器的编写到最终测试，希望对大家有所帮助。如果有更复杂的需求，可以进一步优化和扩展此项目。
-
-
-> 更新: 2025-01-22 22:05:42  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/yog2483rordgfvtl>

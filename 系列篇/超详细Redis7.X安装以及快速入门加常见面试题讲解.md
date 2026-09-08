@@ -1,4 +1,4 @@
-# 🚛 超详细Redis7.X 安装以及快速入门加常见面试题讲解
+﻿# 🚛 超详细Redis7.X 安装以及快速入门加常见面试题讲解
 
 # Redis简介
 ## 1.1 什么是Redis
@@ -2350,8 +2350,3 @@ redis-server ./cluster/redis_6379.conf
 redis-cli -p 6379 info replication
 -- 观察131.6380日志，129.6379 重新加入集群
 ```
-
-
-
-> 更新: 2025-05-21 15:10:02  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rmggzgsmr6w4hli5>

@@ -1,4 +1,4 @@
-# 说下CAS的实现与原理
+﻿# 说下CAS的实现与原理
 
 <font style="color:rgba(0, 0, 0, 0.82);">CAS（Compare-And-Swap）是一种用于多线程编程中的原子操作，它通过硬件支持的指令来实现无锁同步。在多线程环境下，CAS操作通过比较和交换来更新变量的值，是一种乐观锁的实现方式，可以避免锁机制带来的开销。</font>
 
@@ -63,7 +63,3 @@ public class CASExample {
 * **<font style="color:rgba(0, 0, 0, 0.82);">活锁</font>**<font style="color:rgba(0, 0, 0, 0.82);">：在高争用环境下，如果许多线程不断重试更新操作，可能会导致活锁，程序一直循环重试而得不到进展。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">CAS是实现乐观并发控制的基础技术，它在Java的并发编程中起着非常重要的作用，尤其是在实现无锁算法时。通过适当使用CAS，可以在保证线程安全的同时，减少锁竞争，提高程序性能。</font>
-
-
-> 更新: 2024-08-11 22:00:22  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rf6z3cwdvsus3wk3>

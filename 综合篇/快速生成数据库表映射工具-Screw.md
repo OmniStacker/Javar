@@ -1,4 +1,4 @@
-# 快速生成数据库表映射工具-Screw
+﻿# 快速生成数据库表映射工具-Screw
 
 ![1714131876043-8f0c73cb-6200-494a-b159-29cf024dc1a6.png](./img/MyBfGfMEcl03wzvg/1714131876043-8f0c73cb-6200-494a-b159-29cf024dc1a6-337363.png)
 
@@ -166,8 +166,3 @@ void document() {
 ![1714132459300-140d1a22-888f-4db6-bb75-5676da33e875.png](./img/MyBfGfMEcl03wzvg/1714132459300-140d1a22-888f-4db6-bb75-5676da33e875-134752.png)
 
 ![1714132466985-7238abc3-cafe-4447-b083-776ef6f1b2bc.png](./img/MyBfGfMEcl03wzvg/1714132466985-7238abc3-cafe-4447-b083-776ef6f1b2bc-537663.png)
-
-
-
-> 更新: 2024-04-26 20:05:28  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mengqwt50gtu2ek5>

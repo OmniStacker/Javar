@@ -1,4 +1,4 @@
-# 💎Spring 面试题集合
+﻿# 💎Spring 面试题集合
 
 # <font style="color:#01B2BC;">当使用@Component Bean的Name默认是什么？</font>
 
@@ -714,7 +714,3 @@ ConfigurableListableBeanFactory factory = ((ConfigurableApplicationContext)conte
 * <font style="color:rgba(6, 8, 31, 0.88);">需要发布和监听事件时</font>
 * <font style="color:rgba(6, 8, 31, 0.88);">在Web应用中（使用WebApplicationContext）它针对Web环境做了优化 </font>
 * **需要使用AOP特性时**
-
-
-> 更新: 2026-01-08 14:55:08  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hnf1tsxt4echn1eb>

@@ -1,4 +1,4 @@
-# Redis Zset 底层设计：为什么选择跳表而非 B+ 树？
+﻿# Redis Zset 底层设计：为什么选择跳表而非 B+ 树？
 
 ![1765459673697-55558454-1601-490d-a752-9e502076111d.png](./img/AZPiRNpZpjrN85KU/1765459673697-55558454-1601-490d-a752-9e502076111d-137345.png)
 
@@ -51,8 +51,3 @@
 1. **<font style="color:rgb(38, 38, 38);">性能不输</font>**<font style="color:rgb(38, 38, 38);">：同样的 O(log n) 效率。</font>
 2. **<font style="color:rgb(38, 38, 38);">实现更轻</font>**<font style="color:rgb(38, 38, 38);">：200 行代码 vs 1000 行代码，Bug 率直线下降。</font>
 3. **<font style="color:rgb(38, 38, 38);">并发更强</font>**<font style="color:rgb(38, 38, 38);">：没有复杂的树平衡锁竞争。</font>
-
-
-
-> 更新: 2025-12-12 13:45:18  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vnel6ecscdmq78su>

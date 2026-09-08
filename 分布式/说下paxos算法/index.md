@@ -1,4 +1,4 @@
-# 说下paxos算法
+﻿# 说下paxos算法
 
 <font style="color:rgb(40, 202, 113);">Paxos</font><font style="color:rgb(74, 74, 74);"> 有点类似前面说的 </font><font style="color:rgb(40, 202, 113);">2PC</font><font style="color:rgb(74, 74, 74);">，</font><font style="color:rgb(40, 202, 113);">3PC</font><font style="color:rgb(74, 74, 74);">，但比这两种算法更加完善。在很多多大厂都得到了工程实践，比如阿里的 </font><font style="color:rgb(40, 202, 113);">OceanBase</font><font style="color:rgb(74, 74, 74);"> 的 </font>**<font style="color:rgb(74, 74, 74);">分布式数据库</font>**<font style="color:rgb(74, 74, 74);">， </font><font style="color:rgb(40, 202, 113);">Google</font><font style="color:rgb(74, 74, 74);"> 的 </font><font style="color:rgb(40, 202, 113);">chubby</font><font style="color:rgb(74, 74, 74);"> </font>**<font style="color:rgb(74, 74, 74);">分布式锁</font>**<font style="color:rgb(74, 74, 74);"> 。</font>
 
@@ -60,8 +60,3 @@
 <font style="color:rgb(74, 74, 74);">Lamport 提出了 Multi Paxos 的算法思想。</font>
 
 <font style="color:rgb(74, 74, 74);">Multi Paxos算法思想，简单说就是在多个提议者的情况下，选出一个Leader（领导者），由领导者作为唯一的提议者，这样就可以解决提议者冲突的问题。</font>
-
-
-
-> 更新: 2023-10-06 14:35:10  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/sh5gb8mbgvo6alip>

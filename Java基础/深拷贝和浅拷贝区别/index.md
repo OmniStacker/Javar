@@ -1,4 +1,4 @@
-# 深拷贝和浅拷贝区别
+﻿# 深拷贝和浅拷贝区别
 
 ### <font style="color:rgba(0, 0, 0, 0.9);">1. </font>**<font style="color:rgba(0, 0, 0, 0.9);">什么是浅拷贝？浅拷贝？</font>**
 
@@ -348,7 +348,3 @@ public class DeepCopyWithApacheCommons {
     }
 }
 ```
-
-
-> 更新: 2025-04-15 19:30:37  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ni0qchop1a9934tm>

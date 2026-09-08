@@ -1,4 +1,4 @@
-# 金额到底用Long还是Bigdecimal
+﻿# 金额到底用Long还是Bigdecimal
 
 金额到底用Long还是Bigdecimal， 一直是一个有争议的话题：
 
@@ -77,8 +77,3 @@
 <font style="color:rgb(37, 41, 51);"></font>
 
 <font style="color:rgb(37, 41, 51);"></font>
-
-
-
-> 更新: 2024-06-21 14:17:02  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/shaltzo6mbn9h6g3>

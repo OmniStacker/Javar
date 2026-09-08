@@ -1,4 +1,4 @@
-# 假如有个业务信息表，我要删除表前三个月state为0的数据，如何设计索引？为什么不用state做索引
+﻿# 假如有个业务信息表，我要删除表前三个月state为0的数据，如何设计索引？为什么不用state做索引
 
 <font style="color:rgba(6, 8, 31, 0.88);">根据需求是要定期删除</font>**<font style="color:rgba(6, 8, 31, 0.88);">三个月前且 state=0</font>**<font style="color:rgba(6, 8, 31, 0.88);"> 的业务信息表数据，核心 SQL 类大概长这样：</font>
 
@@ -37,7 +37,3 @@ CREATE INDEX idx_state_createtime ON your_table (state, create_time);
 
 * **<font style="color:rgba(6, 8, 31, 0.88);">正确做法</font>**<font style="color:rgba(6, 8, 31, 0.88);">：</font><code><font style="color:rgba(6, 8, 31, 0.88);background-color:rgba(175, 184, 193, 0.2);">(state, create_time)</font></code><font style="color:rgba(6, 8, 31, 0.88);"> </font><font style="color:rgba(6, 8, 31, 0.88);">复合索引。</font>
 * **<font style="color:rgba(6, 8, 31, 0.88);">不推荐只用 state 索引</font>**<font style="color:rgba(6, 8, 31, 0.88);">：选择性差，只能加速其中一部分，效率低。</font>
-
-
-> 更新: 2025-05-26 21:22:28  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/velgnom7tksibfn1>

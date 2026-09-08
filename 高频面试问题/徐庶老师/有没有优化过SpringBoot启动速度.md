@@ -1,4 +1,4 @@
-# 有没有优化过 Spring Boot 启动速度
+﻿# 有没有优化过 Spring Boot 启动速度
 
 #
 
@@ -96,7 +96,3 @@ public DataSource dataSource() {
 ### <font style="color:rgb(38, 38, 38);">金句总结（55-60秒）</font>
 
 **<font style="color:rgb(38, 38, 38);">总结</font>**<font style="color:rgb(38, 38, 38);">：Spring Boot 启动优化，不仅仅是框架层面的优化！面试官想听的是：通过启动日志、扩展点和工具定位耗时根源，精准缩小扫描、排除无用配置、开启懒加载、延迟重组件初始化，最后结合 GraalVM 进行极致优化。这才是生产优化的真实回答！</font>
-
-
-> 更新: 2026-04-21 16:21:49  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fdpw219yfp60w5bz>

@@ -1,4 +1,4 @@
-# 阿里的Sentinel底层是如何实现限流的？超过限流数的请求如何处理？直接丢弃吗？
+﻿# 阿里的Sentinel底层是如何实现限流的？超过限流数的请求如何处理？直接丢弃吗？
 
 ## <font style="color:rgba(6, 8, 31, 0.88);">一、Sentinel的底层限流实现机制</font>
 ### <font style="color:rgba(6, 8, 31, 0.88);">1. 限流的核心思想</font>
@@ -51,8 +51,3 @@
 + <font style="color:rgba(6, 8, 31, 0.88);">Sentinel底层主要采用</font>**<font style="color:rgba(6, 8, 31, 0.88);">滑动窗口+计数器</font>**<font style="color:rgba(6, 8, 31, 0.88);">限流，部分场景引入令牌桶/漏桶思想。</font>
 + <font style="color:rgba(6, 8, 31, 0.88);">超过限流数的请求</font>**<font style="color:rgba(6, 8, 31, 0.88);">默认会被直接拒绝</font>**<font style="color:rgba(6, 8, 31, 0.88);">（丢弃）；可配置为排队或预热模式。</font>
 + <font style="color:rgba(6, 8, 31, 0.88);">具体选择哪种处理方式，要根据业务容忍度和实际需求配置。</font>
-
-
-
-> 更新: 2025-05-05 19:31:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/kfaxscfgk5uasyg0>

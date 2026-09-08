@@ -1,4 +1,4 @@
-# 9、面试官：用线程池还是MQ做异步？我想要的答案，其实是这个
+﻿# 9、面试官：用线程池还是MQ做异步？我想要的答案，其实是这个
 
 <font style="color:rgba(0, 0, 0, 0.96);">面试官问：“我们这里有个耗时操作，你用什么方式把它异步化？”</font>
 
@@ -245,7 +245,3 @@ public class OrderService {
 **<font style="color:rgba(0, 0, 0, 0.96);">最后，我会这样总结我的决策思路：</font>**
 
 <font style="color:rgb(87, 96, 106);">“总的来说，我会将</font>**<font style="color:rgb(87, 96, 106);">线程池</font>**<font style="color:rgb(87, 96, 106);">视为一种\*\*‘战术级’的异步工具\*\*，用于优化单个应用内部的性能。而将</font>**<font style="color:rgb(87, 96, 106);">MQ</font>**<font style="color:rgb(87, 96, 106);">视为一种\*\*‘战略级’的异步架构\*\*，用于构建高可用、高扩展性的分布式系统。在做技术选型时，我会优先评估业务的可靠性和未来的扩展性，因为这往往决定了系统架构的生命力。”</font>
-
-
-> 更新: 2025-10-31 15:54:49  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qbi56ufd1gy46xyt>

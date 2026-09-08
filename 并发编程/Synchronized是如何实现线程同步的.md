@@ -1,4 +1,4 @@
-# Synchronized是如何实现线程同步的
+﻿# Synchronized是如何实现线程同步的
 
 <code><font style="color:rgba(0, 0, 0, 0.82);">synchronized</font></code><font style="color:rgba(0, 0, 0, 0.82);">关键字是Java中实现线程同步的基本机制之一。它用于保护共享资源不被多个线程同时访问，从而避免数据不一致和保证线程安全。</font><code><font style="color:rgba(0, 0, 0, 0.82);">synchronized</font></code><font style="color:rgba(0, 0, 0, 0.82);">可以用于方法和代码块，有助于确保在同一时刻只有一个线程可以进入同步代码块。</font>
 
@@ -85,7 +85,3 @@ public class Counter {
 4. **<font style="color:rgba(0, 0, 0, 0.82);">公平性</font>**<font style="color:rgba(0, 0, 0, 0.82);">：</font><code><font style="color:rgba(0, 0, 0, 0.82);">synchronized</font></code><font style="color:rgba(0, 0, 0, 0.82);">不保证线程获取锁的公平性，即线程获取锁的顺序不一定按照调用顺序。如果需要严格的公平性控制，可能需要使用</font><code><font style="color:rgba(0, 0, 0, 0.82);">ReentrantLock</font></code><font style="color:rgba(0, 0, 0, 0.82);">等高级锁。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过</font><code><font style="color:rgba(0, 0, 0, 0.82);">synchronized</font></code><font style="color:rgba(0, 0, 0, 0.82);">，我们可以确保共享资源在多线程环境下的安全访问，同时通过合适的使用方式来优化性能和避免常见的多线程问题。</font>
-
-
-> 更新: 2024-08-11 19:10:04  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bwxdoap45q8ozbtm>

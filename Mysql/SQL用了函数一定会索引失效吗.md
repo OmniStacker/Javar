@@ -1,4 +1,4 @@
-# SQL用了函数一定会索引失效吗
+﻿# SQL用了函数一定会索引失效吗
 
 <font style="color:rgba(0, 0, 0, 0.82);">在MySQL中，当查询语句中对索引列使用某些函数时，确实可能导致索引失效，迫使数据库执行全表扫描。这是因为函数应用于列值后，数据库无法直接利用索引中储存的排序信息。不过，这并不意味着所有情况都会导致索引失效，具体取决于使用的函数类型和场景。以下是详细说明：</font>
 
@@ -50,7 +50,3 @@ ALTER TABLE users ADD username_lower VARCHAR(255) GENERATED ALWAYS AS (LOWER(use
 <font style="color:rgba(0, 0, 0, 0.82);"></font>
 
 [bilibili](https://player.bilibili.com/player.html?bvid=BV1kFpue5Ehj\&p=7\&page=7\&autoplay=0)
-
-
-> 更新: 2024-09-13 19:58:40  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bi7ko4a8ycuqbl3l>

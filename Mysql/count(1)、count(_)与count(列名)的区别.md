@@ -1,4 +1,4 @@
-# count(1)、count(*)与count(列名) 的区别
+﻿# count(1)、count(*)与count(列名) 的区别
 
 <font style="color:rgba(0, 0, 0, 0.82);">面试SQL优化时可能会被问到 SQL Count（）的性能问题？</font>
 
@@ -99,7 +99,3 @@ WHERE Table_schema = 'demo'
 <font style="color:rgb(77, 77, 77);">如果是想精确的获取表的记录总数，我们可以将这个计数值保存到单独的一张计数表中。</font>
 
 <font style="color:rgb(77, 77, 77);">当我们在数据表插入一条记录的同时，将计数表中的计数字段 + 1。也就是说，在新增和删除操作时，我们需要额外维护这个计数表。</font>
-
-
-> 更新: 2025-02-20 14:07:41  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/zxxswr2ounp9qd7k>

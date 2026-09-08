@@ -1,4 +1,4 @@
-# JDK8提升代码优雅技巧
+﻿# JDK8提升代码优雅技巧
 
 # <font style="color:#01B2BC;">Lambda小课堂：巧用“Function”让代码优雅起来~</font>
 在开发过程中经常会使用if...else...进行判断抛出异常、分支处理等操作。这些if...else...充斥在代码中严重影响了代码代码的美观，这时我们可以利用Java 8的Function接口来消灭if...else...
@@ -1028,8 +1028,3 @@ List filteredList = list.stream().filter(fruit -> fruit.startsWith("a"))
 								.sorted()
 								.collect(Collectors.toList());
 ```
-
-
-
-> 更新: 2024-09-24 19:45:12  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ttmafdm9rirc1go6>

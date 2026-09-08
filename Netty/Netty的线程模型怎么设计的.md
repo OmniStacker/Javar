@@ -1,4 +1,4 @@
-# Netty的线程模型怎么设计的
+﻿# Netty的线程模型怎么设计的
 
 <font style="color:rgba(0, 0, 0, 0.82);">Netty 的线程模型旨在高效地处理并发连接和请求，以优化网络应用程序的性能。其线程模型包括了多种优化技术，例如 </font>**<font style="color:rgba(0, 0, 0, 0.82);">Reactor 模式、线程池和事件循环</font>**<font style="color:rgba(0, 0, 0, 0.82);">等，用于在高负载下保持高效稳定的性能。下面详细介绍 Netty 的线程模型及其提升性能的方法。</font>
 
@@ -101,7 +101,3 @@ public class NettyServer {
 * <font style="color:rgba(0, 0, 0, 0.82);">通过线程池复用、通道线程绑定等方式减少资源消耗和锁竞争。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">这些机制使 Netty 能够高效处理大规模并发连接和请求，是其在高性能网络编程中广泛应用的基础。</font>
-
-
-> 更新: 2024-08-05 20:36:29  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tq8mmbb0r01ic2zy>

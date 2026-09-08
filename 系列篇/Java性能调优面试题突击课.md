@@ -1,4 +1,4 @@
-# 👍 Java性能调优面试题突击课
+﻿# 👍 Java性能调优面试题突击课
 
 ## 你能解释一下什么是JVM吗？它是如何工作的？
 
@@ -927,7 +927,3 @@ watch — 监控参数
 ![1676442639581-37cbe452-00e4-4371-bda7-2d56985d33d2.png](./img/5qugRobAjAfsQDRg/1676442639581-37cbe452-00e4-4371-bda7-2d56985d33d2-437131.png)
 
 需要额外说明的是，由于 monitor、trace、watch 等命令是通过字节码增强技术来实现的，会在指定类的方法中插入一些切面来实现数据统计和观测，因此诊断结束要执行 shutdown 来还原类或方法字节码，然后退出 Arthas。
-
-
-> 更新: 2025-01-19 14:34:04  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qyo9kwtwyo4zvxkf>

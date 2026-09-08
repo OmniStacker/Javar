@@ -1,4 +1,4 @@
-# 💎 备战金三银四-Java面试题
+﻿# 💎 备战金三银四-Java面试题
 
 # <font style="color:#000000;">前言</font>
 
@@ -2223,7 +2223,3 @@ where user_name = #{userName} and dept_id = #{deptId}
 
 * <code><font style="color:rgb(44, 62, 80);">\#{}</font></code><font style="color:rgb(44, 62, 80);">里面的名称对应的是 User 类里面的成员属性。</font>
 * <font style="color:rgb(44, 62, 80);">这种方法直观，需要建一个实体类，扩展不容易，需要加属性，但代码可读性强，业务逻辑处理方便，推荐使用。（推荐使用）。</font>
-
-
-> 更新: 2024-12-04 15:10:55  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gdggs5asoyhqku5n>

@@ -1,4 +1,4 @@
-# 优惠券过期使用RocketMQ的延时任务实现
+﻿# 优惠券过期使用RocketMQ的延时任务实现
 
 <font style="color:rgba(0, 0, 0, 0.82);">实现优惠券过期功能可以通过RocketMQ的延时消息来处理。延时消息可以使消息在一段可预见的时间后被消费，这对于实现定时任务和处理过期机制非常有效。下面是一个详细的项目示例和代码说明，描述如何使用RocketMQ来管理优惠券的过期处理。</font>
 
@@ -127,7 +127,3 @@ public class CouponExpirationListener implements RocketMQListener<Long> {
 * **<font style="color:rgba(0, 0, 0, 0.82);">高效性</font>**<font style="color:rgba(0, 0, 0, 0.82);">：RocketMQ的高性能保证了延时消息的高效处理，使得过期机制既可靠又快速。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过这种方式，你可以很容易地处理类似的过期场景，不仅限于优惠券，也适用于租赁、订阅等其他领域的到期处理。</font>
-
-
-> 更新: 2024-08-20 21:18:42  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/frttoahqvhdy7dnh>

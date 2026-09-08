@@ -1,4 +1,4 @@
-# 👍一次搞定MySQL分库分表
+﻿# 👍一次搞定MySQL分库分表
 
 ## [天明](https://www.yuque.com/tianming-aroh0/sagnbd/nfkf7dvzxgp26nw4)寄语<font style="color:rgb(0, 0, 0);">：</font>
 
@@ -539,7 +539,3 @@ USE order_db;
 * <font style="color:#000000;">只要能满足需求，拆分规则越简单越好。</font>
 
 <font style="color:#000000;"></font>
-
-
-> 更新: 2025-06-18 16:39:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dlta7pxy0o81zta9>

@@ -1,4 +1,4 @@
-# MySQL中like模糊查询如何优化
+﻿# MySQL中like模糊查询如何优化
 
 <font style="color:rgba(0, 0, 0, 0.82);">在MySQL中，</font><code><font style="color:rgba(0, 0, 0, 0.82);">LIKE</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 模糊查询可能会导致性能问题，特别是当使用通配符 </font><code><font style="color:rgba(0, 0, 0, 0.82);">%</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 开头时，因为这通常会导致全表扫描。以下方法可以帮助优化 </font><code><font style="color:rgba(0, 0, 0, 0.82);">LIKE</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 模糊查询：</font>
 
@@ -45,7 +45,3 @@ SELECT * FROM users WHERE created_at >= '2023-01-01' AND username LIKE 'John%';
 <font style="color:rgba(0, 0, 0, 0.82);"></font>
 
 [bilibili](https://player.bilibili.com/player.html?bvid=BV1kFpue5Ehj\&p=5\&page=5\&autoplay=0)
-
-
-> 更新: 2024-09-13 19:57:57  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wiz8zcex83ch9zt6>

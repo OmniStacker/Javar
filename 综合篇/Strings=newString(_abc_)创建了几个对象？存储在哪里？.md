@@ -1,4 +1,4 @@
-# String s = new String ("abc") 创建了几个对象？存储在哪里？
+﻿# String s = new String ("abc") 创建了几个对象？存储在哪里？
 
 <font style="color:rgba(0, 0, 0, 0.85);background-color:rgba(0, 0, 0, 0.04);">这是 Java 面试中非常经典的一个问题，关于 String s = new String("abc") 创建了几个对象以及对象存储位置。这个问题的答案要分 </font>**<font style="color:rgba(0, 0, 0, 0.85);background-color:rgba(0, 0, 0, 0.04);">JDK 版本</font>**<font style="color:rgba(0, 0, 0, 0.85);background-color:rgba(0, 0, 0, 0.04);"> 和 </font>**<font style="color:rgba(0, 0, 0, 0.85);background-color:rgba(0, 0, 0, 0.04);">字符串常量池是否已有 "abc"</font>**<font style="color:rgba(0, 0, 0, 0.85);background-color:rgba(0, 0, 0, 0.04);"> 来讨论。</font>
 
@@ -128,7 +128,3 @@ System.out.println(s1 == s3); // true (都指向常量池)
 > <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">💡</font><font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);"> </font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">记忆口诀</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">：</font>
 >
 > <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">常量池看有无，JDK 分版本；6 在永久代，7+ 到堆来；9 后不共享，复制更安全。</font>
-
-
-> 更新: 2025-10-16 11:56:43  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ggpo7i5lg5ehvgn9>

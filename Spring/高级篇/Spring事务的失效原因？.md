@@ -1,4 +1,4 @@
-# Spring事务的失效原因？
+﻿# Spring事务的失效原因？
 
  
 
@@ -27,8 +27,3 @@
 
 +     通过编程式事务， 手动控制事务提交、回滚；
 +     通过分布式事务思想：2PC\3PC\SAGA等等
-
-
-
-> 更新: 2024-11-28 14:19:03  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/oq3yl04fehofd252>

@@ -1,4 +1,4 @@
-# 为什么还会有人认为MySQL单表不要超过2000W数据
+﻿# 为什么还会有人认为MySQL单表不要超过2000W数据
 
 <font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">关于MySQL单表建议最大两千万行的说法，其核心依据主要源于InnoDB存储引擎的B+树索引结构对查询性能的影响，以及实际业务维护的经验总结。以下是详细分析：</font>
 
@@ -71,7 +71,3 @@
 ### **<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">优化建议</font>**
 
 ![1747547082813-c7a3c414-086a-4545-90ef-5b63ad58dc7f.png](./img/JV32AXA3Gqr1LBGY/1747547082813-c7a3c414-086a-4545-90ef-5b63ad58dc7f-208116.png)
-
-
-> 更新: 2025-05-19 15:20:55  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pnba74buu7rzd3hw>

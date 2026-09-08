@@ -1,4 +1,4 @@
-# Redis 持久化机制有哪些
+﻿# Redis 持久化机制有哪些
 
 ## <font style="color:rgb(0, 0, 0);">1. 引言</font>
 
@@ -180,7 +180,3 @@
 2. <font style="color:rgb(0, 0, 0);">RDB 是 “快照式” 持久化（默认开启），快但安全性低；AOF 是 “日志式” 持久化（需手动开启），安全但恢复慢；</font>
 3. <font style="color:rgb(0, 0, 0);">混合持久化（Redis 4.0+）结合二者优势，是核心业务的最优选择；</font>
 4. <font style="color:rgb(0, 0, 0);">选择原则：无 “最优方案”，仅 “适配业务”—— 根据数据重要性、性能要求与版本支持选择合适的持久化方式。</font>
-
-
-> 更新: 2025-09-22 14:49:04  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/axt9lyf1zmfzu8x9>

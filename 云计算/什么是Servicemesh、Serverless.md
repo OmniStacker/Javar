@@ -1,4 +1,4 @@
-# 什么是Servicemesh、Serverless
+﻿# 什么是Servicemesh、Serverless
 
 <font style="color:rgba(0, 0, 0, 0.82);">Servicemesh和Serverless是与现代云计算和分布式系统架构相关的两个不同概念。以下是对这两个术语的解释：</font>
 
@@ -27,8 +27,3 @@
 <font style="color:rgba(0, 0, 0, 0.82);">常见的Serverless平台包括AWS Lambda、Azure Functions和Google Cloud Functions等。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">这两个技术解决方案都致力于简化和优化现代应用程序的开发和运维，但它们解决的问题和使用的场景略有不同。</font>
-
-
-
-> 更新: 2024-08-21 19:32:22  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/nqgdusolgpe1sk4l>

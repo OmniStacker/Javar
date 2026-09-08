@@ -1,4 +1,4 @@
-# 接口被刷百万QPS，怎么防?
+﻿# 接口被刷百万QPS，怎么防?
 
 **<font style="color:#000000;">分享内容</font>**
 
@@ -317,7 +317,3 @@ Grafana 则是一个可视化监控工具，它可以将 Prometheus 收集的数
 Alertmanager 则是一个通知管理器，它可以根据不同的警报级别和通知方式，将警报发送给不同的人员或团队。
 
 结合 Prometheus +Grafana +Alertmanager ， 可以对 Java 接口被恶意狂刷 **进行时序统计**，一旦超过一定的阈值，比如 **1 分钟被狂刷 10W 次**，进行预警， 方便开发和运维进行防范。
-
-
-> 更新: 2025-01-14 17:04:47  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/sabap6mrnfbv92gf>

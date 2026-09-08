@@ -1,4 +1,4 @@
-# Kafka如何保证消息可靠？
+﻿# Kafka如何保证消息可靠？
 
 ## 1. 什么是消息可靠性？为什么Kafka需要它？
 
@@ -482,7 +482,3 @@ Kafka通过以下核心机制共同协作，提供了强大的消息可靠性保
   * `isolation.level=read_committed`：配合事务型生产者实现端到端Exactly-Once语义，只读取已提交的消息。
 
 在实际应用中，我们需要根据业务对可靠性和性能的要求，权衡选择合适的配置。对于大多数核心业务场景，推荐使用 `acks=all`、开启幂等性、手动提交Offset，并在需要时采用事务机制，以实现最高的可靠性。
-
-
-> 更新: 2026-01-20 16:32:47  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fyuce7d7zglkpwp5>

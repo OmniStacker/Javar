@@ -1,4 +1,4 @@
-# Java中如何安全地停止线程
+﻿# Java中如何安全地停止线程
 
 <font style="color:rgba(0, 0, 0, 0.82);">在Java中，安全地停止线程通常涉及通过标志位来指示线程应该停止执行，而不是使用诸如</font><code><font style="color:rgba(0, 0, 0, 0.82);">Thread.stop()</font></code><font style="color:rgba(0, 0, 0, 0.82);">之类的过时且不安全的方法。直接强制终止线程可能会导致资源泄露或数据库状态不一致等问题。</font>
 
@@ -73,7 +73,3 @@ public class SafeThreadStop {
    * <font style="color:rgba(0, 0, 0, 0.82);">最大限度地减少资源泄露和不一致性的风险，通过设置标志位与中断线程相结合，有序地、安全地终止线程操作。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">上述方法有效地结合了标志位与线程中断，显式控制线程的生命周期，实现了对线程的安全停止。</font>
-
-
-> 更新: 2024-08-11 19:23:59  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tzfdm5fio6vq3nb6>

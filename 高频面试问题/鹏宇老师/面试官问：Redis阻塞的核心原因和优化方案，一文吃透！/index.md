@@ -1,4 +1,4 @@
-# 面试官问：Redis 阻塞的核心原因和优化方案，一文吃透！
+﻿# 面试官问：Redis 阻塞的核心原因和优化方案，一文吃透！
 
 <font style="color:rgb(0, 0, 0);">在高并发场景中，Redis 凭借其高性能成为缓存首选，但 “阻塞问题” 却常常成为服务稳定性的 “绊脚石”。很多开发者都会有疑问：Redis 不是基于 “非阻塞 IO 多路复用” 吗？为何还会出现阻塞？</font>
 
@@ -788,7 +788,3 @@ public class RedisLatencyMonitor {
     <version>4.4.6</version> <!-- 推荐使用稳定版 -->
 </dependency>
 ```
-
-
-> 更新: 2025-11-26 17:28:55  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ksmi8ff12vtv71t4>

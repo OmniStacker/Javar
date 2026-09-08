@@ -1,4 +1,4 @@
-# ReentrantLock中的公平锁和非公平锁的底层实现
+﻿# ReentrantLock中的公平锁和非公平锁的底层实现
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -109,7 +109,3 @@ static final class FairSync extends Sync {
 拓展视频：
 
 [限流场景下，改选公平锁还是非公平锁？怎么解决长时间饥饿问题？](https://open.douyin.com/player/video?vid=7463001607484083468\&autoplay=0)
-
-
-> 更新: 2026-01-08 15:46:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fcis5n11xyl33696>

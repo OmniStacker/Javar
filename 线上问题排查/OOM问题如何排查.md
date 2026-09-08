@@ -1,4 +1,4 @@
-# OOM问题如何排查
+﻿# OOM问题如何排查
 
 <font style="color:rgba(0, 0, 0, 0.82);">当Java应用程序遇到OOM（OutOfMemoryError）错误时，通常意味着程序超出了可用的内存容量。这可能由于内存泄漏或配置不足导致。以下是详细的排查过程和示例，帮助诊断和解决这种问题。</font>
 
@@ -131,7 +131,3 @@ public void cleanupSessions() {
    * <font style="color:rgba(0, 0, 0, 0.82);">设置内存使用率告警，防止问题重现。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过系统化地分析和优化内存管理，应用程序在高负载下运行稳定，未再出现内存溢出错误。此例展示了如何排查OOM问题，结合工具和编程实践，有效解决实际中的复杂问题。</font>
-
-
-> 更新: 2024-08-25 22:26:59  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bgpy80cw6x7fntek>

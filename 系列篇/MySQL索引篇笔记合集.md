@@ -1,4 +1,4 @@
-# 🔥MySQL索引篇笔记合集
+﻿# 🔥MySQL索引篇笔记合集
 
 ## MySQL如何实现的索引机制？
 
@@ -534,7 +534,3 @@ explain select nickname,card_id,age from user order by card_id;
 ### group by 分组和 order by 在索引使用上有什么不同吗？
 
 没什么太大的差异`group by`实际是先进行排序，再进行分组。所以遵循order by的索引机制。
-
-
-> 更新: 2026-04-08 15:28:56  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fqeezp2rignkyd95>

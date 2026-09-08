@@ -1,4 +1,4 @@
-# synchronized锁升级是怎么回事？
+﻿# synchronized锁升级是怎么回事？
 
 # <font style="color:rgba(0, 0, 0, 0.96);">JVM 锁机制揭秘：对象头 MarkWord 与锁升级核心流程</font>
 
@@ -307,7 +307,3 @@ public class LockDemo {
 <font style="color:rgba(0, 0, 0, 0.96);">下次再看到有人说"synchronized 很慢"时，你可以自信地说："那只是你没用好。" </font><font style="color:rgba(0, 0, 0, 0.96);">😎</font>
 
 <font style="color:rgba(0, 0, 0, 0.96);">Java 的设计者通过对象头中的两个 bit，构建了一个精美的性能优化体系。这就是为什么 Java 能在企业级应用中屹立 20+ 年的原因之一。</font>
-
-
-> 更新: 2025-11-25 22:34:47  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ve3rcc2ucqpwnh8b>

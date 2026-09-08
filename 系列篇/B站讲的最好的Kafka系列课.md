@@ -1,4 +1,4 @@
-# 💎 B站讲的最好的Kafka系列课
+﻿# 💎 B站讲的最好的Kafka系列课
 
 ## Kafka入门
 
@@ -222,7 +222,3 @@ java -version
 ### 监控与性能调优
 
 ### 故障排查与故障恢复
-
-
-> 更新: 2023-09-07 19:56:37  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xkl9lun0hgt7erq2>

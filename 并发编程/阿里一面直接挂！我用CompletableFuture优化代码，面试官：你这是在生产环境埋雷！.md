@@ -1,4 +1,4 @@
-# 阿里一面直接挂！我用 CompletableFuture 优化代码，面试官：你这是在生产环境埋雷！
+﻿# 阿里一面直接挂！我用 CompletableFuture 优化代码，面试官：你这是在生产环境埋雷！
 
 ## \*\*<font style="color:rgb(130, 127, 196);">
 
@@ -172,7 +172,3 @@ CompletableFuture.supplyAsync(..., executor)
 <font style="color:rgb(0, 0, 0);">想了解更多高频面试题，欢迎关注微信公众号【</font>**<font style="color:rgb(130, 127, 196);">Fox爱分享</font>**<font style="color:rgb(0, 0, 0);">】，领取百万字面试宝典。</font>
 
 > <font style="color:rgb(0, 0, 0);">文章首发地址：</font><https://mp.weixin.qq.com/s/6X_TS5CC1Itzx5YuXWD0WQ>
-
-
-> 更新: 2026-03-13 13:53:29  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lfgoho3tmggg67ft>

@@ -1,4 +1,4 @@
-# 别再用数据库统计访问量了！Java+Redis 3 大方案（Hash/Bitmap/HLL）实战：12KB 扛住亿级用户
+﻿# 别再用数据库统计访问量了！Java+Redis 3 大方案（Hash/Bitmap/HLL）实战：12KB 扛住亿级用户
 
 ## <font style="color:rgb(0, 0, 0);">一、文档概述</font>
 
@@ -770,7 +770,3 @@ public class UserIdentifierUtil {
     }
 }
 ```
-
-
-> 更新: 2025-10-20 17:21:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ghk4geob01hx83ng>

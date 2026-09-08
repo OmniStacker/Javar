@@ -1,4 +1,4 @@
-# 10、把.class文件加密后，JVM是如何运行的？面试官：给我秀一下操作
+﻿# 10、把.class文件加密后，JVM是如何运行的？面试官：给我秀一下操作
 
 <font style="color:rgba(0, 0, 0, 0.96);">前几天有个粉丝在群里吐槽，说面试被虐了。面试官问他：“如果我把一个</font><code><font style="color:rgba(0, 0, 0, 0.96);background-color:rgba(175, 184, 193, 0.2);">.class</font></code><font style="color:rgba(0, 0, 0, 0.96);">文件用AES加密了，你有什么办法让JVM正常加载运行它？”</font>
 
@@ -256,7 +256,3 @@ public class Main {
 5. **<font style="color:rgba(0, 0, 0, 0.96);">举一反三（顶级加分项）</font>**<font style="color:rgba(0, 0, 0, 0.96);">：可以进一步引申，这种在加载时动态处理字节码的技术，也是AOP（面向切面编程）、热部署、以及APM（应用性能监控）探针技术的基础，展示你知识的广度和深度。</font>
 
 <font style="color:rgba(0, 0, 0, 0.96);"></font>
-
-
-> 更新: 2025-10-28 18:52:30  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tepaylgacpp2nk65>

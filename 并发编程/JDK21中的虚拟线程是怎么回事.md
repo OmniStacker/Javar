@@ -1,4 +1,4 @@
-# JDK 21中的虚拟线程是怎么回事
+﻿# JDK 21中的虚拟线程是怎么回事
 
 <font style="color:rgba(0, 0, 0, 0.82);">JDK 21引入了一个重要的新特性：虚拟线程（Virtual Threads）。虚拟线程是Java的项目Loom的一部分，旨在简化并发编程并提高Java应用程序的可扩展性。以下是关于虚拟线程的一些关键细节：</font>
 
@@ -48,7 +48,3 @@ public class VirtualThreadExample {
 2. **<font style="color:rgba(0, 0, 0, 0.82);">库支持</font>**<font style="color:rgba(0, 0, 0, 0.82);">：大部分现有的Java库在使用虚拟线程时无需修改，不过某些需要深度与操作系统线程交互的库可能需要检查兼容性。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">虚拟线程为Java引入了一种新的并发编程模型，使编写高并发Java应用程序变得更直观和简单，它极大地提升了Java程序的可扩展性和可维护性。</font>
-
-
-> 更新: 2024-08-11 19:08:03  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/kbt0anw9ro4a0qt2>

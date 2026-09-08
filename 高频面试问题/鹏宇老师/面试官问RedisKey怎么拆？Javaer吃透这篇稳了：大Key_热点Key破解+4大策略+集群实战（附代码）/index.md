@@ -1,4 +1,4 @@
-# 面试官问 Redis Key 怎么拆？Javaer 吃透这篇稳了：大 Key / 热点 Key 破解 + 4 大策略 + 集群实战（附代码）
+﻿# 面试官问 Redis Key 怎么拆？Javaer 吃透这篇稳了：大 Key / 热点 Key 破解 + 4 大策略 + 集群实战（附代码）
 
 ## <font style="color:rgb(0, 0, 0);">一、核心问题：为什么必须拆分 Redis Key？</font>
 
@@ -500,7 +500,3 @@ public class RedisClusterConfig {
 ## <font style="color:rgb(0, 0, 0);">六、总结</font>
 
 <font style="color:rgb(0, 0, 0);">Redis Key 拆分是解决大 Key 和热点 Key 问题的核心手段，Java 开发者需掌握 “4 大拆分策略” 的适用场景与实现逻辑，理解 “哈希槽机制” 在集群中的作用，同时结合实战注意事项（如聚合优化、一致性保证），才能在面试中脱颖而出，在项目中落地高效的 Redis 缓存方案。</font>
-
-
-> 更新: 2025-10-13 15:07:49  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/quf705rzffp6afi1>

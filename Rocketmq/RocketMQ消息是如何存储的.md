@@ -1,4 +1,4 @@
-# RocketMQ消息是如何存储的
+﻿# RocketMQ消息是如何存储的
 
 <font style="color:rgba(0, 0, 0, 0.82);">RocketMQ的消息存储是一个复杂而高效的过程，设计上充分考虑了性能和扩展性。消息存储的主要组件包括 CommitLog 文件、消费队列文件（ConsumeQueue）、以及索引文件（IndexFile）。我们来详细解释一下这几个核心部分。</font>
 
@@ -36,7 +36,3 @@
 4. **<font style="color:rgba(0, 0, 0, 0.82);">更新IndexFile</font>**<font style="color:rgba(0, 0, 0, 0.82);">（可选）：</font>
    * <font style="color:rgba(0, 0, 0, 0.82);">若消息带有key（如业务ID），则将其哈希和偏移量存入IndexFile。</font>
    * <font style="color:rgba(0, 0, 0, 0.82);">这样，可以通过该key快速查找消息。</font>
-
-
-> 更新: 2024-08-18 22:13:53  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ac2mebudgnn2genu>

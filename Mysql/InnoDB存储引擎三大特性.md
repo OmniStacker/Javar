@@ -1,4 +1,4 @@
-# InnoDB存储引擎三大特性
+﻿# InnoDB存储引擎三大特性
 
 ### <font style="color:rgb(6, 6, 7);">Buffer Pool</font>
 
@@ -55,7 +55,3 @@ BufferPool设计
 doublewrite双写机制
 
 ![1743593355545-aebcf763-12c0-4935-8b76-e8bde8e8ddbc.png](./img/NUrD4xe9tY5pa7gS/1743593355545-aebcf763-12c0-4935-8b76-e8bde8e8ddbc-862513.png)
-
-
-> 更新: 2025-06-25 21:04:25  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rdw1hy38srbek0f9>

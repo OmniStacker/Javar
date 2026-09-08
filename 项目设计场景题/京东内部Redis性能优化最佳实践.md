@@ -1,4 +1,4 @@
-# 京东内部Redis性能优化最佳实践
+﻿# 京东内部Redis性能优化最佳实践
 
 **<font style="color:rgb(51, 51, 51);">本次分享内容</font>**
 
@@ -388,10 +388,3 @@ no-appendfsync-on-rewrite yes
 <font style="color:rgb(51, 51, 51);">7、是否运行了 Redis 主从集群？如果是的话，把主库实例的数据量大小控制在 2~4GB，以免主从复制时，从库因加载大的 RDB 文件而阻塞。</font>
 
 <font style="color:rgb(51, 51, 51);"></font>
-
-
-
-
-
-> 更新: 2024-07-15 22:21:19  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/eifq47zi2cvfbgk3>

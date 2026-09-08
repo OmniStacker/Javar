@@ -1,4 +1,4 @@
-# 简历全是 CRUD？3 个 “合法包装” 技巧，让你的 Controller-Service-Dao 讲出阿里 P7 的味道！
+﻿# 简历全是 CRUD？3 个 “合法包装” 技巧，让你的 Controller-Service-Dao 讲出阿里 P7 的味道！
 
 ## **<font style="color:rgb(130, 127, 196);">写在开头</font>**
 
@@ -95,7 +95,3 @@
 <font style="color:rgb(0, 0, 0);">觉得这篇干货对你有用的，</font>**<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">点个赞，转发</font>**<font style="color:rgb(0, 0, 0);">给身边正在找工作的兄弟。</font>
 
 <font style="color:rgb(0, 0, 0);">我是Fox，关注公众号【</font>**<font style="color:rgb(130, 127, 196);background-color:rgba(0, 0, 0, 0);">Fox 爱分享</font>**<font style="color:rgb(0, 0, 0);">】，只讲书上不写的实战坑、面试避坑技巧，带你少走弯路、轻松拿高薪！</font>
-
-
-> 更新: 2026-01-25 13:44:15  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/apbcfyk28dhe7w38>

@@ -1,4 +1,4 @@
-# 八张架构图讲透Redis服务端面试核心
+﻿# 八张架构图讲透Redis服务端面试核心
 
 <font style="color:rgba(6, 8, 31, 0.88);">在现代分布式系统中，Redis 凭借其卓越的性能，已成为缓存、消息队列、分布式锁等场景的首选。然而，一个单点的 Redis 实例无疑是系统中最脆弱的环节。为了解决这个问题，一套高可用（High Availability, HA）方案是必不可少的。当面试官问起“Redis 如何保证高可用”，很多人会脱口而出“主从集群”。但“主从”和“集群”究竟有何区别？为何有了主从还需要集群，反之亦然？</font>
 
@@ -133,7 +133,3 @@
 4. **<font style="color:rgba(6, 8, 31, 0.88);">分片集群 + 主从复制</font>**<font style="color:rgba(6, 8, 31, 0.88);">：将两者结合，为每个分片配备主从备份，最终构成了兼具</font>**<font style="color:rgba(6, 8, 31, 0.88);">高可用、高可扩展</font>**<font style="color:rgba(6, 8, 31, 0.88);">的终极生产级 Redis 架构。</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">理解这条演进路径，以及每一步是为了解决什么问题、引入了什么新技术，是彻底掌握 Redis 高可用体系的关键。</font>
-
-
-> 更新: 2025-09-18 16:17:34  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vrv2zsn2dmr2gx4z>

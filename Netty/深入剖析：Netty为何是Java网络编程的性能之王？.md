@@ -1,4 +1,4 @@
-# 深入剖析：Netty 为何是 Java 网络编程的性能之王？
+﻿# 深入剖析：Netty 为何是 Java 网络编程的性能之王？
 
 <font style="color:rgba(0, 0, 0, 0.96);">在 Java 的中间件领域（如 Dubbo, RocketMQ, Zookeeper, Spark），Netty 几乎无处不在。当我们需要开发高性能、高并发的网络应用时，Netty 也是首选。</font>
 
@@ -100,7 +100,3 @@
 | **<font style="color:rgba(0, 0, 0, 0.96);">微观层</font>** | <font style="color:rgba(0, 0, 0, 0.96);">FastThreadLocal, 字节码优化</font> | <font style="color:rgba(0, 0, 0, 0.96);">榨干 CPU 的每一个指令周期</font> |
 
 <font style="color:rgba(0, 0, 0, 0.96);">Netty 之所以快，是因为它在每一个可能产生性能损耗的环节（IO、内存、线程、数据结构）都做到了极致。对于开发者而言，Netty 不仅是一个网络框架，更是一本写在代码里的“高性能 Java 编程教科书”。</font>
-
-
-> 更新: 2026-01-09 16:48:47  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ylxm2g3tzebbcbhc>

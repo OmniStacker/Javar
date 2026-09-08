@@ -1,4 +1,4 @@
-# Redis 有哪些集群方案？主从、哨兵、Cluster 有啥区别？实际该咋选？
+﻿# Redis 有哪些集群方案？主从、哨兵、Cluster 有啥区别？实际该咋选？
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">兄弟们，要是面试被问 “Redis 有哪些集群方案？主从、哨兵、Cluster 有啥区别？实际该咋选？” 千万别慌！很多人要么只报个名字，要么把三者混为一谈，其实面试官要的是 “原理 + 区别 + 落地场景” 的清晰逻辑 —— 今天我用 5 分钟给你拆明白，保准你答得又全又有实战感，比光背概念的人强 10 倍！</font>
 
@@ -35,8 +35,3 @@
 3. **<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">海量数据、高写并发（比如大电商订单、社交 Feed 流），单机扛不住</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">—— 用 Cluster 集群，分片扩容，多主多从。</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">兄弟们，下次面试按这个逻辑答：先讲每个方案的 “原理 + 核心特点”，再补个实际场景，最后说选型思路 —— 别光背术语，要让面试官觉得 “你真用过，不是背答案”。这样一套下来，这道题绝对能拿满分！</font>
-
-
-
-> 更新: 2025-11-09 16:12:39  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ru6w6sosh2m5x153>

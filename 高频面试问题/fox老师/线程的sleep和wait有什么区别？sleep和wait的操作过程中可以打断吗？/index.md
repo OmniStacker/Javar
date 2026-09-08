@@ -1,4 +1,4 @@
-# 线程的sleep和wait有什么区别？sleep和wait的操作过程中可以打断吗？
+﻿# 线程的sleep和wait有什么区别？sleep和wait的操作过程中可以打断吗？
 
 ## <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">1. 面试官为什么爱问这个？</font>
 
@@ -132,7 +132,3 @@ synchronized (queue) {
 ## <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">8. 总结口诀</font>
 
 <code>**<font style="color:rgba(0, 0, 0, 0.5) !important;background-color:rgb(252, 252, 252);">sleep</font>**</code>**<font style="color:rgba(0, 0, 0, 0.5) !important;background-color:rgb(252, 252, 252);"> 占着茅坑睡觉，</font>**<code>**<font style="color:rgba(0, 0, 0, 0.5) !important;background-color:rgb(252, 252, 252);">wait</font>**</code>**<font style="color:rgba(0, 0, 0, 0.5) !important;background-color:rgb(252, 252, 252);"> 把茅坑让出来等人叫。</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">两者都能被打断，但 </font><code><font style="color:rgba(0, 0, 0, 0.5) !important;background-color:rgb(252, 252, 252);">wait</font></code><font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);"> 必须在同步块中，且要防虚假唤醒。</font>
-
-
-> 更新: 2025-10-12 15:23:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/nknsp7gyo5fwtpy4>

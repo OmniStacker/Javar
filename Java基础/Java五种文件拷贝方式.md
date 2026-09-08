@@ -1,4 +1,4 @@
-# Java五种文件拷贝方式
+﻿# Java五种文件拷贝方式
 
 <font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">在 Java 中，文件拷贝主要有以下几种方式，不同场景下效率差异显著。以下从</font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">实现方式</font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">、</font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">效率对比</font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">和</font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">适用场景</font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">三方面详细解析：</font>
 
@@ -123,7 +123,3 @@ public static void main(String[] args) throws IOException {
 * **<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">优先使用</font>\*\*\*\*<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);"> </font>**<code>**<font style="background-color:rgb(252, 252, 252);">Files.copy</font>**</code><font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">：Java 7+ 自带优化，简单高效。</font>
 * **<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">大文件必用</font>\*\*\*\*<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);"> </font>**<code>**<font style="background-color:rgb(252, 252, 252);">FileChannel</font>**</code><font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">：性能碾压传统流。</font>
 * **<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">避免手动逐字节读写</font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">：除非处理特殊格式（如加密流）。</font>
-
-
-> 更新: 2025-03-02 17:09:01  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qd7qptxemek4ra6u>

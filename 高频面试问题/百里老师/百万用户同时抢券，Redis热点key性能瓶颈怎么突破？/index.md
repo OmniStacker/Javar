@@ -1,4 +1,4 @@
-# 百万用户同时抢券，Redis热点key性能瓶颈怎么突破？
+﻿# 百万用户同时抢券，Redis热点key性能瓶颈怎么突破？
 
 ![1760425691727-51a697d1-62be-4d82-9915-c319fc66a4e6.png](./img/mbt_coEkN9XzdDSt/1760425691727-51a697d1-62be-4d82-9915-c319fc66a4e6-178695.png)
 
@@ -92,7 +92,3 @@ redis.decr(targetKey);
 * **<font style="color:rgba(0, 0, 0, 0.96);">重大事件直播</font>**<font style="color:rgba(0, 0, 0, 0.96);">：对直播间礼物、评论数的实时统计。</font>
 
 <font style="color:rgba(0, 0, 0, 0.96);">希望通过本文的剖析，您能对Redis热点Key问题有一个更深刻的理解，并在未来的系统设计中游刃有余。</font>
-
-
-> 更新: 2025-10-14 15:08:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qoue83167q5zdoc4>

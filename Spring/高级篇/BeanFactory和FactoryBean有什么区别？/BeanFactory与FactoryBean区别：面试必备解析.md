@@ -1,4 +1,4 @@
-# BeanFactory与FactoryBean区别：面试必备解析
+﻿# BeanFactory与FactoryBean区别：面试必备解析
 
 <font style="color:rgba(6, 8, 31, 0.88);">今天跟大家分享一道Spring面试高频题：</font>**<font style="color:rgba(6, 8, 31, 0.88);">BeanFactory与FactoryBean的区别</font>**<font style="color:rgba(6, 8, 31, 0.88);">。</font>
 
@@ -139,7 +139,3 @@ public MapperFactoryBean<UserMapper> userMapper() {
 * <font style="color:rgba(6, 8, 31, 0.88);">FactoryBean是特殊的</font>**<font style="color:rgba(6, 8, 31, 0.88);">Bean</font>**<font style="color:rgba(6, 8, 31, 0.88);">，用于创建复杂Bean</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">通过这种方式回答，既点明了核心区别，又展示了技术深度，相信大家在面试中一定能够从容应对这个问题！</font>
-
-
-> 更新: 2025-04-07 22:11:42  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dds43egxxx36x9dw>

@@ -1,4 +1,4 @@
-# Spring AI Alibaba整合阿里最新开源的QwQ-32B 模型，性能媲美DeepSeek R1，参数量仅用其1/20
+﻿# Spring AI Alibaba整合阿里最新开源的QwQ-32B 模型，性能媲美DeepSeek R1，参数量仅用其1/20
 
 
 
@@ -132,11 +132,3 @@ import reactor.core.publisher.Flux;
 
 
 若有收获，就点个赞吧
-
-  
- 
-
-
-
-> 更新: 2025-04-01 20:34:42  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/uw8gzo7gpbbqvzil>

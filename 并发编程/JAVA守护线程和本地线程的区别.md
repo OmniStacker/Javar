@@ -1,4 +1,4 @@
-# JAVA 守护线程和本地线程的区别
+﻿# JAVA 守护线程和本地线程的区别
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -73,7 +73,3 @@ public class DaemonVsUserDemo {
 所以，守护线程通常只用于：垃圾回收、心跳检测、或者本地缓存的清理等不涉及关键数据一致性的场景。”
 
 拓展： [阿里一面：OOM后JVM一定会退出吗？为什么？](https://open.douyin.com/player/video?vid=7547152544221498666\&autoplay=0)
-
-
-> 更新: 2026-01-08 14:01:07  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/sxh84cgxodzcys5r>

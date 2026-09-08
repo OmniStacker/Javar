@@ -1,4 +1,4 @@
-# 请解释PostgreSQL中索引的不同类型，并比较它们的使用场景和性能特征
+﻿# 请解释PostgreSQL中索引的不同类型，并比较它们的使用场景和性能特征
 
 <font style="color:rgba(6, 8, 31, 0.88);">PostgreSQL索引是数据库性能优化的关键技术，下面我将详细解析不同类型的索引：</font>
 
@@ -172,8 +172,3 @@ REINDEX INDEX idx_users_username;
 + <font style="color:rgba(6, 8, 31, 0.88);">持续监控和调优</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">索引是数据库性能优化的核心技术，需要根据具体业务场景和数据特征精心设计。关键在于理解不同索引类型的特点，并选择最适合的索引策略。</font>
-
-
-
-> 更新: 2025-01-25 13:29:00  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/svpm84y49qcgprie>

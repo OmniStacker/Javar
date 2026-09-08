@@ -1,4 +1,4 @@
-# 对 SQL 慢查询会考虑哪些优化
+﻿# 对 SQL 慢查询会考虑哪些优化
 
 <font style="color:rgb(0,0,0);">1、分析语句，是否加载了不必要的字段/数据。 </font>
 
@@ -15,8 +15,3 @@
 <font style="color:rgb(0,0,0);">7、如果表数据量太大，考虑分表。 </font>
 
 <font style="color:rgb(0,0,0);">8、利用缓存，减少查询次数。</font>
-
-
-
-> 更新: 2024-06-06 15:39:03  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/oaarx2tzlroiwu99>

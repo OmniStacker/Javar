@@ -1,4 +1,4 @@
-# 搞定 Java 电商面试：购物车设计全解析（3 种存储方案 + 数据合并逻辑 + 异常处理）
+﻿# 搞定 Java 电商面试：购物车设计全解析（3 种存储方案 + 数据合并逻辑 + 异常处理）
 
 ## <font style="color:rgb(0, 0, 0);">1. 文档引言</font>
 
@@ -997,7 +997,3 @@ public class CartSettlementVO {
     <scope>runtime</scope>
 </dependency>
 ```
-
-
-> 更新: 2025-10-30 12:38:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bqhibl970nr1cll4>

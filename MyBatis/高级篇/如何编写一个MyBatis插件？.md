@@ -1,4 +1,4 @@
-# 如何编写一个MyBatis插件？
+﻿# 如何编写一个MyBatis插件？
 
 编写一个MyBatis插件可以让你在执行SQL语句前后进行自定义的操作，比如日志记录（有自带STDOUT\_LOGGING 不过功能较为简单）、性能监控等。下面我将演示一个简单的MyBatis插件，它会在执行查询SQL语句前打印一条日志。当然此功能可直接用Log4j，然后使用 PatternLayout 来定义日志的输出格式，包括日期、时间、日志级别、线程名称、类名、方法名、日志消息等信息。此处主要为演示插件功能。
 
@@ -50,7 +50,3 @@ public class LoggingInterceptor implements Interceptor {
 最后，当你执行查询操作时，插件会自动拦截并执行你在`intercept`方法中定义的逻辑。
 
 需要注意的是，这只是一个简单的插件示例。MyBatis插件可以实现更复杂的逻辑，比如性能分析、自定义SQL改写等。编写插件时要确保逻辑正确，不影响系统稳定性和性能。
-
-
-> 更新: 2025-04-28 15:04:27  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/znduwo5ybo3mck75>

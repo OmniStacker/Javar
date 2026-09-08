@@ -1,4 +1,4 @@
-# mybatis 是怎么跟他的 xml 之间形成映射的？
+﻿# mybatis 是怎么跟他的 xml 之间形成映射的？
 
 ## <font style="color:rgba(6, 8, 31, 0.88);">1. 概述</font>
 
@@ -109,7 +109,3 @@ User user = userMapper.selectUserById(1);
 ```
 
 ***
-
-
-> 更新: 2025-04-17 19:02:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/eyw0xl2ktv4ew1gt>

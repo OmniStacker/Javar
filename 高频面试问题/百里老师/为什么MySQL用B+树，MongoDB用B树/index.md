@@ -1,4 +1,4 @@
-# 为什么MySQL用B+树，MongoDB用B树
+﻿# 为什么MySQL用B+树，MongoDB用B树
 
 ![1765203341042-c9d2c74e-39fa-47dd-b1f9-4c38715041fd.png](./img/o0LnkIYp-nbtBR0m/1765203341042-c9d2c74e-39fa-47dd-b1f9-4c38715041fd-659524.png)
 
@@ -87,7 +87,3 @@
   * <font style="color:rgb(38, 38, 38);">你需要原生的分片（Sharding）支持来处理海量数据。</font>
 
 **<font style="color:rgb(38, 38, 38);">一句话结语：</font>**<font style="color:rgb(38, 38, 38);"> MySQL 赢在</font>**<font style="color:rgb(38, 38, 38);">“有序与稳定”，</font>**<font style="color:rgb(38, 38, 38);">MongoDB 赢在“</font>**<font style="color:rgb(38, 38, 38);">灵活与离散”</font>**<font style="color:rgb(38, 38, 38);">。理解了 B+ 树与 B 树的区别，你选的不仅是数据库，更是数据在磁盘上的“居住方式”。</font>
-
-
-> 更新: 2025-12-10 19:50:57  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hzcgigs9ixa139nq>

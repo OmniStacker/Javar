@@ -1,4 +1,4 @@
-# SpringBoot+Spring AI Alibaba接入RAG应用实战，让你的微服务应用具备智能化能力，小白也能快速上手
+﻿# SpringBoot+Spring AI Alibaba接入RAG应用实战，让你的微服务应用具备智能化能力，小白也能快速上手
 
 <font style="color:rgb(53, 56, 65);">Spring AI Alibaba 开源项目基于 Spring AI 构建，是阿里云通义系列模型及服务在 Java AI 应用开发领域的最佳实践，提供高层次的 AI API 抽象与云原生基础设施集成方案，帮助开发者快速构建 AI 应用。</font>
 
@@ -205,7 +205,3 @@
 **<font style="color:rgba(0, 0, 0, 0.9);">测试效果</font>**
 
 ![1759045109181-6ea9c55c-2b63-49a5-99a1-f3f96b70abff.webp](./img/8Ud-zov3_-HQ214h/1759045109181-6ea9c55c-2b63-49a5-99a1-f3f96b70abff-558363.webp)
-
-
-> 更新: 2025-09-28 16:01:33  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hhgchbh3ai7mpsrz>

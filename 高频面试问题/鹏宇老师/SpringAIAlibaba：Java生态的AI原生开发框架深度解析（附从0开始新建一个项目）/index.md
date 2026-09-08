@@ -1,4 +1,4 @@
-# Spring AI Alibaba：Java生态的AI原生开发框架深度解析（附从0开始新建一个项目）
+﻿# Spring AI Alibaba：Java生态的AI原生开发框架深度解析（附从0开始新建一个项目）
 
 ## <font style="color:rgb(17, 17, 51);">一、技术定位与演进路径</font>
 
@@ -911,7 +911,3 @@ public class WeatherController {
 ```
 
 ![1766727026846-4051b6d8-8e3f-4c01-9bf6-dea841f00700.png](./img/tkDotvOADJRkcqq1/1766727026846-4051b6d8-8e3f-4c01-9bf6-dea841f00700-400360.png)
-
-
-> 更新: 2025-12-26 13:56:13  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xgawq91i6u3c2wlg>

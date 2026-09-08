@@ -1,4 +1,4 @@
-# 第 3 集：前端 SSE 流式交互与打字机效果实现
+﻿# 第 3 集：前端 SSE 流式交互与打字机效果实现
 
 **<font style="color:rgb(26, 28, 30);">摘要</font>**<font style="color:rgb(26, 28, 30);">：本节我们将构建前端页面。你将学到如何使用 JavaScript 的 </font><font style="color:rgb(50, 48, 44);">fetch</font><font style="color:rgb(26, 28, 30);"> API 读取后端传来的数据流 (Stream)，如何清洗 SSE 协议数据，以及如何将 Markdown 实时渲染为漂亮的网页。</font>
 
@@ -187,8 +187,3 @@ data: ：
 
 + **<font style="color:rgb(26, 28, 30);">原因</font>**<font style="color:rgb(26, 28, 30);">：解码器问题。</font>
 + **<font style="color:rgb(26, 28, 30);">解决</font>**<font style="color:rgb(26, 28, 30);">：确保使用了 </font><font style="color:rgb(50, 48, 44);">new TextDecoder().decode(value)</font><font style="color:rgb(26, 28, 30);">。</font>
-
-
-
-> 更新: 2025-12-16 10:43:24  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bpwr6gwq8vism8m2>

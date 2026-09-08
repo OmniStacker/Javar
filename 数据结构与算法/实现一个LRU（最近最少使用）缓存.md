@@ -1,4 +1,4 @@
-# 实现一个LRU（最近最少使用）缓存
+﻿# 实现一个LRU（最近最少使用）缓存
 
 <font style="color:rgba(0, 0, 0, 0.82);">实现一个LRU（最近最少使用）缓存可以通过使用</font><code><font style="color:rgba(0, 0, 0, 0.82);">HashMap</font></code><font style="color:rgba(0, 0, 0, 0.82);">和双向链表来实现。</font><code><font style="color:rgba(0, 0, 0, 0.82);">HashMap</font></code><font style="color:rgba(0, 0, 0, 0.82);">用于快速查找缓存中的元素，而双向链表用于维护元素的使用顺序。以下是详细的代码示例和解释：</font>
 
@@ -138,7 +138,3 @@ class LRUCache {
      * <code><font style="color:rgba(0, 0, 0, 0.82);">popTail()</font></code><font style="color:rgba(0, 0, 0, 0.82);">: 移除并返回链表尾部的节点。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过这种方式，我们可以高效地实现一个LRU缓存，</font><code><font style="color:rgba(0, 0, 0, 0.82);">get</font></code><font style="color:rgba(0, 0, 0, 0.82);">和</font><code><font style="color:rgba(0, 0, 0, 0.82);">put</font></code><font style="color:rgba(0, 0, 0, 0.82);">操作的时间复杂度均为O(1)。</font>
-
-
-> 更新: 2024-08-30 22:25:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ok06pgr1p259gqc6>

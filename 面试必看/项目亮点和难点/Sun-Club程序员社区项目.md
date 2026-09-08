@@ -1,4 +1,4 @@
-# Sun-Club程序员社区项目
+﻿# Sun-Club程序员社区项目
 
 ![1739856447939-d886167e-73e5-48e1-aaaf-d04c2d9eb53a.png](./img/aGBxEVx6A88lrNiG/1739856447939-d886167e-73e5-48e1-aaaf-d04c2d9eb53a-369853.png)
 
@@ -61,14 +61,3 @@
 <font style="color:rgba(6, 8, 31, 0.88);">这样的包装既突出了技术深度，又结合了具体的业务场景，面试时可以重点展开这些亮点，并准备具体的技术方案和数据支撑。每个点都可以深入展开讨论，展现你的技术实力和解决问题的能力。</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">面试问答可参看OA项目中的文件处理，和保险分销并发处理等。</font>
-
-
-
-
-
-
-
-
-
-> 更新: 2025-02-18 13:48:18  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mi5gudzqmfs1k3cz>

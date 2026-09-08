@@ -1,4 +1,4 @@
-# 启动线程为何调用start而不是run方法
+﻿# 启动线程为何调用start而不是run方法
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -96,7 +96,3 @@ private native void start0();
 “会抛出 `IllegalThreadStateException` 异常。 因为 `start()` 方法第一行就在检查 `threadStatus`。 一旦线程启动，状态就变了（不再是 NEW），即使线程执行完变成了 TERMINATED 状态，也不能再次复用 `start()` 重新启动。 **线程是属于一次性消耗品，想复用任务，请用线程池！**”
 
 **附录**：start的jvm源码分析
-
-
-> 更新: 2026-01-08 13:55:50  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/cb2gdq7s7dydefer>

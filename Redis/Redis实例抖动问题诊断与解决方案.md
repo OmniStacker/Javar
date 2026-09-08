@@ -1,4 +1,4 @@
-# Redis实例抖动问题诊断与解决方案
+﻿# Redis实例抖动问题诊断与解决方案
 
 #### <font style="color:rgba(6, 8, 31, 0.88);">1. 性能监控与诊断</font>
 ##### <font style="color:rgba(6, 8, 31, 0.88);">性能监控核心类</font>
@@ -194,8 +194,3 @@ redis.maxmemory-policy=allkeys-lru
 <font style="color:rgba(6, 8, 31, 0.88);">Redis抖动是一个复杂的系统问题，需要从多个维度进行综合分析和优化。通过持续监控、及时诊断和针对性优化，可以显著提升Redis实例的稳定性和性能。</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">关键是建立一套全面的监控和优化机制，及时发现并解决潜在问题。</font>
-
-
-
-> 更新: 2025-01-24 21:19:11  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/yc49d2km2h5mo362>

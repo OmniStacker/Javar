@@ -1,4 +1,4 @@
-# 【高频面试】：MyBatis是如何进行分页的？
+﻿# 【高频面试】：MyBatis是如何进行分页的？
 
 ![1762493708674-0259c91f-fe71-49fa-b285-7413d91321af.png](./img/NDLh59fkVVw8y9gw/1762493708674-0259c91f-fe71-49fa-b285-7413d91321af-815629.png)
 
@@ -115,7 +115,3 @@ PageInfo<User> pageInfo = new PageInfo<>(users); // PageInfo包含了总数、�
 <font style="color:rgb(38, 38, 38);">MyBatis的分页实现经历了从手动到自动，从逻辑分页到物理分页的演进。在现代项目开发中，我们应该毫不犹豫地选择像</font>**<font style="color:rgb(38, 38, 38);">PageHelper</font>**<font style="color:rgb(38, 38, 38);">这样的成熟分页插件。它不仅能保证最佳的查询性能，还能极大地提升开发效率，让我们专注于业务逻辑本身。</font>
 
 **<font style="color:rgb(38, 38, 38);">面试核心答案</font>**<font style="color:rgb(38, 38, 38);">：当被问及MyBatis如何分页时，标准的回答应该覆盖“逻辑分页与物理分页的区别”，并点明“插件（如PageHelper）利用Interceptor机制实现自动化物理分页是当前业界的最佳实践”。</font>
-
-
-> 更新: 2025-11-07 17:05:21  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vwkg57qvyfnitnpx>

@@ -1,4 +1,4 @@
-# HashMap的扩容机制是怎样的
+﻿# HashMap的扩容机制是怎样的
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">HashMap的扩容机制是为了保持</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">负载因子</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">在一定范围内，以提高HashMap的性能和效率。负载因子是指HashMap中已存储的</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">键值对数量与数组容量的比值</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">。</font>
 
@@ -12,8 +12,3 @@
 4. <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">将新数组设置为HashMap的内部数组，并更新相关的属性，如</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">容量</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">和</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">阈值</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">。</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">通过扩容操作，HashMap可以动态调整数组的大小，以适应存储键值对数量的变化。这样可以保持负载因子在合适的范围内，避免链表或红黑树过长，从而保持HashMap的性能和效率。需要注意的是，扩容操作可能会导致一定的</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">性能损耗</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">，因为需要重新计算哈希值和重新分配键值对。因此，在设计使用HashMap的时候，需要合理设置初始容量和负载因子，以减少扩容的频率。</font>
-
-
-
-> 更新: 2023-08-28 19:14:05  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qdcazqpoazu0eaa7>

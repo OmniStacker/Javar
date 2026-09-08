@@ -1,4 +1,4 @@
-# MySQL 三大日志全景解析：从基础概念到 MVCC 协同，覆盖 ACID 与集群一致性
+﻿# MySQL 三大日志全景解析：从基础概念到 MVCC 协同，覆盖 ACID 与集群一致性
 
 <font style="color:rgb(0, 0, 0);">本文档聚焦 </font>**<font style="color:rgb(0, 0, 0) !important;">MySQL 8.0+ 内核核心</font>**<font style="color:rgb(0, 0, 0);">，以 Redo Log（重做日志）、Binlog（归档日志）、Undo Log（回滚日志）为核心，剥离冗余代码与应用层逻辑，深入解析三大日志的底层机制、工作流程、参数配置及协同逻辑。适用于需掌握 MySQL 事务原理、数据恢复与集群一致性的开发、运维及架构师，同时覆盖面试高频考点与生产环境最佳实践。</font>
 
@@ -325,7 +325,3 @@ innodb_purge_threads = 4
 | <font style="color:rgba(0, 0, 0, 0.85) !important;background-color:rgba(0, 0, 0, 0);">查看从库同步状态</font> | <code><font style="color:rgb(0, 0, 0);background-color:rgba(0, 0, 0, 0);">show slave status\G;</font></code> |
 
 **<font style="color:rgba(0, 0, 0, 0.5);background-color:rgba(0, 0, 0, 0);"></font>**
-
-
-> 更新: 2025-10-17 21:12:02  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vgrgsxbiklt4u0su>

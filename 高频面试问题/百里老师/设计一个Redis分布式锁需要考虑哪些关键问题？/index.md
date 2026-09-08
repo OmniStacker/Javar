@@ -1,4 +1,4 @@
-# 设计一个 Redis分布式锁需要考虑哪些关键问题？
+﻿# 设计一个 Redis分布式锁需要考虑哪些关键问题？
 
 **<font style="color:rgb(38, 38, 38);">摘要：</font>**<font style="color:rgb(38, 38, 38);"> 在分布式系统中，保证共享资源在并发访问下的数据一致性至关重要，而分布式锁是实现这一目标的核心工具。Redis因其高性能和丰富的原子操作，成为实现分布式锁的首选方案。然而，一个看似简单的</font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">SETNX</font></code><font style="color:rgb(38, 38, 38);">背后，却隐藏着死锁、锁误删、单点故障等一系列“陷阱”。本文将系统性地剖析设计一个生产级Redis分布式锁必须面对的五大关键问题，并提供经过实战检验的最佳解决方案。</font>
 
@@ -132,7 +132,3 @@ end
 3. **<font style="color:rgb(38, 38, 38);">监控告警</font>**<font style="color:rgb(38, 38, 38);">：建立完善的监控体系，实时关注锁的</font>**<font style="color:rgb(38, 38, 38);">获取成功率、平均耗时、Redis集群健康状态</font>**<font style="color:rgb(38, 38, 38);">等关键指标，并在出现异常时及时告警。</font>
 
 <font style="color:rgb(38, 38, 38);">通过遵循以上原则，我们便可以构建一个既健壮又高效的分布式锁服务，为我们的分布式系统保驾护航。</font>
-
-
-> 更新: 2025-11-13 19:34:43  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tuap1y7s5givcsh6>

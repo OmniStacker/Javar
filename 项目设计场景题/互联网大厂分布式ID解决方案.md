@@ -1,4 +1,4 @@
-# 互联网大厂分布式ID解决方案
+﻿# 互联网大厂分布式ID解决方案
 
 **本次分享内容**
 
@@ -430,8 +430,3 @@ Tinyid 的优缺点这里就不分析了，结合数据库号段模式的优缺�
         * <font style="color:rgb(51, 51, 51);">解决了时间回拨问题，支持手工插入新 ID（当业务需要在历史时间生成新 ID 时，用本算法的预留位能生成 5000 个每秒）；</font>
         * <font style="color:rgb(51, 51, 51);">不依赖外部存储系统;</font>
         * <font style="color:rgb(51, 51, 51);">默认配置下，ID 可用 71000 年不重复。</font>
-
-
-
-> 更新: 2024-11-26 20:53:44  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lb1cltxgw0eygfvf>

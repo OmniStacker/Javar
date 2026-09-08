@@ -1,4 +1,4 @@
-# 扎心！线上服务宕机时，如何保证数据100%不丢失？—— RabbitMQ高可靠性终极指南
+﻿# 扎心！线上服务宕机时，如何保证数据100%不丢失？—— RabbitMQ高可靠性终极指南
 
 <font style="color:rgb(38, 38, 38);">在分布式系统的世界里，没有什么比数据丢失更让开发者“扎心”的了。当你的线上服务因为一次意外的宕机、网络抖动或是消费者进程崩溃，而导致关键业务数据永久消失时，那种无力感足以摧毁任何一个美好的下午。</font>
 
@@ -156,7 +156,3 @@ channel.basicConsume(QUEUE_NAME, autoAck, new DefaultConsumer(channel) {
 <font style="color:rgb(38, 38, 38);">对于最核心的业务，还应加上 </font>**<font style="color:rgb(38, 38, 38);">集群高可用</font>**<font style="color:rgb(38, 38, 38);"> 作为双保险。</font>
 
 <font style="color:rgb(38, 38, 38);">技术的魅力不仅在于实现功能，更在于对细节和异常的极致掌控。希望通过这篇指南，您能构建出如磐石般稳固的消息系统，从此告别“丢数据”的扎心之痛。</font>
-
-
-> 更新: 2025-10-09 17:17:22  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tcqqecfgzhht921a>

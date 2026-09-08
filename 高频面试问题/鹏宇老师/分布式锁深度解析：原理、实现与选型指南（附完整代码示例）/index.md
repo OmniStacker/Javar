@@ -1,4 +1,4 @@
-# 分布式锁深度解析：原理、实现与选型指南（附完整代码示例）
+﻿# 分布式锁深度解析：原理、实现与选型指南（附完整代码示例）
 
 <font style="color:rgb(0, 0, 0);">在分布式系统中，多服务、多线程并发操作共享资源时，“数据一致性” 始终是核心挑战。单机环境下的</font><code><font style="color:rgba(0, 0, 0, 0.85) !important;">synchronized</font></code><font style="color:rgb(0, 0, 0);">或</font><code><font style="color:rgba(0, 0, 0, 0.85) !important;">Lock</font></code><font style="color:rgb(0, 0, 0);">无法跨进程生效，而</font>**<font style="color:rgb(0, 0, 0) !important;">分布式锁</font>**<font style="color:rgb(0, 0, 0);">正是解决这一问题的关键技术。本文将从分布式锁的核心定义出发，详细拆解三大主流实现方案（数据库、Redis、ZooKeeper），提供可落地的代码示例，并分析各方案的优缺点与选型逻辑。</font>
 
@@ -509,7 +509,3 @@ public class ZkDistributedLock {
 
 <font style="color:rgb(31, 35, 41);">  
 </font>
-
-
-> 更新: 2025-11-14 21:04:28  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gsiy09kgmv8y0gud>

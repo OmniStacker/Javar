@@ -1,4 +1,4 @@
-# 快慢接口占用同一线程池导致资源竞争，怎么解决？
+﻿# 快慢接口占用同一线程池导致资源竞争，怎么解决？
 
 <font style="color:rgb(38, 38, 38);">场景题：</font>**<font style="color:rgb(38, 38, 38);">商家的接口有快有慢，慢的接口会一直占用线程池导致快接口无法被执行，怎么解决？</font>**
 
@@ -83,7 +83,3 @@
 3. **<font style="color:rgb(38, 38, 38);">长期坚持</font>**<font style="color:rgb(38, 38, 38);">：对慢接口进行</font>**<font style="color:rgb(38, 38, 38);">主动优化、限流、异步化改造</font>**<font style="color:rgb(38, 38, 38);">，并建立完善的</font>**<font style="color:rgb(38, 38, 38);">监控告警</font>**<font style="color:rgb(38, 38, 38);">体系，实现长效治理。</font>
 
 <font style="color:rgb(38, 38, 38);">通过这套“隔离+优化+监控”的立体化方案，我们可以从根本上解决快慢接口的资源冲突问题，打造一个高性能、高可用的健壮服务。</font>
-
-
-> 更新: 2025-09-23 13:10:19  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/icdzty6igye3yeuz>

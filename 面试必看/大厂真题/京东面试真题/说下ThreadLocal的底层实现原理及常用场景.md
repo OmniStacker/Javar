@@ -1,4 +1,4 @@
-# 说下ThreadLocal的底层实现原理及常用场景
+﻿# 说下ThreadLocal的底层实现原理及常用场景
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">ThreadLocal是Java中的一个线程封闭工具类，它提供了一种在多线程环境下保持变量的线程隔离机制。ThreadLocal的底层实现原理可以简单描述如下：</font>
 
@@ -15,8 +15,3 @@
 + <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">事务管理：线程可以通过ThreadLocal存储事务上下文，用于管理事务的提交、回滚等操作。</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">需要注意的是，ThreadLocal虽然能够实现线程隔离，但过度使用ThreadLocal也会导致内存泄露的问题，因此在使用时需谨慎考虑。</font>
-
-
-
-> 更新: 2023-08-24 21:30:20  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mgfanm75ihe1rdho>

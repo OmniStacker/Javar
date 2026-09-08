@@ -1,4 +1,4 @@
-# 什么是Kafka？有什么主要用途？
+﻿# 什么是Kafka？有什么主要用途？
 
 # 1) 什么是 Kafka？
 + Kafka 是一个分布式的高吞吐、可扩展的日志系统和流处理平台。核心不是一个简单的消息队列，而是一个持久化的、可分区的提交日志（commit log），并提供对日志的高吞吐、可并行消费和流式处理能力。
@@ -246,8 +246,3 @@ public class WordCountApp {
 <font style="color:rgba(0, 0, 0, 0.96);">Kafka 作为“持续可变的日志”和“实时数据流平台”的组合体，为现代分布式系统提供了强大的解耦、伸缩和实时处理能力。对 Java 开发者而言，掌握生产者/消费者模型、理解分区与偏移、熟悉幂等性与事务，以及会使用 Streams/Connect 等生态工具，是进入高性能数据驱动场景的关键。</font>
 
 <font style="color:rgba(0, 0, 0, 0.96);">如果你愿意，我可以把这份笔记扩展成一个可下载的演示文件（如 Markdown → Word/PDF、或幻灯片）。也可以按你的业务场景，给出更贴近你项目的示例，如与 Debezium 的 CDC 集成、Kafka Streams 的窗口聚合、或 ksqlDB 的 SQL 流处理。</font>
-
-
-
-> 更新: 2026-01-22 13:08:07  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/eoew281vevvklpuv>

@@ -1,4 +1,4 @@
-# 如何定位慢 SQL 产生的原因
+﻿# 如何定位慢 SQL 产生的原因
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">要定位慢SQL产生的原因，可以通过以下几个步骤进行排查：</font>
 
@@ -10,8 +10,3 @@
 6. <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">使用性能分析工具：可以使用性能分析工具，如pt-query-digest、Percona Toolkit等，对执行时间较长的SQL语句进行更深入的分析。这些工具可以帮助定位问题，并提供详细的性能指标和建议。</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(248, 248, 248);">通过以上的方法，可以帮助定位慢SQL的产生原因，并优化相应的SQL语句和数据库配置，提升数据库的查询性能。</font>
-
-
-
-> 更新: 2023-08-24 20:38:52  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mxkpebq5d2dygsoz>

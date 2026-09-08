@@ -1,4 +1,4 @@
-# 图解 MySQL 索引失效
+﻿# 图解 MySQL 索引失效
 
 <font style="color:rgba(6, 8, 31, 0.88);">在工作中，为了提高查询速度，我们通常会考虑为字段建立索引。然而，索引并不是万无一失的。即使建立了索引，并不意味着所有查询语句都能利用索引进行扫描。</font>
 
@@ -396,7 +396,3 @@ ALTER TABLE t_user ADD INDEX idx_age (age);
 4. <font style="color:rgba(6, 8, 31, 0.88);">当字符串与数字进行比较时，MySQL会自动将字符串转换为数字，这种隐式类型转换会导致索引失效。</font>
 5. <font style="color:rgba(6, 8, 31, 0.88);">联合索引的使用必须遵循最左匹配原则，否则会导致索引失效。</font>
 6. <font style="color:rgba(6, 8, 31, 0.88);">在 WHERE 子句中，如果 OR 前的条件是索引列而 OR 后的条件不是，索引也会失效。</font>
-
-
-> 更新: 2025-02-20 21:03:31  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vc3am3g8ptaty3ky>

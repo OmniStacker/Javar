@@ -1,4 +1,4 @@
-# where条件的顺序影响索引使用吗
+﻿# where条件的顺序影响索引使用吗
 
 <font style="color:rgba(0, 0, 0, 0.82);">在MySQL中，WHERE条件的顺序确实可能影响索引的使用，尤其是在使用复合索引（多列索引）的情况下。然而，这种影响主要取决于MySQL查询优化器的工作方式，而不是直接由WHERE子句中条件的书写顺序决定的。以下是一些关键点：</font>
 
@@ -38,7 +38,3 @@ EXPLAIN SELECT * FROM table WHERE C = 3 AND B > 2 AND A = 1;
 5. **<font style="color:rgba(0, 0, 0, 0.82);">范围条件考虑</font>**<font style="color:rgba(0, 0, 0, 0.82);">：在复合索引中，将范围条件放在等值条件之后。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">总之，虽然WHERE条件的顺序在大多数情况下不会直接影响索引的使用，但了解这些原则有助于编写更高效和可维护的查询。始终通过EXPLAIN来验证实际的索引使用情况。</font>
-
-
-> 更新: 2024-08-08 15:47:16  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/cbpiq31k0xcgh076>

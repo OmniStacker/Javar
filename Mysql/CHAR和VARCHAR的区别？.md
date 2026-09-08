@@ -1,4 +1,4 @@
-# CHAR 和 VARCHAR 的区别？
+﻿# CHAR 和 VARCHAR 的区别？
 
 CHAR和VARCHAR的区别可以总结如下：
 
@@ -9,8 +9,3 @@ CHAR和VARCHAR的区别可以总结如下：
 5. **访问效率：**由于CHAR是固定长度的，它在某些情况下可能会比VARCHAR稍微快一些。
 
 综上所述，CHAR适合存储长度固定且固定大小的数据，而VARCHAR适用于长度可变的数据。
-
-
-
-> 更新: 2023-08-27 16:07:13  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/sifgcq659b34bzpz>

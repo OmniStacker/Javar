@@ -1,4 +1,4 @@
-# 描述一下 ZAB 协议
+﻿# 描述一下 ZAB 协议
 
 ZAB协议（Zookeeper Atomic Broadcast）是Zookeeper中用于实现分布式一致性的协议。该协议旨在确保分布式系统中的数据一致性和可靠性，并具有以下特点：
 
@@ -17,8 +17,3 @@ ZAB协议的执行过程包括三个阶段：
 如果在确认阶段（或提议阶段），Follower节点没有收到Leader节点的任何消息（包括提案和可能的超时通知），并且无法与Leader节点建立通信，那么这些Follower节点可能会认为Leader已经失效，并可能触发崩溃恢复模式。
 
 然而，崩溃恢复模式通常不是由单个Follower节点单独触发的。实际上，ZooKeeper集群中的节点会通过一种称为“选举算法”的机制来共同决定何时进入崩溃恢复模式，并选举出一个新的Leader节点。
-
-
-
-> 更新: 2024-10-18 16:45:54  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ce3q0d9387ohkimh>

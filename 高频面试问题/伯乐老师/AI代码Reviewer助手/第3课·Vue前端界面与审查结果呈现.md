@@ -1,4 +1,4 @@
-# 第 3 课 · Vue 前端界面与审查结果呈现
+﻿# 第 3 课 · Vue 前端界面与审查结果呈现
 
 #
 
@@ -187,7 +187,3 @@ export async function quickReview(code: string, language = 'Java'): Promise<Revi
    * 当下一次调用成功时清空错误提示。
 3. **练习 3：给优化后代码加复制按钮（进阶）**\
    在“优化后的代码”区域右上角加一个“复制代码”按钮，点击后把 `optimizedCode` 复制到剪贴板，方便学员直接粘贴到 IDE 中对比。
-
-
-> 更新: 2025-12-18 14:35:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gs5eb8ynqykr0r26>

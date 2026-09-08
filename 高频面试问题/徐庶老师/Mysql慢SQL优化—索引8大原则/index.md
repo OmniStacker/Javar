@@ -1,4 +1,4 @@
-# Mysql慢SQL优化—索引8大原则
+﻿# Mysql慢SQL优化—索引8大原则
 
 <font style="color:rgba(0, 0, 0, 0.96);">很多同学写SQL的时候，明明建了索引，但查询还是很慢，这是为什么呢？其实，</font>**<font style="color:rgba(0, 0, 0, 0.96);">索引失效</font>**<font style="color:rgba(0, 0, 0, 0.96);">是最常见的性能杀手。</font>
 
@@ -499,7 +499,3 @@ WHERE code = 'A123'
 <font style="color:rgba(0, 0, 0, 0.96);">7️⃣</font><font style="color:rgba(0, 0, 0, 0.96);"> </font>**<font style="color:rgba(0, 0, 0, 0.96);">不等空值还有OR</font>**<font style="color:rgba(0, 0, 0, 0.96);"> </font><font style="color:rgba(0, 0, 0, 0.96);">- 三大索引杀手要避免</font>
 
 <font style="color:rgba(0, 0, 0, 0.96);">8️⃣</font><font style="color:rgba(0, 0, 0, 0.96);"> </font>**<font style="color:rgba(0, 0, 0, 0.96);">VARCHAR加引号</font>**<font style="color:rgba(0, 0, 0, 0.96);"> - 避免隐式类型转换</font>
-
-
-> 更新: 2025-11-04 20:55:10  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dfndb67qzwbxtxle>

@@ -1,4 +1,4 @@
-# MySQL 8的索引跳跃扫描是什么
+﻿# MySQL 8的索引跳跃扫描是什么
 
 <font style="color:rgba(0, 0, 0, 0.82);">MySQL中的索引跳跃扫描（Skip Scan）是一种优化策略，旨在提高在特定条件下对复合索引的利用效率。尽管MySQL并没有明确标记这项技术为"Skip Scan"功能，但通过其优化器的改进，特别是在MySQL 8.0.13及其后的版本中，MySQL可以在某些条件下实现类似Skip Scan的效果。让我们通过一个具体示例来说明其概念和潜在应用。</font>
 
@@ -53,7 +53,3 @@ SELECT * FROM employees WHERE Position = 'Manager';
 <font style="color:rgba(0, 0, 0, 0.82);"></font>
 
 [bilibili](https://player.bilibili.com/player.html?bvid=BV1kFpue5Ehj\&p=11\&page=11\&autoplay=0)
-
-
-> 更新: 2025-10-29 21:47:23  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vcsp5p0ziz5ubl8v>

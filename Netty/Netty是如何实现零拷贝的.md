@@ -1,4 +1,4 @@
-# Netty是如何实现零拷贝的
+﻿# Netty是如何实现零拷贝的
 
 <font style="color:rgba(0, 0, 0, 0.82);">零拷贝（Zero-Copy）是一种优化技术，旨在减少或完全消除数据在内存中的复制过程，从而提高系统的性能和效率。在传统的数据传输过程中，数据可能会被多次复制，例如从磁盘到内核缓冲区，然后从内核缓冲区复制到用户缓冲区，再从用户缓冲区复制到另一块内存。这些多次复制不但浪费了 CPU 资源，还增加了内存带宽的使用。</font>
 
@@ -73,7 +73,3 @@ ByteBuf directBuffer = Unpooled.directBuffer(1024);
 ### <font style="color:rgba(0, 0, 0, 0.82);">总结</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">零拷贝技术通过减少数据在内存中的复制过程，显著提高了数据传输的性能。Netty 通过一系列的机制，包括 </font><code><font style="color:rgba(0, 0, 0, 0.82);">sendfile</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 系统调用、</font><code><font style="color:rgba(0, 0, 0, 0.82);">CompositeByteBuf</font></code><font style="color:rgba(0, 0, 0, 0.82);">、缓冲区的切片和复制、包装现有的缓冲区、以及直接内存，来实现零拷贝。这些技术的结合，使得 Netty 成为一个高效且强大的网络编程框架，能够在高并发和大数据传输场景下表现出色。</font>
-
-
-> 更新: 2024-08-05 20:38:46  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ekoctkf5nztzo0ky>

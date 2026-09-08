@@ -1,4 +1,4 @@
-# 为什么要用线程池？如何合理配置线程池？
+﻿# 为什么要用线程池？如何合理配置线程池？
 
 # <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">一、为什么要用线程池？—— 解决 “手动创建线程” 的 3 大核心痛点</font>
 
@@ -116,7 +116,3 @@
 4. **<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">避免无界队列</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">：在线业务用有界队列，防止任务堆积导致内存溢出，离线业务可酌情用无界队列。</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">面试中回答 “如何配置” 时，若能结合项目实例（如 “我负责的商品查询线程池，IO 占比 88%，8 核 CPU，配置核心线程 60、最大 80，队列 500，拒绝策略用 CallerRunsPolicy，监控后 CPU 利用率 60%，响应时间 220ms，符合业务目标”），会远超 “CPU 密集 N+1” 的八股回答，体现工程落地能力。</font>
-
-
-> 更新: 2025-09-29 16:35:15  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ftgb3g2hb6mgm1rd>

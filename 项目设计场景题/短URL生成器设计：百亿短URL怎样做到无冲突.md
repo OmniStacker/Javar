@@ -1,4 +1,4 @@
-# 短 URL 生成器设计：百亿短 URL 怎样做到无冲突
+﻿# 短 URL 生成器设计：百亿短 URL 怎样做到无冲突
 
 :::info
 <font style="color:rgb(77, 77, 77);">在社交媒体上，人们经常需要分享一些URL，但是有些URL可能会很长，比如：</font><font style="color:rgb(77, 77, 77);">https://geek.qq.org/hybrid/pvip?utm_source=geek-pc-discover-banner&utm_term=geek-pc-discover-banner</font>
@@ -170,8 +170,3 @@ Wdj4FbOxTw9CHtvPM1
 <font style="color:rgb(77, 77, 77);">所以，我们需要针对URL场景对Base64编码进行改造，使用URL保留字符表以外的字符对Base64编码表中的62，63进行编码：将“+”改为“-”，将“/”改为“_”，Fuxi最终采用的URL Base64编码表如下。</font>
 
 ![1720597446629-205ffc23-59fd-404a-b037-bdf9a2f4f543.png](./img/r9JqSYJMcCRqvQ2n/1720597446629-205ffc23-59fd-404a-b037-bdf9a2f4f543-618605.png)
-
-
-
-> 更新: 2024-07-15 22:21:19  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ercfbgeuan0gt6wb>

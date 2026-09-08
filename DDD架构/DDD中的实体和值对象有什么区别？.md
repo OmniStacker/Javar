@@ -1,4 +1,4 @@
-# DDD 中的实体和值对象有什么区别？
+﻿# DDD 中的实体和值对象有什么区别？
 
 <font style="color:rgb(5, 7, 59);">在DDD中，实体 Entity 和值对象 Value Object 是两个基本的概念，它们之间有一些重要的区别。</font>
 
@@ -10,8 +10,3 @@
 <font style="color:rgb(5, 7, 59);">综上所述，实体和值对象在DDD中是两种不同的概念。在 DDD 中，实体通常用于表示有唯一表示以及状态变化的领域概念，而值对象通常用于表示无唯一标识以及不可变的属性集合。值对象形式上是一个对象，但是其本质则和一个属性值是等价的。</font>
 
 <font style="color:rgb(5, 7, 59);"></font>
-
-
-
-> 更新: 2023-09-10 14:06:11  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ey5vxu9olwvl56d7>

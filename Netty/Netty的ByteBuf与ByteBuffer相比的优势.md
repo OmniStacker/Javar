@@ -1,4 +1,4 @@
-# Netty的ByteBuf与ByteBuffer相比的优势
+﻿# Netty的ByteBuf与ByteBuffer相比的优势
 
 <code><font style="color:rgba(0, 0, 0, 0.82);">ByteBuf</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 是 Netty 提供的一个用于字节数据操作的缓冲区。它解决了 </font><code><font style="color:rgba(0, 0, 0, 0.82);">ByteBuffer</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 的诸多局限性，提供了更加灵活、高效的内存管理功能，并且支持多种操作方式，适用于复杂网络编程场景。</font>
 
@@ -80,7 +80,3 @@ public class ByteBufVsByteBuffer {
 
 ```java
 ```
-
-
-> 更新: 2024-08-05 20:36:07  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/grqcu1gkfrg016z6>

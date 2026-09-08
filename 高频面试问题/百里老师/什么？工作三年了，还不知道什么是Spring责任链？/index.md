@@ -1,4 +1,4 @@
-# 什么？工作三年了，还不知道什么是 Spring 责任链？
+﻿# 什么？工作三年了，还不知道什么是 Spring 责任链？
 
 ![1765374059604-f9a176c6-3a1c-4487-8bbe-5b33d23a7d36.png](./img/2PX1ID-1EdSBa2zO/1765374059604-f9a176c6-3a1c-4487-8bbe-5b33d23a7d36-005748.png)
 
@@ -159,7 +159,3 @@ public class OrderContext {
 * <font style="color:rgb(38, 38, 38);">它让系统具备了极强的弹性，能够从容应对多变的业务需求。</font>
 
 <font style="color:rgb(38, 38, 38);">工作三年，我们不应该再满足于写出“能跑”的代码，而应追求写出</font>**<font style="color:rgb(38, 38, 38);">易维护、易扩展、优雅</font>**<font style="color:rgb(38, 38, 38);">的代码。下一次遇到复杂的长流程业务，不妨试试 Spring 责任链，你会爱上这种清爽的感觉。</font>
-
-
-> 更新: 2025-12-11 13:16:23  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wqiqfz90p1tobmza>

@@ -1,4 +1,4 @@
-# Comparator与Comparable有什么区别
+﻿# Comparator与Comparable有什么区别
 
 Comparator和Comparable都是Java中用于对象排序的接口，它们之间有一些关键的区别。
 
@@ -14,8 +14,3 @@ Comparator和Comparable都是Java中用于对象排序的接口，它们之间�
 + Comparator是外部排序，可以独立定义排序规则，并与任何类的对象一起使用。
 
 在使用时，如果需要对对象的默认排序进行操作，可以实现Comparable接口。如果需要对不同类的对象进行排序，或者需要定义多种不同的排序规则，可以使用Comparator接口。
-
-
-
-> 更新: 2023-09-06 14:19:20  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rihz8qgxpcbgkdam>

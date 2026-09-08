@@ -1,4 +1,4 @@
-# 一文分清OA、CRM、ERP、MES、HRM、SCM、WMS、KMS等
+﻿# 一文分清OA、CRM、ERP、MES、HRM、SCM、WMS、KMS等
 
 ### **<font style="color:rgba(0, 0, 0, 0.87);">一、办公协作类</font>**
 #### **<font style="color:rgba(0, 0, 0, 0.87);">OA（办公自动化系统）</font>**
@@ -562,8 +562,3 @@
 
 ### 行业解决方案 及 核心应用架构图：
 ![1741596911824-da1a7c1b-8247-4130-ab48-4dca93d17411.jpeg](./img/DKT-XzkVEjlr6k55/1741596911824-da1a7c1b-8247-4130-ab48-4dca93d17411-999063.jpeg)
-
-
-
-> 更新: 2025-03-10 17:11:34  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/csngc0dv7p5vi2fg>

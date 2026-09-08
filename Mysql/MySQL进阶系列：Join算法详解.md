@@ -1,4 +1,4 @@
-# MySQL进阶系列：Join算法详解
+﻿# MySQL进阶系列：Join算法详解
 
 ![1734939656801-5952ce0c-a337-4404-bdd6-dd6dfcbc6d0d.png](./img/df4iORs61Mu2pAkn/1734939656801-5952ce0c-a337-4404-bdd6-dd6dfcbc6d0d-890378.png)
 
@@ -167,7 +167,3 @@
 * **<font style="color:rgb(31, 41, 55);">BNLJ：</font>**<font style="color:rgb(31, 41, 55);">适用于无索引的场景。</font>
 * **<font style="color:rgb(31, 41, 55);">Hash Join：</font>**<font style="color:rgb(31, 41, 55);">等值连接的高效利器。</font>
 * **<font style="color:rgb(31, 41, 55);">Sort-Merge Join：</font>**<font style="color:rgb(31, 41, 55);">更适合范围查询和排序场景。</font>
-
-
-> 更新: 2024-12-23 15:41:40  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/iq2e1mgrxm0499x4>

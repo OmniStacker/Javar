@@ -1,4 +1,4 @@
-# B站亿级API网关重构之路
+﻿# B站亿级API网关重构之路
 
 **本次分享内容**
 
@@ -145,8 +145,3 @@ _<font style="color:#000000;">Goroutine是Go语⾔中并发的执⾏单位。 Go
 + <font style="color:rgb(51, 51, 51);">API 兼容性保障服务</font>
 
 <font style="color:rgb(51, 51, 51);">API 网关是我们 API 治理生态中的一个标志性里程碑，本次 API 网关也以开源形式进行开发：</font>[https://github.com/go-kratos/gateway](https://github.com/go-kratos/gateway)
-
-
-
-> 更新: 2024-07-15 22:21:20  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vycfauld0xb8e6rm>

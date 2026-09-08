@@ -1,4 +1,4 @@
-# Class常量池和运行时常量池的区别
+﻿# Class常量池和运行时常量池的区别
 
 ### <font style="color:rgba(0, 0, 0, 0.82);">Class 常量池（Class Constant Pool）</font>
 **<font style="color:rgba(0, 0, 0, 0.82);">定义</font>**<font style="color:rgba(0, 0, 0, 0.82);">：</font>
@@ -33,8 +33,3 @@
     - <font style="color:rgba(0, 0, 0, 0.82);">运行时常量池在运行期间可以被动态更新，允许JVM对类执行管理和优化。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">总结来说，Class常量池和运行时常量池在Java的编译和执行阶段分别扮演着不同的角色。Class常量池是类文件的组成部分，而运行时常量池是JVM的执行环境结构，它将Class常量池的数据转换成JVM可以理解和使用的形式，并对其进行动态管理。</font>
-
-
-
-> 更新: 2024-08-09 15:47:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/eipi6t9x8bueoqgl>

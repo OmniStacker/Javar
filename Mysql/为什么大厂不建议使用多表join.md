@@ -1,4 +1,4 @@
-# 为什么大厂不建议使用多表join
+﻿# 为什么大厂不建议使用多表join
 
 <font style="color:rgba(0, 0, 0, 0.82);">在大型互联网企业或者“超大规模”数据库环境中，不建议频繁使用多表 JOIN 的原因主要涉及性能、可维护性和架构设计等方面。以下是一些常见的考虑因素：</font>
 
@@ -30,8 +30,3 @@
 <font style="color:rgba(0, 0, 0, 0.82);"></font>
 
 [bilibili](https://player.bilibili.com/player.html?bvid=BV1kFpue5Ehj&autoplay=0)
-
-
-
-> 更新: 2024-09-13 19:57:29  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ovr4nuffqui6vz1b>

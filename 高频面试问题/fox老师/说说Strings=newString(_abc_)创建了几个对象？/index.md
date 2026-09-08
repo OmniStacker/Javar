@@ -1,4 +1,4 @@
-# 说说String s = new String ("abc") 创建了几个对象？
+﻿# 说说String s = new String ("abc") 创建了几个对象？
 
 <font style="color:rgb(38, 38, 38);">在 Java 面试中，这行看似简单的代码是衡量一位开发者对 JVM 内存模型、特别是字符串常量池（String Constant Pool）理解深度的“黄金问题”。如果你的回答仅仅是“一个”或“两个”，那么你可能已经掉入了面试官的陷阱。</font>
 
@@ -96,7 +96,3 @@
 3. **<font style="color:rgb(38, 38, 38);">从 JDK 9 开始</font>**<font style="color:rgb(38, 38, 38);">，由于字符串压缩和底层实现的改变，</font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">new String</font></code><font style="color:rgb(38, 38, 38);"> </font><font style="color:rgb(38, 38, 38);">会复制一个新的</font><font style="color:rgb(38, 38, 38);"> </font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">byte[]</font></code><font style="color:rgb(38, 38, 38);"> </font><font style="color:rgb(38, 38, 38);">数组。因此，如果池中没有 "abc"，会创建 2 个 String 对象和 2 个</font><font style="color:rgb(38, 38, 38);"> </font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">byte[]</font></code><font style="color:rgb(38, 38, 38);"> </font><font style="color:rgb(38, 38, 38);">数组；如果已有，则会创建 1 个 String 对象和 1 个新的</font><font style="color:rgb(38, 38, 38);"> </font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">byte[]</font></code><font style="color:rgb(38, 38, 38);"> </font><font style="color:rgb(38, 38, 38);">数组。"</font>
 
 <font style="color:rgb(38, 38, 38);">这样的回答，不仅准确，更能体现出你对 JVM 技术演进的深刻理解，无疑会给面试官留下深刻的印象。</font>
-
-
-> 更新: 2025-10-12 13:20:16  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bq3om0knf4g7w02o>

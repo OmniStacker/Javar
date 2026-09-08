@@ -1,4 +1,4 @@
-# 消息幂等（去重）如何解决？来看看这个方案！
+﻿# 消息幂等（去重）如何解决？来看看这个方案！
 
 ## <font style="color:rgb(38, 38, 38);">一、是什么：消息幂等性的“前世今生”</font>
 
@@ -127,7 +127,3 @@ if(order.status == null) {
 4. **<font style="color:rgb(38, 38, 38);">优雅停机与消费监控</font>**<font style="color:rgb(38, 38, 38);">：尽量避免进程在消费中途被强制杀死，并对进入死信队列的消息进行重点监控和人工干预。</font>
 
 <font style="color:rgb(38, 38, 38);">通过这套分层防御体系，我们才能在复杂的分布式世界中，真正驯服“消息重复”这头猛兽。</font>
-
-
-> 更新: 2025-09-19 19:33:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/icbcuwa0f29o4igg>

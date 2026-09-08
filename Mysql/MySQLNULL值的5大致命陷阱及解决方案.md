@@ -1,4 +1,4 @@
-# MySQL NULL 值的 5 大致命陷阱及解决方案
+﻿# MySQL NULL 值的 5 大致命陷阱及解决方案
 
 <font style="color:rgba(6, 8, 31, 0.88);">在日常开发中，MySQL 数据库字段允许 NULL 值是一个常见的设计，但它也可能引发许多意想不到的问题。NULL 值的特殊性经常让开发者在查询、统计和逻辑判断中踩坑，甚至导致程序异常。</font>
 
@@ -211,7 +211,3 @@ SELECT * FROM person where name is not null order by name desc;
 <font style="color:rgba(6, 8, 31, 0.88);">通过本文的分析和解决方案，希望你能更好地理解和应对 NULL 值问题。</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">在实际开发中，尽量避免使用 NULL 值，并遵循最佳实践，才能让你的数据库设计更加健壮、高效。</font>
-
-
-> 更新: 2025-02-24 19:18:47  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lnx5i0hic8kezp5y>

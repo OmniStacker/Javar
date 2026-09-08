@@ -1,4 +1,4 @@
-# 反射中，Class.forName和ClassLoader的区别
+﻿# 反射中，Class.forName和ClassLoader的区别
 
 Class.forName和ClassLoader是Java反射中用于加载类的两种不同方式。
 
@@ -12,8 +12,3 @@ Class.forName和ClassLoader是Java反射中用于加载类的两种不同方式�
 + ClassLoader是抽象类，提供了更灵活的类加载机制，可以自定义类加载过程，从不同来源加载类文件。
 
 一般情况下，推荐使用**ClassLoader**来加载和使用类，因为它更灵活，并避免执行静态初始化的副作用。**Class.forName**主要用于特定场景，如加载数据库驱动程序。
-
-
-
-> 更新: 2023-09-05 19:57:01  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hyzhgg3366rb7q1h>

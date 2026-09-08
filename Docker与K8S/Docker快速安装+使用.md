@@ -1,4 +1,4 @@
-# Docker快速安装+使用
+﻿# Docker快速安装+使用
 
 1. 安装docker
 
@@ -121,10 +121,3 @@ Created symlink from /etc/systemd/system/multi-user.target.wants/docker.service 
 将镜像加载到Docker：docker load -i 打包后的文件名字.tar（例子：docker load -i minio.tar）
 
 查看docker内存情况：docker stats -a
-
- 
-
-
-
-> 更新: 2024-10-27 15:17:57  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/shwdk0ww8du7z1hx>

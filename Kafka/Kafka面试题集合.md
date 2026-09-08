@@ -1,4 +1,4 @@
-# 💎Kafka面试题集合
+﻿# 💎Kafka面试题集合
 
 ## Kafka入门
 
@@ -1312,7 +1312,3 @@ public void run() {
 **<font style="color:#DF2A3F;">“Kafka 消费能力的天花板由分区数决定，盲目的增加消费者并不能突破物理并发的上限。”</font>**
 
 <font style="color:rgba(0, 0, 0, 0.82);">碰到消息积压，别急着加人头，先搞懂原理，再下药，别做无用功！</font>
-
-
-> 更新: 2025-06-19 09:01:02  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bubwm3kyevkt68m8>

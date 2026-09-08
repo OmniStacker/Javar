@@ -1,4 +1,4 @@
-# Netty的心跳机制怎么实现的
+﻿# Netty的心跳机制怎么实现的
 
 <font style="color:rgba(0, 0, 0, 0.82);">Netty 中的心跳机制通常用于保持客户端和服务器之间的长连接，以便在连接空闲一段时间后发送“心跳”消息来检测连接状态，避免连接意外断开。Netty 提供了一些工具和类来便捷地实现心跳机制。</font>
 
@@ -186,7 +186,3 @@ public class ClientHeartbeatHandler extends ChannelInboundHandlerAdapter {
    * <code><font style="color:rgba(0, 0, 0, 0.82);">ClientHeartbeatHandler</font></code><font style="color:rgba(0, 0, 0, 0.82);">：自定义的处理器，处理空闲事件（心跳检测）。在发生读写空闲事件时，发送心跳消息“HEARTBEAT”给服务器。处理服务器的心跳响应消息并打印。遇到异常时关闭连接。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过以上代码示例和详细注释，您可以更好地理解 Netty 中心跳机制的实现方式。Netty 提供的 </font><code><font style="color:rgba(0, 0, 0, 0.82);">IdleStateHandler</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 非常便利，能够有效简化心跳检测的实现，确保连接在长时间闲置时保持活跃状态。</font>
-
-
-> 更新: 2024-08-05 20:36:56  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pmr9xbb2e85445xs>

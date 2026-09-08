@@ -1,4 +1,4 @@
-# 说下JVM中一次完整的 GC 流程
+﻿# 说下JVM中一次完整的 GC 流程
 
 <font style="color:rgba(0, 0, 0, 0.82);">Java Virtual Machine (JVM) 中的垃圾回收（GC）机制是自动内存管理的一部分，负责回收不再被引用的对象所占用的内存空间。理解完整的 GC 流程有助于优化 Java 程序的性能。以下是 JVM 中一次完整的 GC 流程：</font>
 
@@ -74,7 +74,3 @@ java -verbose:gc -XX:+PrintGCDetails GCDemo
 * **<font style="color:rgba(0, 0, 0, 0.82);">年轻代和老年代的区别</font>**<font style="color:rgba(0, 0, 0, 0.82);">：年轻代是短生命周期对象的汇聚地，常被 Minor GC；老年代保存生命周期较长的对象，发生 Major 或 Full GC。</font>
 * **<font style="color:rgba(0, 0, 0, 0.82);">分代回收算法</font>**<font style="color:rgba(0, 0, 0, 0.82);">：JVM 的分代回收策略最大化性能，年轻代使用复制收集算法，高效清理短命对象；老年代使用标记-整理算法，处理长命对象。</font>
 * **<font style="color:rgba(0, 0, 0, 0.82);">优化 GC 性能</font>**<font style="color:rgba(0, 0, 0, 0.82);">：通常通过调整堆大小和代大小，以及选择适合的垃圾收集器（如 G1、CMS、Parallel GC 等）来优化 GC 的性能。</font>
-
-
-> 更新: 2024-08-09 16:05:26  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qy0y5pewbrrvd926>

@@ -1,4 +1,4 @@
-# 什么是Docker Compose？请简述其作用和使用场景
+﻿# 什么是Docker Compose？请简述其作用和使用场景
 
 **Docker Compose是一个用于定义和运行多个Docker容器的工具**。它使用YAML文件来配置应用程序的服务，并允许您通过一个命令来启动、停止和重启应用中的所有服务。
 
@@ -11,8 +11,3 @@
 + 需要快速启动和停止应用程序，例如在开发或测试过程中。
 
 总之，Docker Compose是一个强大的工具，可以帮助开发人员和管理员更好地管理和部署Docker容器化的应用程序。
-
-
-
-> 更新: 2023-09-05 14:27:23  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rom9qfq3573znyct>

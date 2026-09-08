@@ -1,4 +1,4 @@
-# 什么是三色标记
+﻿# 什么是三色标记
 
 <font style="color:rgba(0, 0, 0, 0.82);">三色标记法是一种用于垃圾回收算法中的对象标记方法，特别用于标记-清除型垃圾回收器。这种方法通过使用三种颜色（白色、灰色和黑色）来跟踪对象的可达性和垃圾回收状态，以避免对象的重复回收和丢失。</font>
 
@@ -118,7 +118,3 @@ public class TricolorMarkingExample {
 * **<font style="color:rgba(0, 0, 0, 0.82);">渐进性</font>**<font style="color:rgba(0, 0, 0, 0.82);">：可以执行增量垃圾回收，减小程序暂停。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">在实际的垃圾回收算法实现中，如G1和CMS，三色标记法被广泛应用，用于高效地管理内存和提高程序运行的性能。</font>
-
-
-> 更新: 2024-08-09 15:59:48  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/sguahv8u1s2tckek>

@@ -1,4 +1,4 @@
-# RocketMQ的Consumer是如何消费消息的
+﻿# RocketMQ的Consumer是如何消费消息的
 
 <font style="color:rgba(0, 0, 0, 0.82);">RocketMQ提供了两种主要的消费模式：推送式消费（Push Consumer）和拉取式消费（Pull Consumer）。我们将主要讨论更常用的推送式消费模式，并提供相应的代码示例。</font>
 
@@ -99,7 +99,3 @@ public class SimplePushConsumer {
 ### <font style="color:rgba(0, 0, 0, 0.82);">小结</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">RocketMQ的Consumer提供了灵活且强大的消息消费机制。通过Push模式，开发者可以方便地实现消息的实时处理。Consumer的配置和使用相对简单，但要注意合理处理消息，包括正确设置消费起始位置、适当的消息过滤、以及妥善处理消费失败的情况。在实际应用中，还需要考虑Consumer的伸缩性、容错性和性能优化等方面。</font>
-
-
-> 更新: 2024-08-18 21:07:26  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vxnpfud2c295wer5>

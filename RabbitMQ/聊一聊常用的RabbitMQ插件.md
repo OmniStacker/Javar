@@ -1,4 +1,4 @@
-# 聊一聊常用的 RabbitMQ 插件
+﻿# 聊一聊常用的 RabbitMQ 插件
 
 <font style="color:rgb(0, 0, 0);">RabbitMQ 支持许多插件，这些插件可以扩展 RabbitMQ 的功能和特性。以下是一些常用的 RabbitMQ 插件：</font>
 
@@ -32,11 +32,3 @@
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">  
   
 </font>
-
-  
-
-
-
-
-> 更新: 2023-09-12 13:38:31  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hy8iyk9a429atmbl>

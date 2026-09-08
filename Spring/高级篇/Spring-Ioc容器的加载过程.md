@@ -1,4 +1,4 @@
-# Spring-Ioc容器的加载过程
+﻿# Spring-Ioc容器的加载过程
 
 <font style="color:rgb(44, 62, 80);">Spring 的 IOC 容器工作的过程，其实可以划分为两个阶段：</font>**<font style="color:rgb(44, 62, 80);">配置解析阶段</font>**<font style="color:rgb(44, 62, 80);">和</font>**<font style="color:rgb(44, 62, 80);">Bean 的创建段</font>**<font style="color:rgb(44, 62, 80);">。</font>
 
@@ -18,8 +18,3 @@
 4. <font style="color:rgb(36, 41, 47);">执行初始化方法：容器会调用Bean的初始化方法，可以通过实现InitializingBean接口或在配置文件中指定初始化方法来定义Bean的初始化逻辑。</font>
 5. <font style="color:rgb(36, 41, 47);">注册Bean：容器会将实例化、属性设置和初始化完成的Bean对象注册到容器中，以便后续的使用和管理。</font>
 6. <font style="color:rgb(36, 41, 47);">完成加载：容器完成所有Bean的加载和初始化后，即完成了IoC容器的加载过程。此时，可以通过容器调用getBean获取Bean对象。</font>
-
-
-
-> 更新: 2023-09-06 20:10:22  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mngu0f2geg1u2e53>

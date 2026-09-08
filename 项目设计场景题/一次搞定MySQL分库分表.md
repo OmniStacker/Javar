@@ -1,4 +1,4 @@
-# 一次搞定MySQL分库分表
+﻿# 一次搞定MySQL分库分表
 
 **本次分享内容**
 
@@ -160,8 +160,3 @@
 + <font style="color:#000000;">只要能满足需求，拆分规则越简单越好。</font>
 
 <font style="color:#000000;"></font>
-
-
-
-> 更新: 2024-07-15 22:21:21  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ozq1myqzagouzdvk>

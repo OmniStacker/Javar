@@ -1,4 +1,4 @@
-# 第 2 集：Spring AI 后端核心与 Prompt 架构设计
+﻿# 第 2 集：Spring AI 后端核心与 Prompt 架构设计
 
 **<font style="color:rgb(26, 28, 30);">摘要</font>**<font style="color:rgb(26, 28, 30);">：本节我们将完成“AI 代码审查助手”的大脑构建。你将学会如何配置 Spring AI 连接阿里通义千问模型，如何设计“人设”提示词，以及如何使用 WebFlux 实现流式（Stream）响应。</font>
 
@@ -164,8 +164,3 @@ public class CodeReviewController {
 
 + **<font style="color:rgb(26, 28, 30);">原因</font>**<font style="color:rgb(26, 28, 30);">：Spring AI 返回的是 SSE 数据流，包含</font><font style="color:rgb(26, 28, 30);"> </font><font style="color:rgb(50, 48, 44);">data:</font><font style="color:rgb(26, 28, 30);"> </font><font style="color:rgb(26, 28, 30);">前缀。</font>
 + **<font style="color:rgb(26, 28, 30);">解决</font>**<font style="color:rgb(26, 28, 30);">：这在后端是正常的。**下一集（前端篇）**我们会教大家如何用 JavaScript 清洗这些数据，把它变成漂亮的 Markdown。</font>
-
-
-
-> 更新: 2025-12-16 10:42:51  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pvqx50ss1vnwbqhp>

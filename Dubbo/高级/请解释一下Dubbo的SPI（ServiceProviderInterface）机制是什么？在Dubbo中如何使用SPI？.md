@@ -1,4 +1,4 @@
-# 请解释一下Dubbo的SPI（Service Provider Interface）机制是什么？在Dubbo中如何使用SPI？
+﻿# 请解释一下Dubbo的SPI（Service Provider Interface）机制是什么？在Dubbo中如何使用SPI？
 
 Dubbo的SPI（Service Provider Interface）机制是一种扩展点加载机制，用于在运行时动态加载、替换或扩展框架的组件实现。SPI机制使得Dubbo的各个模块可以灵活地被扩展和定制，从而实现更好的可扩展性和灵活性。
 
@@ -11,7 +11,3 @@ Dubbo的SPI（Service Provider Interface）机制是一种扩展点加载机制�
 3. 创建扩展配置文件：在META-INF目录下的`dubbo`文件夹中，创建以接口全限定名为文件名的配置文件。配置文件中指定扩展实现类的全限定名。
 
 这种方式使得框架的扩展能力变得非常强大，可以根据实际需求进行定制和替换，而无需修改原有的代码。
-
-
-> 更新: 2023-09-01 15:42:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pa0ivzreph7addll>

@@ -1,4 +1,4 @@
-# MySQL 同步 ES 的 4种方案：从“双写”到“CDC”的避坑指南
+﻿# MySQL 同步 ES 的 4种方案：从“双写”到“CDC”的避坑指南
 
 <font style="color:rgb(38, 38, 38);">在微服务架构中，</font>**<font style="color:rgb(38, 38, 38);">“关系型数据库（MySQL）做存储，搜索引擎（Elasticsearch）做检索”</font>**<font style="color:rgb(38, 38, 38);"> 几乎是处理海量数据查询的标准范式。然而，如何保证两者之间的数据一致性，却是让无数架构师头秃的难题。</font>
 
@@ -114,7 +114,3 @@
 3. **<font style="color:rgb(38, 38, 38);">做保障</font>**<font style="color:rgb(38, 38, 38);">：通过</font><font style="color:rgb(38, 38, 38);"> </font>**<font style="color:rgb(38, 38, 38);">反熵机制</font>**<font style="color:rgb(38, 38, 38);"> </font><font style="color:rgb(38, 38, 38);">增加系统的容错底线。</font>
 
 <font style="color:rgb(38, 38, 38);">最终，我们得到的是一个既具备</font>**<font style="color:rgb(38, 38, 38);">实时性（CDC+MQ）</font>**<font style="color:rgb(38, 38, 38);">，又具备</font>**<font style="color:rgb(38, 38, 38);">逻辑闭环（Version Control）</font>**<font style="color:rgb(38, 38, 38);">，且拥有</font>**<font style="color:rgb(38, 38, 38);">安全底线（Anti-Entropy）</font>**<font style="color:rgb(38, 38, 38);">的健壮架构。</font>
-
-
-> 更新: 2025-12-24 19:31:36  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gz0olxp5ikyu96p1>

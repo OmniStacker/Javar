@@ -1,4 +1,4 @@
-# 讲讲你对CountDownLatch的理解
+﻿# 讲讲你对CountDownLatch的理解
 
 CountDownLatch是Java中用于多线程协作的辅助类，它可以让一个或多个线程等待其他线程完成某个任务后再继续执行。
 
@@ -11,8 +11,3 @@ CountDownLatch的主要作用是协调多个线程的执行顺序，使得某个
 3. 控制并发任务的同时开始：在某些并发场景中，需要等待所有线程都准备就绪后才能同时开始执行任务，CountDownLatch提供了一种便捷的方式来实现这一需求。
 
 需要注意的是，CountDownLatch的计数器是不能被重置的，也就是说它是一次性的。一旦计数器减至0，它将无法再次使用。如果需要多次使用可重置的计数器，则可以考虑使用CyclicBarrier。
-
-
-
-> 更新: 2023-09-05 21:49:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ifsna4prdpovs6nz>

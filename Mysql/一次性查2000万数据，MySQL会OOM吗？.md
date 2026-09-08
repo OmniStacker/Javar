@@ -1,4 +1,4 @@
-# 一次性查 2000 万数据，MySQL 会 OOM 吗？
+﻿# 一次性查 2000 万数据，MySQL 会 OOM 吗？
 
 在技术圈里，有一道非常经典的“送命题”在阿里和字节的面试中反复出现： **“如果不考虑网络传输慢的问题，我在 MySQL 里执行 **<code>**SELECT ***</code>** 一次性查 2000 万条数据，MySQL 的 Server 端会不会内存溢出（OOM）？”**
 
@@ -141,7 +141,3 @@ void buf_page_make_young_if_needed(buf_pool_t* buf_pool, buf_page_t* bpage)
 **老哥最后再唠两句：** 细节决定成败，源码决定高度。 很多人觉得 MySQL 只是个存数据的黑盒子，但大厂面试考的就是你对这个黑盒子“脾气”的理解。能说出 `net_buffer` 的流式机制，能甩出 `buf_LRU_add_block` 的底层逻辑，你就是面试官眼里的 P7。
 
 觉得这篇真的颠覆了你认知的，点个赞，收藏起来。 想了解更多 MySQL 硬核实战，欢迎关注微信公众号【Fox爱分享】
-
-
-> 更新: 2026-01-15 15:06:00  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lbttviz2ewior72a>

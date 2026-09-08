@@ -1,4 +1,4 @@
-# ThreadLocal有哪些应用场景
+﻿# ThreadLocal有哪些应用场景
 
 ThreadLocal是Java中的一个类，它提供了一种在多线程环境下实现线程局部变量存储的机制。
 
@@ -15,8 +15,3 @@ ThreadLocal是Java中的一个类，它提供了一种在多线程环境下实�
 **此外，**ThreadLocal还可以用于在线程之间传递全局的上下文信息。
 
 在使用ThreadLocal时需要注意内存泄漏问题和线程安全性，及时清理不再需要的变量副本，并采取适当的同步措施保证线程安全。通过合理使用ThreadLocal，可以简化多线程编程，提高程序的性能和可维护性。
-
-
-
-> 更新: 2023-09-05 21:39:33  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gw6vvmgw01f4mmmw>

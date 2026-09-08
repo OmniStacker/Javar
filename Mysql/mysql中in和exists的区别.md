@@ -1,4 +1,4 @@
-# mysql 中in 和exists 的区别
+﻿# mysql 中in 和exists 的区别
 
 当谈到 MySQL 中的 IN 和 EXISTS 时，它们都是用于查询和筛选数据的条件语句，但有一些重要的区别：
 
@@ -18,8 +18,3 @@
 
 + 使用 IN 条件时，比较的是指定列的值是否在给定的值列表中。
 + 使用 EXISTS 条件时，判断的是子查询是否返回了至少一行结果。
-
-
-
-> 更新: 2023-08-28 22:01:13  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/zkldg4rglqxytaf9>

@@ -1,4 +1,4 @@
-# 金融科技CRM客户管理系统（亮点与难点）
+﻿# 金融科技CRM客户管理系统（亮点与难点）
 
 部分学员真实CRM项目没什么亮点和难点，投出去面试机会可能不多，特优化如下一份以供参考：
 
@@ -65,8 +65,3 @@
 拓展阅读 ： [一文分清OA、CRM、ERP、MES、HRM、SCM、WMS、KMS等](https://www.yuque.com/tulingzhouyu/db22bv/csngc0dv7p5vi2fg)
 
 <font style="color:rgb(77, 77, 77);">后记：如有补充和纠错请在评论区指出，如有小伙伴有类似项目可以发在评论区。</font>
-
-
-
-> 更新: 2025-03-10 19:35:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xrsf54wva6nqig14>

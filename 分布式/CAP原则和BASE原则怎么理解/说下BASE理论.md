@@ -1,4 +1,4 @@
-# 说下BASE理论
+﻿# 说下BASE理论
 
 <font style="background-color:#FBDE28;">薪资：8k-15k</font>
 
@@ -89,10 +89,3 @@ BASE是对CAP中一致性和可用性权衡的结果，其来源于对大规模�
 
 ## (5) BASE总结
 总的来说，BASE 理论面向的是大型高可用可扩展的分布式系统，和传统事务的 ACID 是相反的，它完全不同于 ACID 的强一致性模型，而是通过牺牲强一致性来获得可用性，并允许数据在一段时间是不一致的。
-
- 
-
-
-
-> 更新: 2024-12-10 21:25:37  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/yhhccyw3zfi4nzme>

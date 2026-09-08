@@ -1,4 +1,4 @@
-# ES 亿级数据查询优化：从 10 秒到 100 毫秒的实战指南
+﻿# ES 亿级数据查询优化：从 10 秒到 100 毫秒的实战指南
 
 ### <font style="color:rgb(38, 38, 38);">前言：无法忽视的性能鸿沟</font>
 
@@ -175,7 +175,3 @@ JOIN users u ON o.user_id = u.user_id;
 
 <font style="color:rgb(38, 38, 38);">  
 </font>
-
-
-> 更新: 2025-10-30 21:18:38  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mq3ammci9l97grz7>

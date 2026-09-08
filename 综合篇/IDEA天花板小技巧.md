@@ -1,4 +1,4 @@
-# IDEA 天花板小技巧
+﻿# IDEA 天花板小技巧
 
 ![1727095935933-fe07de0a-74fb-453c-975d-005a0a8d3420.png](./img/aHINyWuihOaGhBxo/1727095935933-fe07de0a-74fb-453c-975d-005a0a8d3420-155534.png)
 
@@ -130,8 +130,3 @@ ctrl+alt+h 可以清楚看到方法在哪些地方被调用
 <font style="color:rgb(77, 77, 77);">例如 : eclipse 中的syso是打印控制台输出 ，但是idea默认是sout , 如果非要改成syso 可以在</font><font style="color:rgb(77, 77, 77);">Postfix Completion</font><font style="color:rgb(77, 77, 77);">里面设置，类似的 fori等都是在里面设置</font>
 
 ![1727095206868-dc7253a7-ef83-46ce-b594-931a7a328ac1.png](./img/aHINyWuihOaGhBxo/1727095206868-dc7253a7-ef83-46ce-b594-931a7a328ac1-230411.png)
-
-
-
-> 更新: 2024-09-23 21:06:03  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/zg9g6s0kivgbopgq>

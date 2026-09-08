@@ -1,4 +1,4 @@
-# 👍 一小时快速入门MySQL+傻瓜式安装教程
+﻿# 👍 一小时快速入门MySQL+傻瓜式安装教程
 
 ## 1.课程介绍
 2024 年给大家带来一个快速入门 MySQL 的超详细教程，帮助还没有使用过 MySQL 的小伙伴快速掌握 MySQL 的安装与入门使用，接下来就开始 MySQL 的扫盲行动吧。
@@ -595,8 +595,3 @@ DELETE FROM 表名 WHERE 条件;
 ![1714312282744-db13b76f-c2ee-4423-b713-702b73e9d1d3.png](./img/1zg-PbMyqkST3euS/1714312282744-db13b76f-c2ee-4423-b713-702b73e9d1d3-261490.png)![1714312300006-a56e0473-dc5a-4569-9604-7cdc4fa22a2f.png](./img/1zg-PbMyqkST3euS/1714312300006-a56e0473-dc5a-4569-9604-7cdc4fa22a2f-187762.png)
 
 ![1714312323977-4e1118ee-fe33-4665-b241-78da731ff395.png](./img/1zg-PbMyqkST3euS/1714312323977-4e1118ee-fe33-4665-b241-78da731ff395-082529.png)
-
-
-
-> 更新: 2024-08-15 21:40:22  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bkgyx9eokguvv3tm>

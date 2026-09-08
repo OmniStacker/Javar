@@ -1,4 +1,4 @@
-# Redis 除了缓存还能做什么？10 大核心非缓存场景全解析
+﻿# Redis 除了缓存还能做什么？10 大核心非缓存场景全解析
 
 ## <font style="color:rgb(0, 0, 0);">引言：Redis 不只是 “缓存工具”</font>
 
@@ -500,7 +500,3 @@ done
 * **<font style="color:rgb(0, 0, 0) !important;">实时性要求高的场景（弹幕）</font>**<font style="color:rgb(0, 0, 0);">：选 Pub/Sub（避免 Stream 的持久化开销）。</font>
 
 <font style="color:rgb(0, 0, 0);">通过本文的拆解，相信你已掌握 Redis 非缓存功能的核心实现与实战要点。结合 PPT 演示时，可按 “场景需求→截图展示→代码讲解→注意事项” 的节奏，让观众快速理解每个功能的价值与用法。</font>
-
-
-> 更新: 2025-11-13 14:44:14  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/msm5xlu11kdsvcq1>

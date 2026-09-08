@@ -1,4 +1,4 @@
-# Java私有仓库Nexus搭建
+﻿# Java私有仓库Nexus搭建
 
 ## 为什么需要搭建私有仓库？
 
@@ -197,7 +197,3 @@ Hosted的创建和Proxy类似，类型需选择maven2(hosted)。注意：Deploym
 <font style="color:rgb(77, 77, 77);">上面的配置方法选择其中一种即可。</font>
 
 <font style="color:rgb(77, 77, 77);">如此一来，项目在下载jar包时会从私服的代理中央仓库中获取，如果代理仓库没有该jar，就会去代理仓库配置的远程仓库中下载到私服中，再从私服下载到项目本地。</font>
-
-
-> 更新: 2023-09-07 19:56:46  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ul3651zx68pm67dq>

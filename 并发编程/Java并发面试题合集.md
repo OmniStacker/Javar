@@ -1,4 +1,4 @@
-# 💎 Java并发面试题合集
+﻿# 💎 Java并发面试题合集
 
 # <font style="color:#01B2BC;">判断线程池任务执行完成的方式</font>
 Thread线程是否执行完成，我们可以调用join方法然后等待线程执行完成；那在使用线程池的时候，我们如何知道线程已经执行完成了？本文就带给大家**<font style="color:#ED740C;">五种</font>**判断的方式：
@@ -1651,7 +1651,3 @@ CountDownLatch表示计数器，可以给CountDownLatch设置一个数字，一�
 
 
 # 
-
-
-> 更新: 2026-05-14 12:54:38  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xawecw91rvkqgiil>

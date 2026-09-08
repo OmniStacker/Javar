@@ -1,4 +1,4 @@
-# MySQL踩坑笔记，加了唯一索引还会出现重复数据？
+﻿# MySQL踩坑笔记，加了唯一索引还会出现重复数据？
 
 ## <font style="color:rgb(37, 41, 51);">还原问题</font>
 
@@ -171,7 +171,3 @@ group by name,category_id,unit_id,model;
 然后将delete\_id字段设置成1。然后将其他的相同记录的delete\_id字段，设置成当前的主键。这样就能区分历史的重复数据了。
 
 当所有的delete\_id字段都设置了值之后，就能给name、model、delete\_status和delete\_id，四个字段加唯一索引了。完美。
-
-
-> 更新: 2025-03-30 20:18:18  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ac3uu4txf07ypf8q>

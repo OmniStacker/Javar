@@ -1,4 +1,4 @@
-# 面试官：说一下红锁 RedLock 的实现原理
+﻿# 面试官：说一下红锁 RedLock 的实现原理
 
 ### 概述
 
@@ -70,7 +70,3 @@
 * <font style="color:rgba(6, 8, 31, 0.88);">高性能、高可用场景，对锁容错和可用性有较高要求，但业务能容忍极小概率短时间内不一致。</font>
 * <font style="color:rgba(6, 8, 31, 0.88);">典型如分布式ID生成、并发资源调度、任务调度等。</font>
 * <font style="color:rgba(6, 8, 31, 0.88);">对于金融级、电商订单等强一致性业务，建议采用 ZooKeeper 等更为严格的分布式锁方案。</font>
-
-
-> 更新: 2025-05-23 20:20:04  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qw8x7dd695ocvyyr>

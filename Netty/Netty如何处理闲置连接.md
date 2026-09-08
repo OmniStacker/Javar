@@ -1,4 +1,4 @@
-# Netty如何处理闲置连接
+﻿# Netty如何处理闲置连接
 
 <font style="color:rgba(0, 0, 0, 0.82);">在 Netty 中，比如一个客户端连接长时间没有发送数据，这种闲置连接（idle connection）该如何监测并处理？Netty是通过 </font><code><font style="color:rgba(0, 0, 0, 0.82);">IdleStateHandler</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 来处理闲置连接的。</font><code><font style="color:rgba(0, 0, 0, 0.82);">IdleStateHandler</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 是一个 ChannelHandler，用于检测读、写或读写的空闲状态，并在空闲状态发生时触发 </font><code><font style="color:rgba(0, 0, 0, 0.82);">IdleStateEvent</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 事件。你可以通过捕获和处理这些事件来执行相应的操作，比如关闭闲置连接。</font>
 
@@ -147,7 +147,3 @@ public class NettyClient {
 * <font style="color:rgba(0, 0, 0, 0.82);">配置 IdleStateHandler 的读、写和读写空闲时间，可以灵活地应对不同的应用场景。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过这些步骤，Netty 可以有效地监测并处理闲置连接，确保资源的合理利用和系统的稳定运行。</font>
-
-
-> 更新: 2024-08-05 20:38:24  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/svyiga5kp5glyb5o>

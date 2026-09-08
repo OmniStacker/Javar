@@ -1,4 +1,4 @@
-# 如何在Java中处理Oracle的REF CURSOR类型
+﻿# 如何在Java中处理Oracle的REF CURSOR类型
 
 <font style="color:rgba(6, 8, 31, 0.88);">Oracle REF CURSOR在Java中的处理是一个相对复杂的过程，我将通过一个完整的示例来说明具体实现：</font>
 
@@ -125,7 +125,3 @@ public class RefCursorExample {
 * <font style="color:rgba(6, 8, 31, 0.88);">考虑使用ORM框架简化数据库操作</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">这个示例展示了在Java中处理Oracle REF CURSOR的标准方法。通过注册自定义游标类型并使用Oracle特定的JDBC扩展，可以灵活地处理动态结果集。</font>
-
-
-> 更新: 2025-01-25 13:39:32  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gmlkomxzwgtt8rme>

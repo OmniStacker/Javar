@@ -1,4 +1,4 @@
-# Ides + mcp 实现 Manus 效果
+﻿# Ides + mcp 实现 Manus 效果
 
 前段时间 Manus 爆火，当然后续暴雷了，不过 Manus 身上还是有一些可以学习的东西：  
 1、显示地把计划列出来，然后一步一步执行，并同步修改进度  
@@ -196,8 +196,3 @@ docker compose logs -f
 // 如果日志里没有“报错红字❌”,部署成功,测试 FireCrawl, 返回 Hello World
 curl -X GET http://localhost:3002/test
 ```
-
-
-
-> 更新: 2025-04-22 16:19:32  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/yxh01c6ilrt7pq2y>

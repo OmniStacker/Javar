@@ -1,4 +1,4 @@
-# RocketMQ延迟消息是如何实现的
+﻿# RocketMQ延迟消息是如何实现的
 
 想象一下这个场景：**用户下了订单，如果 30 分钟内没付款，系统需要自动关闭订单。**\
 如果用 `Timer` 或 `ScheduledExecutorService`，服务器重启数据就没了；如果用数据库轮询，数据量大时数据库会挂。
@@ -111,7 +111,3 @@ RocketMQ 延迟消息的设计哲学是 **“简单即高效”**。
 * **如果我非要用任意时间怎么办？**
   * **方案 A**：使用 RocketMQ 5.0。5.0 版本引入了 **时间轮 (TimingWheel)** 算法，终于支持任意精度的定时消息了。
   * **方案 B**（老版本 Hacker 做法）：自己写个服务，把消息存 MySQL，用 Netty 时间轮或者 Quartz 扫表，到了时间再发给 MQ。
-
-
-> 更新: 2026-01-09 17:19:03  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ottm7mn0vgxy7qua>

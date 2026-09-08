@@ -1,4 +1,4 @@
-# 第 2 课 · Spring Boot 后端与 AI 审查服务
+﻿# 第 2 课 · Spring Boot 后端与 AI 审查服务
 
 **课程目标：**
 
@@ -355,7 +355,3 @@ return qwenWebClient.post()
    * 在 DTO、Prompt、解析逻辑中加入该字段；
    * 让前端简单打印这一段文本。\
      通过这个练习，完整走一遍“改需求 → 改 Prompt → 改 DTO → 改前端”的链路。
-
-
-> 更新: 2025-12-18 14:30:49  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xtn6xb47yi6si5vt>

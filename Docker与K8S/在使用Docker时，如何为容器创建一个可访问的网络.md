@@ -1,4 +1,4 @@
-# 在使用Docker时，如何为容器创建一个可访问的网络
+﻿# 在使用Docker时，如何为容器创建一个可访问的网络
 
 在使用Docker时，可以通过以下两种方式为容器创建一个可访问的网络：
 
@@ -23,8 +23,3 @@ docker run --network=my_network -tid -p 8000:8000 image_name
 ```
 
 这将在my_network网络中创建一个容器，并将容器的8000端口映射到主机的8000端口。
-
-
-
-> 更新: 2023-09-05 14:24:59  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/acs8ymfeddy9dpng>

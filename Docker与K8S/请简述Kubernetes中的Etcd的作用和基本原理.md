@@ -1,4 +1,4 @@
-# 请简述Kubernetes中的Etcd的作用和基本原理
+﻿# 请简述Kubernetes中的Etcd的作用和基本原理
 
 Etcd在Kubernetes中扮演着重要的角色，它是键值存储数据库，**用于存储Kubernetes集群中所有资源的状态信息**。Etcd使用的是Raft协议，通过选举产生领导者（leader）来保证数据的强一致性。
 
@@ -15,8 +15,3 @@ Etcd的基本原理：
 3. **数据持久化**：Etcd中的数据会定期进行持久化存储，即使在系统崩溃时也可以保证数据的完整性。
 
 总的来说，Etcd为Kubernetes提供了稳定、可靠的数据存储服务，使得Kubernetes可以有效地管理、协调和调度大规模的容器化应用。
-
-
-
-> 更新: 2023-09-05 15:50:58  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/csypw0d0wscydpu8>

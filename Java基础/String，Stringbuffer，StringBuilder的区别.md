@@ -1,4 +1,4 @@
-# String，Stringbuffer，StringBuilder的区别
+﻿# String，Stringbuffer，StringBuilder的区别
 
 三者均是Java中用来处理字符串的类，它们之间的主要区别如下：
 
@@ -15,8 +15,3 @@
     - StringBuilder与StringBuffer类似，但不保证线程安全性，因此在单线程环境下性能更高。
 
 综上，如果在单线程环境下进行字符串操作，且不需要频繁修改字符串，推荐使用String；如果在多线程环境下进行字符串操作，或者需要频繁修改字符串，优先考虑使用StringBuffer；如果在单线程环境下进行频繁的字符串拼接和修改，推荐使用StringBuilder以获取更好的性能。
-
-
-
-> 更新: 2023-09-04 19:31:55  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/maogc2ulwzntgc6q>

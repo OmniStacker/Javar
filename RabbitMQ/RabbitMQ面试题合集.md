@@ -1,4 +1,4 @@
-# 💎RabbitMQ面试题合集
+﻿# 💎RabbitMQ面试题合集
 
 # <font style="color:#01B2BC;">RabbitMQ交换机类型</font>
 ## direct(**直连交换机**)
@@ -307,8 +307,3 @@ System.out.println(message);
 <font style="color:rgb(55, 65, 81);">不丢和不重是矛盾的（在分布式场景下），总的来说，开发者根据业务的实际需求来选择相应的方式即可。</font>
 
 <font style="color:rgb(51, 51, 51);"></font>
-
-
-
-> 更新: 2025-04-09 20:49:39  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gmmoedg89h3z6576>

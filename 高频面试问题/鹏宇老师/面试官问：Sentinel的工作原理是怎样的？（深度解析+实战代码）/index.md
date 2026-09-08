@@ -1,4 +1,4 @@
-# 面试官问：Sentinel 的工作原理是怎样的？（深度解析 + 实战代码）
+﻿# 面试官问：Sentinel 的工作原理是怎样的？（深度解析 + 实战代码）
 
 <font style="color:rgb(0, 0, 0);">在分布式系统架构中，流量雪崩、服务过载、依赖故障等问题一直是稳定性保障的核心痛点。而 Sentinel 作为阿里开源的流量治理神器，凭借其轻量级、高性能、功能全面的特性，成为微服务架构中的标配组件。面试官频繁追问其工作原理，本质是考察你对分布式系统稳定性设计的理解 —— 不仅要 “会用”，更要 “懂原理、能落地、善选型”。</font>
 
@@ -441,7 +441,3 @@ public void initSystemRule() {
 5. <font style="color:rgb(0, 0, 0);">怎么选型：对比 Hystrix、Resilience4j，高并发、全场景需求优先选 Sentinel。</font>
 
 <font style="color:rgb(0, 0, 0);">按这个逻辑回答，既覆盖原理，又体现落地能力，轻松搞定面试！</font>
-
-
-> 更新: 2025-12-01 14:50:50  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/toechilky5zhu5c2>

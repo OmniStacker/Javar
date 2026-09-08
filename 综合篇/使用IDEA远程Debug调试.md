@@ -1,4 +1,4 @@
-# 使用 IDEA 远程 Debug 调试
+﻿# 使用 IDEA 远程 Debug 调试
 
 ### <font style="color:rgb(34, 34, 34);">背景</font>
 
@@ -144,7 +144,3 @@ public String test1() {
 
 * 难保证本地代码和远程一致，而且你也很难判断是否一致
 * 通过远程调试发现了bug，但是又不能立即修复后继续调试，只能修复后部署后继续远程调试
-
-
-> 更新: 2023-09-07 19:55:41  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vn7vhycdiffiva47>

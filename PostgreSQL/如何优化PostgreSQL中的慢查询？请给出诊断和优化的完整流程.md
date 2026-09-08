@@ -1,4 +1,4 @@
-# 如何优化PostgreSQL中的慢查询？请给出诊断和优化的完整流程
+﻿# 如何优化PostgreSQL中的慢查询？请给出诊断和优化的完整流程
 
 <font style="color:rgba(6, 8, 31, 0.88);">PostgreSQL慢查询优化是提升数据库性能的关键技术，下面我将详细阐述完整的诊断和优化流程：</font>
 
@@ -186,8 +186,3 @@ REINDEX TABLE orders;
 + <font style="color:rgba(6, 8, 31, 0.88);">平衡开发成本和性能收益</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">通过系统化的诊断和持续优化，可以显著提升PostgreSQL数据库的查询性能。关键在于理解数据特征，精准定位瓶颈，并采取针对性的优化措施。</font>
-
-
-
-> 更新: 2025-01-25 13:26:01  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/cmv2y4kzwpmg07xy>

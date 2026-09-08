@@ -1,4 +1,4 @@
-# 什么是索引下推？
+﻿# 什么是索引下推？
 
 <font style="color:rgba(0, 0, 0, 0.82);">索引下推（Index Condition Pushdown, ICP）是MySQL优化器的一项优化技术，旨在提高通过索引检索数据的效率，尤其是在InnoDB存储引擎中。这项技术在MySQL 5.6中引入，专门用于减少从表中读取不必要的行，提高查询性能。</font>
 
@@ -34,7 +34,3 @@ SELECT * FROM products WHERE category_id = 5 AND price < 100;
 * **<font style="color:rgba(0, 0, 0, 0.82);">更快的响应时间</font>**<font style="color:rgba(0, 0, 0, 0.82);">：整体上更有效的索引应用提高了查询响应速度。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">索引下推是MySQL智能优化器功能迅速发展的一个体现，熟练使用及理解该功能有助于优化复杂查询和提升性能。</font>
-
-
-> 更新: 2024-08-08 16:33:45  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hmenpg2g8ncqkciq>

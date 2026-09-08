@@ -1,4 +1,4 @@
-# Spring Bean分类
+﻿# Spring Bean分类
 
 <font style="color:rgb(6, 6, 7);">在Spring框架中，Bean是Spring容器管理的对象，它可以通过多种方式定义和配置。此问题可能换其他问法：比如你用过那些类型的Bean，你平时如何通过Spring创建Bean对象，单列Bean和原型Bean的区别等。</font>
 
@@ -281,7 +281,3 @@ public class MyFactoryBean implements FactoryBean<MyBean> {
 * **<font style="color:rgb(6, 6, 7);">XML配置</font>**<font style="color:rgb(6, 6, 7);">：适合复杂的配置场景，便于管理。</font>
 
 <font style="color:rgb(6, 6, 7);">通过合理使用这些Bean类型，可以更好地利用Spring框架的强大功能，实现高效、灵活的开发。</font>
-
-
-> 更新: 2025-02-24 19:21:05  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/eg79g2gz7nl9ydbm>

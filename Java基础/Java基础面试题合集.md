@@ -1,4 +1,4 @@
-# 💎 Java基础面试题合集
+﻿# 💎 Java基础面试题合集
 
 # <font style="color:#01B2BC;">如何优雅的避免空指针异常</font>
 
@@ -4692,7 +4692,3 @@ public class OptimizedFrequencyCounter {
     }  
 }
 ```
-
-
-> 更新: 2025-12-11 15:09:33  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/iayyx1debbkx29g6>

@@ -1,4 +1,4 @@
-# RocketMQ的存储模型和底层优化策略有哪些
+﻿# RocketMQ的存储模型和底层优化策略有哪些
 
 # RocketMQ 存储模型与底层优化深度解析
 
@@ -176,7 +176,3 @@ $ 高吞吐 = 顺序写(CommitLog) + 零拷贝(mmap) + 堆外内存池(Transient
 $ 低延迟 = PageCache热读 + 极简索引(ConsumeQueue) + 服务端过滤 $
 
 通过这种将硬盘当内存用的设计，RocketMQ 实现了在普通硬件上单机十万级甚至百万级的 TPS。
-
-
-> 更新: 2026-01-13 13:15:23  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xmoqrypne7cv9pft>

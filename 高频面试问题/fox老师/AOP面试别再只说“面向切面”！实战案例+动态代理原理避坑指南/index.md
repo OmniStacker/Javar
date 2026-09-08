@@ -1,4 +1,4 @@
-# AOP 面试别再只说 “面向切面”！实战案例 + 动态代理原理避坑指南
+﻿# AOP 面试别再只说 “面向切面”！实战案例 + 动态代理原理避坑指南
 
 ## <font style="color:rgb(0, 0, 0);">一、面试挂了的那一刻：只背概念，不懂落地</font>
 
@@ -338,7 +338,3 @@ public class ProxyTest {
 * <font style="color:rgb(0, 0, 0);">切入点表达式：子包用两个点（..），避免切不到子包下的方法。</font>
 
 <font style="color:rgb(0, 0, 0);">总结：AOP 不是高大上的概念，而是解决实际问题的工具，核心是‘结合业务场景，用对通知和切入点，理解动态代理原理’。”</font>
-
-
-> 更新: 2025-10-16 11:36:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lizaa8pqd0alg0m9>

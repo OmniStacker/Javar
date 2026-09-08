@@ -1,4 +1,4 @@
-# Redis数据类型及实现原理
+﻿# Redis数据类型及实现原理
 
 > <font style="color:rgb(85, 85, 85);">说明：本文由</font>[天明](https://www.yuque.com/tianming-aroh0)<font style="color:rgb(85, 85, 85);">整理之前VIP系统课中的部分章节笔记</font>
 
@@ -1295,7 +1295,3 @@ geohash key member \[member ...]
 <font style="color:rgb(51, 51, 51);">zrem key member</font>
 
 <font style="color:rgb(51, 51, 51);">GEO没有提供删除成员的命令，但是因为GEO的底层实现是zset，所以可以借用zrem命令实现对地理位置信息的删除。</font>
-
-
-> 更新: 2025-06-19 08:58:53  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fmv901lw0u8oew5x>

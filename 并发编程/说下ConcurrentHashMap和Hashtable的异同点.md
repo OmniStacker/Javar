@@ -1,4 +1,4 @@
-# 说下ConcurrentHashMap和Hashtable的异同点
+﻿# 说下ConcurrentHashMap和Hashtable的异同点
 
 ## 一、 标准面试回答模版（建议背诵）
 
@@ -72,7 +72,3 @@ final V putVal(K key, V value, boolean onlyIfAbsent) {
   1. 这个 key 不存在。
   2. 这个 key 存在，但值就是 `null`。 **解决办法：** 我可以调用 `map.containsKey(key)` 再确认一下。因为是单线程，这两步操作之间 Map 不会变。
 * **在 ConcurrentHashMap（并发）中：** 假如允许 null。 线程 A 调用 `map.get(key)` 得到 `null`。 线程 A 想去检查 `containsKey(key)`。 **Bug 来了：** 在这两行代码之间，线程 B 可能**刚好把这个 key 删除了**，或者**刚好把这个 key 设为了 null**。 这就导致线程 A 根本无法判断刚才那个 `null` 到底代表什么意思（是‘没有’还是‘值为null’）。 为了避免这种无法自证的逻辑死局，并发 Map 干脆直接禁止 `null`。”
-
-
-> 更新: 2026-01-08 16:42:53  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/cazo0ro75gxuh49k>

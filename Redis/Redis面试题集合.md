@@ -1,4 +1,4 @@
-# 💎Redis 面试题集合
+﻿# 💎Redis 面试题集合
 
 # <font style="color:#01B2BC;">全面解析Redis-RDB与AOF持久化机制</font>
 
@@ -943,7 +943,3 @@ redis是通过我们的链式hash来解决我们的hash冲突问题，<font styl
 <font style="color:rgb(33, 37, 41);">3）通过调用DISCARD，客户端可以清空事务队列，并放弃执行事务， 并且客户端会从事务状态中退出。</font>
 
 <font style="color:rgb(33, 37, 41);">4）WATCH 命令可以为 Redis 事务提供 check-and-set （CAS）行为。可以监控一个或多个键，一旦其中有一个键被修改（或删除），之后的事务就不会执行，监控一直持续到EXEC命令。</font>
-
-
-> 更新: 2026-05-14 15:23:57  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/du5hpy6podycogxo>

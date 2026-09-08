@@ -1,4 +1,4 @@
-# Innodb加索引的时候会锁表吗
+﻿# Innodb加索引的时候会锁表吗
 
 <font style="color:rgba(0, 0, 0, 0.82);">在 InnoDB 中，操作索引时是否锁表取决于具体的操作类型。有些情况可能会导致表锁，而有些情况则不会。以下是一些需要考虑的方面：</font>
 
@@ -27,7 +27,3 @@
 ### <font style="color:rgba(0, 0, 0, 0.82);">小结</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">在现代 MySQL 版本中，InnoDB 通过支持在线 DDL 特性，在大多数索引相关操作中不需要锁表，这是为了降低对生产环境的影响。在进行索引操作时，务必检查使用的 MySQL 版本支持的功能，并合理配置相关参数以实现并发数据访问和操作的最小化冲突。</font>
-
-
-> 更新: 2024-08-08 14:53:42  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ritpzfmgxd64fz4z>

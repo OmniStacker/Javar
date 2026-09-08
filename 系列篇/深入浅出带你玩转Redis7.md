@@ -1,4 +1,4 @@
-# 💎 深入浅出带你玩转Redis7
+﻿# 💎 深入浅出带你玩转Redis7
 
 # 基础篇
 
@@ -3018,7 +3018,3 @@ cluster nodes
   * <font style="color:rgb(77, 77, 77);">实现思路：低耦合的解决方案是使用canal。canal伪装成mysql的从机，监听主机mysql的二进制文件，当数据发生变化时发送给MQ。最终消费进行删除</font>
 
 ## <font style="color:rgb(68, 68, 68);"></font>
-
-
-> 更新: 2024-01-15 19:20:58  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/udo6bfsma931lhvv>

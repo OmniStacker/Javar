@@ -1,4 +1,4 @@
-# 说一下Spring的事务传播行为
+﻿# 说一下Spring的事务传播行为
 
 <font style="color:rgb(51, 51, 51);">事务的传播特性指的是当一个事务方法被另一个事务方法调用时，这个事务方法应该如何进行？ </font>
 
@@ -13,8 +13,3 @@
 7. **<font style="color:rgb(36, 41, 47);">NEVER</font>**<font style="color:rgb(36, 41, 47);">：以非事务方式执行，如果当前存在事务，则抛出异常。适用于不允许在事务中执行的场景，如果存在事务则会抛出异常。</font>
 
 <font style="color:rgb(36, 41, 47);">通过@Transactional注解的propagation属性来指定事务传播行为 。</font>
-
-
-
-> 更新: 2023-09-06 16:52:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ccreslu5lwn4tgrx>

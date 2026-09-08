@@ -1,4 +1,4 @@
-# Netty的内存池机制怎样设计的
+﻿# Netty的内存池机制怎样设计的
 
 <font style="color:rgba(0, 0, 0, 0.82);">Netty 通过内存池机制来优化内存分配和回收过程，使得性能更加高效和稳定。Netty 的内存池机制主要依赖于 </font><code><font style="color:rgba(0, 0, 0, 0.82);">PooledByteBufAllocator</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 类，并结合了一些策略来实现高效的内存管理。以下是 Netty 内存池机制的详细介绍：</font>
 
@@ -75,7 +75,3 @@ public class NettyMemoryPoolExample {
 ```
 
 <font style="color:rgba(0, 0, 0, 0.82);">总结，Netty 的内存池机制通过 Arena、内存页、线程本地缓存等策略来高效管理内存，使得内存分配和回收更加快速和稳定，大大提高了网络应用的性能。</font>
-
-
-> 更新: 2024-08-05 20:37:23  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/urk973pfiv7tok5q>

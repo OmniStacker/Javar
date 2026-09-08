@@ -1,4 +1,4 @@
-# 为啥你们项目用 Kafka，不用 RocketMQ？
+﻿# 为啥你们项目用 Kafka，不用 RocketMQ？
 
 ### **<font style="color:rgba(0, 0, 0, 0.88);">一、 为什么选择 Kafka 而不是 RocketMQ？</font>**
 **<font style="color:rgba(0, 0, 0, 0.88);">（适用于大数据、日志采集、实时流处理场景）</font>**
@@ -51,8 +51,3 @@
 4. **<font style="color:rgba(0, 0, 0, 0.88);">反问对方：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> </font><font style="color:rgba(0, 0, 0, 0.88);">回答完后，可以反问：“想了解一下，咱们公司的技术选型是基于哪些考量呢？” 这会化被动为主动，展现你的沟通和思考能力。</font>
 
 **<font style="color:rgba(0, 0, 0, 0.88);">记住：</font>**<font style="color:rgba(0, 0, 0, 0.88);"> 没有最好的技术，只有最合适的技术选型。你能清晰地说出“为什么合适”，就是最好的答案。</font>
-
-
-
-> 更新: 2025-09-28 19:49:13  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hwh4ar9s0e4ke7vm>

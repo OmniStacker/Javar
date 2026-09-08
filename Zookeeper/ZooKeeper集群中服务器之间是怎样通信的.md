@@ -1,4 +1,4 @@
-# ZooKeeper 集群中服务器之间是怎样通信的
+﻿# ZooKeeper 集群中服务器之间是怎样通信的
 
   
 ZooKeeper集群中的服务器之间使用TCP协议进行通信，这个通信过程包括以下关键部分：
@@ -13,8 +13,3 @@ ZooKeeper集群中的服务器之间使用TCP协议进行通信，这个通信�
 
 <font style="color:rgb(0, 0, 0);">  
 </font>
-
-
-
-> 更新: 2023-09-04 17:21:41  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ulffm5acpxkut4bi>

@@ -1,4 +1,4 @@
-# 说下你对Seata的理解
+﻿# 说下你对Seata的理解
 
 :::tips
 <font style="background-color:#FBDE28;">工资：12-25K</font>
@@ -191,8 +191,3 @@ update tb_account set money = money - 10 where id = 1
 + <font style="color:rgb(0, 0, 0);">XA模式一阶段不提交事务，锁定资源；AT模式一阶段直接提交，不锁定资源。</font>
 + <font style="color:rgb(0, 0, 0);">XA模式依赖数据库机制实现回滚；AT模式利用数据快照实现数据回滚。</font>
 + <font style="color:rgb(0, 0, 0);">XA模式强一致；AT模式最终一致</font>
-
-
-
-> 更新: 2023-10-16 15:59:36  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qkonkyxh8cti4k7k>

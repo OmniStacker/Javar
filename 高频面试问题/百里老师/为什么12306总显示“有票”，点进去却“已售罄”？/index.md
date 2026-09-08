@@ -1,4 +1,4 @@
-# 为什么12306总显示“有票”，点进去却“已售罄”？
+﻿# 为什么12306总显示“有票”，点进去却“已售罄”？
 
 ## ![1758721924275-de9fd13d-e311-494f-9ada-665b60f77da6.png](./img/Ffxgwm63rbVI5SUy/1758721924275-de9fd13d-e311-494f-9ada-665b60f77da6-326509.png)
 
@@ -101,7 +101,3 @@
 4. **<font style="color:rgb(38, 38, 38);">在数据库层面</font>**<font style="color:rgb(38, 38, 38);">，可以开启</font>**<font style="color:rgb(38, 38, 38);">半同步复制</font>**<font style="color:rgb(38, 38, 38);">来提高整个集群的数据可靠性，作为基础设施层面的保障。</font>
 
 <font style="color:rgb(38, 38, 38);">记住，技术选型的本质，就是在各种约束条件下找到最合适的平衡点。</font>
-
-
-> 更新: 2025-09-25 20:15:36  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pkym7syciyw00qv1>

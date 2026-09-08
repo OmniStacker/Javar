@@ -1,4 +1,4 @@
-# 1000个多并发线程，10台机器，每台机器4核的，如何设计线程池大小。
+﻿# 1000个多并发线程，10台机器，每台机器4核的，如何设计线程池大小。
 
 <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">要设计 10 台 4 核机器的线程池大小，核心是</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">先明确 “任务类型”（CPU/IO 密集），再结合 “总并发需求”“硬件资源约束” 和 “线程复用逻辑”，将总线程合理分摊到每台机器</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">，避免单台过载或资源浪费。以下是从 “需求拆解→理论计算→落地配置” 的完整设计思路：</font>
 
@@ -108,7 +108,3 @@
 1. <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">先定</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">任务类型（量化 IO 占比）</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">，这是计算线程数的基础；</font>
 2. <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">再按</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">总 CPU 资源 / 线程占用 CPU 比例</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">算总线程，避免浪费或过载；</font>
 3. <font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">最后</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">分摊到每台机器</font>**<font style="color:rgb(0, 0, 0);background-color:rgb(252, 252, 252);">，结合监控动态调优 ——10 台 4 核机器应对 1000 并发请求，IO 密集场景每台 30-40 线程、CPU 密集场景每台 4-5 线程，完全足够且资源利用率最优。</font>
-
-
-> 更新: 2025-09-29 12:56:07  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/zhi2guh9kgr52gbw>

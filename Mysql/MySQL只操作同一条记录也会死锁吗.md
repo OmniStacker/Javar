@@ -1,4 +1,4 @@
-# MySQL只操作同一条记录也会死锁吗
+﻿# MySQL只操作同一条记录也会死锁吗
 
 <font style="color:rgba(0, 0, 0, 0.82);">在MySQL中，即使多个事务仅对同一条记录进行操作，也可能发生死锁。这通常与InnoDB存储引擎的锁管理机制有关。以下是一些触发这种情况的场景：</font>
 
@@ -104,7 +104,3 @@ public class DeadlockRetryExample {
 ```
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过理解MySQL的锁机制和适当规划应用程序事务，可以有效地减少因操作同一记录导致的死锁。</font>
-
-
-> 更新: 2024-08-08 15:39:45  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/st6lomz1uadxv3rx>

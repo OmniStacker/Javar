@@ -1,4 +1,4 @@
-# RabbitMQ 支持哪些消息模式？
+﻿# RabbitMQ 支持哪些消息模式？
 
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">RabbitMQ 支持多种消息传递模式，这些模式允许应用程序在不同的场景下进行灵活的消息交流。以下是几种最常见的消息分发机制：</font>
 
@@ -8,8 +8,3 @@
 + <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">Topic 基于话题路由机制：在基于内容路由的基础上，对routingKey增加了模糊匹配的功能。</font>
 
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">另外，RabbitMQ 还支持双向同步的 RPC 机制，不过一般用得比较少。这些消息模式允许开发者根据应用程序的需求选择合适的消息通信方式，以满足不同的业务场景和可靠性要求。不同的模式可以用于构建各种类型的分布式系统和应用程序。</font>
-
-
-
-> 更新: 2023-09-12 11:33:48  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tptbdrpcqfgqairx>

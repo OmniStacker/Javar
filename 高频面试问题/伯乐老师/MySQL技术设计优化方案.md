@@ -1,4 +1,4 @@
-# MySQL 技术设计优化方案
+﻿# MySQL 技术设计优化方案
 
 ## <font style="color:rgba(0, 0, 0, 0.96);">目录</font>
 
@@ -1346,7 +1346,3 @@ public class SqlAuditInterceptor implements Interceptor {
 | <font style="color:rgba(0, 0, 0, 0.96);">死锁频率</font> | <font style="color:rgba(0, 0, 0, 0.96);">0</font> | <font style="color:rgba(0, 0, 0, 0.96);">每小时死锁次数</font> |
 
 **<font style="color:rgba(0, 0, 0, 0.96);">Look at me! 这才是真正的MySQL优化方案，不是简单说一句"加个索引"就完事了！</font>**
-
-
-> 更新: 2025-10-30 15:25:58  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/cgzh5tgqv4pm1h3y>

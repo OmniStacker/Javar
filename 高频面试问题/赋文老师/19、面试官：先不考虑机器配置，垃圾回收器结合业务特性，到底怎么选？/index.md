@@ -1,4 +1,4 @@
-# 19、面试官：先不考虑机器配置，垃圾回收器结合业务特性，到底怎么选 ？
+﻿# 19、面试官：先不考虑机器配置，垃圾回收器结合业务特性，到底怎么选 ？
 
 
 
@@ -327,10 +327,3 @@ public class ZGCSecKillDemo {
 3. **<font style="color:rgb(0, 0, 0) !important;">辅助判断对象生命周期</font>**<font style="color:rgb(0, 0, 0);">：短对象多→G1/ZGC（Region / 并发回收更高效），长对象多→Parallel（并行回收更省 CPU）。</font>
 
 <font style="color:rgb(0, 0, 0);">面试官要的不是你 “选对”，而是你能说清 “为什么这么选”—— 把上面的场景逻辑 + 代码案例结合起来，就能体现你的技术深度。</font>
-
-
-
-
-
-> 更新: 2025-11-24 21:39:52  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gnhzou1qlowc3zse>

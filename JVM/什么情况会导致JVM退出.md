@@ -1,4 +1,4 @@
-# 什么情况会导致JVM退出
+﻿# 什么情况会导致JVM退出
 
 <font style="color:rgba(0, 0, 0, 0.82);">Java虚拟机（JVM）退出通常是由以下几个原因导致的：</font>
 
@@ -52,7 +52,3 @@ public class JVMExitExample {
 * **<font style="color:rgba(0, 0, 0, 0.82);">外部强制关闭</font>**<font style="color:rgba(0, 0, 0, 0.82);">：不演示于代码中，需通过操作系统进行操作。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">每种退出机制的影响和使用场合都不同，开发者应根据程序需求谨慎地选择合适的退出方式。特别是涉及到异常退出时，通常伴随可能尚未完成的重要资源清理工作，因此合理处理异常显得尤为重要。</font>
-
-
-> 更新: 2024-08-09 15:53:19  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xi7gfwcknuymk8vs>

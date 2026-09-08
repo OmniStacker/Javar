@@ -1,4 +1,4 @@
-# 在Kubernetes中，如何实现滚动升级和回滚
+﻿# 在Kubernetes中，如何实现滚动升级和回滚
 
 在Kubernetes中，滚动升级和回滚可以通过以下步骤实现：
 
@@ -15,8 +15,3 @@
 3. 当所有流量都转移到旧的Pod上后，可以删除新的Pod。
 
 在这些过程中，Kubernetes会根据Pod的状态和所需的副本数量进行自动调度和平衡。通过这种方式，滚动升级和回滚可以在不影响应用程序服务的情况下进行。
-
-
-
-> 更新: 2023-09-05 16:18:52  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/cgcwk65bnovnkxfy>

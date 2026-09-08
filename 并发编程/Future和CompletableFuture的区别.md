@@ -1,4 +1,4 @@
-# Future和CompletableFuture的区别
+﻿# Future和CompletableFuture的区别
 
 <code><font style="color:rgba(0, 0, 0, 0.82);">Future</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 和 </font><code><font style="color:rgba(0, 0, 0, 0.82);">CompletableFuture</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 是 Java 中用于异步编程的两个重要接口，它们都在 </font><code><font style="color:rgba(0, 0, 0, 0.82);">java.util.concurrent</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 包中被定义，但它们的设计和用途有显著的不同。</font>
 
@@ -96,7 +96,3 @@ public class CompletableFutureExample {
 3. **<font style="color:rgba(0, 0, 0, 0.82);">非阻塞</font>**<font style="color:rgba(0, 0, 0, 0.82);">：</font><code><font style="color:rgba(0, 0, 0, 0.82);">CompletableFuture</font></code><font style="color:rgba(0, 0, 0, 0.82);"> </font><font style="color:rgba(0, 0, 0, 0.82);">可以方便地进行非阻塞操作链，而</font><font style="color:rgba(0, 0, 0, 0.82);"> </font><code><font style="color:rgba(0, 0, 0, 0.82);">Future</font></code><font style="color:rgba(0, 0, 0, 0.82);"> </font><font style="color:rgba(0, 0, 0, 0.82);">本质上是阻塞的。</font>
 
 <code><font style="color:rgba(0, 0, 0, 0.82);">CompletableFuture</font></code><font style="color:rgba(0, 0, 0, 0.82);"> 提供了更现代的接口来处理复杂的异步编程需求，它支持 completablepatables 和更丰富的组合能力，尤其适合复杂的异步数据流处理场景。</font>
-
-
-> 更新: 2024-08-11 19:39:18  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vl6pon0s08fg9iol>

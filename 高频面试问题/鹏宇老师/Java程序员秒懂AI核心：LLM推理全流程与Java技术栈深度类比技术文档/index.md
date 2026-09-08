@@ -1,4 +1,4 @@
-# Java 程序员秒懂 AI 核心：LLM 推理全流程与 Java 技术栈深度类比技术文档
+﻿# Java 程序员秒懂 AI 核心：LLM 推理全流程与 Java 技术栈深度类比技术文档
 
 ## <font style="color:rgb(0, 0, 0);">前言</font>
 
@@ -344,7 +344,3 @@
 * <font style="color:rgb(0, 0, 0);">理解 AI 的关键不是学习新架构，而是将 AI 流程与 Java 流程做 “映射关联”，复用已有认知。</font>
 
 <font style="color:rgb(0, 0, 0);">通过以上类比，Java 程序员可快速建立对 LLM 推理全流程和核心 AI 名词的完整认知，为后续深入学习 AI 应用开发奠定坚实基础。</font>
-
-
-> 更新: 2025-12-15 21:57:58  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mywpa97mphxoeiv7>

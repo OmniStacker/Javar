@@ -1,4 +1,4 @@
-# CPU飙高问题如何排查
+﻿# CPU飙高问题如何排查
 
 <font style="color:rgba(0, 0, 0, 0.82);">线上系统CPU飙高问题可以按以下步骤排查：</font>
 
@@ -123,8 +123,3 @@ jstat -gcutil <PID> 1000
 <font style="color:rgba(0, 0, 0, 0.82);">使用vmstat、iostat等命令检查系统资源使用情况，排除是否为系统资源问题。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过以上步骤，我们可以定位到导致CPU飙高的具体代码位置，然后进行相应的优化。常见的优化方法包括：优化算法、增加缓存、调整线程池参数、优化数据库查询等。在进行优化时，要注意进行充分的测试，以确保修改不会引入新的问题。</font>
-
-
-
-> 更新: 2024-08-26 13:38:02  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xg9cvfe5n3fmv2t4>

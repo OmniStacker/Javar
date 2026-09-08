@@ -1,4 +1,4 @@
-# RocketMQ消息积压问题如何解决
+﻿# RocketMQ消息积压问题如何解决
 
 <font style="color:rgba(0, 0, 0, 0.82);">消息积压是消息中间件中常见的问题，主要由消费速度跟不上生产速度导致。以下是几种解决方案：</font>
 
@@ -160,7 +160,3 @@ public Boolean checkMessageAccumulation(String groupName) throws Exception {
 **<font style="color:rgba(0, 0, 0, 0.82);">总结：</font>**
 
 <font style="color:rgba(0, 0, 0, 0.82);">这些方法可以单独使用，也可以组合使用，具体取决于您的业务场景和系统架构。在实施这些解决方案时，请注意监控系统性能，确保不会因为过度优化而导致其他问题。同时，也要考虑长期的解决方案，如优化系统架构、升级硬件等，以从根本上提高系统的消息处理能力。</font>
-
-
-> 更新: 2024-08-19 14:04:32  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ryxgh0hscg5yn8wf>

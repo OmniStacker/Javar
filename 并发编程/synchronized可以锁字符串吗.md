@@ -1,4 +1,4 @@
-# synchronized可以锁字符串吗
+﻿# synchronized可以锁字符串吗
 
 <font style="color:rgb(51, 51, 51);">在日常项目开发中为了解决用户数据并发操作的问题，需要对代码块进行加锁保护。</font>
 
@@ -110,7 +110,3 @@ public class test{
 * <font style="color:rgb(51, 51, 51);">synchronized可以锁存活于字符串常量池中的值，不能锁存活于堆栈中的字符串（字符串地址要相同）</font>
 * <font style="color:rgb(51, 51, 51);">可以使用</font><code><font style="color:rgb(51, 51, 51);background-color:rgb(243, 244, 244);">String对象.intern()</font></code><font style="color:rgb(51, 51, 51);">\ </font><font style="color:rgb(51, 51, 51);">将该字符串放入字符串常量池中，但是常量池的回收只能依赖于fullGC，故不推荐使用</font>
 * <font style="color:rgb(51, 51, 51);">推荐使用guava包下的interner类，使用弱引用的方式，在内存不足的时候自动进行垃圾回收</font>
-
-
-> 更新: 2024-09-15 17:23:56  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qx9qao0sah6mveha>

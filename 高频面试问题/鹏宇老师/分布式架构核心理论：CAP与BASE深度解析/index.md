@@ -1,4 +1,4 @@
-# 分布式架构核心理论：CAP 与 BASE 深度解析
+﻿# 分布式架构核心理论：CAP 与 BASE 深度解析
 
 ## <font style="color:rgb(0, 0, 0);">1. 引言：为什么必须掌握 CAP&BASE 理论？</font>
 ### <font style="color:rgb(0, 0, 0);">1.1 理论定位与学习价值</font>
@@ -119,8 +119,3 @@
 + **<font style="color:rgb(0, 0, 0) !important;">配置中心场景</font>**<font style="color:rgb(0, 0, 0);">（如服务配置）：CP 架构（配置需强一致）或 Nacos 双模（兼顾配置与服务发现）。</font>
 
 ![1763380613214-8ee91836-a50a-4c00-bb57-f472c26cd65a.png](./img/WzbD7JyrQ2hhaGiI/1763380613214-8ee91836-a50a-4c00-bb57-f472c26cd65a-278549.png)
-
-
-
-> 更新: 2025-11-17 19:56:55  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ns48sc78q795zx3m>

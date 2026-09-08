@@ -1,4 +1,4 @@
-# JVM 内存模型与 JMM 内存模型
+﻿# JVM 内存模型与 JMM 内存模型
 
 <font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">在 Java 开发中，</font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">JVM 内存模型</font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">和 </font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);">JMM（Java Memory Model）</font>**<font style="color:rgba(0, 0, 0, 0.9);background-color:rgb(252, 252, 252);"> 是两个容易混淆但完全不同的概念。以下是它们的核心区别和联系：</font>
 
@@ -133,7 +133,3 @@ public class VisibilityIssue {
 #### 7.2. JVM 三大特性
 
 ![1748164717089-d3055fa2-176b-40ca-8e0d-ae5b03356c34.png](./img/jw7b-j5WXOPZNkz4/1748164717089-d3055fa2-176b-40ca-8e0d-ae5b03356c34-090561.png)
-
-
-> 更新: 2025-05-29 21:45:55  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dzstdlvg7yh2q87z>

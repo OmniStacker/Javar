@@ -1,4 +1,4 @@
-# AutoWired 与 Resource 区别
+﻿# AutoWired 与 Resource 区别
 
 今天给大家分享一道非常经典的面试题，同时也是一道高频面试题：Resource和AutoWired注解有什么不同？
 
@@ -27,8 +27,3 @@ Resource是JDK提供的注解，Spring在实现上提供了对这种注解功能
 当指定为byName时，Spring会根据Bean的名称进行依赖注入；
 
 指定为byType时，Spring会根据类型来实现依赖注入。
-
-
-
-> 更新: 2024-06-21 20:05:11  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gl8aguqidlwwv9nr>

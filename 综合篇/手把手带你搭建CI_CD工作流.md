@@ -1,4 +1,4 @@
-# 手把手带你搭建CI/CD工作流
+﻿# 手把手带你搭建CI/CD工作流
 
 ## 什么是CI/CD?
 
@@ -196,7 +196,3 @@ ENTRYPOINT ["java", "-jar", "beiming-talk-backend-0.0.1-SNAPSHOT.jar"]
 ![56af44da-50db-48d6-8ffd-5d32b4564984.png](./img/hdiQ7MtHBaiyxR7M/1723963772100-a31d2bca-1c4f-48ad-a7ee-11f23fe00a60-773288.png)
 
 ![66e4d363-3ec9-4f76-bac0-b1bcd4c542b3.png](./img/hdiQ7MtHBaiyxR7M/1723963772100-74e44757-a4c1-426a-af1b-e127eb1abb50-753796.png)
-
-
-> 更新: 2023-09-07 19:54:13  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/lgnioqs4y83vgpdk>

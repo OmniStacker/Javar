@@ -1,4 +1,4 @@
-# 💧Java并发专题面试常见问题整理
+﻿# 💧Java并发专题面试常见问题整理
 
 # 1.并行与并发有什么区别？
 
@@ -1997,7 +1997,3 @@ write(socket, tmp_buf, len);
 5. **<font style="color:rgb(18, 18, 18);">上下文（切换2）从内核态切换回用户态</font>**<font style="color:rgb(18, 18, 18);">，sendfile调用返回。</font>
 
 <font style="color:rgb(18, 18, 18);">可以发现，</font>sendfile<font style="color:rgb(18, 18, 18);">实现的零拷贝，I/O发生了</font>**<font style="color:rgb(18, 18, 18);">2</font>**<font style="color:rgb(18, 18, 18);">次用户空间与内核空间的上下文切换，以及3次数据拷贝。其中3次数据拷贝中，包括了</font>**<font style="color:rgb(18, 18, 18);">2次DMA拷贝和1次CPU拷贝</font>**<font style="color:rgb(18, 18, 18);">。</font>
-
-
-> 更新: 2025-10-26 20:35:20  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tupelds42978mtt8>

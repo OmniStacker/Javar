@@ -1,4 +1,4 @@
-# 面试官：==和equals的区别？答“地址和内容”的，出门右转！
+﻿# 面试官：==和equals的区别？答“地址和内容”的，出门右转！
 
 ## \*\*<font style="color:rgb(130, 127, 196);">
 
@@ -194,7 +194,3 @@ public static Integer valueOf(int i) {
 <font style="color:rgb(0, 0, 0);"></font>
 
 > <font style="color:rgb(0, 0, 0);">文章首发地址：</font><https://mp.weixin.qq.com/s/8OZj3l_RGZDdvRqwAImvKQ>
-
-
-> 更新: 2026-03-13 13:54:18  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gt7vxanzhi7hu7ga>

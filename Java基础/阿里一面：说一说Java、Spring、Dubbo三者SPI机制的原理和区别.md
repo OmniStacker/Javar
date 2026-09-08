@@ -1,4 +1,4 @@
-# 阿里一面：说一说Java、Spring、Dubbo三者SPI机制的原理和区别
+﻿# 阿里一面：说一说Java、Spring、Dubbo三者SPI机制的原理和区别
 
 ## 什么是SPI
 
@@ -390,7 +390,3 @@ ConsumerContextFilter
 最后总的来说，Java的SPI实现的比较简单，并没有什么其它功能；Spring得益于自身的ioc和aop的功能，所以也没有实现太复杂的SPI机制，仅仅是对Java做了一点简化和优化；但是dubbo的SPI机制为了满足自身框架的使用要求，实现的功能就比较多，不仅将ioc和aop的功能集成到SPI机制中，还提供注入自适应和自动激活等功能。
 
 > 来自: [阿里一面：说一说Java、Spring、Dubbo三者SPI机制的原理和区别](https://juejin.cn/post/7210601680554246202?searchId=202411171559346D261F10324872C548CE#heading-1)
-
-
-> 更新: 2024-11-17 21:20:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pulzrwazeuldai89>

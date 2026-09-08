@@ -1,4 +1,4 @@
-# 第 1 集 AI Code Reviewer 环境配置
+﻿# 第 1 集 AI Code Reviewer 环境配置
 
 ### <font style="color:rgb(26, 28, 30);">. 安装 JDK 21 (必须步骤)</font>
 <font style="color:rgb(26, 28, 30);">Spring AI 强依赖 JDK 17+，推荐使用 JDK 21 (LTS)。</font>
@@ -89,8 +89,3 @@ mvn -v
 + **<font style="color:rgb(26, 28, 30);">验证</font>**<font style="color:rgb(26, 28, 30);">：</font>
     - <font style="color:rgb(26, 28, 30);">重启 Cursor。</font>
     - <font style="color:rgb(26, 28, 30);">新建一个 </font><font style="color:rgb(50, 48, 44);">.java</font><font style="color:rgb(26, 28, 30);"> 文件，看是否有代码高亮和智能提示。</font>
-
-
-
-> 更新: 2025-12-16 10:42:20  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dmer9may1s3oyg8p>

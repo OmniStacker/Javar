@@ -1,4 +1,4 @@
-# Redis 如何同时执行多条命令？
+﻿# Redis 如何同时执行多条命令？
 
 <font style="color:rgb(0, 0, 0);">在 Redis 中，“同时执行多条命令” 的需求通常涉及两种场景：</font>**<font style="color:rgb(0, 0, 0) !important;">提高执行效率（减少网络往返）</font>**<font style="color:rgb(0, 0, 0);"> 和</font>**<font style="color:rgb(0, 0, 0) !important;">保证命令的原子性（避免中间被其他命令打断）</font>**<font style="color:rgb(0, 0, 0);">。针对不同场景，Redis 提供了 3 种核心方案：</font>**<font style="color:rgb(0, 0, 0) !important;">批量命令（如 MSET/MGET）</font>**<font style="color:rgb(0, 0, 0);">、</font>**<font style="color:rgb(0, 0, 0) !important;">管道（Pipeline）</font>**<font style="color:rgb(0, 0, 0);">、</font>**<font style="color:rgb(0, 0, 0) !important;">事务（Transaction）</font>**<font style="color:rgb(0, 0, 0);"> 和</font>**<font style="color:rgb(0, 0, 0) !important;">Lua 脚本</font>**<font style="color:rgb(0, 0, 0);">。以下是具体实现方式、适用场景及优缺点解析：</font>
 
@@ -179,7 +179,3 @@ OK
 * <font style="color:rgb(0, 0, 0);">非原子批量用</font>**<font style="color:rgb(0, 0, 0) !important;">管道</font>**<font style="color:rgb(0, 0, 0);">；</font>
 * <font style="color:rgb(0, 0, 0);">简单原子操作用</font>**<font style="color:rgb(0, 0, 0) !important;">事务</font>**<font style="color:rgb(0, 0, 0);">；</font>
 * <font style="color:rgb(0, 0, 0);">复杂原子逻辑用</font>**<font style="color:rgb(0, 0, 0) !important;">Lua 脚本</font>**<font style="color:rgb(0, 0, 0);">。</font>
-
-
-> 更新: 2025-10-27 15:35:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/nfk97xdtvwfi417o>

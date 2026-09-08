@@ -1,4 +1,4 @@
-# 😇 MySQL Explain使用教程
+﻿# 😇 MySQL Explain使用教程
 
 ![画板](./img/9px0ZRqZD_AjjLp5/1763041830966-260bdf89-651a-4f90-a95b-c1dd5f721c39-556631.jpeg)
 
@@ -581,8 +581,3 @@ select min(password) from users;
 
 ## 5. 总结
 正确合理使用 MySQL explain 可以帮助我们更好地理解查询执行计划，并确定如何最好地优化查询SQL，提升SQL性能，增加系统稳定性。
-
-
-
-> 更新: 2025-11-14 09:00:41  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tzy8ni25gr19xnpn>

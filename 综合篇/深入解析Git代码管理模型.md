@@ -1,4 +1,4 @@
-# 深入解析 Git 代码管理模型
+﻿# 深入解析 Git 代码管理模型
 
 # ![1742275021386-f5219a9c-dba2-4dd7-9286-c53c27cc789a.png](./img/a-Gsp_F1fOtDIm9A/1742275021386-f5219a9c-dba2-4dd7-9286-c53c27cc789a-126850.png)
 
@@ -507,7 +507,3 @@
 <font style="color:rgba(6, 8, 31, 0.88);">选择时需要综合考虑 </font>**<font style="color:rgba(6, 8, 31, 0.88);">团队规模</font>**<font style="color:rgba(6, 8, 31, 0.88);"> 和 </font>**<font style="color:rgba(6, 8, 31, 0.88);">项目特点</font>**<font style="color:rgba(6, 8, 31, 0.88);">。</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">如果流程复杂但版本管理需求高，AoneFlow 是非常适用的；规模小而敏捷要求高时，选择 GitHub Flow 或 Trunk-Based Development 更合适。</font>
-
-
-> 更新: 2025-03-18 20:11:03  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/iohmkdkgppfthm1v>

@@ -1,4 +1,4 @@
-# RocketMQ如何保证消息顺序
+﻿# RocketMQ如何保证消息顺序
 
 <font style="color:rgba(0, 0, 0, 0.82);">RocketMQ提供了两种级别的顺序消息：全局顺序消息和分区顺序消息。</font>
 
@@ -157,7 +157,3 @@ public class PartitionOrderConsumer {
 4. <font style="color:rgba(0, 0, 0, 0.82);">消费者端需要正确处理并发和重试逻辑，以维护消息顺序。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过这些机制和实践，RocketMQ 能够在不同场景下有效地保证消息的顺序性，同时兼顾系统的性能和可扩展性。</font>
-
-
-> 更新: 2024-08-19 16:08:21  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dpli1grw8pt3tdhr>

@@ -1,4 +1,4 @@
-# DeepSeek本地部署教程
+﻿# DeepSeek本地部署教程
 
 <font style="color:rgba(0, 0, 0, 0.9);">deepseek最近非常火，有时很卡顿，用不了，</font>**<font style="color:rgba(0, 0, 0, 0.9);">那么本地部署的需求也随之而来，很多人是有这个需求的。</font>**
 
@@ -81,8 +81,3 @@
 点击右下角的设置，设置好模型，选择Ollama API，最后选择已经安装好的模型就可以了。
 
 ![1738743301011-df586ec5-d1c0-451b-a840-88ee4b61006f.png](./img/j7bFAx6rfeXrZshZ/1738743301011-df586ec5-d1c0-451b-a840-88ee4b61006f-943639.png)
-
-
-
-> 更新: 2025-02-05 17:13:44  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/pgswxy26zlgb4eq9>

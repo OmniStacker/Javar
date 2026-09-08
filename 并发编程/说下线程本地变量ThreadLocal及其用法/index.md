@@ -1,4 +1,4 @@
-# 说下线程本地变量ThreadLocal及其用法
+﻿# 说下线程本地变量ThreadLocal及其用法
 
 <code><font style="color:rgba(0, 0, 0, 0.82);">ThreadLocal</font></code><font style="color:rgba(0, 0, 0, 0.82);">是Java中的一个工具类，用于创建线程本地变量。每个线程在访问这个变量时都会有自己独立的副本，因此变量之间不会互相干扰。这在需要隔离数据相互影响的多线程环境中特别有用，如数据库连接、用户会话等。</font>
 
@@ -64,7 +64,3 @@ public class ThreadLocalExample {
 * **<font style="color:rgba(0, 0, 0, 0.82);">同步机制</font>**<font style="color:rgba(0, 0, 0, 0.82);">：</font><code><font style="color:rgba(0, 0, 0, 0.82);">ThreadLocal</font></code><font style="color:rgba(0, 0, 0, 0.82);">用于变量隔离而非同步，对于共享数据保护仍需采用锁或其他同步机制。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">使用</font><code><font style="color:rgba(0, 0, 0, 0.82);">ThreadLocal</font></code><font style="color:rgba(0, 0, 0, 0.82);">可以极大简化在多线程环境中各线程拥有独立状态的复杂性，同时提高程序的可维护性和可读性。在合适的场景下，它是一个极为便利的工具。</font>
-
-
-> 更新: 2024-08-11 21:53:46  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xqzrfomehn1r8ug7>

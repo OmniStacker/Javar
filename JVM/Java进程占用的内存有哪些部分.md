@@ -1,4 +1,4 @@
-# Java进程占用的内存有哪些部分
+﻿# Java进程占用的内存有哪些部分
 
 <font style="color:rgba(0, 0, 0, 0.82);">Java进程占用的内存主要包括以下几个部分：</font>
 
@@ -70,7 +70,3 @@ class Person {
 ### <font style="color:rgba(0, 0, 0, 0.82);">总结</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">Java进程的内存管理非常复杂和高效，通过不同区域的管理实现内存的高效使用和垃圾收集的管理。了解这些内存的分配和使用，是优化Java应用程序性能和调试内存问题的重要基础。</font>
-
-
-> 更新: 2024-08-09 15:51:41  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mwh0psoz0g158miq>

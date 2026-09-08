@@ -1,4 +1,4 @@
-# Kafka篇
+﻿# Kafka篇
 
 <font style="color:rgb(255, 129, 36);">Why kafka</font>
 
@@ -367,8 +367,3 @@ if (maxOffset - curOffset > 100000) {  // TODO 消息堆积情况的优先处理
 + **<font style="color:rgb(62, 62, 62);">海量数据：</font>**<font style="color:rgb(62, 62, 62);">如何解决消息积压、海量Topic性能下降；</font>
 
 <font style="color:rgb(62, 62, 62);">性能上，可以借鉴</font>**<font style="color:rgb(62, 62, 62);">时间轮、零拷贝、IO多路复用、顺序读写、压缩批处理</font>**<font style="color:rgb(62, 62, 62);">。</font>
-
-
-
-> 更新: 2024-04-29 20:14:54  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/cvwg6enm2flskiry>

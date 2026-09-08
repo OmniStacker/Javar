@@ -1,4 +1,4 @@
-# 7种 MySQL亿级/千万级大表快速删除数据方案：锁影响与性能分析
+﻿# 7种 MySQL亿级/千万级大表快速删除数据方案：锁影响与性能分析
 
 ![1745238005775-ad97e767-4a35-41af-a793-bba576ae26a7.png](./img/o2yoHKiYrB17rDDz/1745238005775-ad97e767-4a35-41af-a793-bba576ae26a7-352824.png)
 
@@ -246,8 +246,3 @@ ALTER TABLE huge_table DROP PARTITION p_202301;
     - <font style="color:rgba(0, 0, 0, 0.82);">在业务低峰期执行</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">每种方案都有其适用场景和权衡，选择时应考虑：业务可接受的停机时间、系统当前负载、操作紧急程度以及长期数据管理需求。通常，长期来看，分区表策略提供最佳的总体拥有成本和性能。</font>
-
-
-
-> 更新: 2025-04-21 20:45:20  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ddplb7o15cmmgxf5>

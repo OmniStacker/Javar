@@ -1,4 +1,4 @@
-# 通俗易懂-MySQL常用函数解析
+﻿# 通俗易懂-MySQL常用函数解析
 
 ## ![1743341729896-ff5ffe14-d86c-40c5-84b7-ea069a5d55de.png](./img/HPqUVLdzI35skViE/1743341729896-ff5ffe14-d86c-40c5-84b7-ea069a5d55de-068028.png)
 
@@ -328,7 +328,3 @@ select ifnull(null,'111');
 ```
 
 ***
-
-
-> 更新: 2025-03-30 21:37:43  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hoh5yl13z8ue2kak>

@@ -1,4 +1,4 @@
-# PostgreSQL中的JSON和JSONB数据类型有什么区别？各自适合什么场景
+﻿# PostgreSQL中的JSON和JSONB数据类型有什么区别？各自适合什么场景
 
 <font style="color:rgba(6, 8, 31, 0.88);">PostgreSQL中的JSON和JSONB是两种存储JSON数据的不同方式，它们各有特点和适用场景。下面我将详细比较这两种数据类型：</font>
 
@@ -102,8 +102,3 @@ WHERE profile->'skills' ? 'Java';
 + <font style="color:rgba(6, 8, 31, 0.88);">复杂查询优先考虑JSONB</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">总之，JSONB在大多数现代应用中是更好的选择，除非有特殊的格式保留需求。选择时需要根据具体业务场景权衡性能、存储和查询需求。</font>
-
-
-
-> 更新: 2025-01-25 13:15:53  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xms10ysak8qeuolc>

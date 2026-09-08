@@ -1,4 +1,4 @@
-# 如何优雅实现用户自动登录？从原理到落地的完整方案
+﻿# 如何优雅实现用户自动登录？从原理到落地的完整方案
 
 # <font style="color:rgb(0, 0, 0);">面试官问：怎么实现用户的自动登录？</font>
 
@@ -605,7 +605,3 @@ public class UserServiceImpl implements UserService {
 ```
 
 <font style="color:rgba(0, 0, 0, 0.85);background-color:rgb(249, 250, 251);">使用时需要在</font><code><font style="color:rgba(0, 0, 0, 0.85);">pom.xml</font></code><font style="color:rgba(0, 0, 0, 0.85);background-color:rgb(249, 250, 251);">中添加相关依赖。</font>
-
-
-> 更新: 2025-09-24 21:25:41  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/agsvsgur62kgxpgt>

@@ -1,4 +1,4 @@
-# Mysql表有1000个列，列的值非0即1，求每一行值加起来大于300的数据行，全部select出来
+﻿# Mysql表有1000个列，列的值非0即1，求每一行值加起来大于300的数据行，全部select出来
 
 <font style="color:rgb(0, 0, 0);background-color:rgba(0, 0, 0, 0);">在 MySQL 中处理 “1000 个 0/1 列、筛选行和> 300” 的需求，核心是</font>**<font style="color:rgb(0, 0, 0);background-color:rgba(0, 0, 0, 0);">避免手动拼接 1000 个列名</font>**<font style="color:rgb(0, 0, 0);background-color:rgba(0, 0, 0, 0);">（效率低且易出错），同时</font>**<font style="color:rgb(0, 0, 0);background-color:rgba(0, 0, 0, 0);">通过优化手段解决 “实时求和” 的性能瓶颈</font>**<font style="color:rgb(0, 0, 0);background-color:rgba(0, 0, 0, 0);">（尤其数据量大时）。以下是从 “基础实现” 到 “性能优化” 的完整方案，可直接落地：</font>
 
@@ -149,7 +149,3 @@ PARTITION BY RANGE (TO_DAYS(create_date)) (
 
 <font style="color:rgb(31, 35, 41);background-color:rgb(252, 252, 252);">  
 </font>
-
-
-> 更新: 2025-09-29 19:05:12  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/bnfyow7nwyxdyynd>

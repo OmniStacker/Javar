@@ -1,4 +1,4 @@
-# Spring 框架中都用到了哪些设计模式？
+﻿# Spring 框架中都用到了哪些设计模式？
 
 1. **<font style="background-color:rgb(247, 247, 248);">简单工厂：</font>**
     - **<font style="background-color:rgb(247, 247, 248);">BeanFactory</font>**<font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">：Spring的</font>**<font style="background-color:rgb(247, 247, 248);">BeanFactory</font>**<font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">充当工厂，负责根据配置信息创建Bean实例。它是一种工厂模式的应用，根据指定的类名或ID创建Bean对象。</font>
@@ -22,8 +22,3 @@
     - **<font style="background-color:rgb(247, 247, 248);">AOP的方法调用</font>**<font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">：Spring AOP通过责任链模式实现通知（Advice）的调用，确保通知按顺序执行。</font>
 
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">Spring框架的设计哲学是通过这些设计模式来提供强大的功能和可定制性。它的模块化、松耦合的设计使得开发人员能够更轻松地构建可维护、可扩展和灵活的应用程序。这些设计模式的应用有助于实现代码重用、降低开发成本，是Spring框架广受欢迎的原因之一。</font>
-
-
-
-> 更新: 2023-09-07 17:06:24  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/yc279v327deg3wvi>

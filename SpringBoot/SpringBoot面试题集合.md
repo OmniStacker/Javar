@@ -1,4 +1,4 @@
-# 💎SpringBoot 面试题集合
+﻿# 💎SpringBoot 面试题集合
 
 # <font style="color:#01B2BC;">SpringBoot 使用 Validation 进行参数校验并统一返回校验异常</font>
 
@@ -1277,7 +1277,3 @@ public class MyBeanDefinitionRegistryPostProcessor implements
   * 输出![1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0.png](./img/xD-fECzQuZuIzkG9/1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0-416342.png)
 
 通过这种方式就可以实现根据配置信息自由启用、禁用某些业务的实现 。 当然我这里只是抛砖引玉，实际开发中可以非常灵活， 我可以通过配置创建多个bean、通过更复杂的业务逻辑进行控制等等......  学会的同学给个赞吧。
-
-
-> 更新: 2026-01-09 17:59:48  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hywzs139hpdk0k3v>

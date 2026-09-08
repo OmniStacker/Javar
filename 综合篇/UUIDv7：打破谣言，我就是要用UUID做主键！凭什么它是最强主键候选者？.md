@@ -1,4 +1,4 @@
-# UUIDv7：打破谣言，我就是要用UUID做主键！凭什么它是最强主键候选者？
+﻿# UUIDv7：打破谣言，我就是要用UUID做主键！凭什么它是最强主键候选者？
 
 <font style="color:rgba(0, 0, 0, 0.88);">在互联网技术圈，一直流传着一个"常识"：UUID不适合用作数据库主键。这个观点被广泛传播，以至于很多开发者不假思索地接受了它。但今天，我要大声说：</font>**<font style="color:rgba(0, 0, 0, 0.88);">这个观点已经过时了！</font>**<font style="color:rgba(0, 0, 0, 0.88);"> 随着UUIDv7的出现，我们可以自信地使用UUID作为主键，同时享受其带来的诸多优势。</font>
 
@@ -258,10 +258,3 @@ select
 如果你对UUIDv7有任何疑问或使用经验，欢迎在评论区分享交流！觉得本文有帮助的话，请点赞、转发，让更多开发者了解UUIDv7的强大之处。
 
 <font style="color:rgba(6, 8, 31, 0.88);"></font>
-
-
-
-
-
-> 更新: 2025-09-24 15:04:46  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rg2bx73rmb19ik9u>

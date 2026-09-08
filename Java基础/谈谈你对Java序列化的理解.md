@@ -1,4 +1,4 @@
-# 谈谈你对Java序列化的理解
+﻿# 谈谈你对Java序列化的理解
 
 ### <font style="color:rgba(0, 0, 0, 0.9);">1. 什么是序列化和反序列化？</font>
 
@@ -302,7 +302,3 @@ public class Singleton implements Serializable {
 </font><font style="color:rgba(0, 0, 0, 0.9);"> </font>
 
 <font style="color:rgba(0, 0, 0, 0.9);"></font>
-
-
-> 更新: 2025-04-15 17:39:23  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/onn49k7gkf16xxu9>

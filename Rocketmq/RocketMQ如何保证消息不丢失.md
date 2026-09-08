@@ -1,4 +1,4 @@
-# RocketMQ如何保证消息不丢失
+﻿# RocketMQ如何保证消息不丢失
 
 要保证 RocketMQ 消息不丢失，我们必须像“特工押运”一样，确保消息在 **发送端（Producer）**、**存储端（Broker）**、**消费端（Consumer）** 这三个环节都万无一失。任何一个环节掉链子，消息就丢了。
 
@@ -143,7 +143,3 @@ Broker 把消息给到了 Consumer，如果 Consumer 代码写得有问题，或
 RocketMQ 保证消息不丢失的**终极公式**：
 
 $ 消息不丢失 = \text{Producer(同步发送+重试)} + \text{Broker(同步刷盘+同步复制)} + \text{Consumer(手动ACK)} $
-
-
-> 更新: 2026-01-09 16:57:36  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/vg1tvfm5z3u9cggv>

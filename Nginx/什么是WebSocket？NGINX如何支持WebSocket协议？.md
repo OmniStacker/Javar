@@ -1,4 +1,4 @@
-# 什么是WebSocket？NGINX如何支持WebSocket协议？
+﻿# 什么是WebSocket？NGINX如何支持WebSocket协议？
 
 WebSocket是一种在单个TCP连接上实现全双工通信的协议，它允许服务器和客户端之间进行双向通信，而无需通过多次HTTP请求和响应来完成。与传统的HTTP请求-响应模式不同，WebSocket连接保持打开状态，可以在连接建立后随时进行双向数据交换，这对于实时通信应用非常有用，如在线聊天、实时游戏等。
 
@@ -26,7 +26,3 @@ location /ws-endpoint {
    在配置完成后，可以使用WebSocket客户端工具或浏览器的开发工具来测试WebSocket连接，以确保连接已成功建立。
 
 总之，在配置NGINX以支持WebSocket时，关键是正确处理升级请求和响应头部，以及在后端服务器上正确处理WebSocket连接。通过合适的配置，NGINX可以用作WebSocket代理，实现WebSocket连接的转发和负载均衡。
-
-
-> 更新: 2024-09-03 19:18:09  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/co8nsw9wletch16k>

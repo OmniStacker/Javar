@@ -1,4 +1,4 @@
-# 没有发生oom，但是老年代在缓慢的增长，你认为可能是什么原因
+﻿# 没有发生oom，但是老年代在缓慢的增长，你认为可能是什么原因
 
 其实这道面试题主要是考察大家对对象晋升老年代的条件是否了解，知道了晋升的条件，回答起来也就简单了，接下来我们一起看看
 
@@ -56,7 +56,3 @@
    * <font style="color:rgba(6, 8, 31, 0.88);">Survivor空间设置和最大晋升年龄等JVM参数</font>
    * <font style="color:rgba(6, 8, 31, 0.88);">是否有大量大对象直接分配到老年代</font>
    * <font style="color:rgba(6, 8, 31, 0.88);">通过heap dump、MAT等工具，观察老年代增长的具体类型</font>
-
-
-> 更新: 2026-05-14 15:03:29  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ahp2rce6x25wu4xf>

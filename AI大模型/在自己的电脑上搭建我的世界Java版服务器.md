@@ -1,4 +1,4 @@
-# 在自己的电脑上搭建我的世界Java版服务器
+﻿# 在自己的电脑上搭建我的世界Java版服务器
 
 很多朋友，喜欢玩Minecraft，也希望搭建一个服务器，用于和小伙伴联机；
 
@@ -68,7 +68,3 @@ java -Xmx1500M -Xms512M -jar server.jar nogui
 
 <font style="color:rgb(44, 62, 80);">  
 </font>
-
-
-> 更新: 2023-10-06 19:48:41  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/zctu2dzi2mdimegg>

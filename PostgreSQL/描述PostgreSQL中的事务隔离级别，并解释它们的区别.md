@@ -1,4 +1,4 @@
-# 描述PostgreSQL中的事务隔离级别，并解释它们的区别
+﻿# 描述PostgreSQL中的事务隔离级别，并解释它们的区别
 
 <font style="color:rgba(6, 8, 31, 0.88);">PostgreSQL事务隔离级别是控制并发事务之间可见性和互相影响程度的重要机制。以下是详细解析：</font>
 
@@ -155,8 +155,3 @@ BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 + <font style="color:rgba(6, 8, 31, 0.88);">使用合适的索引和查询优化</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">总的来说，事务隔离级别是数据库并发控制的关键机制，需要根据具体业务场景选择合适的隔离级别，在性能和一致性之间找到平衡点。</font>
-
-
-
-> 更新: 2025-01-25 13:22:12  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dnvdpk2ldc38nykr>

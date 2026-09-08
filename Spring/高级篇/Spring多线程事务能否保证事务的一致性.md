@@ -1,4 +1,4 @@
-# Spring多线程事务 能否保证事务的一致性
+﻿# Spring多线程事务 能否保证事务的一致性
 
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">在多线程环境下，Spring事务管理默认情况下无法保证全局事务的一致性。这是因为Spring的本地事务管理是</font><font style="color:#DF2A3F;background-color:rgb(247, 247, 248);">基于线程</font><font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">，</font><font style="color:#DF2A3F;background-color:rgb(247, 247, 248);">每个线程都有自己的独立事务</font><font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);">。</font>
 
@@ -118,8 +118,3 @@ public class TwoPhaseCommitService {
     }
 }
 ```
-
-
-
-> 更新: 2025-04-02 13:48:56  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qpaoo8nabf8490cn>

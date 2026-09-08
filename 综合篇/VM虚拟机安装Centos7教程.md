@@ -1,4 +1,4 @@
-# VM虚拟机安装Centos7教程
+﻿# VM虚拟机安装Centos7教程
 
 # 1.前置准备
 虚拟机软件：** ****<font style="color:#DF2A3F;">VMware Workstation Pro</font>**
@@ -69,8 +69,3 @@ systemctl set-default graphical.target
 **<font style="color:#DF2A3F;"></font>**
 
 **<font style="color:#DF2A3F;">如果网络一直有问题，请使用补充部分的网络重置。</font>**
-
-
-
-> 更新: 2024-11-14 22:44:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wyvmp2h6ka9h90yf>

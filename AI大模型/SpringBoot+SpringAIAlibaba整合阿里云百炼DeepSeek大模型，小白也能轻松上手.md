@@ -1,4 +1,4 @@
-# SpringBoot + Spring AI Alibaba 整合阿里云百炼DeepSeek大模型，小白也能轻松上手
+﻿# SpringBoot + Spring AI Alibaba 整合阿里云百炼DeepSeek大模型，小白也能轻松上手
 
 <font style="color:rgba(0, 0, 0, 0.9);">Spring 官方开源了 Spring AI 框架，用来简化 Spring 开发者开发智能体应用的过程。随后阿里巴巴开源了 Spring AI Alibaba，它基于 Spring AI，同时与阿里云百炼大模型服务、通义系列大模型做了深度集成与最佳实践。基于 Spring AI Alibaba，Java 开发者可以非常方便地开发 AI 智能体应用。</font>
 
@@ -200,7 +200,3 @@ String result = dashScopeChatClient
 4.启动服务后测试
 
 ![1740313095939-328fd2c1-3458-4957-8d85-c78bdea63d53.webp](./img/tBCSlVg7zhOV6uHr/1740313095939-328fd2c1-3458-4957-8d85-c78bdea63d53-880575.webp)
-
-
-> 更新: 2025-09-24 15:04:19  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dh09g2gfy7zb18qd>

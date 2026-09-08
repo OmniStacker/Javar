@@ -1,4 +1,4 @@
-# JDK22新特性-非长期支持版本
+﻿# JDK22新特性-非长期支持版本
 
 <font style="color:rgb(74, 74, 74);"> 没想到 21 还没升上去，Java 22版本正式发布了！这次更新包括了12项功能增强，其中有7项预览功能和1项孵化器功能。这些更新涉及Java语言、API、性能以及JDK中包含的工具的改进。</font>
 
@@ -295,8 +295,3 @@ void vectorComputation(float[] a， float[] b， float[] c) {
     }
 }
 ```
-
-
-
-> 更新: 2024-03-24 20:59:21  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ublwgsw407g5bgqo>

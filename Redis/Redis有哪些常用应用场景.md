@@ -1,4 +1,4 @@
-# Redis有哪些常用应用场景
+﻿# Redis有哪些常用应用场景
 
 Redis的常用应用场景主要包括：
 
@@ -12,8 +12,3 @@ Redis的常用应用场景主要包括：
 需要注意根据具体场景合理使用，充分考虑内存容量和数据持久化等因素。同时，Redis也可与其他存储系统结合使用构建复杂应用架构。
 
 ![1742883626681-4aeca697-fd2a-45a9-bcfe-b66cc4f746f1.png](./img/9lb0g9d-olFeKl-C/1742883626681-4aeca697-fd2a-45a9-bcfe-b66cc4f746f1-138748.png)
-
-
-
-> 更新: 2025-03-25 14:20:42  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/wz2h8fu4yfpt7tbf>

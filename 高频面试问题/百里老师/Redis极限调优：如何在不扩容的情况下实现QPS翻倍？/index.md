@@ -1,4 +1,4 @@
-# Redis 极限调优：如何在不扩容的情况下实现 QPS 翻倍？
+﻿# Redis 极限调优：如何在不扩容的情况下实现 QPS 翻倍？
 
 ## <font style="color:rgb(38, 38, 38);">1. 引言：从“资源堆砌”到“架构压榨”</font>
 
@@ -90,7 +90,3 @@
 4. **<font style="color:rgb(38, 38, 38);">压榨硬件</font>**<font style="color:rgb(38, 38, 38);">：升级</font><font style="color:rgb(38, 38, 38);"> </font>**<font style="color:rgb(38, 38, 38);">Redis 6.0+</font>**<font style="color:rgb(38, 38, 38);">，开启多线程 I/O，吃满 CPU 红利。</font>
 
 <font style="color:rgb(38, 38, 38);">技术没有银弹，但有最佳实践。希望这些方案能为各位的系统优化提供弹药。谢谢。</font>
-
-
-> 更新: 2025-11-28 15:36:55  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/yo0mhznqfy6wir00>

@@ -1,4 +1,4 @@
-# 双十一 秒杀重复支付多扣钱，怎么避免才不被用户骂？
+﻿# 双十一 秒杀重复支付多扣钱，怎么避免才不被用户骂？
 
 ![1759223149118-71924bb1-397e-4938-a372-956dea13a137.png](./img/NduN2CwEpIBQW3vZ/1759223149118-71924bb1-397e-4938-a372-956dea13a137-925325.png)<font style="color:rgb(38, 38, 38);">“王工，线上出事故了！有用户反馈，刚才秒杀抢购一个商品，结果被连扣了两次钱！”</font>
 
@@ -86,7 +86,3 @@
 * <font style="color:rgb(38, 38, 38);">对于</font>**<font style="color:rgb(38, 38, 38);">防止客户端重复提交、网络重试</font>**<font style="color:rgb(38, 38, 38);">等前端或网络层引发的问题，</font>**<font style="color:rgb(38, 38, 38);">全局Token机制</font>**<font style="color:rgb(38, 38, 38);">是最优雅、最通用的解决方案。</font>
 
 <font style="color:rgb(38, 38, 38);">面试时，能够清晰地阐述这套从底层到应用层的立体化幂等性保障方案，才能真正体现出你对高可用架构的深度理解。</font>
-
-
-> 更新: 2025-09-30 17:08:43  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/tlgmodcd7ic5pfm3>

@@ -1,4 +1,4 @@
-# 4、线程池共享还是独享，如何选择？
+﻿# 4、线程池共享还是独享，如何选择？
 
 **<font style="color:rgb(87, 96, 106);">面试官视角</font>**<font style="color:rgb(87, 96, 106);">：当我问出“线程池应该共享还是独享”时，我并不是在寻找一个“标准答案”。说实话，这个问题没有唯一的正确答案。我真正想考察的是：</font>
 
@@ -82,7 +82,3 @@
 * **<font style="color:rgba(6, 8, 31, 0.88);">对于大量、同质化、非核心的短任务，我会采用</font>**<code>**<font style="color:rgba(6, 8, 31, 0.88);background-color:rgba(175, 184, 193, 0.2);">共享</font>**</code>**<font style="color:rgba(6, 8, 31, 0.88);">模式来提高资源利用率，降低系统开销。</font>**
 
 <font style="color:rgba(6, 8, 31, 0.88);">在实践中，一个复杂的系统往往是两种模式的结合。比如，我们会有一个或多个核心业务的独享池，再加上一个服务于大部分常规请求的全局共享池。最终的目标是在</font>**<font style="color:rgba(6, 8, 31, 0.88);">隔离性</font>**<font style="color:rgba(6, 8, 31, 0.88);">和</font>**<font style="color:rgba(6, 8, 31, 0.88);">资源利用率</font>**<font style="color:rgba(6, 8, 31, 0.88);">之间找到最佳的平衡点。”</font>
-
-
-> 更新: 2025-09-28 14:23:54  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/it8fsvelvhyslqhy>

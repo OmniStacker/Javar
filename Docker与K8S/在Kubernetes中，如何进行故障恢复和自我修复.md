@@ -1,4 +1,4 @@
-# 在Kubernetes中，如何进行故障恢复和自我修复
+﻿# 在Kubernetes中，如何进行故障恢复和自我修复
 
 在Kubernetes中，故障恢复和自我修复是两个核心特性，它们可以确保应用程序的高可用性和稳定性。以下是在Kubernetes中进行故障恢复和自我修复的一些常见方法：
 
@@ -11,8 +11,3 @@
 + 另外，可以通过查看Kubernetes的日志和事件来诊断和解决问题，例如使用kubectl logs <pod-name>命令查看Pod的日志，使用kubectl describe pod <pod-name>命令查看Pod的事件。
 
 总之，Kubernetes提供了丰富的故障恢复和自我修复机制，使得应用程序的高可用性和稳定性得到了极大的保障。
-
-
-
-> 更新: 2023-09-05 16:20:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/eyd2thy8opnvnw19>

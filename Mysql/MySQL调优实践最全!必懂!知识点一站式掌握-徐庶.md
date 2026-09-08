@@ -1,4 +1,4 @@
-# MySQL调优实践最全!必懂!知识点一站式掌握-徐庶
+﻿# MySQL调优实践最全!必懂!知识点一站式掌握-徐庶
 
 # <font style="color:#FFFFFF;background-color:#E4495B;">一.索引</font>
 
@@ -1965,7 +1965,3 @@ SQL优化是提高数据库性能的重要方法，在实际开发中我们的SQ
 4. 减少服务器CPU及内存开销
 
 #
-
-
-> 更新: 2026-01-15 15:38:20  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xsru6kugqziwmqp3>

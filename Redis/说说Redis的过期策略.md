@@ -1,4 +1,4 @@
-# 说说Redis的过期策略
+﻿# 说说Redis的过期策略
 
 ### 简答
 过期策略主要有三种：惰性删除、定期删除和定期淘汰。
@@ -255,8 +255,3 @@ void activeExpireCycle(int type) {
 <font style="color:rgb(51, 51, 51);">3、lazyfree-lazy-expire</font><font style="color:rgb(51, 51, 51);">key 过期删除</font>
 
 <font style="color:rgb(51, 51, 51);">4、lazyfree-lazy-server-delrename 指令删除 destKey</font>
-
-
-
-> 更新: 2025-06-18 16:36:21  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/poc1fls1v38yrxnq>

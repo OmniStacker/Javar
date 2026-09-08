@@ -1,4 +1,4 @@
-# LeetCode篇
+﻿# LeetCode篇
 
 <font style="color:rgb(255, 129, 36);">【Python语法】</font>
 
@@ -333,8 +333,3 @@ dp[i] |= dp[i-num]
 **<font style="color:rgb(62, 62, 62);">「Floyd 求图中路径」</font>**
 
 <font style="color:rgb(51, 51, 51);"># Floyd算法 求图中任意2点距离ds = defaultdict(int)st = set()for i, (x, y) in enumerate(ess):    ds[(x, y)] = vs[i]    ds[(y, x)] = 1 / vs[i]    st.update({x,y})arr = list(st)for k in arr:    for i in arr:        for j in arr:            if ds[(i, k)] and ds[(k, j)]:                ds[(i, j)] = ds[(i, k)] * ds[(k, j)]</font>
-
-
-
-> 更新: 2024-04-29 20:18:10  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rmwkooukymzcgygp>

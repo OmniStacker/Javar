@@ -1,4 +1,4 @@
-# BIO、NIO、AIO 之间的区别
+﻿# BIO、NIO、AIO 之间的区别
 
 ## BIO (Blocking I/O)
 BIO 属于同步阻塞 IO 模型 。
@@ -59,8 +59,3 @@ AIO 也就是 NIO 2。Java 7 中引入了 NIO 的改进版 NIO 2,它是异步 IO
 最后，来一张图，简单总结一下 Java 中的 BIO、NIO、AIO。
 
 ![1733897456999-9bab6c3d-f450-49ad-a445-908d92daeeaf.png](./img/kYGJ-1yVJyNTEDnL/1733897456999-9bab6c3d-f450-49ad-a445-908d92daeeaf-195209.png)
-
-
-
-> 更新: 2024-12-11 16:36:30  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ebyqq248o1x34zlc>

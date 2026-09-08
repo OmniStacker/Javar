@@ -1,4 +1,4 @@
-# Java 面试精讲：价格同步与下单冲突的优雅处理方案
+﻿# Java 面试精讲：价格同步与下单冲突的优雅处理方案
 
 <font style="color:rgb(0, 0, 0);">在 Java 后端面试中，“分布式系统下的价格一致性” 与 “用户下单冲突处理” 是高频考点 —— 它既考察候选人对</font>**<font style="color:rgb(0, 0, 0) !important;">分布式数据一致性</font>**<font style="color:rgb(0, 0, 0);">的技术理解，也检验</font>**<font style="color:rgb(0, 0, 0) !important;">业务与技术结合</font>**<font style="color:rgb(0, 0, 0);">的落地能力。本文将从问题场景出发，拆解核心矛盾，结合 Java 技术栈（Spring Boot、Kafka、MyBatis 等）提供完整解决方案，包含关键代码实现与设计思路，助力面试通关。</font>
 
@@ -636,7 +636,3 @@ public class OrderRollbackService {
 <font style="color:rgb(0, 0, 0);"></font>
 
 <font style="color:rgb(0, 0, 0);"></font>
-
-
-> 更新: 2025-11-07 17:09:28  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gsmbsu1xb610y3gb>

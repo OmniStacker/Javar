@@ -1,4 +1,4 @@
-# mybatis使用like的时候，如何防止sql注入
+﻿# mybatis使用like的时候，如何防止sql注入
 
 在 MyBatis 中使用 `LIKE` 查询时，
 
@@ -108,7 +108,3 @@ public String sanitizeInput(String input) {
 ```
 
 通过这些方法，可以有效防止 SQL 注入，同时保证查询的安全性和可靠性。
-
-
-> 更新: 2025-05-09 10:30:24  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/epfoa791ghp50fk5>

@@ -1,4 +1,4 @@
-# 什么是SQL注入？怎么处理？
+﻿# 什么是SQL注入？怎么处理？
 
 ![1762686968843-e412c493-eede-49a1-be53-4abee3e73f87.png](./img/viZhzBTLDg0rewIY/1762686968843-e412c493-eede-49a1-be53-4abee3e73f87-776334.png)
 
@@ -86,7 +86,3 @@
 4. **<font style="color:rgb(38, 38, 38);">WAF (Web应用防火墙)</font>**<font style="color:rgb(38, 38, 38);">： 在应用入口处部署WAF，可以有效检测和拦截已知的、常见的SQL注入攻击模式。</font>
 
 **<font style="color:rgb(89, 89, 89);">永远不要信任任何来自用户的输入——将这句话刻在每一位开发者的心中。掌握并践行参数化查询，辅以纵深防御体系，我们就能将SQL注入的风险降至最低，构筑起坚实可靠的数据防线。</font>**
-
-
-> 更新: 2025-11-10 14:32:33  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/eu6yibrxm15gzx3w>

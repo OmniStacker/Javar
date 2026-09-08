@@ -1,4 +1,4 @@
-# 如果需要部署上万服务实例，现有的服务注册中心能否抗住？如何优化？
+﻿# 如果需要部署上万服务实例，现有的服务注册中心能否抗住？如何优化？
 
 **<font style="color:rgb(38, 38, 38);">一、 引言：10,000+ 实例的极限挑战</font>**
 
@@ -85,7 +85,3 @@
 * **<font style="color:rgb(38, 38, 38);">Phase 1 选型层</font>**<font style="color:rgb(38, 38, 38);">：弃用 ZK，拥抱支持 AP + gRPC 的 Nacos 2.x。</font>
 * **<font style="color:rgb(38, 38, 38);">Phase 2 配置层</font>**<font style="color:rgb(38, 38, 38);">：开启增量同步、压缩与读写分离。</font>
 * **<font style="color:rgb(38, 38, 38);">Phase 3 架构层</font>**<font style="color:rgb(38, 38, 38);">：做好 Namespace 隔离，控制故障爆炸半径。</font>
-
-
-> 更新: 2025-11-23 22:24:28  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/angcs6ww4o0wzr9i>

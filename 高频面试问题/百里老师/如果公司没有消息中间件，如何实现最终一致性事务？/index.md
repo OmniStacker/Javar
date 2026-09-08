@@ -1,4 +1,4 @@
-# 如果公司没有消息中间件，如何实现最终一致性事务？
+﻿# 如果公司没有消息中间件，如何实现最终一致性事务？
 
 <font style="color:rgb(38, 38, 38);">在现代微服务架构中，消息中间件（MQ）几乎是实现服务解耦和异步通信的标配。然而，在某些场景下——无论是出于技术选型限制、历史项目维护还是极致的轻量化追求——我们可能会面临一个棘手的问题：</font>**<font style="color:rgb(38, 38, 38);">在没有消息中间件的情况下，如何保证分布式事务的最终一致性？</font>**
 
@@ -86,7 +86,3 @@
 ### <font style="color:rgb(38, 38, 38);">结论</font>
 
 <font style="color:rgb(38, 38, 38);">在没有消息中间件的约束下，我们依然拥有丰富的工具箱来实现最终一致性。从简单的</font>**<font style="color:rgb(38, 38, 38);">本地消息表</font>**<font style="color:rgb(38, 38, 38);">，到金融级的</font>**<font style="color:rgb(38, 38, 38);">对账系统</font>**<font style="color:rgb(38, 38, 38);">，再到复杂的</font>**<font style="color:rgb(38, 38, 38);">Saga</font>**<font style="color:rgb(38, 38, 38);">和</font>**<font style="color:rgb(38, 38, 38);">TCC</font>**<font style="color:rgb(38, 38, 38);">模式，每种方案都有其独特的价值和代价。深刻理解业务场景对一致性、实时性和复杂度的容忍度，是做出正确技术选型的关键所在。</font>
-
-
-> 更新: 2025-11-17 20:53:54  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rsl47hlz0di9o9fv>

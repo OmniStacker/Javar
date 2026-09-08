@@ -1,4 +1,4 @@
-# 面试官：怎么手搓一个线程池？
+﻿# 面试官：怎么手搓一个线程池？
 
 ![1763447538359-75e8950e-92f2-47de-87ec-f528c2a042a1.png](./img/0bkFG5oJx0T3HTtY/1763447538359-75e8950e-92f2-47de-87ec-f528c2a042a1-378203.png)
 
@@ -82,7 +82,3 @@
 <font style="color:rgb(38, 38, 38);">这次“造轮子”的旅程，其真正的价值不在于创造一个可以替代</font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">ThreadPoolExecutor</font></code><font style="color:rgb(38, 38, 38);">的工具，而在于通过这个过程，我们深刻地理解了其每一项设计的背后所要解决的问题和蕴含的权衡。</font>
 
 <font style="color:rgb(38, 38, 38);">现在，我们再回头看JDK的</font><code><font style="color:rgb(38, 38, 38);background-color:rgba(175, 184, 193, 0.2);">ThreadPoolExecutor</font></code><font style="color:rgb(38, 38, 38);">，它的每一个参数、每一种策略对我们来说都不再是孤立的API，而是我们曾经亲手构建并为之思考过的鲜活设计。</font>**<font style="color:rgb(38, 38, 38);">“手搓”的意义，正是为了最终能够更专业、更自信地“精通”和使用好那个业界标准。</font>**
-
-
-> 更新: 2025-11-19 14:37:31  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/imalggpi28agdxo6>

@@ -1,4 +1,4 @@
-# 分库分表后如何进行跨库join
+﻿# 分库分表后如何进行跨库join
 
 <font style="color:rgba(0, 0, 0, 0.82);">在分库分表架构下进行跨库JOIN需要特别谨慎，因为传统的数据库JOIN操作无法直接在分布式环境中跨库执行。以下是几种常用的策略和方法来解决这个问题：</font>
 
@@ -63,8 +63,3 @@ actualDataNodes: ds_${0..1}.t_order_${0..1}
 + **<font style="color:rgba(0, 0, 0, 0.82);">持续监控</font>**<font style="color:rgba(0, 0, 0, 0.82);">：监控性能和负载，必要时优化查询策略。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">跨库JOIN是一个系统复杂性较高的问题，应根据具体场景做出合理选择和优化设计。在大多数情况下，通过良好的数据设计和应用级优化，可以有效地缓解跨库数据访问带来的复杂性和性能挑战。</font>
-
-
-
-> 更新: 2024-08-25 17:07:22  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/xhf3pmkcbax2y8ey>

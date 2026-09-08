@@ -1,4 +1,4 @@
-# 2分钟解决 DeepSeek 服务器繁忙问题（白嫖各种大模型）
+﻿# 2分钟解决 DeepSeek 服务器繁忙问题（白嫖各种大模型）
 
 # 一. 硅基流动的API Key
 <font style="color:rgba(0, 0, 0, 0.9);">首先，注册and登陆硅基流动官网。</font>
@@ -65,8 +65,3 @@
 
 # <font style="color:rgba(0, 0, 0, 0.9);">三、Cherry Studio</font>
 <font style="color:rgba(0, 0, 0, 0.9);">如果大家还想接入一些 </font>**<font style="color:#DF2A3F;">MCP 服务</font>**<font style="color:rgba(0, 0, 0, 0.9);">，可以下载 Cherry Studio</font>
-
-
-
-> 更新: 2025-04-30 13:32:34  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mhxbg9dqfhfms5qz>

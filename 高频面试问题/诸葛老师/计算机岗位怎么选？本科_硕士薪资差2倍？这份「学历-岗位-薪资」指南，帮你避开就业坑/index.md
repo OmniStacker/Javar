@@ -1,4 +1,4 @@
-# 计算机岗位怎么选？本科 / 硕士薪资差 2 倍？这份「学历 - 岗位 - 薪资」指南，帮你避开就业坑
+﻿# 计算机岗位怎么选？本科 / 硕士薪资差 2 倍？这份「学历 - 岗位 - 薪资」指南，帮你避开就业坑
 
 <font style="color:rgba(0, 0, 0, 0.85) !important;">很多计算机专业的同学都会陷入迷茫：</font>**<font style="color:rgb(0, 0, 0) !important;">到底选哪个岗位能拿高薪？学历是不是真的决定薪资上限？</font>**<font style="color:rgba(0, 0, 0, 0.85) !important;"> 有人纠结 “Java 卷不卷”“C++ 岗位少不少”，有人担心 “二本学历能不能进大厂”“硕士读了值不值”—— 其实这些问题，都能从 “学历 + 岗位” 的对应关系里找到答案。</font>
 
@@ -161,8 +161,3 @@
 
 
 <font style="color:rgba(0, 0, 0, 0.85) !important;">希望你能理性规划，避开就业坑，最终拿到满意的 offer！</font>
-
-
-
-> 更新: 2025-09-19 10:49:25  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/es9uazz9gqc7aqdy>

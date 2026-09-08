@@ -1,4 +1,4 @@
-# 什么是PostgreSQL的多版本并发控制（MVCC）机制？它是如何工作的？
+﻿# 什么是PostgreSQL的多版本并发控制（MVCC）机制？它是如何工作的？
 
 <font style="color:rgba(6, 8, 31, 0.88);">PostgreSQL的MVCC（多版本并发控制）是数据库并发处理的核心机制，下面我将详细解析其工作原理：</font>
 
@@ -186,8 +186,3 @@ VACUUM FULL;
 + <font style="color:rgba(6, 8, 31, 0.88);">合理配置垃圾回收</font>
 
 <font style="color:rgba(6, 8, 31, 0.88);">MVCC是现代数据库系统实现高性能并发的关键技术。它通过巧妙的版本控制机制，在保证数据一致性的同时，显著提升了系统的并发处理能力。</font>
-
-
-
-> 更新: 2025-01-25 13:30:53  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hb9gxxasp1negel8>

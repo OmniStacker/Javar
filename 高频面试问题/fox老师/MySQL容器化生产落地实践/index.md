@@ -1,4 +1,4 @@
-# MySQL 容器化生产落地实践
+﻿# MySQL 容器化生产落地实践
 
 <font style="color:rgba(0, 0, 0, 0.85) !important;">在云原生浪潮下，“MySQL 是否该容器化” 成了开发者和 DBA 圈子的高频争议题 —— 有人吐槽 “扩容难、数据不安全”，也有人感慨 “运维效率直接翻倍”。其实多数争议，都源于对容器化的认知停留在 “单机 Docker” 层面，忽略了 K8s、CSI 等技术早已为 MySQL 落地铺平道路。</font>
 
@@ -113,7 +113,3 @@
 <font style="color:rgba(0, 0, 0, 0.85) !important;">MySQL 容器化的核心不是 “能不能用”，而是 “用什么方案用”。掌握本文的误区拆解、风险应对、生产方案，再结合看板的可视化逻辑，你就能轻松落地 MySQL 容器化，应对大规模、高可用的业务需求。</font>
 
 <font style="color:rgba(0, 0, 0, 0.85) !important;"></font>
-
-
-> 更新: 2025-09-30 11:59:33  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dih98gx48dthqqzk>

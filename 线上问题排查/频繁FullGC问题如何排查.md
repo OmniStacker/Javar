@@ -1,4 +1,4 @@
-# 频繁FullGC问题如何排查
+﻿# 频繁FullGC问题如何排查
 
 <font style="color:rgba(0, 0, 0, 0.82);">频繁的Full GC（完全垃圾收集）通常表明应用程序在内存管理方面存在问题，可能导致性能下降。以下是排查步骤和一个详细的示例：</font>
 
@@ -131,7 +131,3 @@ public class OrderService {
 5. <font style="color:rgba(0, 0, 0, 0.82);">验证了优化效果</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">这个例子展示了如何系统地排查和解决频繁Full GC问题，涵盖了从问题发现、原因分析到解决方案实施的完整过程。在实际工作中，具体的问题可能更加复杂，但这个方法论可以作为一个基础框架来处理各种GC相关的性能问题。</font>
-
-
-> 更新: 2025-12-11 15:30:53  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/itakbe1872na814s>

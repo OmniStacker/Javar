@@ -1,4 +1,4 @@
-# 第 4 课 · 从 MVP 到可扩展的 AI 代码审查产品
+﻿# 第 4 课 · 从 MVP 到可扩展的 AI 代码审查产品
 
 # 课程**目标：**
 
@@ -168,7 +168,3 @@ private String designSuggestions;
    * 如果要在团队内部上线一个 AI 代码审查工具，你会优先支持哪些语言？
    * 你会增加哪些字段或审查维度？
    * 你会在哪里接入这个工具（IDE 插件、CI 流水线、还是网页）？
-
-
-> 更新: 2025-12-18 14:36:06  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/msv43oqzngyv97ae>

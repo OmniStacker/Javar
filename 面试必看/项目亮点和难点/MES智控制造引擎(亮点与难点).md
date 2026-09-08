@@ -1,4 +1,4 @@
-# MES智控制造引擎(亮点与难点)
+﻿# MES智控制造引擎(亮点与难点)
 
 ### **<font style="color:rgb(6, 6, 7);">项目名称：MES</font>****<font style="color:rgb(6, 6, 7);">智控制造引擎（Intelligent Manufacturing Engine）</font>**
 #### **<font style="color:rgb(6, 6, 7);">项目描述</font>**
@@ -269,8 +269,3 @@ MES看板的设计需要考虑到生产管理人员的实际需求和使用习�
 一文 ： [一文分清OA、CRM、ERP、MES、HRM、SCM、WMS、KMS等](https://www.yuque.com/tulingzhouyu/db22bv/csngc0dv7p5vi2fg)
 
 <font style="color:rgb(77, 77, 77);">后记：如有补充和纠错请在评论区指出，如有小伙伴有类似项目可以发在评论区。</font>
-
-
-
-> 更新: 2025-03-10 19:46:57  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/oea34yfcdi6ysn1q>

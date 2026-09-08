@@ -1,4 +1,4 @@
-# 给你一亿个Redis keys，如何高效统计
+﻿# 给你一亿个Redis keys，如何高效统计
 
 :::info
 <font style="color:rgb(23, 35, 63);">不知你大规模的用过</font><font style="color:rgb(18, 139, 78);background-color:rgb(231, 243, 237) !important;">Redis</font><font style="color:rgb(23, 35, 63);">吗？还是仅仅作为缓存的工具了？在Redis中使用最多的就是集合了，举个例子，如下场景：</font>
@@ -271,8 +271,3 @@ PFCOUNT p1_uv:2024-08-28
 <font style="color:rgb(23, 35, 63);">对于二值状态统计，判断某个元素是否存在等场景，建议使用</font><font style="color:rgb(18, 139, 78);background-color:rgb(231, 243, 237) !important;">Bitmap</font><font style="color:rgb(23, 35, 63);">，节省的内存空间。</font>
 
 <font style="color:rgb(23, 35, 63);">对于基数统计，在大数据量、不要求精准的情况建议使用</font><font style="color:rgb(18, 139, 78);background-color:rgb(231, 243, 237) !important;">HyperLogLog</font><font style="color:rgb(23, 35, 63);">，节省内存空间；对于精准的基数统计，最好还是使用</font><font style="color:rgb(18, 139, 78);background-color:rgb(231, 243, 237) !important;">Set</font><font style="color:rgb(23, 35, 63);">集合。</font>
-
-
-
-> 更新: 2025-04-13 19:19:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ry5xx6vqzph8ymrp>

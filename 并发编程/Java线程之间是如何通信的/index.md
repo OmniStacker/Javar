@@ -1,4 +1,4 @@
-# Java线程之间是如何通信的
+﻿# Java线程之间是如何通信的
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -117,7 +117,3 @@ public class QueueDemo {
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);"></font>
 
 <font style="color:rgb(55, 65, 81);background-color:rgb(247, 247, 248);"></font>
-
-
-> 更新: 2026-01-08 14:08:03  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/rmghkxavpbo58igi>

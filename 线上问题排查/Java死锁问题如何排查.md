@@ -1,4 +1,4 @@
-# Java死锁问题如何排查
+﻿# Java死锁问题如何排查
 
 <font style="color:rgba(0, 0, 0, 0.82);">在Java应用程序中，死锁是一个经典的并发问题，它会导致线程永久阻塞，无法继续进行任何操作。排查Java死锁问题需要熟悉多线程调试技巧和工具。以下是一个详细的排查过程以及一个具体的示例。</font>
 
@@ -182,7 +182,3 @@ public void methodB() {
 ### <font style="color:rgba(0, 0, 0, 0.82);">总结</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">排查Java死锁问题涉及识别现象、获取详细线程转储信息、分析代码、优化同步逻辑等步骤。在实践中，通过良好的设计可以避免大多数常见的死锁问题。使用高层次的并发工具（如</font><code><font style="color:rgba(0, 0, 0, 0.82);">java.util.concurrent</font></code><font style="color:rgba(0, 0, 0, 0.82);">包）也能显著简化并发编程，从而减少死锁的可能性。持续的监控和测试是确保应用稳定性的关键。</font>
-
-
-> 更新: 2024-08-23 22:11:07  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/hmdc25fizw0n6hlr>

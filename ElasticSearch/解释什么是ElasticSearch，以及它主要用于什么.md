@@ -1,4 +1,4 @@
-# 解释什么是ElasticSearch，以及它主要用于什么
+﻿# 解释什么是ElasticSearch，以及它主要用于什么
 
 #### **一、 Fox版标准面试回答（建议背诵）**
 
@@ -41,7 +41,3 @@
 ### **三、 总结话术**
 
 “简单来说，**MySQL 是为了‘存’和‘准’而生的，而 Elasticsearch 是为了‘搜’和‘看’而生的。** 在架构中，我们通常把它们组合使用：MySQL 做数据的‘源头’（Source of Truth），ES 做数据的‘查询加速层’。”
-
-
-> 更新: 2026-01-25 16:59:40  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ih5wvumzqbc410mm>

@@ -1,4 +1,4 @@
-# final，finally，finalize的区别
+﻿# final，finally，finalize的区别
 
 在Java中，final、finally和finalize是三个不同的关键字，它们具有不同的作用和用法。
 
@@ -23,8 +23,3 @@
 + finalize是一个Object类中的方法，用于对象的垃圾回收前的清理操作。
 
 请注意，finalize方法已被废弃，不推荐使用。在现代Java中，可以使用try-with-resources语句或手动释放资源的方式来替代finalize方法的功能。
-
-
-
-> 更新: 2023-09-20 14:23:00  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/cuwys8d1r3gki8dv>

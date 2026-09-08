@@ -1,4 +1,4 @@
-# MySQL 单表数据量 2000 万行阈值原理深度解析
+﻿# MySQL 单表数据量 2000 万行阈值原理深度解析
 
 ## <font style="color:rgb(0, 0, 0) !important;background-color:rgba(0, 0, 0, 0);">一、引言：行业共识的背景与问题</font>
 
@@ -128,7 +128,3 @@
 3. **<font style="color:rgb(0, 0, 0) !important;background-color:rgba(0, 0, 0, 0);">实践原则</font>**<font style="color:rgb(0, 0, 0);background-color:rgba(0, 0, 0, 0);">：不盲目遵循 2000 万行红线，需结合表结构、查询模式、性能监控综合判断，优先通过索引优化（如建立联合索引）提升性能，再考虑分表。</font>
 
 <font style="color:rgb(0, 0, 0);background-color:rgba(0, 0, 0, 0);">通过理解 MySQL 底层的 “数据页 + B + 树” 机制，不仅能解释 2000 万行阈值的由来，更能在实际业务中灵活调整方案，避免 “为分表而分表” 的过度设计。</font>
-
-
-> 更新: 2025-10-10 15:07:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ldtpt9dtgl7dzt5f>

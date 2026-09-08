@@ -1,4 +1,4 @@
-# Netty篇
+﻿# Netty篇
 
 <font style="color:rgb(255, 129, 36);">核心组件</font>
 
@@ -489,8 +489,3 @@ long time = System.nanoTime();if (/*事件轮询的持续时间大于等于 time
 ```
 
 <font style="color:rgb(62, 62, 62);">NioEventLoop 线程的可靠性至关重要，一旦 NioEventLoop 发生阻塞或者陷入空轮询，就会导致整个系统不可用。</font>
-
-
-
-> 更新: 2024-04-29 20:16:27  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/fbbnqbv2ry9lk1vq>

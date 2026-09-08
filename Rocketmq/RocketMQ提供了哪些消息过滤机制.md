@@ -1,4 +1,4 @@
-# RocketMQ提供了哪些消息过滤机制
+﻿# RocketMQ提供了哪些消息过滤机制
 
 <font style="color:rgba(0, 0, 0, 0.82);">RocketMQ提供了多种消息过滤机制，以便消费者能够根据业务需求进行精确的消息消费。主要的过滤机制包括：</font>
 
@@ -148,7 +148,3 @@ public class ConsumerWithSQL92Example {
 * **<font style="color:rgba(0, 0, 0, 0.82);">SQL92过滤</font>**<font style="color:rgba(0, 0, 0, 0.82);">：灵活强大，适合需要复杂条件过滤的场景，但是需要对性能加以考虑，并且需要在Broker端配置以支持属性过滤。</font>
 
 <font style="color:rgba(0, 0, 0, 0.82);">通过提供这些过滤机制，RocketMQ可以大大优化消息消费的准确性和有效性，使得消息系统更能贴合业务需求。不同的机制有各自的优势，选择具体的过滤机制需根据业务需求和系统性能进行合理权衡。</font>
-
-
-> 更新: 2024-08-18 20:23:07  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/quouet2xt6b2k15h>

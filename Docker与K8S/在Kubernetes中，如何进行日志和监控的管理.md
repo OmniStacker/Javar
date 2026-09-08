@@ -1,4 +1,4 @@
-# 在Kubernetes中，如何进行日志和监控的管理
+﻿# 在Kubernetes中，如何进行日志和监控的管理
 
 在Kubernetes中，日志和监控的管理可以通过以下方式实现：
 
@@ -12,8 +12,3 @@
     - 使用Heapster对Kubernetes集群进行监控数据的采集和存储。
 
 总之，Kubernetes提供了灵活的日志和监控管理机制，使得用户可以根据自己的需求进行定制化的日志和监控管理。
-
-
-
-> 更新: 2023-09-05 16:30:05  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ggezski1dva8wctc>

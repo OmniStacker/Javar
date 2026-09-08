@@ -1,4 +1,4 @@
-# 为什么 wait 和 notify 方法要在同步块中调用
+﻿# 为什么 wait 和 notify 方法要在同步块中调用
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -100,7 +100,3 @@ public class WaitNotifyDemo {
 2. **有锁的情况（原子性）：** 我进房间把门反锁（synchronized）。 我看一眼没人才去睡觉。 在我睡觉之前，你根本进不来，也就没法修改状态或发信号。 只有我完全进入睡眠状态并释放锁，你才能进来叫醒我。 **这就保证了：只要我睡了，我就一定能收到你的唤醒。**”
 
 视频：[wait()为什么要写在while循环里？写在if里不行吗?](https://open.douyin.com/player/video?vid=7582884572786969908\&autoplay=0)
-
-
-> 更新: 2026-01-08 14:22:29  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mw8d3os8ky6qlml8>

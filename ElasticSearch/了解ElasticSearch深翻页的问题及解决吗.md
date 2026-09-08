@@ -1,4 +1,4 @@
-# 了解ElasticSearch 深翻页的问题及解决吗
+﻿# 了解ElasticSearch 深翻页的问题及解决吗
 
 是的，我了解ElasticSearch的深翻页问题及其解决方法。
 
@@ -9,8 +9,3 @@ ElasticSearch的深翻页问题主要与分页查询有关。在分页查询时�
 3. 另外，对于数据量大且需要深度翻页，同时又存在用户实时、高并发查询需求的情况，建议使用"search after"方式。search after API能够提供一种高效的、可扩展的、适用于大规模数据的分页查询方式，同时还能满足实时查询的需求。
 
 总之，针对不同的情况和需求，可以选择合适的查询方式来优化查询效率和性能。
-
-
-
-> 更新: 2023-09-04 19:54:17  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ggqga7or37xxern5>

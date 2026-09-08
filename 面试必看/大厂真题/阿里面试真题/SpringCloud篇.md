@@ -1,4 +1,4 @@
-# SpringCloud篇
+﻿# SpringCloud篇
 
 <font style="color:rgb(255, 129, 36);">Why SpringCloud</font>
 
@@ -398,8 +398,3 @@ feign.httpclient.max-connections-per-route//每个路由的连接数feign.httpcl
 <font style="color:rgb(62, 62, 62);">Gateway+配置中心实现动态路由</font>
 
 <font style="color:rgb(62, 62, 62);">Feign+配置中心实现动态日志</font>
-
-
-
-> 更新: 2024-04-29 20:15:47  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/al1s35tm0qed1dd4>

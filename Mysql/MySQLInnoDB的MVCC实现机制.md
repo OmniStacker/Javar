@@ -1,4 +1,4 @@
-# MySQL InnoDB的MVCC实现机制
+﻿# MySQL InnoDB的MVCC实现机制
 
 > MySQL 中InnoDB中实现了事务（多版本并发控制MVCC+锁）， 其中通过MVCC解决隔离性问题。具体而言，**MVCC就是为了实现读-写冲突不加锁**，而这个读指的就是**快照读**, 而非当前读，当**前读实际上是一种加锁的操作，是悲观锁的实现**; 本文带你理解InnoDB中MVCC的实现机制。
 >
@@ -205,8 +205,3 @@ Read View不仅仅会通过一个列表**trx_list**来维护事务2执行快照�
 
 + 版权声明：本文为CSDN博主「SnailMann」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
 + 原文链接：https: //blog.csdn.net/SnailMann/article/details/94724197
-
-
-
-> 更新: 2024-10-22 14:03:38  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/dramscudnm47xh5s>

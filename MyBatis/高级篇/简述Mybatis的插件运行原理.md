@@ -1,4 +1,4 @@
-# 简述 Mybatis 的插件运行原理
+﻿# 简述 Mybatis 的插件运行原理
 
 MyBatis的插件机制允许你在MyBatis的核心组件执行过程中插入自定义逻辑，以扩展或修改其行为。插件可以在SQL执行、结果映射、参数处理等阶段进行干预。插件运行原理是基于Java的动态代理，它可以包装MyBatis的核心组件，拦截方法调用，并在方法执行前后执行自定义逻辑。
 
@@ -50,7 +50,3 @@ public class MyPlugin implements Interceptor {
 ```
 
 通过实现`Interceptor`接口和配置插件，你可以在MyBatis的核心组件执行过程中插入自己的逻辑，实现各种自定义的扩展和修改。
-
-
-> 更新: 2023-08-24 19:32:34  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/umg4gigkhbawb55l>

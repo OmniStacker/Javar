@@ -1,4 +1,4 @@
-# JDK7与JDK8之间HashMap的区别？
+﻿# JDK7与JDK8之间HashMap的区别？
 
 ## 一、 标准面试回答模版（建议背诵）
 
@@ -121,7 +121,3 @@ JDK 1.8 的 HashMap 依然不是线程安全的！
 （例如：两个线程同时判断 slot 为空，同时写入，后一个会把前一个覆盖掉）。
 
 所以，高并发场景下，请出门左转找 ConcurrentHashMap。”
-
-
-> 更新: 2026-01-08 16:32:12  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/oi62527xx01nta0g>

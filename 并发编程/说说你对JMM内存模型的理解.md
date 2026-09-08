@@ -1,4 +1,4 @@
-# 说说你对JMM内存模型的理解
+﻿# 说说你对JMM内存模型的理解
 
 ### 一、 标准面试回答模版（建议背诵）
 
@@ -82,7 +82,3 @@ public class JMMVisibilityDemo {
 **对应关系**： JMM 中的**主内存**，大致对应 JVM 的**堆（Heap）中存放对象实例数据部分。 JMM 中的工作内存**，大致对应 \*\*JVM 的虚拟机栈（Stack）\*\*以及底层硬件的 **CPU 寄存器和高速缓存（Cache）**。
 
 所以，一个是‘仓库怎么盖’（JVM内存结构），一个是‘货怎么运’（JMM模型），维度不同。”
-
-
-> 更新: 2026-01-08 15:25:41  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/mif500gkwpd4hngq>

@@ -1,4 +1,4 @@
-# JVM篇
+﻿# JVM篇
 
 <font style="color:rgb(255, 129, 36);">JVM内存划分</font>
 
@@ -727,8 +727,3 @@ less $pid.log
 <font style="color:rgb(62, 62, 62);">我们在 jstack 日志搜关键字DEAD，以及中找到了 CPU 使用最多的几个线程id。</font>
 
 <font style="color:rgb(62, 62, 62);">可以看到问题发生的根源，是我们的堆已经满了，但是又没有发生 OOM，于是 GC 进程就一直在那里回收，回收的效果又非常一般，造成 CPU 升高应用假死。接下来的具体问题排查，就需要把内存 dump 一份下来，使用 MAT 等工具分析具体原因了。</font>
-
-
-
-> 更新: 2024-04-29 20:09:02  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/gu4keuyemo2sfi71>

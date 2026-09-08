@@ -1,4 +1,4 @@
-# 【免费无限GPT-4o】AI编程神器Trae详细上手教程
+﻿# 【免费无限GPT-4o】AI编程神器Trae详细上手教程
 
 # 什么是 Trae？
 
@@ -901,7 +901,3 @@ Trae 打开 **键盘快捷键** 窗口。
 ![1739857206659-c572c1bb-70df-4e0a-bbd7-1984fdba9f5e.png](./img/wTkoodVIRGXUZXJd/1739857206659-c572c1bb-70df-4e0a-bbd7-1984fdba9f5e-204986.png)
 
 3. 根据实际需求，从菜单中选择一个选项，完成对应操作，包括修改快捷键组合、添加快捷键组合、删除快捷键组合等。
-
-
-> 更新: 2025-02-18 14:21:56  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/thnro65tussqiu38>

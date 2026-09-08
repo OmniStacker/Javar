@@ -1,4 +1,4 @@
-# Effective Java 最佳应用实践
+﻿# Effective Java 最佳应用实践
 
 **示例代码**
 
@@ -271,10 +271,3 @@ public Integer sum(Integer a, Integer b) {
 
 #### 2  其他
 一些公司将 API 产生的异常分成 ClientException 和 ServerException。一般 ClientException (e.g. 无效的服务 request) 是由调用方非常规调用 API 导致的异常处理，可不在服务端主要的异常监测范围中。而 ServerException（e.g. 数据库查询超时）是由服务端自身原因导致的问题，平时需要着重监测。
-
-
-
-
-
-> 更新: 2024-07-15 22:21:21  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/ep3vggcvyw79py1f>

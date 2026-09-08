@@ -1,4 +1,4 @@
-# RocketMQ核心面试题一次全给讲通透
+﻿# RocketMQ核心面试题一次全给讲通透
 
 ### <font style="color:rgb(79, 79, 79);">文章目录</font>
 + [<font style="color:rgb(78, 161, 219);">面设基础第一问：到底什么是MQ？有什么用？</font>](https://editor.csdn.net/md/?articleId=151968008&spm=1001.2014.3001.9457#MQ_11)
@@ -108,8 +108,3 @@
 
 <font style="color:rgb(77, 77, 77);">最后留一个面试加分题：RocketMQ的消费者的Push模式在底层实际上是基于Pull模式的”长轮询“实现的。那什么是长轮询呢？RocketMQ又是如何针对长轮询进行优化的呢？ 知道答案的同学，评论区见！答对的朋友，另有精细彩蛋。  
 </font>![1758532316870-4fb7b303-8768-472f-b6db-36f771061d02.png](./img/fWHL75RNLDTjk8py/1758532316870-4fb7b303-8768-472f-b6db-36f771061d02-134238.png)
-
-
-
-> 更新: 2025-09-22 17:11:58  
-> 原文: <https://www.yuque.com/tulingzhouyu/db22bv/qn7sam1ka0o5649w>
