@@ -96,33 +96,32 @@ SELECT * FROM user WHERE id = ${id}
 
 ### 3.2 MyBatis中XML映射有哪些标签？
 
-- `<select>`：查询
-- `<insert>`：插入
-- `<update>`：更新
-- `<delete>`：删除
-- `<resultMap>`：结果映射
-- `<sql>`：可重用SQL片段
-- `<include>`：引用SQL片段
+- ``：查询
+- ``：插入
+- ``：更新
+- ``：删除
+- ``：结果映射
+- ``：可重用SQL片段
+- ``：引用SQL片段
 
 ### 3.3 MyBatis中的动态SQL是什么？
 
 **动态SQL标签**：
-- `<if>`：条件判断
-- `<choose>`、`<when>`、`<otherwise>`：选择分支
-- `<where>`：智能WHERE子句
-- `<set>`：智能SET子句
-- `<foreach>`：循环遍历
-- `<trim>`：智能修剪
+- ``：条件判断
+- ``、``、``：选择分支
+- ``：智能WHERE子句
+- ``：智能SET子句
+- ``：循环遍历
+- ``：智能修剪
 
 **示例**：
 ```xml
-<select id="findUser" resultType="User">
+
     SELECT * FROM user
-    <where>
-        <if test="name != null">AND name = #{name}</if>
-        <if test="age != null">AND age = #{age}</if>
-    </where>
-</select>
+
+        AND name = #{name}
+        AND age = #{age}
+
 ```
 
 ### 3.4 MyBatis的工作流程是怎样的？
@@ -138,9 +137,7 @@ SELECT * FROM user WHERE id = ${id}
 
 **延迟加载配置**：
 ```xml
-<settings>
-    <setting name="lazyLoadingEnabled" value="true"/>
-</settings>
+
 ```
 
 **实现方式**：
@@ -161,7 +158,7 @@ SELECT * FROM user WHERE name LIKE CONCAT('%', #{name}, '%')
 
 **方式3：使用bind标签**
 ```xml
-<bind name="pattern" value="'%' + name + '%'"/>
+
 SELECT * FROM user WHERE name LIKE #{pattern}
 ```
 
@@ -267,7 +264,7 @@ SELECT * FROM user WHERE name LIKE #{pattern}
 **示例**：
 ```java
 @Intercepts({
-    @Signature(type=Executor.class, method="query", 
+    @Signature(type=Executor.class, method="query",
                args={MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class})
 })
 public class MyPlugin implements Interceptor {
@@ -305,11 +302,9 @@ public class MyPlugin implements Interceptor {
 
 **推荐方式**：
 ```xml
-<!-- 使用CONCAT -->
+
 SELECT * FROM user WHERE name LIKE CONCAT('%', #{name}, '%')
 
-<!-- 使用bind -->
-<bind name="pattern" value="'%' + name + '%'"/>
 SELECT * FROM user WHERE name LIKE #{pattern}
 ```
 

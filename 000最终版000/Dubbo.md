@@ -129,8 +129,7 @@ Dubbo允许在消费者端通过配置来选择使用哪种负载均衡策略，
 如何在Dubbo中配置服务消费者的引用，包括如何指定版本、超时、重试次数等信息：
 
 ```xml
-<!-- 服务消费者配置示例 -->
-<dubbo:reference id="userService" interface="com.example.UserService" version="1.0.0" timeout="5000" retries="3" cluster="failover" loadbalance="roundrobin" />
+
 ```
 
 **配置参数说明**：
@@ -147,14 +146,7 @@ Dubbo允许在消费者端通过配置来选择使用哪种负载均衡策略，
 怎么配置Dubbo的容错机制？举例说明不同的容错机制及其适用场景：
 
 ```xml
-<!-- Failover配置示例 -->
-<dubbo:reference id="userService" interface="com.example.UserService" cluster="failover" retries="2" />
 
-<!-- Failfast配置示例 -->
-<dubbo:reference id="orderService" interface="com.example.OrderService" cluster="failfast" />
-
-<!-- Failsafe配置示例 -->
-<dubbo:reference id="logService" interface="com.example.LogService" cluster="failsafe" />
 ```
 
 ---
