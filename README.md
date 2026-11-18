@@ -1744,19 +1744,6 @@
 
 - [无标题文档](original/高频面试问题/鹏宇老师/从安全到体验：JavaToken续期4种方案全攻略，覆盖面试与生产落地需求/index.md)
 
-#### [AI提示词六步法：从 “无效提问” 到 “精准输出” 的实战指南](original/高频面试问题/鹏宇老师/AI提示词六步法：从“无效提问”到“精准输出”的实战指南/index.md)
-
-- [无标题文档](original/高频面试问题/鹏宇老师/AI提示词六步法：从“无效提问”到“精准输出”的实战指南/无标题文档.md)
-
-#### [AgentScopeJava 与 Spring AI Alibaba 深度对比分析](original/高频面试问题/鹏宇老师/AgentScopeJava与SpringAIAlibaba深度对比分析/index.md)
-
-- [无标题文档](original/高频面试问题/鹏宇老师/AgentScopeJava与SpringAIAlibaba深度对比分析/无标题文档.md)
-
-#### [大模型核心技术全景解析：从基础架构到落地应用](original/高频面试问题/鹏宇老师/大模型核心技术全景解析：从基础架构到落地应用/index.md)
-
-- [无标题文档](original/高频面试问题/鹏宇老师/大模型核心技术全景解析：从基础架构到落地应用/无标题文档.md)
-- [技术文案讲解](original/高频面试问题/鹏宇老师/技术文案讲解.md)
-
 ### 徐庶老师
 
 - [有没有优化过Spring Boot 启动速度](original/高频面试问题/徐庶老师/有没有优化过SpringBoot启动速度.md)
@@ -1790,7 +1777,6 @@
 #### [面试官：说说线上Redis部署方案](original/高频面试问题/徐庶老师/面试官：说说线上Redis部署方案/index.md)
 
 - [无标题文档](original/高频面试问题/徐庶老师/面试官：说说线上Redis部署方案/无标题文档.md)
-- [无标题文档](original/高频面试问题/徐庶老师/无标题文档.md)
 
 ### 赋文老师
 
