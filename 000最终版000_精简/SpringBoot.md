@@ -420,7 +420,7 @@ public abstract class PropertySource<T> {
 
 PropertySource 有诸多实现类用于管理配置属性，可从不同来源获取配置，例如：
 
-![1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4.png](images/1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4.png)
+![1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4.png](images/1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4-271328.png)
 
 * **MapPropertySource**：Map 键值对对象转换为 PropertySource 对象的适配器；
 * **PropertiesPropertySource**：Properties 对象中的所有配置属性转换为 Spring 环境中的属性值；
@@ -456,7 +456,7 @@ private void prepareContext(DefaultBootstrapContext bootstrapContext, Configurab
 
 `PropertyResolver` 是获取配置的关键类，内部提供操作 PropertySource 队列的方法，核心方法 `getProperty(key)` 获取配置值，`Environment` 是它的子类。
 
-![1688374407538-78066da7-d837-4237-b8cd-68426b863725.png](images/1688374407538-78066da7-d837-4237-b8cd-68426b863725.png)
+![1688374407538-78066da7-d837-4237-b8cd-68426b863725.png](images/1688374407538-78066da7-d837-4237-b8cd-68426b863725-568270.png)
 
 因此直接用 PropertyResolver 获取配置属性也可以：
 
@@ -644,7 +644,7 @@ public class TestService {
 
 这些 Bean 对象在 `ConfigurationPropertiesBindingPostProcessor` 类（Bean 后置处理器）中被注册到 Spring 容器：它扫描容器中所有被 `@ConfigurationProperties` 标记的 Bean 对象，找到后使用 Binder 组件将外部属性的值绑定到它们身上，从而实现自动注入。
 
-![1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36.png](images/1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36.png)
+![1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36.png](images/1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36-325267.png)
 
 * `bindToSpringApplication` 主要是将属性值绑定到 Bean 对象中；
 * `ConfigurationPropertiesBindingPostProcessor` 负责在 Spring 容器启动时将注解标记的 Bean 对象注册到容器中，并完成后续的属性注入操作。
@@ -891,7 +891,7 @@ Spring Boot 默认的内嵌容器是 Tomcat，程序实际运行在 Tomcat 里�
 
 ### 图解
 
-![1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b.png](images/1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b.png)
+![1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b.png](images/1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b-277072.png)
 
 可用火锅店比喻 Tomcat 的最大线程数（maxThreads）、最大等待数（acceptCount）和最大连接数（maxConnections）三者关系：
 
@@ -1028,7 +1028,7 @@ public void setEnvironment(Environment environment) {
 
 想动态创建 Bean，先了解 Bean 创建的大概过程：
 
-![1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da.png](images/1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da.png)
+![1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da.png](images/1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da-848691.png)
 
 想动态注册 Bean，可先动态注册 BeanDefinition。Spring 提供了动态注册 BeanDefinition 的接口：
 
@@ -1087,7 +1087,7 @@ public class MyBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegi
 
 为什么不能用 `@Value` 和 `@ConfigurationProperties` 注解方式获取配置？因为顺序原因：`@Value` 和 `@ConfigurationProperties` 注解依赖 **BeanPostProcessor** 解析，要调用 BeanPostProcessor 就**要先注册**，而 BeanPostProcessor 的注册是在 BeanDefinition 注册之后的。所以在注册 BeanDefinition 时获取不到注解绑定的配置信息。
 
-![1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8.png](images/1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8.png)
+![1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8.png](images/1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8-118286.png)
 
 #### 实现
 
@@ -1144,11 +1144,11 @@ public CommandLineRunner runner(
 
 * 当 `com.tuling.bean.enbaled` 为 true 时，输出：
 
-![1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2.png](images/1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2.png)
+![1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2.png](images/1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2-014648.png)
 
 * 当 `com.tuling.bean.enbaled` 为 false 时，输出：
 
-![1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0.png](images/1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0.png)
+![1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0.png](images/1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0-416342.png)
 
 通过这种方式即可实现根据配置信息自由启用、禁用某些业务的实现，实际开发中可非常灵活，如通过配置创建多个 bean、通过更复杂的业务逻辑进行控制等。
 
@@ -1207,7 +1207,7 @@ spring:
 
 #### 运行程序解密
 
-![1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659.png](images/1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659.png)
+![1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659.png](images/1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659-051305.png)
 
 #### 部署 jar 包解密
 
@@ -1278,7 +1278,7 @@ java -javaagent:xxx-encrypted.jar -jar xxx-encrypted.jar
 java -javaagent:xxx-encrypted.jar='-pwd=密码'-jar xxx-encrypted.jar
 ```
 
-![1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449.png](images/1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449.png)
+![1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449.png](images/1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449-498667.png)
 
 ## SpringBoot 如何自定义 Starter
 

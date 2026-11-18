@@ -8,7 +8,7 @@
 
 在解析 @Component 注册为 BeanDefinition 时会调用 `AnnotationBeanNameGenerator.buildDefaultBeanName`。
 
-![BeanName 生成](images/1699961891863-da50e961-d644-40c7-ae48-7d852742d4ce.png)
+![BeanName 生成](images/1699961891863-da50e961-d644-40c7-ae48-7d852742d4ce-482696.png)
 
 ### 单例 Bean 与单例模式
 
@@ -188,9 +188,9 @@ private MyBean myBean;
 
 @Autowired 只支持设置一个 required 参数，而 @Resource 支持 7 个参数。
 
-![@Resource 参数1](images/1713513602763-e139ca2f-840a-48fe-9b72-bcb23635e992.png)
+![@Resource 参数1](images/1713513602763-e139ca2f-840a-48fe-9b72-bcb23635e992-929550.png)
 
-![@Resource 参数2](images/1713513555699-e4f935cf-aa03-4a14-a5c5-4d8cd9e0222d.png)
+![@Resource 参数2](images/1713513555699-e4f935cf-aa03-4a14-a5c5-4d8cd9e0222d-896615.png)
 
 **依赖注入的用法支持不同**
 
@@ -242,7 +242,7 @@ public class UserController {
 }
 ```
 
-![依赖注入用法](images/1661341346342-317ea714-5825-4dc9-96a0-f0a118158380.png)
+![依赖注入用法](images/1661341346342-317ea714-5825-4dc9-96a0-f0a118158380-824163.png)
 
 **总结**
 
@@ -299,7 +299,7 @@ Spring AOP 和 AspectJ 之间并没有特别强的关系。AOP 表示面向切�
 10. Spring 事务的传播机制是 Spring 事务自己实现的，也是 Spring 事务中最复杂的。
 11. Spring 事务的传播机制基于数据库连接来做：一个数据库连接一个事务，如果传播机制配置为需要新开一个事务，那么实际上就是先建立一个数据库连接，在此新数据库连接上执行 SQL。
 
-![Spring 事务实现](images/1622966825505-41961ccc-19e0-4f70-8182-e6e3337eb3af.png)
+![Spring 事务实现](images/1622966825505-41961ccc-19e0-4f70-8182-e6e3337eb3af-253691.png)
 
 ### 你是如何理解 Spring 事务的传播机制的？底层是如何实现的？
 
@@ -344,7 +344,7 @@ Spring AOP 和 AspectJ 之间并没有特别强的关系。AOP 表示面向切�
 
 真正的步骤更加细致，可以看下面的流程图：
 
-![Bean 生命周期](images/1625729452241-4bc1dbb0-a827-49f1-83b8-70e61fd29a65.png)
+![Bean 生命周期](images/1625729452241-4bc1dbb0-a827-49f1-83b8-70e61fd29a65-108069.png)
 
 ### Spring 中 Bean 是线程安全的吗
 
@@ -371,7 +371,7 @@ Spring 本身并没有针对 Bean 做线程安全的处理，所以：
 
 *2）功能差异*
 
-![功能差异](images/1744198548153-6b552ad8-1c14-4869-b5eb-41d8b8f043ec.png)
+![功能差异](images/1744198548153-6b552ad8-1c14-4869-b5eb-41d8b8f043ec-363431.png)
 
 ApplicationContext 比 BeanFactory 提供了更多的企业级功能：
 
@@ -455,7 +455,7 @@ ApplicationContext 比 BeanFactory 提供了更多的企业级功能：
 6. 源码中会更复杂，比如会提供一些模板方法让子类实现，还涉及 BeanFactoryPostProcessor 和 BeanPostProcessor 的注册：Spring 的扫描就是通过 BeanFactoryPostProcessor 实现的，依赖注入就是通过 BeanPostProcessor 实现的。
 7. 启动过程中还会处理 @Import 等注解。
 
-![Spring 容器启动流程](images/1622965863563-ce71fb30-d01f-4829-93a8-a94d784ccc2c.png)
+![Spring 容器启动流程](images/1622965863563-ce71fb30-d01f-4829-93a8-a94d784ccc2c-279323.png)
 
 ### @SpringBootApplication 注解有什么用？为什么一定要写它？
 
@@ -496,7 +496,7 @@ SpringBoot 启动过程中会找出项目中所有的 spring.factories 文件（
 
 而用 SpringBoot 时基本不用再配这些，因为 SpringBoot 帮我们配置好了。它内置了很多配置类，也叫自动配置类，比如 RabbitAutoConfiguration、AopAutoConfiguration、ElasticsearchDataAutoConfiguration、DataSourceTransactionManagerAutoConfiguration 等。我们在依赖了 spring-boot-starter-web 后，会间接依赖到 spring-boot-autoconfigure 这个 jar，其中包含了很多自动配置类：
 
-![自动配置类](images/1673876857703-8dd2abe1-6432-4585-b439-9e0233c101ac.png)
+![自动配置类](images/1673876857703-8dd2abe1-6432-4585-b439-9e0233c101ac-206959.png)
 
 这其实就是 SpringBoot 的自动配置，帮程序员提前配置了很多东西（Bean 或注解）。
 

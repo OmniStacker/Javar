@@ -577,7 +577,7 @@ func netpollinit() {
 
 Erlang 之父 Joe Armstrong 用一张 5 岁小孩都能看懂的图解释了并发与并行的区别：
 
-![并发与并行](images/1747395864128-2afa0fb4-86a4-4bd7-b999-8bb47ba23eb3.png)
+![并发与并行](images/1747395864128-2afa0fb4-86a4-4bd7-b999-8bb47ba23eb3-023347.png)
 
 ### 3. 协程 goroutine
 
@@ -595,7 +595,7 @@ Erlang 之父 Joe Armstrong 用一张 5 岁小孩都能看懂的图解释了并�
 
 **案例**：主线程开启一个 goroutine 每隔 1s 输出"马士兵教育申专你好！"，主线程每隔 2s 输出 go routine，十次后退出程序，要求主线程和 goroutine 同时执行。
 
-![goroutine 流程图](images/1747395890932-d4b5401a-c2f9-463d-9518-9ccdde19cee7.png)
+![goroutine 流程图](images/1747395890932-d4b5401a-c2f9-463d-9518-9ccdde19cee7-711057.png)
 
 ## 三、Go 语言常见面试题
 

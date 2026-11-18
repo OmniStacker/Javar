@@ -80,7 +80,7 @@
 
 由于政策限制，很多镜像无法使用，但也有一些零星镜像可用，所以最好配置镜像加速器：
 
-![镜像加速](images/1729758233358-8a95f2a3-65e8-46d8-9845-4c9ba11057b6.jpeg)
+![镜像加速](images/1729758233358-8a95f2a3-65e8-46d8-9845-4c9ba11057b6-358581.jpeg)
 
 ```powershell
 vim /etc/docker/daemon.json
@@ -159,7 +159,7 @@ Created symlink from /etc/systemd/system/multi-user.target.wants/docker.service 
 
 ## 5 分钟带你弄懂什么是 K8s
 
-![K8s 概览](images/1713094112262-f3ffea64-201e-4e79-9c62-ab2d01d5e88c.png)
+![K8s 概览](images/1713094112262-f3ffea64-201e-4e79-9c62-ab2d01d5e88c-889697.png)
 
 ### K8s 是什么？
 
@@ -181,7 +181,7 @@ K8S 在基于容器部署的方式上，提供了一个弹性分布式的框架�
 
 ### K8s 的工作原理
 
-![K8s 工作原理](images/1713096914891-bb467d9a-4e08-4b78-b310-75787b98f57e.png)
+![K8s 工作原理](images/1713096914891-bb467d9a-4e08-4b78-b310-75787b98f57e-979759.png)
 
 一个 Kubernetes 集群主要由**控制节点 master**、**工作节点 node** 构成，每个节点上都会安装不同的组件。
 
