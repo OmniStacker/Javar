@@ -72,7 +72,7 @@ Canal，译意为水道/管道/沟渠，主要用途是基于 MySQL 数据库增
 
 # <font style="color:rgb(0, 0, 0);">三、Canal 运用场景</font>
 ## 数据同步
-<font style="color:rgb(51, 51, 51);">Canal 可以帮助用户进行多种数据同步操作，如实时同步 MySQL 数据到 Elasticsearch、Redis 等数据存储介质中。</font>![](images/image-20230509125645254.png)
+<font style="color:rgb(51, 51, 51);">Canal 可以帮助用户进行多种数据同步操作，如实时同步 MySQL 数据到 Elasticsearch、Redis 等数据存储介质中。</font>
 
 ![1721224286403-e7d7ff73-ab3e-40eb-ace3-e85b036579d4.png](./img/bVPs796BjEMbVN29/1721224286403-e7d7ff73-ab3e-40eb-ace3-e85b036579d4-122351.png)
 
