@@ -462,7 +462,7 @@ DDD 与微服务的对应关系是：**限界上下文 ≈ 服务边界**，但�
 
 ## 参考资料
 
-- Eric Evans，《Domain-Driven Design: Tackling Complexity in the Heart of Software》，2003
-- Martin Fowler，[AnemicDomainModel](https://martinfowler.com/bliki/AnemicDomainModel.html)，2003
-- Martin Fowler，[CQRS](https://martinfowler.com/bliki/CQRS.html)，2011
-- Martin Fowler，[BoundedContext](https://martinfowler.com/bliki/BoundedContext.html)，2014
+- Eric Evans.《Domain-Driven Design: Tackling Complexity in the Heart of Software》. 2003
+- Martin Fowler. bliki 词条：AnemicDomainModel. 2003
+- Martin Fowler. bliki 词条：CQRS. 2011
+- Martin Fowler. bliki 词条：BoundedContext. 2014
