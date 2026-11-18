@@ -1031,7 +1031,7 @@ public class BaiLiConcurrentIteratorTest {
 
 # <font style="color:#01B2BC;">如何优雅的删除HashMap元素</font>
 
-## 图灵学院-百里
+## 百里
 
 ## 1.数据准备
 

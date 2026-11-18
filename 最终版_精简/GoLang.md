@@ -186,7 +186,7 @@ func (h *handle1) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 - **循环**：
 
   ```
-  strs := []string{"图灵教育", "申专", "666"}
+  strs := []string{"示例", "申专", "666"}
   t1.Execute(w, strs)
 
   {{range $val := .}}

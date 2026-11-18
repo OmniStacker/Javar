@@ -324,7 +324,7 @@ class Config {
 
 <font style="color:rgb(6, 6, 7);">AI 和大模型相关细节可参看</font>**<font style="color:rgb(6, 6, 7);"> </font>**[**AI大模型Deepseek目录**](https://www.yuque.com/tulingzhouyu/db22bv/mdm69mxldu64dfld)<font style="color:rgb(6, 6, 7);">下面的文档。</font>
 
-<font style="color:rgb(6, 6, 7);">需要准备更多此方面面试的可参看 图灵课堂关于</font>**<font style="color:rgb(6, 6, 7);"> </font>**[\*\*吃透AI大模型面试夺命连环33问 \*\*](https://www.bilibili.com/video/BV1YKAeemExE/?spm_id_from=333.1365.list.card_archive.click\&vd_source=04d13f3e51316f05440d2eb2411de9f3)<font style="color:rgb(6, 6, 7);">| 3天刷完RAG+大模型微调+LangChain+LangGraph+DeepSeek，面试一套搞定！</font>
+<font style="color:rgb(6, 6, 7);">需要准备更多此方面面试的可参看关于</font>**<font style="color:rgb(6, 6, 7);"> </font>**[\*\*吃透AI大模型面试夺命连环33问 \*\*](https://www.bilibili.com/video/BV1YKAeemExE/?spm_id_from=333.1365.list.card_archive.click\&vd_source=04d13f3e51316f05440d2eb2411de9f3)<font style="color:rgb(6, 6, 7);">| 3天刷完RAG+大模型微调+LangChain+LangGraph+DeepSeek，面试一套搞定！</font>
 
 更多项目可参看\*\*<font style="color:#117CEE;">中科院和云计算与大数据研究所</font>\*\*公布的相关产品：
 

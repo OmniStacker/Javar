@@ -887,7 +887,7 @@ public class BaiLiConcurrentIteratorTest {
 
 # 如何优雅的删除HashMap元素
 
-## 图灵学院-百里
+## 百里
 
 ## 1.数据准备
 
@@ -3523,7 +3523,7 @@ Map：
 
 * Map建议就直接点一嘴，他是双列集合。有key-value结构。底层就是哈希表，结构是数组 + 链表实现的，在JDK1.8之后，优化了一波红黑树来提升HashMap的查询效率。。。。
 
-## 十二、HashSet底层怎么实现的？（高御科技）Map和Set区别（江苏探路者国际物流）LinkedHashSet是怎么保证存储有序的（图灵教育）
+## 十二、HashSet底层怎么实现的？（高御科技）Map和Set区别（江苏探路者国际物流）LinkedHashSet是怎么保证存储有序的
 
 **HashSet底层怎么实现的？**
 

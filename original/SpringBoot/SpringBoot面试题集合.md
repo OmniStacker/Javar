@@ -1162,7 +1162,7 @@ public class MyImportBeanDefinitionRegistrar implements ImportBeanDefinitionRegi
         GenericBeanDefinition beandefinition=new GenericBeanDefinition();
         beandefinition.setBeanClassName("com.tuling.beans.TestComponent");
         beandefinition.getPropertyValues().add("id",1);
-        beandefinition.getPropertyValues().add("name","图灵");
+        beandefinition.getPropertyValues().add("name","张三");
 
         registry.registerBeanDefinition("testComponent",beandefinition);
     }
@@ -1186,7 +1186,7 @@ public class MyBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegi
         GenericBeanDefinition beandefinition=new GenericBeanDefinition();
         beandefinition.setBeanClassName("com.tuling.beans.TestComponent");
         beandefinition.getPropertyValues().add("id",1);
-        beandefinition.getPropertyValues().add("name","图灵");
+        beandefinition.getPropertyValues().add("name","张三");
 
         registry.registerBeanDefinition("testComponent",beandefinition);
 

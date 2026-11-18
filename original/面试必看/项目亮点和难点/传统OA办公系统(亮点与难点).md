@@ -496,8 +496,6 @@ public class ExpenseStateMachine {
 
 <font style="color:rgba(6, 8, 31, 0.88);">最终实现了审批处理效率提升200%，支持千级并发处理的目标。这些优化不仅提升了性能，还保证了系统的可靠性和稳定性。</font>
 
-<font style="color:rgba(6, 8, 31, 0.88);">PS：上面这些优化方案如果不清楚具体实现的可以参考《图灵七天面试突击直播课》</font>
-
 <font style="color:rgba(6, 8, 31, 0.88);"></font>
 
 #### <font style="color:rgba(6, 8, 31, 0.88);">四、服务器部署情况</font>

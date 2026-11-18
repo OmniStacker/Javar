@@ -415,8 +415,6 @@ public class AppConfig {
 
 # <font style="color:#01B2BC;">哪些情况下会导致Spring事务失效，对应的原因是什么？</font>
 
-**<font style="color:#DF2A3F;">图灵课堂-周瑜</font>**
-
 1. <font style="color:rgb(36, 41, 46);">方法内的自调用：Spring事务是基于AOP的，只要使用代理对象调用某个方法时，Spring事务才能生效，而在一个方法中调用使用this.xxx()调用方法时，this并不是代理对象，所以会导致事务失效。</font>
    1. <font style="color:rgb(36, 41, 46);">解放办法1：把调用方法拆分到另外一个Bean中</font>
    2. <font style="color:rgb(36, 41, 46);">解决办法2：自己注入自己</font>
