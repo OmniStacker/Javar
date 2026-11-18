@@ -1,6 +1,90 @@
 # 图灵Java+AI大模型全栈面试核心点(2026版)
 
 
+## 精简版
+
+> 35 篇精简文档，一题一篇，建议从这里开始阅读。
+
+- [AI大模型](最终版_精简/AI大模型.md)
+- [AI大模型面试](最终版_精简/AI大模型面试.md)
+- [DDD架构](最终版_精简/DDD架构.md)
+- [Docker与K8S](最终版_精简/Docker与K8S.md)
+- [Dubbo](最终版_精简/Dubbo.md)
+- [ElasticSearch](最终版_精简/ElasticSearch.md)
+- [GoLang](最终版_精简/GoLang.md)
+- [Java基础](最终版_精简/Java基础.md)
+- [JVM](最终版_精简/JVM.md)
+- [Kafka](最终版_精简/Kafka.md)
+- [MyBatis](最终版_精简/MyBatis.md)
+- [Mysql](最终版_精简/Mysql.md)
+- [Netty](最终版_精简/Netty.md)
+- [Nginx](最终版_精简/Nginx.md)
+- [Oracle](最终版_精简/Oracle.md)
+- [PostgreSQL](最终版_精简/PostgreSQL.md)
+- [RabbitMQ](最终版_精简/RabbitMQ.md)
+- [Redis](最终版_精简/Redis.md)
+- [Rocketmq](最终版_精简/Rocketmq.md)
+- [Spring](最终版_精简/Spring.md)
+- [SpringBoot](最终版_精简/SpringBoot.md)
+- [SpringCloud](最终版_精简/SpringCloud.md)
+- [Zookeeper](最终版_精简/Zookeeper.md)
+- [三高架构](最终版_精简/三高架构.md)
+- [云计算](最终版_精简/云计算.md)
+- [分布式](最终版_精简/分布式.md)
+- [分库分表](最终版_精简/分库分表.md)
+- [并发编程](最终版_精简/并发编程.md)
+- [数据结构与算法](最终版_精简/数据结构与算法.md)
+- [线上问题排查](最终版_精简/线上问题排查.md)
+- [网络专题](最终版_精简/网络专题.md)
+- [网络安全](最终版_精简/网络安全.md)
+- [设计模式](最终版_精简/设计模式.md)
+- [运维&运开](最终版_精简/运维&运开.md)
+- [项目设计场景题](最终版_精简/项目设计场景题.md)
+
+<details>
+<summary>完整单篇版（35 篇未精简全文）</summary>
+
+- [AI大模型](最终版/AI大模型.md)
+- [AI大模型面试](最终版/AI大模型面试.md)
+- [DDD架构](最终版/DDD架构.md)
+- [Docker与K8S](最终版/Docker与K8S.md)
+- [Dubbo](最终版/Dubbo.md)
+- [ElasticSearch](最终版/ElasticSearch.md)
+- [GoLang](最终版/GoLang.md)
+- [Java基础](最终版/Java基础.md)
+- [JVM](最终版/JVM.md)
+- [Kafka](最终版/Kafka.md)
+- [MyBatis](最终版/MyBatis.md)
+- [Mysql](最终版/Mysql.md)
+- [Netty](最终版/Netty.md)
+- [Nginx](最终版/Nginx.md)
+- [Oracle](最终版/Oracle.md)
+- [PostgreSQL](最终版/PostgreSQL.md)
+- [RabbitMQ](最终版/RabbitMQ.md)
+- [Redis](最终版/Redis.md)
+- [Rocketmq](最终版/Rocketmq.md)
+- [Spring](最终版/Spring.md)
+- [SpringBoot](最终版/SpringBoot.md)
+- [SpringCloud](最终版/SpringCloud.md)
+- [Zookeeper](最终版/Zookeeper.md)
+- [三高架构](最终版/三高架构.md)
+- [云计算](最终版/云计算.md)
+- [分布式](最终版/分布式.md)
+- [分库分表](最终版/分库分表.md)
+- [并发编程](最终版/并发编程.md)
+- [数据结构与算法](最终版/数据结构与算法.md)
+- [线上问题排查](最终版/线上问题排查.md)
+- [网络专题](最终版/网络专题.md)
+- [网络安全](最终版/网络安全.md)
+- [设计模式](最终版/设计模式.md)
+- [运维&运开](最终版/运维&运开.md)
+- [项目设计场景题](最终版/项目设计场景题.md)
+
+</details>
+
+<details>
+<summary>原始目录结构（全部历史文档）</summary>
+
 ## 面试必看
 
 - [💎突击流程](original/面试必看/突击流程.md)
@@ -1746,3 +1830,5 @@
 ## 运维&运开
 
 - [面试题合集](original/运维&运开/面试题合集.md)
+
+</details>
