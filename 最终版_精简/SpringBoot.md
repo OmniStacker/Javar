@@ -1,328 +1,117 @@
-# SpringBoot知识汇总
+# Spring Boot 知识汇总（基于 Spring Boot 3.x）
 
-# SpringBoot面试题集合
+> 适用版本：本文以 Spring Boot 3.x（3.5.x）为基准编写，涉及 2.x 的差异会在对应位置单独标注。文中配置项与默认值均以官方文档为准。
 
-## SpringBoot 使用 Validation 进行参数校验并统一返回校验异常
+## 本文导读
 
-后端不能相信前端传入的参数，需要在后端对参数进行校验。
+全文按"概念 → 机制 → 配置 → 实战"的顺序组织，可按需跳读：
 
-### 引入依赖
+- [一、Spring Boot 概述](#一spring-boot-概述)：是什么、与 Spring 的关系、版本要求
+- [二、@SpringBootApplication 与启动流程](#二springbootapplication-与启动流程)：一个注解做了什么、启动时发生了什么
+- [三、自动配置机制](#三自动配置机制)：自动配置原理、条件注解、`spring.factories`、Starter
+- [四、配置体系](#四配置体系)：属性源优先级与覆盖规则
+- [五、读取配置的 6 种方式](#五读取配置的-6-种方式)：Environment、@Value、@ConfigurationProperties 等
+- [六、参数校验](#六参数校验validation)：Validation 注解、自定义校验、统一异常处理
+- [七、内嵌容器与可执行 JAR](#七内嵌容器与可执行-jar)：为什么 `java -jar` 就能跑
+- [八、并发能力](#八并发能力spring-boot-能同时处理多少请求)：Tomcat 线程与连接参数
+- [九、按配置动态创建 Bean](#九按配置动态创建-bean)：BeanDefinition 与注册器
+- [十、安全加固](#十安全加固配置加密与防反编译)：配置加密、防反编译
+- [十一、监控与运维](#十一监控与运维actuator)：Actuator 端点
 
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-validation</artifactId>
-</dependency>
-```
+## 一、Spring Boot 概述
 
-`spring-boot-starter-validation` 本质使用 Hibernate Validator，它本身没有实现。
+本节先回答三个基础问题：Spring Boot 到底是什么、它和 Spring 是什么关系、新项目应该选哪个版本。把这三点弄清楚，后面读自动配置、Starter、启动流程时就不会迷路。
 
-### Validation 基本校验注解
+### 1.1 Spring Boot 是什么
 
-| **注解** | **描述** |
-| :--- | :--- |
-| **@Null** | 验证对象是否为 null |
-| **@NotNull** | 验证对象是否不为 null，无法检查长度为 0 的字符串 |
-| **@NotBlank** | 检查字符串是否为 null，且 Trim 后长度是否大于 0，只适用于字符串，会去掉前后空格 |
-| **@NotEmpty** | 检查约束元素是否为 NULL 或 EMPTY |
-| **@AssertTrue** | 验证 Boolean 对象是否为 true |
-| **@AssertFalse** | 验证 Boolean 对象是否为 false |
-| **@Size(min=, max=)** | 验证对象（Array、Collection、Map、String）长度是否在给定范围内 |
-| **@Length(min=, max=)** | 验证元素值长度是否在 min 和 max 区间内 |
-| **@Past** | 验证 Date 和 Calendar 对象是否在当前时间之前 |
-| **@Future** | 验证 Date 和 Calendar 对象是否在当前时间之后 |
-| **@Pattern** | 验证 String 对象是否符合正则表达式规则 |
-| **@Min** | 验证 Number 和 String 对象是否大于等于指定值 |
-| **@Max** | 验证 Number 和 String 对象是否小于等于指定值 |
-| **@DecimalMax** | 被标注的值必须不大于约束中指定的最大值，参数为通过 BigDecimal 定义的最大值的字符串表示，小数存在精度 |
-| **@DecimalMin** | 被标注的值必须不小于约束中指定的最小值，参数为通过 BigDecimal 定义的最小值的字符串表示，小数存在精度 |
-| **@Digits** | 验证 Number 和 String 的构成是否合法 |
-| **@Digits(integer=,fraction=)** | 验证字符串是否符合指定格式的数字，**integer** 指定整数精度，**fraction** 指定小数精度 |
-| **@Range(min=, max=)** | 验证元素值在最小值和最大值之间 |
-| **@Range(min=10000,max=50000,message="range.bean.wage")** | 验证元素值在 10000 和 50000 之间，自定义错误信息为 "range.bean.wage" |
-| **@Valid** | 写在方法参数前，递归地对该对象进行校验；若关联对象是集合或数组，则对其中元素递归校验；若是 map，则对其值部分校验 |
-| **@CreditCardNumber** | 信用卡验证 |
-| **@Email** | 验证是否是邮件地址，为 null 时不进行验证，算通过 |
-| **@ScriptAssert(lang= ,script=, alias=)** | 自定义脚本验证 |
-| **@URL(protocol=,host=, port=,regexp=, flags=)** | 验证 URL 格式是否正确，可指定协议 |
+Spring Boot 是构建在 Spring Framework 之上的**快速开发脚手架**。所谓"脚手架"，指它本身不替代 Spring，而是把 Spring 应用启动时那些重复、样板式的准备工作（引入依赖、装配组件、启动 Web 容器）预先做好，让开发者只写业务代码。
 
-### 添加参数校验
+可以这样理解两者：Spring 像一套功能齐全的建材市场加毛坯房，材料什么都有，但水电、隔墙、装修都要自己设计施工；Spring Boot 则像精装交付的房子，水电煤已经接通，拎包入住，想改造也随时可以改。
 
-#### 在 DTO 属性上添加校验
+Spring Boot 的核心特点可以归纳为六点：
 
-```java
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.hibernate.validator.constraints.Length;
+1. **内置 Starter 与自动配置**：Starter 是预先打包好的依赖集合，自动配置会根据类路径上的依赖推断需要哪些组件，做到"引入依赖即可用"。
+2. **零 XML 配置**：以 JavaConfig（用 Java 类加注解描述配置）为主，不再需要大量 XML 文件，配置更集中、更易读。
+3. **内置 Web 容器**：自带 Tomcat、Jetty、Undertow 等 Servlet 容器，应用可打成可执行 JAR 直接运行，不必先安装外部 Web 服务器。
+4. **微服务支持**：与 Spring Cloud 配合，可较方便地构建和部署微服务架构。
+5. **依赖版本管理**：通过 `spring-boot-dependencies` 统一管理常用第三方库版本，减少版本冲突。
+6. **监控与管理**：提供 Actuator 生产能力，可查看健康状态、内存与线程池指标、HTTP 请求统计，并支持优雅停机（`server.shutdown=graceful`）。
 
-import javax.validation.constraints.Email;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotBlank;
-import java.util.UUID;
+一句话总结：Spring Boot 的设计理念是"约定优于配置"（Convention over Configuration），即框架先按最常见的做法给出默认值，只有偏离默认时才需要显式配置。
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class registryUserDto {
-    @NotBlank(message = "用户名不能为空")
-    private String username;
-    @NotBlank(message = "密码不能为空")
-    @Length(min = 6, max = 20, message = "密码长度在6-20之间")
-    private String password;
-    @Min(value = 0, message = "年龄最小为0")
-    @Max(value = 200, message = "年龄最大为200")
-    private Integer age;
-    @NotBlank(message = "邮箱不能为空")
-    @Email(message = "邮箱格式不正确")
-    private String email;
-    @JsonIgnore
-    private String salt = UUID.randomUUID().toString().replaceAll("-", "");
-    private Boolean admin;
-}
-```
+### 1.2 Spring 和 Spring Boot 的关系与区别
 
-#### 在 Controller 对应的 DTO 添加 @Valid 或 @Validated
+初学者常把两者当成竞品，实际上它们是"地基"和"交付方案"的关系：Spring Boot 依赖 Spring，而不是取代 Spring。
+
+**关系：**
+
+1. **Spring 是框架，Spring Boot 是脚手架**：Spring 提供 IoC 容器、AOP、事务管理等完整能力，但需要开发者自行组装；Spring Boot 在 Spring 之上做自动化装配与约定，降低起步成本。
+2. **Spring Boot 构建在 Spring 之上**：Spring Boot 使用 Spring 的核心功能（依赖注入、面向切面编程、事务管理等），因此 Spring 的用法在 Spring Boot 中同样适用，只是启动和配置更简单。
+
+**区别：**
+
+| 对比项 | Spring | Spring Boot |
+| --- | --- | --- |
+| 配置方式 | 常用大量 XML 或显式 Java 注解描述 Bean 与依赖关系 | 以默认值和自动配置为主，只在需要时覆盖 |
+| 开发速度 | 需要手动集成各组件，样板工作多 | 引入 Starter 即可运行，起步快 |
+| Web 容器 | 通常打成 WAR 部署到外部容器 | 内置 Tomcat/Jetty/Undertow，打成可执行 JAR 直接运行 |
+| 依赖版本 | 由开发者自行选择并保证兼容 | 由 BOM 统一管理，减少冲突 |
+| 监控能力 | 需自行集成 | 提供 Actuator 端点 |
+
+结论：Spring 是全功能的应用框架，Spring Boot 是简化 Spring 应用开发与部署的工具，特别适合微服务和快速原型。
+
+### 1.3 版本要求与 Jakarta 命名空间迁移
+
+选版本时要先看运行环境。Spring Boot 3.x 把 JDK 17 定为最低要求，这是一次不向后兼容的升级，老项目升级前必须先确认 JDK 和依赖。
+
+Spring Boot 3.5.x 的官方要求如下：
+
+| 项目 | 要求 |
+| --- | --- |
+| JDK | 17 及以上（3.5.x 兼容到 JDK 25） |
+| Spring Framework | 6.2.x 及以上 |
+| 构建工具 | Maven 3.6.3+；Gradle 7.6.4+ 或 8.4+ |
+| 内嵌 Tomcat | 10.1（Servlet 6.0） |
+| 内嵌 Jetty / Undertow | Jetty 12.0 / Undertow 2.3 |
+| GraalVM 原生镜像 | 22.3 及以上 |
+
+除 JDK 之外，另一个必须注意的变化是**命名空间迁移**。Java EE 移交 Eclipse 基金会后更名为 Jakarta EE，包名从 `javax.*` 改为 `jakarta.*`。Spring Boot 3 全面使用 Jakarta 命名空间，因此：
+
+- `javax.servlet.*` → `jakarta.servlet.*`
+- `javax.validation.*` → `jakarta.validation.*`
+- `javax.persistence.*` → `jakarta.persistence.*`
 
 ```java
-@PostMapping("/registry")
-public ResponseResult registryUser(@RequestBody @Valid registryUserDto registryUserDto) {
-    return ResponseResult.okResult(registryUserDto);
-}
+// Spring Boot 3.x 的校验注解来自 jakarta 包
+import jakarta.validation.constraints.NotBlank;
 ```
 
-添加后即可对参数实现校验，校验失败时接口返回 500 异常和相应异常信息。
+从 2.x 升级到 3.x 时，除了改包名，还要注意 JDK 17、Spring Security 6、以及部分第三方库尚无 Jakarta 版本的问题。Spring Boot 2.7 是 2.x 系列最后一个开源版本线，仍使用 `javax` 命名空间；新项目应直接选择 3.x。
 
-#### 复杂 String 校验可用正则
+### 1.4 为什么默认使用 CGLIB 动态代理
 
-```java
-@Pattern(regexp = "^1(3|4|5|7|8)\\d{9}$", message = "手机号码格式错误")
-@NotBlank(message = "手机号码不能为空")
-private String phone;
-```
+**动态代理**指程序运行期间生成一个"替身"对象，由它在调用真实对象前后插入额外逻辑（如事务、日志、权限）。Spring 的 AOP 和 `@Transactional` 都依赖它。
 
-对于单个参数（未用 DTO 接收）也可校验：先在 Controller 类上添加 `@Validated`，再在参数前加校验注解。
+Java 自带两种实现：JDK 动态代理要求目标类**必须实现接口**；CGLIB 通过生成目标类的**子类**来实现代理，因此不要求接口。Spring Boot 默认把 `spring.aop.proxy-target-class` 设为 `true`，即优先使用 CGLIB，原因有四：
 
-```java
-@RestController
-@RequestMapping("/user")
-@Validated
-public class UserController {
-    @PostMapping("/registry")
-    public ResponseResult registryUser(@NotBlank(message = "name不能为空") String name) {
-        return ResponseResult.okResult(name);
-    }
-}
-```
+1. **无需接口**：业务类不必为了被代理而额外抽一层接口，适用范围更广，对遗留代码和第三方类更友好。
+2. **无侵入**：类不需要实现特定接口或继承特定父类，源码无需改动。
+3. **调用开销较小**：CGLIB 在启动时生成字节码，运行期方法调用不经过反射。早期版本中这被视为明显优势；在较新的 JDK 上两者差距已不明显，选择 CGLIB 的主要理由仍是"不需要接口"。
+4. **集成方便**：CGLIB 已被重新打包进 `spring-core`（包名 `org.springframework.cglib`），无需额外引入依赖。
 
-### 自定义校验注解
+需要注意 CGLIB 的边界：`final` 类和 `final` 方法无法被代理（子类无法覆盖），`private` 方法也不会被拦截，构造器同样不在代理范围内。另外，`@Configuration` 类默认 `proxyBeanMethods = true`，Spring 会用 CGLIB 生成子类来保证 `@Bean` 方法返回单例；如果不需该方法间调用，可设为 `false` 以减少启动开销。
 
-#### 新建自定义注解
+## 二、@SpringBootApplication 与启动流程
 
-```java
-import org.beiming.validator.StatusValidator;
+本节从一行 `SpringApplication.run(...)` 出发，说明一个注解为何能撑起整个应用，以及启动过程中 Spring Boot 依次做了哪些事。理解这条主线，排查"启动慢""Bean 找不到""配置没生效"这类问题时才有方向。
 
-import javax.validation.Constraint;
-import javax.validation.Payload;
-import java.lang.annotation.*;
+### 2.1 如何理解 @SpringBootApplication 注解
 
-@Target({ElementType.FIELD, ElementType.PARAMETER})
-@Retention(RetentionPolicy.RUNTIME)
-@Documented
-@Constraint(validatedBy = {StatusValidator.class})
-public @interface Status {
+`@SpringBootApplication` 是 Spring Boot 应用的入口注解，标注在含 `main` 方法的主类上。它本身是一个**组合注解**，等价于同时写上以下三个注解：
 
-    String[] statusType() default {};
-
-    String message() default "状态传递有误";
-
-    Class<?>[] groups() default {};
-
-    Class<? extends Payload>[] payload() default {};
-
-}
-```
-
-#### 实现相应的校验
-
-```java
-import org.beiming.annotation.validator.Status;
-
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
-import java.util.Arrays;
-import java.util.List;
-
-public class StatusValidator implements ConstraintValidator<Status, Integer> {
-
-    private List<String> typeStatus;
-
-    @Override
-    public void initialize(Status constraintAnnotation) {
-        typeStatus = Arrays.asList(constraintAnnotation.statusType());
-        ConstraintValidator.super.initialize(constraintAnnotation);
-    }
-
-    @Override
-    public boolean isValid(Integer value, ConstraintValidatorContext constraintValidatorContext) {
-        if (value != null) {
-            if (!typeStatus.contains(String.valueOf(value))) {
-                return false;
-            }
-        }
-        return true;
-    }
-}
-```
-
-#### 自定义注解的使用
-
-```java
-@Status(statusType = {"1", "2"})
-private Integer status;
-```
-
-### 校验失败统一异常处理
-
-上面校验失败的响应 msg 非常不友好，在统一异常处理中添加 BindException 的处理：
-
-```java
-import org.beiming.enums.AppHttpCodeEnum;
-import org.beiming.exception.SystemException;
-import org.beiming.domain.vo.ResponseResult;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.validation.BindException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-@RestControllerAdvice
-@Slf4j
-public class GlobalExceptionHandler {
-    @ExceptionHandler(SystemException.class)
-    public ResponseResult systemExceptionHandler(SystemException e) {
-        log.error("出现了异常! {}", e);
-        return ResponseResult.errorResult(e.getCode(), e.getMsg());
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseResult exceptionHandler(Exception e) {
-        log.error("出现了异常! {}", e);
-        return ResponseResult.errorResult(AppHttpCodeEnum.SYSTEM_ERROR.getCode(), e.getMessage());
-    }
-
-    /* 添加校验参数异常处理 */
-    @ExceptionHandler(BindException.class)
-    public ResponseResult bindExceptionHandler(BindException e) {
-        log.error("出现了异常! {}", e);
-        return ResponseResult.errorResult(AppHttpCodeEnum.SYSTEM_ERROR,
-                e.getBindingResult().getAllErrors().get(0).getDefaultMessage());
-    }
-}
-```
-
-这样异常信息非常友好，方便前端弹出消息框提示。
-
-## 如何理解 SpringBoot 的自动配置
-
-1. **约定大于配置**：Spring Boot 使用一系列约定推断应用程序的配置需求，减少显式配置。绝大多数情况下无需手动指定很多配置，框架会根据项目结构和依赖自动完成配置。
-2. **自动扫描和类路径**：应用启动时自动扫描类路径上的组件和配置，根据发现的组件和类自动装配（自动配置）应用程序各部分，如数据源、Web 容器等。
-3. **条件化配置**：配置仅在特定条件满足时才生效。例如，只有类路径上存在特定库时，与该库相关的配置才会被自动应用。
-4. **自定义配置**：可通过提供自己的配置覆盖默认的自动配置，或通过属性配置文件修改自动配置行为。
-5. **启动器（Starters）**：一种依赖关系管理机制，可简化项目依赖管理，同时自动配置特定类型的应用程序。引入适当的启动器即可一次性引入一组相关依赖和自动配置，快速搭建特定类型的应用（如 Web 应用、数据访问应用等）。
-6. **自动配置类**：自动配置通过自动配置类实现，这些类通常位于 `org.springframework.boot.autoconfigure` 包下，使用注解和条件化逻辑配置应用程序各组件。
-
-## 如何理解 SpringBoot 的 Starter 机制
-
-1. **提供预配置的依赖**：Starters 是一组预配置的依赖项集合，用于启用特定类型的功能。例如 `spring-boot-starter-web` 启用 Web 应用相关功能（内嵌 Web 服务器、Spring MVC、Jackson 等），只需引入这个 Starter，无需单独处理每个依赖项的版本和配置。
-2. **简化依赖管理**：引入适当的 Starter 后无需手动指定每个相关依赖项，Spring Boot 会自动处理版本兼容性和配置，避免版本冲突和配置错误。
-3. **自动配置**：Starters 包含与功能相关的自动配置类，根据应用依赖和配置自动配置必要的组件和设置。
-4. **遵循约定**：遵循约定大于配置的原则，约定如何将依赖和配置组合在一起，使开发更加一致高效。
-5. **自定义扩展**：尽管提供了默认依赖和配置，仍可根据需要自定义扩展，覆盖默认配置、添加额外依赖项或通过属性配置文件修改行为。
-
-## SpringBoot 启动过程有哪些步骤
-
-1. **加载启动类**：入口是一个带 main 方法的 Java 类，在其中创建并启动 Spring Boot 应用上下文，加载 Spring Boot 的基础设置。
-2. **构建应用程序上下文**：main 方法通常使用 `SpringApplication.run()` 构建 Spring 应用上下文，启动应用并加载各种配置和组件。
-3. **自动配置**：构建上下文过程中，Spring Boot 自动扫描类路径上的组件、配置文件和类，并根据条件自动配置，包括自动装配、属性值填充等。
-4. **加载外部属性**：加载 `application.properties` 或 `application.yml` 等外部属性文件，其中的配置信息可在应用中使用，控制不同组件的行为。
-5. **创建 Bean 实例**：使用 Spring IoC 容器管理应用中的各种 Bean 实例，在上下文构建过程中创建和管理这些 Bean。
-6. **启动内嵌服务器**：若为 Web 应用，启动过程中自动配置并启动内嵌 Web 服务器（如 Tomcat、Jetty 或 Undertow），使应用可直接通过浏览器或客户端访问。
-7. **执行初始化和回调**：上下文构建完成后，执行各种初始化和回调操作，例如调用 `ApplicationRunner` 或 `CommandLineRunner` 实现类的方法。
-8. **应用程序运行**：上下文构建完成、Web 服务器启动并监听请求后，应用开始运行，等待客户端请求。
-
-## 如何理解 SpringBoot 条件注解
-
-条件注解通过检查一组预定义条件来判断是否满足某个条件：条件成立则相应组件或配置启用，否则忽略。这让开发人员能根据环境、依赖和配置动态调整应用行为。常见条件注解：
-
-1. **@ConditionalOnClass**：当指定类位于类路径上时才启用被注解的组件或配置。
-2. **@ConditionalOnMissingClass**：当指定类不在类路径上时才启用，可用于某些类不可用时应用备用实现。
-3. **@ConditionalOnBean**：当指定 Bean 在应用上下文中存在时才启用。
-4. **@ConditionalOnMissingBean**：当指定 Bean 在应用上下文中不存在时才启用，可用于提供默认实现或避免重复创建 Bean。
-5. **@ConditionalOnProperty**：当指定属性满足条件时才启用，可基于配置属性的值决定是否启用特定功能。
-6. **@ConditionalOnExpression**：当指定 SpEL 表达式计算结果为 true 时才启用，可用于更复杂的条件判断。
-
-条件注解是 Spring Boot 自动化配置的核心机制之一。
-
-## SpringBoot 的 jar 为什么可以直接运行
-
-1. **内嵌的 Web 服务器**：支持内嵌 Web 服务器（如 Tomcat、Jetty 或 Undertow），无需外部 Web 服务器，直接运行 JAR 即可启动 Web 应用。
-2. **可执行 JAR**：JAR 文件是可执行的，其中包含一个 main 方法作为入口点，可像运行普通 Java 程序一样运行。
-3. **类路径管理**：使用特殊的类加载机制从 JAR 文件中加载类和资源，类路径管理更灵活。
-4. **自动配置和依赖管理**：自动配置机制使应用的依赖和配置可封装在 JAR 中，无需手动处理复杂的依赖管理和配置文件问题。
-5. **Spring Boot Maven 插件**：提供 Maven 插件方便地将应用打包为可执行 JAR，插件会处理必要设置使 JAR 正确运行。
-6. **运行时环境**：JAR 中嵌入了运行时环境的必要组件（如 Web 服务器和 Spring 框架等），可在自包含环境中运行。
-
-## SpringBoot 的配置优先级是怎样的
-
-配置优先级通过不同来源的配置属性值进行合并和覆盖来确定：
-
-1. **应用默认值（Default Values）**：Spring Boot 提供的许多内置默认属性值，用于定义框架和组件的默认行为。
-2. **内部配置文件（Application Properties and YAML）**：在 `application.properties` 或 `application.yml` 中设置的属性值，会被加载到应用上下文中。
-3. **外部属性文件（External Properties）**：通过命令行参数、环境变量或配置文件等方式传递的属性值。
-4. **命令行参数（Command Line Arguments）**：可覆盖应用配置属性，如 `java -jar myapp.jar --my.property=value`。
-5. **系统环境变量（System Environment Variables）**：会被自动映射到应用上下文中的属性。
-6. **属性配置顺序**：配置属性按上述顺序逐层覆盖合并，命令行参数和系统环境变量优先级最高，会覆盖应用默认值、内部配置文件和外部属性文件中的值。
-
-## 如何理解 spring.factories 文件的作用
-
-`spring.factories` 用于在类路径下自动发现和加载扩展点，作用类似 Java 的 SPI 机制，允许第三方库或模块注册自己的实现，从而扩展或定制 Spring 框架行为。
-
-1. **扩展点的自动发现**：Spring 框架内部会在类路径下搜索并加载 `spring.factories` 文件，根据文件配置自动发现扩展点，这些扩展点可以是自定义的类、接口或配置类。
-2. **解耦和可插拔性**：类似插件机制，允许将自定义实现集成到 Spring 框架中而无需修改 Spring 源代码，提高解耦性和可维护性。
-3. **多模块项目的模块发现**：多模块项目中每个模块可有自己的 `spring.factories` 文件，注册各自的扩展点，实现松耦合和灵活性。
-4. **实现框架的定制和扩展**：Spring 框架本身也使用 `spring.factories` 实现定制和扩展，可通过自定义文件覆盖或替代 Spring 默认行为。
-
-示例内容：
-
-```plain
-# Sample META-INF/spring.factories file
-org.springframework.context.ApplicationContextInitializer=com.example.MyInitializer
-```
-
-上例声明了一个 `ApplicationContextInitializer` 扩展点的实现类 `com.example.MyInitializer`，会在应用上下文初始化时被调用。
-
-## SpringBoot 为什么默认使用 Cglib 动态代理
-
-1. **性能和速度**：Cglib 动态代理在性能上通常比 JDK 动态代理更快。它直接通过字节码生成子类实现代理，避免了一些反射操作，在方法调用等方面更高效。
-2. **无需接口**：JDK 动态代理要求目标类必须实现接口，而 Cglib 不需要，更适用于没有接口的类，扩展了动态代理的适用范围。
-3. **无侵入性**：类无需实现任何接口或继承特定类，减少了对源代码的侵入性，对集成第三方库或需要代理的现有类特别有用。
-4. **方便集成**：Spring Boot 默认提供了 Cglib 相关依赖，使用非常方便。
-
-## 如何理解 SpringBoot 的 @SpringBootApplication 注解
-
-`@SpringBootApplication` 是 Spring Boot 的核心注解，用于标识一个主要的 Spring Boot 应用程序类。
-
-1. **组合注解**：它实际是一个组合注解，包含以下三个注解的功能：
-   * `@SpringBootConfiguration`：标识该类为 Spring Boot 配置类，类似传统 Spring 的 `@Configuration`。
-   * `@EnableAutoConfiguration`：启用自动配置，让 Spring Boot 根据类路径中的依赖自动配置应用程序各组件。
-   * `@ComponentScan`：扫描当前包及其子包，查找带有 Spring 相关注解（如 `@Component`、`@Service`、`@Controller` 等）的类，注册为 Spring Bean。
-2. **主程序入口**：通常标注在包含 main 方法的主类上，是应用程序的入口点。
-3. **约定大于配置**：默认启用自动配置，扫描并注册需要的组件，使配置过程简单，能快速搭建功能完备的应用。
-4. **配置扩展**：尽管包含许多默认配置，仍可添加自己的配置类、自定义 Bean 和其他组件进一步定制和扩展应用行为。
-
-示例：
+- `@SpringBootConfiguration`：声明这是一个配置类，本质是 `@Configuration` 的特化版本，便于测试框架识别主配置类。
+- `@EnableAutoConfiguration`：开启自动配置，让 Spring Boot 根据类路径依赖决定装配哪些组件。
+- `@ComponentScan`：扫描当前类所在包及其子包，把 `@Component`、`@Service`、`@Controller`、`@Repository` 等标注的类注册为 Bean。
 
 ```java
 import org.springframework.boot.SpringApplication;
@@ -337,15 +126,316 @@ public class MySpringBootApplication {
 }
 ```
 
-## SpringBoot 读配置的 6 种方式
+官方建议一个应用只加一个 `@SpringBootApplication`（或 `@EnableAutoConfiguration`），放在主配置类上。常用属性：
 
-以下示例源码 Spring Boot 版本均为 2.7.6。
+| 属性 | 作用 |
+| --- | --- |
+| `scanBasePackages` / `scanBasePackageClasses` | 修改组件扫描范围，适合主类不在根包下的场景 |
+| `exclude` / `excludeName` | 排除指定的自动配置类（类不在类路径时用全限定名字符串） |
+| `nameGenerator` | 指定 Bean 名称生成策略 |
 
-### 一、Environment
+需要提醒的是：`@ComponentScan` 默认只扫描主类所在包及子包，所以主类应放在项目根包下，否则会出现"Controller 写了但 404"的问题。
 
-注入 `Environment` 类并调用 `getProperty(属性key)` 即可获取配置属性值。
+### 2.2 启动过程有哪些步骤
+
+从外部观察，一次启动大致经过以下步骤：
+
+1. **加载启动类**：JVM 执行 `main` 方法，创建 `SpringApplication` 实例，读取应用类型（Servlet、Reactive 或非 Web）等基础信息。
+2. **构建应用上下文**：`SpringApplication.run()` 准备环境、创建 `ApplicationContext` 并启动。
+3. **自动配置**：扫描类路径上的组件与配置类，按条件装配数据源、MVC、事务等基础设施。
+4. **加载外部配置**：读取 `application.properties`、`application.yml`、环境变量、命令行参数等，形成统一的属性来源。
+5. **创建 Bean 实例**：由 IoC 容器实例化、注入并初始化 Bean，期间执行各种 `BeanPostProcessor`。
+6. **启动内嵌服务器**：Web 应用会在 `refresh` 的 `onRefresh` 阶段创建并启动内嵌容器（默认 Tomcat），开始监听端口。
+7. **执行初始化回调**：调用 `ApplicationRunner`、`CommandLineRunner` 实现类，完成启动后的准备工作。
+8. **应用就绪**：容器刷新完成、端口监听成功，应用开始接收请求。
+
+### 2.3 启动原理：从 main 到 refresh
+
+把上面的步骤展开到类与方法级别，可以看到这样一条链路：
+
+1. **运行 main 方法**：创建 `SpringApplication` 实例。构造时会从 `META-INF/spring.factories` 读取 `ApplicationContextInitializer`、`ApplicationListener` 等扩展实现（Boot 3 仍然如此；自动配置类已改由 imports 文件加载，见 3.2）。
+2. **调用 run 方法**：`run` 是启动总入口，内部依次完成启动计时、发布启动事件、准备环境、创建并刷新上下文。
+3. **准备环境**：读取系统属性、环境变量、配置文件与命令行参数，得到 `ConfigurableEnvironment`（详见第五章）。
+4. **创建 ApplicationContext**：根据应用类型选择上下文实现。Servlet Web 应用使用 `ServletWebServerApplicationContext`，Reactive 应用使用 `ReactiveWebServerApplicationContext`。
+5. **预初始化上下文**：把启动类作为主配置类注册为 BeanDefinition，并执行 `ApplicationContextInitializer`。
+6. **调用 refresh**：进入 Spring 的标准刷新流程，解析 `@Import`（含自动配置类）、注册 `BeanFactoryPostProcessor`、实例化 Bean。
+7. **创建内嵌容器**：`onRefresh` 阶段由 `ServletWebServerFactory` 创建 Tomcat 等容器，并把 `DispatcherServlet` 注册进去。
+8. **发布事件与回调**：刷新完成后发布 `ApplicationStartedEvent`，执行 Runner，再发布 `ApplicationReadyEvent`。
+
+可见 Spring Boot 的启动并没有绕开 Spring，它只是把 Spring 原本需要手工完成的"建容器、读配置、装配、启动容器"串成了一条固定流水线。
+
+### 2.4 启动事件与监听器
+
+Spring Boot 在启动各阶段发布一系列事件（`SpringApplicationEvent`），开发者可借此在特定时机插入逻辑，例如启动完成后预热缓存、打印访问地址。
+
+| 事件 | 发布时机 |
+| --- | --- |
+| `ApplicationStartingEvent` | 启动开始时，此时除监听器与初始化器注册外尚未做任何处理 |
+| `ApplicationEnvironmentPreparedEvent` | 环境准备好，但上下文尚未创建 |
+| `ApplicationContextInitializedEvent` | 上下文已创建、初始化器已执行，BeanDefinition 尚未加载 |
+| `ApplicationPreparedEvent` | BeanDefinition 已加载，`refresh` 即将开始 |
+| `ApplicationStartedEvent` | 上下文刷新完成，Runner 尚未执行 |
+| `ApplicationReadyEvent` | Runner 执行完毕，应用可以对外提供服务 |
+| `ApplicationFailedEvent` | 启动过程抛出异常 |
+
+使用方式很直接：
 
 ```java
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ReadyListener {
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void onReady() {
+        // 应用已就绪：可做缓存预热、打印启动地址等
+    }
+}
+```
+
+两个容易踩的坑：一是 `ApplicationStartingEvent`、`ApplicationEnvironmentPreparedEvent` 发布时容器还没创建，无法用 `@Bean` 注册监听器，只能通过 `SpringApplication.addListeners(...)` 或 `spring.factories` 中的 `org.springframework.context.ApplicationListener` 键注册；二是监听器默认与启动线程同步执行，耗时任务应交给 `ApplicationRunner`/`CommandLineRunner` 或线程池，避免拖慢启动。
+
+## 三、自动配置机制
+
+自动配置是 Spring Boot 最核心的能力，也是面试与排错的高频考点。本节按"是什么 → 为什么需要 → 怎么实现 → 怎么控制"的顺序展开，并纠正一个常见过时说法：Boot 3 起自动配置不再通过 `spring.factories` 注册。
+
+### 3.1 如何理解 Spring Boot 的自动配置
+
+自动配置指 Spring Boot 根据"类路径上有什么依赖、容器里已有哪些 Bean、配置了什么属性"，自动推断并注册所需的组件。例如类路径上有 HSQLDB 且用户没有自己定义数据源时，Spring Boot 会自动配置一个内存数据库。
+
+可以从六个角度理解它：
+
+1. **约定大于配置**：框架按最常见的使用方式预设默认值，只有偏离默认才需要显式配置。
+2. **自动扫描类路径**：启动时检查依赖与组件，据此决定装配数据源、Web 容器、事务管理器等。
+3. **条件化生效**：每个自动配置类都带条件注解，条件不满足就整体跳过，因此"引入依赖但没生效"通常是条件没满足。
+4. **可覆盖**：用户自定义的 Bean 或配置属性优先于自动配置，自动配置会主动"退让"（`@ConditionalOnMissingBean`）。
+5. **Starter 驱动**：Starter 负责引入依赖，自动配置负责装配组件，两者配合实现"加依赖即得功能"。
+6. **自动配置类集中管理**：自动配置类位于 `spring-boot-autoconfigure` 模块，包名为 `org.springframework.boot.autoconfigure`，可用 `--debug` 启动参数查看当前生效的配置及原因。
+
+### 3.2 自动配置原理
+
+自动配置的完整链路可以拆成七步：
+
+1. **引入 @EnableAutoConfiguration**：主类上的 `@SpringBootApplication` 已包含它，也可以单独标注。
+2. **@EnableAutoConfiguration 内部使用 @Import**：它通过 `@Import(AutoConfigurationImportSelector.class)` 把选择器注册进容器。
+3. **解析 @Import**：容器启动时处理 `@Import`，调用选择器的 `selectImports` 方法获取要导入的配置类名。
+4. **DeferredImportSelector 延迟导入**：`AutoConfigurationImportSelector` 实现了 `DeferredImportSelector`，所有自动配置类会在用户自定义配置之后处理，从而保证用户配置优先、可覆盖自动配置。
+5. **读取自动配置清单**：Boot 3 从每个 jar 的 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 文件读取候选类名，一行一个；Spring 内置的候选清单在 `spring-boot-autoconfigure` 的同一路径下。
+6. **过滤候选类**：先按 `exclude`、`spring.autoconfigure.exclude` 排除，再交给条件注解评估（`@ConditionalOnClass`、`@ConditionalOnMissingBean` 等）。
+7. **注册 BeanDefinition**：条件通过的配置类被当作普通 `@Configuration` 解析，其中的 `@Bean` 方法注册为 Bean 定义，随后由容器实例化。
+
+```java
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+
+// 排除某个自动配置类：类不在类路径时改用 excludeName = "全限定名"
+@SpringBootApplication(exclude = DataSourceAutoConfiguration.class)
+public class MyApplication {
+}
+```
+
+排查自动配置时有两个实用手段：
+
+```yaml
+# application.yml：启动时输出条件评估报告（等价于 --debug）
+debug: true
+```
+
+- 启动日志中的 `CONDITIONS EVALUATION REPORT` 会列出"生效的自动配置"和"未生效的原因"。
+- 引入 Actuator 后访问 `/actuator/conditions` 可在线查看同一份报告，`/actuator/beans` 可查看最终注册的 Bean。
+
+### 3.3 条件注解
+
+条件注解是自动配置的"开关"：它声明一组前提，只有前提成立时被标注的配置类或 `@Bean` 方法才会生效。
+
+**生活化比喻**：条件注解像机场安检口的分流规则——只有"证件齐全 + 航班符合"的旅客才被放行，其余直接绕行，不会报错。
+
+常见条件注解及其语义：
+
+| 注解 | 生效条件 |
+| --- | --- |
+| `@ConditionalOnClass` | 类路径上存在指定类 |
+| `@ConditionalOnMissingClass` | 类路径上不存在指定类 |
+| `@ConditionalOnBean` | 容器中已存在指定 Bean |
+| `@ConditionalOnMissingBean` | 容器中不存在指定 Bean（用于提供默认实现、避免重复定义） |
+| `@ConditionalOnProperty` | 指定配置属性满足条件（如 `havingValue`、`matchIfMissing`） |
+| `@ConditionalOnExpression` | SpEL 表达式结果为 `true` |
+| `@ConditionalOnResource` | 指定资源文件存在 |
+| `@ConditionalOnWebApplication` | 当前是 Web 应用（可限定 SERVLET/REACTIVE） |
+| `@ConditionalOnSingleCandidate` | 指定类型的 Bean 只有一个，或虽多个但有一个 `@Primary` |
+
+使用时有三点需要注意：
+
+1. **条件判断有顺序**：`@ConditionalOnBean` 只能看到"当前已处理过的"Bean 定义，因此它依赖配置类的加载顺序，容易出现"看起来该生效却没生效"的情况。对顺序敏感的场景应配合 `@AutoConfigureAfter` 明确先后。
+2. **`@ConditionalOnMissingBean` 是扩展点**：自定义 Starter 时用它给出默认实现，使用者只要声明同类型 Bean 就能覆盖。
+3. **条件不满足是正常现象**：自动配置被跳过不算错误，排查时应看条件报告，而不是怀疑依赖没引入。
+
+### 3.4 spring.factories 与 SPI
+
+`spring.factories` 是 Spring 自定义的一种扩展点注册文件，位于 jar 的 `META-INF/` 目录下，由 `SpringFactoriesLoader` 读取。它的作用类似 Java 原生的 SPI（Service Provider Interface，服务提供者接口）：框架先定义接口，第三方实现只需在约定文件里登记，框架运行时自动发现并加载，从而实现"不改框架源码也能扩展"。
+
+```properties
+# META-INF/spring.factories 示例
+org.springframework.context.ApplicationListener=com.example.MyListener
+org.springframework.context.ApplicationContextInitializer=com.example.MyInitializer
+```
+
+上例声明了一个监听器与一个上下文初始化器，框架启动时会实例化并调用它们。文件格式为"接口全限定名 = 实现类全限定名"，多个实现用逗号分隔。
+
+它的价值主要体现在四个方面：
+
+1. **扩展点自动发现**：框架在类路径上搜索该文件，按接口分组加载实现，无需硬编码类名。
+2. **解耦与可插拔**：第三方库把实现登记在文件里即可接入，不必修改 Spring 源码，像插件一样装卸。
+3. **多模块各自注册**：多模块项目中，每个模块可以在自己的 jar 里放一份 `spring.factories`，各自声明扩展点。
+4. **框架自身也在用**：Spring Boot 内部大量通过它注册监听器、初始化器、环境后置处理器等。
+
+Spring Boot 中 `spring.factories` 的用途随版本发生过重要变化，这是很多旧资料容易出错的地方：
+
+| 用途 | Spring Boot 2.6 及以前 | Spring Boot 2.7 | Spring Boot 3.x |
+| --- | --- | --- | --- |
+| 注册**自动配置类**（`EnableAutoConfiguration` 键） | 支持 | 引入 `AutoConfiguration.imports`，`spring.factories` 方式被标记为过时 | **不再支持**，只认 imports 文件 |
+| 注册监听器、初始化器、`EnvironmentPostProcessor`、`FailureAnalyzer` 等扩展点 | 支持 | 支持 | 仍支持 |
+
+因此，看到"自动配置通过 `spring.factories` 加载"的说法时要注意版本：这在 Boot 2.6 及以前成立，Boot 3 起自动配置只从 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 读取，写在 `spring.factories` 里的 `EnableAutoConfiguration` 键会被忽略。
+
+`spring.factories` 相对 Java 原生 SPI 的差异：
+
+| 对比项 | Java SPI（`ServiceLoader`） | Spring 的 `SpringFactoriesLoader` |
+| --- | --- | --- |
+| 配置文件 | `META-INF/services/接口全限定名` | `META-INF/spring.factories` |
+| 文件内容 | 一行一个实现类名 | 键值对，一个接口可对应多个实现 |
+| 是否能获取全部实现 | 需遍历迭代器 | 一次性读入并按接口分组缓存 |
+| 典型用途 | JDBC 驱动、日志实现 | Spring Boot 扩展点、监听器注册 |
+
+### 3.5 如何理解 Spring Boot 的 Starter 机制
+
+Starter 是"一组预配置依赖 + 配套自动配置"的打包约定。引入 `spring-boot-starter-web` 就同时得到 Spring MVC、Jackson、内嵌 Tomcat 以及它们的兼容版本，无需逐个挑选依赖。
+
+它的价值体现在五点：
+
+1. **提供预配置的依赖**：`spring-boot-starter-web` 一次引入 Web 开发所需的全部依赖。
+2. **简化依赖管理**：版本由 Spring Boot 的 BOM 统一决定，避免版本冲突。
+3. **携带自动配置**：Starter 背后的自动配置类会按条件装配组件，做到"引入即生效"。
+4. **遵循约定**：依赖组合方式固定，团队之间无需再讨论"该引哪些包"。
+5. **可自定义扩展**：仍可通过自定义 Bean、配置属性覆盖默认行为。
+
+常用 Starter 一览：
+
+| Starter | 作用 |
+| --- | --- |
+| `spring-boot-starter-web` | Spring MVC + Jackson + 内嵌 Tomcat，构建 REST 服务 |
+| `spring-boot-starter-webflux` | 响应式 Web 栈，默认使用 Reactor Netty |
+| `spring-boot-starter-jdbc` | JDBC 与 `JdbcTemplate`、HikariCP 连接池 |
+| `spring-boot-starter-data-jpa` | Spring Data JPA + Hibernate |
+| `spring-boot-starter-data-redis` | Redis 客户端与 `RedisTemplate` |
+| `spring-boot-starter-validation` | Bean Validation（默认实现为 Hibernate Validator） |
+| `spring-boot-starter-security` | Spring Security 认证授权 |
+| `spring-boot-starter-actuator` | 健康检查、指标、端点 |
+| `spring-boot-starter-test` | JUnit、AssertJ、Mockito、Spring Test |
+
+### 3.6 如何自定义 Starter
+
+当团队内部有多个项目要复用同一套能力（如统一日志、统一鉴权、公司内部 SDK）时，把它封装成 Starter 最省事。步骤如下，其中第 4 步在 Boot 3 中必须使用 imports 文件：
+
+1. **创建项目结构**：标准 Maven/Gradle 工程，`src/main/java` 放代码，`src/main/resources` 放资源。
+2. **编写自动配置类**：用 `@AutoConfiguration`（或 `@Configuration`）标注，配合 `@ConditionalOnClass`、`@ConditionalOnProperty`、`@ConditionalOnMissingBean` 控制生效条件。
+3. **提供属性配置**：用 `@ConfigurationProperties` 承接配置，并在自动配置类上通过 `@EnableConfigurationProperties` 启用；需要 IDE 提示时引入 `spring-boot-configuration-processor`。
+4. **注册自动配置类**：在 `src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 中写入自动配置类的全限定名，一行一个。Boot 3 不再读取 `spring.factories` 中的自动配置声明。
+5. **定义 Starter 依赖**：在 `pom.xml` 中声明 Spring Boot 基础依赖与所需第三方库。
+6. **测试与文档**：编写单元测试与集成测试，说明配置项与使用方式。
+7. **发布到仓库**：发布到私服或中央仓库供其他项目引用。
+
+```java
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+
+@AutoConfiguration
+@ConditionalOnClass(MyService.class)
+@EnableConfigurationProperties(MyProperties.class)
+public class MyAutoConfiguration {
+
+    @Bean
+    @ConditionalOnMissingBean
+    public MyService myService(MyProperties properties) {
+        return new MyService(properties.getEndpoint());
+    }
+}
+```
+
+```properties
+# META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+com.example.mystarter.MyAutoConfiguration
+```
+
+命名上有个约定：Spring 官方 Starter 命名为 `spring-boot-starter-xxx`，第三方 Starter 建议命名为 `xxx-spring-boot-starter`，以免与官方包名混淆。
+
+## 四、配置体系
+
+Spring Boot 的配置能力围绕一个目标：同一份代码，在不同环境下用不同的参数运行，且不需要改代码。本节先讲清"多个配置源谁覆盖谁"；具体怎么读配置，见下一章。
+
+### 4.1 配置优先级
+
+**为什么需要优先级**：数据库地址在开发环境是 `localhost`，在生产环境是集群地址；端口在本地是 8080，在容器里可能由环境变量注入。这些差异必须能在启动时覆盖，而且覆盖规则要可预测。
+
+**生活化比喻**：把各个配置源想象成一摞透明胶片，每张胶片上写着若干键值对。查找某个键时从上往下翻，第一张写有该键的胶片就决定结果——越靠上的胶片优先级越高。
+
+Spring Boot 3.x 中，属性源的优先级从低到高如下（后列出的覆盖先列出的）：
+
+| 优先级 | 属性源 | 典型形式 |
+| --- | --- | --- |
+| 1（最低） | 默认属性 | `SpringApplication.setDefaultProperties(...)` |
+| 2 | `@PropertySource` | 类上标注，加载自定义 `.properties` 文件 |
+| 3 | 配置文件（Config Data） | `application.properties` / `application.yml` 及其 profile 变体 |
+| 4 | 随机值 | `random.*` |
+| 5 | 操作系统环境变量 | `SPRING_DATASOURCE_URL` |
+| 6 | Java 系统属性 | `-Dserver.port=9000` |
+| 7 | JNDI 属性 | `java:comp/env` |
+| 8 | `ServletContext` 初始化参数 | 传统 WAR 部署时使用 |
+| 9 | `ServletConfig` 初始化参数 | 传统 WAR 部署时使用 |
+| 10 | `SPRING_APPLICATION_JSON` | 内联 JSON 配置 |
+| 11 | 命令行参数 | `--server.port=9000` |
+| 12 | 测试专用源 | `@SpringBootTest(properties=...)`、`@DynamicPropertySource`、`@TestPropertySource` |
+| 13（最高） | Devtools 全局配置 | `$HOME/.config/spring-boot` 下的 devtools 配置 |
+
+配置文件内部也有先后顺序（后者覆盖前者）：
+
+1. jar 包内的 `application.properties` / `application.yml`
+2. jar 包内的 `application-{profile}.properties` / `.yml`
+3. jar 包外的 `application.properties` / `application.yml`（如运行目录、`config/` 子目录）
+4. jar 包外的 `application-{profile}.properties` / `.yml`
+
+同一目录下同时存在 `.properties` 与 `.yml` 时，`.properties` 优先；官方建议一个项目只用一种格式。
+
+几个实用结论：
+
+- 命令行参数**总是**覆盖配置文件，适合临时改端口、改日志级别：`java -jar app.jar --server.port=9000`。
+- 环境变量名需要大写并用下划线代替点号，如 `spring.datasource.url` 对应 `SPRING_DATASOURCE_URL`。
+- 需要区分环境时用 profile：`application-dev.yml`、`application-prod.yml`，通过 `spring.profiles.active=prod` 激活。
+
+> 版本与纠错说明：一些旧资料把"外部属性文件"排在命令行参数之上，又把环境变量与命令行参数并列为最高，这与官方 Externalized Configuration 的顺序不符。以 Boot 3.x 官方文档为准：命令行参数高于环境变量，环境变量高于配置文件；配置文件的 jar 外优先于 jar 内。
+
+配置为什么没生效时，最快的办法是引入 Actuator，访问 `/actuator/env` 查看该属性的所有来源与最终取值，`/actuator/configprops` 查看绑定到 `@ConfigurationProperties` 的结果。
+
+## 五、读取配置的 6 种方式
+
+同一份配置可以有多种读法，差别在于"取一个值"还是"绑定一组值"、是否类型安全、是否依赖容器。选择哪种方式，取决于配置的数量、结构以及是否需要运行时动态获取。下面按从底层到上层的顺序介绍。
+
+### 方式一：Environment
+
+`Environment` 是 Spring 对环境配置的抽象接口，可以按 key 直接读取属性，来源包括系统属性、环境变量、命令行参数和配置文件。它继承自 `PropertyResolver`（属性解析器），后者提供 `getProperty(key)` 等核心方法。
+
+```java
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
+import org.junit.jupiter.api.Test;
+
 @Slf4j
 @SpringBootTest
 public class EnvironmentTest {
@@ -361,109 +451,106 @@ public class EnvironmentTest {
 }
 ```
 
-**什么是 Environment？** 它是 Spring Boot 核心的环境配置接口，提供简单方法访问应用程序属性，包括系统属性、操作系统环境变量、命令行参数、和应用程序配置文件中定义的属性等。
-
 #### 配置初始化
 
-Spring Boot 程序启动加载流程里，会执行 `SpringApplication.run` 中的 `prepareEnvironment()` 方法进行配置初始化：
+`Environment` 里的配置不是凭空出现的，它由 `SpringApplication.run` 中的 `prepareEnvironment()` 方法准备：
 
 ```java
 private ConfigurableEnvironment prepareEnvironment(SpringApplicationRunListeners listeners,
-   DefaultBootstrapContext bootstrapContext, ApplicationArguments applicationArguments) {
-      // 1、创建 ConfigurableEnvironment 对象用于存储环境参数
-      ConfigurableEnvironment environment = getOrCreateEnvironment();
-      // 2、解析并加载用户指定的配置文件，封装为 PropertySource 添加到环境对象中
-      configureEnvironment(environment, applicationArguments.getSourceArgs());
-      // 3、加载所有的系统属性，并将它们添加到 ConfigurableEnvironment 对象中
-      ConfigurationPropertySources.attach(environment);
-      // 4、通知监听器环境参数已经准备就绪
-      listeners.environmentPrepared(bootstrapContext, environment);
-      // 5、将默认属性源中的所有属性值移到环境对象的队列末尾，避免用户无意中覆盖 Spring Boot 默认属性
-      DefaultPropertiesPropertySource.moveToEnd(environment);
-      Assert.state(!environment.containsProperty("spring.main.environment-prefix"),
-          "Environment prefix cannot be set via properties.");
-      // 6、将 Spring Boot 应用程序的属性绑定到环境对象上
-      bindToSpringApplication(environment);
-      // 7、如果没有自定义的环境类型，则转换为标准的环境类型
-      if (!this.isCustomEnvironment) {
+        DefaultBootstrapContext bootstrapContext, ApplicationArguments applicationArguments) {
+    // 1、创建 ConfigurableEnvironment 对象用于存储环境参数
+    ConfigurableEnvironment environment = getOrCreateEnvironment();
+    // 2、解析并加载用户指定的配置文件，封装为 PropertySource 添加到环境对象中
+    configureEnvironment(environment, applicationArguments.getSourceArgs());
+    // 3、加载所有的系统属性，并将它们添加到 ConfigurableEnvironment 对象中
+    ConfigurationPropertySources.attach(environment);
+    // 4、通知监听器环境参数已经准备就绪
+    listeners.environmentPrepared(bootstrapContext, environment);
+    // 5、将默认属性源中的所有属性值移到环境对象的队列末尾，避免用户无意中覆盖 Spring Boot 默认属性
+    DefaultPropertiesPropertySource.moveToEnd(environment);
+    Assert.state(!environment.containsProperty("spring.main.environment-prefix"),
+            "Environment prefix cannot be set via properties.");
+    // 6、将 Spring Boot 应用程序的属性绑定到环境对象上
+    bindToSpringApplication(environment);
+    // 7、如果没有自定义的环境类型，则转换为标准的环境类型
+    if (!this.isCustomEnvironment) {
         EnvironmentConverter environmentConverter = new EnvironmentConverter(getClassLoader());
         environment = environmentConverter.convertEnvironmentIfNecessary(environment, deduceEnvironmentClass());
-      }
-      // 8、再次加载系统配置，以防止被其他配置覆盖
-      ConfigurationPropertySources.attach(environment);
-      return environment;
+    }
+    // 8、再次加载系统配置，以防止被其他配置覆盖
+    ConfigurationPropertySources.attach(environment);
+    return environment;
 }
 ```
 
-配置加载流程步骤：
+对应到流程上：
 
-* 创建**环境对象** `ConfigurableEnvironment` 用于存储环境参数；
-* `configureEnvironment` 加载默认的 `application.properties` 和 `application.yml` 配置文件及用户指定的配置文件，封装为 **PropertySource** 添加到环境对象中；
-* `attach()`：加载所有系统属性并添加到环境对象中；
-* `listeners.environmentPrepared()`：发送环境参数配置已准备就绪的监听通知；
-* `moveToEnd()`：将**系统默认**属性源中的所有属性值移到环境对象的队列末尾，使自定义属性值可覆盖默认值；
-* `bindToSpringApplication`：将应用程序属性绑定到 Bean 对象上；
-* `attach()`：再次加载系统配置，防止被其他配置覆盖。
+- 创建 `ConfigurableEnvironment` 存放环境参数；
+- `configureEnvironment` 加载默认的 `application.properties` / `application.yml` 及用户指定的配置文件，封装为 `PropertySource` 加入环境；
+- `attach()` 加载系统属性；
+- `listeners.environmentPrepared()` 通知监听器环境已就绪；
+- `moveToEnd()` 把"默认属性"移到队列末尾，保证自定义值能覆盖默认值；
+- `bindToSpringApplication` 把配置绑定到 `SpringApplication` 自身；
+- 再次 `attach()`，防止系统配置被覆盖。
 
-配置属性会封装成抽象数据结构 PropertySource（key-value 形式）：
+每个配置源都会被封装成 `PropertySource`（属性源），它是一组 key-value 的抽象：
 
 ```java
 public abstract class PropertySource<T> {
-    protected final String name; // 属性源名称
-    protected final T source; // 属性源值（一个泛型，比如 Map，Property）
-    public String getName();  // 获取属性源的名字
-    public T getSource(); // 获取属性源值
-    public boolean containsProperty(String name);  // 是否包含某个属性
-    public abstract Object getProperty(String name);   // 得到属性名对应的属性值
+    protected final String name;   // 属性源名称
+    protected final T source;      // 属性源值（如 Map、Properties）
+
+    public String getName();                        // 获取属性源名称
+    public T getSource();                           // 获取属性源值
+    public boolean containsProperty(String name);   // 是否包含某个属性
+    public abstract Object getProperty(String name); // 获取属性对应的值
 }
 ```
 
-PropertySource 有诸多实现类用于管理配置属性，可从不同来源获取配置，例如：
+常见实现类如下：
 
-![1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4.png](images/1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4-271328.png)
+![PropertySource 实现类继承关系](images/1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4-271328.png)
 
-* **MapPropertySource**：Map 键值对对象转换为 PropertySource 对象的适配器；
-* **PropertiesPropertySource**：Properties 对象中的所有配置属性转换为 Spring 环境中的属性值；
-* **ResourcePropertySource**：从文件系统或 classpath 中加载配置属性，封装成 PropertySource 对象；
-* **ServletConfigPropertySource**：Servlet 配置中读取配置属性；
-* **ServletContextPropertySource**：Servlet 上下文中读取配置属性；
-* **StubPropertySource**：空的实现类，仅作为 CompositePropertySource 的默认父级属性源，以避免空指针异常；
-* **CompositePropertySource**：复合型实现类，内部维护 PropertySource 集合队列，可将多个 PropertySource 合并；
-* **SystemEnvironmentPropertySource**：操作系统环境变量中读取配置属性。
+- **MapPropertySource**：把 Map 适配为属性源；
+- **PropertiesPropertySource**：把 `Properties` 对象转为属性源；
+- **ResourcePropertySource**：从文件系统或 classpath 资源加载属性；
+- **ServletConfigPropertySource**：从 ServletConfig 读取；
+- **ServletContextPropertySource**：从 ServletContext 读取；
+- **StubPropertySource**：空实现，作为 `CompositePropertySource` 的默认父级以避免空指针；
+- **CompositePropertySource**：组合模式，内部维护一组属性源，可整体参与查找；
+- **SystemEnvironmentPropertySource**：从操作系统环境变量读取。
 
-各类配置初始化生成的 PropertySource 对象会被维护到集合队列中：
+这些 `PropertySource` 会被放进一个有序集合，优先级就体现在集合顺序上：
 
 ```java
 List<PropertySource<?>> sources = new ArrayList<>();
 ```
 
-配置初始化完毕，应用上下文 `AbstractApplicationContext` 会加载配置，程序运行时即可随时获取配置信息。
+环境准备完成后，应用上下文会接管这个环境对象，运行时即可随时读取配置：
 
 ```java
 private void prepareContext(DefaultBootstrapContext bootstrapContext, ConfigurableApplicationContext context,
-   ConfigurableEnvironment environment, SpringApplicationRunListeners listeners,
-   ApplicationArguments applicationArguments, Banner printedBanner) {
+        ConfigurableEnvironment environment, SpringApplicationRunListeners listeners,
+        ApplicationArguments applicationArguments, Banner printedBanner) {
     // 应用上下文加载环境对象
-  context.setEnvironment(environment);
-  postProcessApplicationContext(context);
-    // .........
-  }
+    context.setEnvironment(environment);
+    postProcessApplicationContext(context);
+    // ...
+}
 ```
 
 #### 读取配置
 
-读取配置即遍历队列里的 PropertySource，用属性名称 name 匹配对应的属性值 source。
+读取配置的本质是遍历属性源队列，按名称匹配并返回第一个命中的值。`PropertyResolver` 是完成这件事的关键类，`Environment` 是它的子接口。
 
-`PropertyResolver` 是获取配置的关键类，内部提供操作 PropertySource 队列的方法，核心方法 `getProperty(key)` 获取配置值，`Environment` 是它的子类。
+![PropertyResolver 与 Environment 的关系](images/1688374407538-78066da7-d837-4237-b8cd-68426b863725-568270.png)
 
-![1688374407538-78066da7-d837-4237-b8cd-68426b863725.png](images/1688374407538-78066da7-d837-4237-b8cd-68426b863725-568270.png)
-
-因此直接用 PropertyResolver 获取配置属性也可以：
+因此直接注入 `PropertyResolver` 也能读配置：
 
 ```java
 @Slf4j
 @SpringBootTest
-public class EnvironmentTest {
+public class PropertyResolverTest {
 
     @Resource
     private PropertyResolver env;
@@ -471,29 +558,23 @@ public class EnvironmentTest {
     @Test
     public void var1Test() {
         String var1 = env.getProperty("env101.var1");
-        log.info("Environment 配置获取 {}", var1);
+        log.info("PropertyResolver 配置获取 {}", var1);
     }
 }
 ```
 
-### 二、@Value 注解
+### 方式二：@Value 注解
 
-`@Value` 是 Spring 框架提供的用于注入配置属性值的注解，可用于类的成员变量、方法参数和构造函数参数上。
+`@Value` 用于把单个配置值注入字段、方法参数或构造器参数，是最常用的方式，适合零散的一两个配置。
 
-应用启动时，使用 `@Value` 的 Bean 会被实例化，所有使用了 `@Value` 的 Bean 会被加入到 `PropertySourcesPlaceholderConfigurer` 的后置处理器集合中。当后置处理器执行时，它会读取 Bean 中所有 `@Value` 注解所标注的值，并通过反射将解析后的属性值赋值给对应成员变量、方法参数和构造函数参数。使用时需确保注入的属性值已加载到 Spring 容器中，否则会导致注入失败。
+其原理是：容器实例化 Bean 后，由后置处理器解析 `@Value` 中的占位符（`${...}`），再通过反射写入目标字段。占位符的解析工作由 `PropertySourcesPlaceholderConfigurer` 提供的解析器完成；如果属性未被加载到环境中，注入会失败。
 
-#### 如何使用
-
-在 `application.yml` 中添加属性：
-
-```plain
+```yaml
 env101:
-  var1: var1-公众号：程序员小富
+  var1: var1-from-config-file
 ```
 
-在变量上加注解 `@Value("${env101.var1}")`：
-
-```plain
+```java
 @Slf4j
 @SpringBootTest
 public class EnvVariablesTest {
@@ -502,46 +583,46 @@ public class EnvVariablesTest {
     private String var1;
 
     @Test
-    public void var1Test(){
-        log.info("配置文件属性: {}",var1);
+    public void var1Test() {
+        log.info("配置文件属性: {}", var1);
     }
 }
 ```
 
-#### 缺失配置
+#### 缺失配置时给默认值
 
-若代码中引用变量但配置文件中未配值，会出现错误。可给变量赋默认值，确保未正确配值时程序仍能正常运行。
+若代码引用了配置文件中不存在的键，启动会因占位符无法解析而报错。可用 `:` 提供默认值：
 
-```plain
-@Value("${env101.var1:我是小富}")
+```java
+@Value("${env101.var1:default-value}")
 private String var1;
 ```
 
-#### 静态变量（static）赋值
+#### 静态变量（static）无法注入
 
-将 `@Value` 加到静态变量上无法获取属性值。静态变量是类的属性，不属于对象，而 Spring 基于对象属性进行依赖注入；类在应用启动时静态变量就已初始化，此时 Bean 还未实例化，因此无法通过 `@Value` 注入属性值。
+`@Value` 加在静态变量上拿不到值。原因有两点：静态变量属于类而不属于对象，而 Spring 的依赖注入面向对象实例；类加载时静态变量已经初始化，此时 Bean 还未被创建。
 
-```plain
+```java
 @Slf4j
 @SpringBootTest
-public class EnvVariablesTest {
+public class StaticValueTest {
 
     @Value("${env101.var1}")
-    private static String var1;
+    private static String var1;   // 注入不生效，值为 null
 
     @Test
-    public void var1Test(){
-        log.info("配置文件属性: {}",var1);
+    public void var1Test() {
+        log.info("静态变量: {}", var1);
     }
 }
 ```
 
-虽然 `@Value` 无法直接用在静态变量上，但可以先通过 `@Value` 将属性值注入到普通 Bean 中，再获取该 Bean 对应的属性值赋给静态变量。
+变通做法是先注入实例，再赋给静态变量，例如通过 setter 注入或构造器注入：
 
-```plain
+```java
 @Slf4j
 @SpringBootTest
-public class EnvVariablesTest {
+public class StaticValueFixTest {
 
     private static String var3;
 
@@ -549,42 +630,39 @@ public class EnvVariablesTest {
 
     @Value("${env101.var3}")
     public void setVar3(String var3) {
-        EnvVariablesTest.var3 = var3;
+        StaticValueFixTest.var3 = var3;
     }
 
-    EnvVariablesTest(@Value("${env101.var4}") String var4){
-        EnvVariablesTest.var4 = var4;
-    }
-
-    public static String getVar4() {
-        return var4;
+    StaticValueFixTest(@Value("${env101.var4}") String var4) {
+        StaticValueFixTest.var4 = var4;
     }
 
     public static String getVar3() {
         return var3;
     }
+
+    public static String getVar4() {
+        return var4;
+    }
 }
 ```
 
-#### 常量（final）赋值
+#### 常量（final）无法直接注入
 
-`@Value` 加到 final 关键字上同样无法获取属性值。final 变量必须在构造方法中初始化，一旦赋值便不能更改；而 `@Value` 是在 bean 实例化之后才进行属性注入，因此无法在构造方法中初始化 final 变量。但可通过构造方法注入（`@Autowired` 构造函数 + `@Value` 参数）为 final 变量赋值。
+`@Value` 加在 `final` 字段上同样无效。`final` 字段必须在构造方法中完成赋值，而 `@Value` 的字段注入发生在对象构造之后。可行方案是构造器注入：
 
-```plain
+```java
 @Slf4j
 @SpringBootTest
-public class EnvVariables2Test {
+public class FinalValueTest {
 
     private final String var6;
 
     @Autowired
-    EnvVariables2Test(@Value("${env101.var6}") String var6) {
+    FinalValueTest(@Value("${env101.var6}") String var6) {
         this.var6 = var6;
     }
 
-    /**
-     * @value注解 final 获取
-     */
     @Test
     public void var1Test() {
         log.info("final 注入: {}", var6);
@@ -592,16 +670,11 @@ public class EnvVariables2Test {
 }
 ```
 
-#### 非注册的类中使用
+#### 非容器管理的类中不生效
 
-只有标注了 `@Component`、`@Service`、`@Controller`、`@Repository` 或 `@Configuration` 等**容器管理**注解、由 Spring 管理的 bean 中使用 `@Value` 才会生效；普通 POJO 类无法使用 `@Value` 进行属性注入。
+只有被 Spring 管理的 Bean（标注 `@Component`、`@Service`、`@Controller`、`@Repository`、`@Configuration` 等）才会执行依赖注入，普通 POJO 上的 `@Value` 不会生效。
 
-```plain
-/**
- * @value注解 非注册的类中使用
- * 需在 `@Component`、`@Service`、`@Controller`、`@Repository` 或 `@Configuration` 等
- * 容器管理注解的类中使用 @Value注解才会生效
- */
+```java
 @Data
 @Slf4j
 @Component
@@ -610,60 +683,54 @@ public class TestService {
     @Value("${env101.var7}")
     private String var7;
 
-    public String getVar7(){
-       return this.var7;
+    public String getVar7() {
+        return this.var7;
     }
 }
 ```
 
-#### 引用方式不对
+#### 用 new 创建对象同样不生效
 
-要获取 TestService 类中某个变量的属性值，需使用依赖注入的方式，而不能使用 new 的方式。依赖注入创建对象时，Spring 会将对象所需的属性值注入到其中。
+即使类上标了 `@Component`，用 `new` 手动创建的对象也不经过容器，依赖注入不会发生：
 
-```plain
-/**
-   * @value注解 引用方式不对
-   */
-  @Test
-  public void var7_1Test() {
-
-      TestService testService = new TestService();
-      log.info("引用方式不对 注入: {}", testService.getVar7());
-  }
+```java
+@Test
+public void var7_1Test() {
+    TestService testService = new TestService();   // 绕过容器，var7 为 null
+    log.info("引用方式不对 注入: {}", testService.getVar7());
+}
 ```
 
-总结：**@Value 注解要在 Bean 的生命周期内使用才能生效。**
+小结：**`@Value` 只在 Bean 的生命周期内生效**，即对象必须由容器创建。
 
-### 三、@ConfigurationProperties 注解
+### 方式三：@ConfigurationProperties 注解
 
-`@ConfigurationProperties` 是 Spring Boot 提供的一种更便捷地处理配置文件属性值的方式，可通过自动绑定和类型转换等机制，将指定前缀的属性集合自动绑定到一个 Bean 对象上。
+当配置项成组出现（如数据源、第三方 SDK 参数）时，逐个写 `@Value` 既啰嗦又容易拼错。`@ConfigurationProperties` 可以把指定前缀下的一组属性按名称自动绑定到 Bean 的字段上，并完成类型转换。
+
+它相对 `@Value` 的优势是：批量绑定、支持嵌套对象/List/Map、支持松散绑定（`max-threads`、`maxThreads`、`MAX_THREADS` 都能匹配）、可结合校验注解、可生成配置元数据供 IDE 提示。
 
 #### 加载原理
 
-在 Spring Boot 启动流程加载配置的 `prepareEnvironment()` 方法中，有一个重要步骤 `bindToSpringApplication(environment)`，作用是将配置文件中的属性值绑定到被 `@ConfigurationProperties` 标记的 Bean 对象中。但此时这些对象还没有被 Spring 容器管理，因此无法完成属性的自动注入。
+在 `prepareEnvironment()` 中有一个步骤 `bindToSpringApplication(environment)`，它负责把配置绑定到 `SpringApplication` 自身；此时业务 Bean 还没创建，因此真正的属性注入要等到 Bean 初始化阶段。
 
-这些 Bean 对象在 `ConfigurationPropertiesBindingPostProcessor` 类（Bean 后置处理器）中被注册到 Spring 容器：它扫描容器中所有被 `@ConfigurationProperties` 标记的 Bean 对象，找到后使用 Binder 组件将外部属性的值绑定到它们身上，从而实现自动注入。
+真正完成绑定的是 `ConfigurationPropertiesBindingPostProcessor`（一个 Bean 后置处理器）：它扫描容器中所有被 `@ConfigurationProperties` 标注的 Bean，在 Bean 初始化前后调用 Binder 组件，把外部属性按前缀绑定到对象字段上。
 
-![1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36.png](images/1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36-325267.png)
+![ConfigurationProperties 绑定流程](images/1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36-325267.png)
 
-* `bindToSpringApplication` 主要是将属性值绑定到 Bean 对象中；
-* `ConfigurationPropertiesBindingPostProcessor` 负责在 Spring 容器启动时将注解标记的 Bean 对象注册到容器中，并完成后续的属性注入操作。
+- `bindToSpringApplication`：把属性绑定到 `SpringApplication` 相关对象；
+- `ConfigurationPropertiesBindingPostProcessor`：在容器启动过程中处理业务 Bean 的绑定与注入。
 
 #### 如何使用
 
-在 `application.yml` 中添加配置项：
-
-```plain
+```yaml
 env101:
-  var1: var1-公众号：程序员小富
-  var2: var2-公众号：程序员小富
+  var1: var1-from-config-file
+  var2: var2-from-config-file
 ```
 
-创建 `MyConf` 类承载所有前缀为 `env101` 的配置属性：
-
-```plain
+```java
 @Data
-@Configuration
+@Component
 @ConfigurationProperties(prefix = "env101")
 public class MyConf {
 
@@ -673,9 +740,7 @@ public class MyConf {
 }
 ```
 
-在需要使用 var1、var2 的地方将 MyConf 对象注入即可：
-
-```plain
+```java
 @Slf4j
 @SpringBootTest
 public class ConfTest {
@@ -685,48 +750,53 @@ public class ConfTest {
 
     @Test
     public void myConfTest() {
-        log.info("@ConfigurationProperties注解 配置获取 {}", JSON.toJSONString(myConf));
+        log.info("@ConfigurationProperties 配置获取 {}", myConf);
     }
 }
 ```
 
-### 四、@PropertySources 注解
+如果不想在类上加 `@Component`，可以在配置类上使用 `@EnableConfigurationProperties(MyConf.class)` 显式启用，或用 `@ConfigurationPropertiesScan` 批量扫描。自定义 Starter 中推荐后者，避免组件扫描污染。
 
-除系统默认的 `application.yml` 或 `application.properties` 外，还可能需要自定义配置文件实现更灵活的配置。与默认配置文件不同，自定义配置文件无法被自动加载，需手动指定。
+### 方式四：@PropertySources 注解
 
-`@PropertySources` 的实现原理较简单：应用启动时扫描所有被该注解标注的类，获取注解中指定自定义配置文件的路径，将配置文件内容加载到 Environment 中，之后即可通过 `@Value` 或 `Environment.getProperty()` 获取。
+除了默认的 `application.yml` / `application.properties`，项目有时需要独立的配置文件（如第三方对接参数）。这类文件不会被自动加载，需要手动指定。
 
-#### 如何使用
+`@PropertySources` 的原理是：容器启动时扫描标注该注解的类，读取其中指定的资源路径，把文件内容加载为 `PropertySource` 加入 `Environment`，之后就能用 `@Value` 或 `Environment` 读取。
 
-在 `src/main/resources/` 下创建 `xiaofu.properties`，增加两个属性：
-
-```plain
-env101.var9=var9-程序员小富
-env101.var10=var10-程序员小富
+```properties
+# src/main/resources/custom.properties
+env101.var9=var9-from-custom-file
+env101.var10=var10-from-custom-file
 ```
 
-在需要使用自定义配置文件的类上添加 `@PropertySources`，`value` 属性中指定自定义配置文件路径，可指定多个路径（逗号隔开）：
-
-```plain
+```java
 @Data
 @Configuration
 @PropertySources({
-        @PropertySource(value = "classpath:xiaofu.properties", encoding = "utf-8"),
-        @PropertySource(value = "classpath:xiaofu.properties", encoding = "utf-8")
+        @PropertySource(value = "classpath:custom.properties", encoding = "utf-8"),
+        @PropertySource(value = "classpath:custom.properties", encoding = "utf-8")
 })
 public class PropertySourcesConf {
 
-    @Value("${env101.var10}")
-    private String var10;
-
     @Value("${env101.var9}")
     private String var9;
+
+    @Value("${env101.var10}")
+    private String var10;
 }
 ```
 
-但 `@PropertySources` 只内置了 `PropertySourceFactory` 适配器，即只能加载 `.properties` 文件。若要加载 `.yaml` 文件，需自行实现 yaml 适配器 `YamlPropertySourceFactory`：
+需要注意，`@PropertySource` 默认只支持 `.properties` 文件。要加载 YAML，需自行实现 `PropertySourceFactory`：
 
-```plain
+```java
+import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
+import org.springframework.core.env.PropertiesPropertySource;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.support.EncodedResource;
+import org.springframework.core.io.support.PropertySourceFactory;
+import java.io.IOException;
+import java.util.Properties;
+
 public class YamlPropertySourceFactory implements PropertySourceFactory {
 
     @Override
@@ -741,13 +811,14 @@ public class YamlPropertySourceFactory implements PropertySourceFactory {
 }
 ```
 
-加载配置时显式指定使用 `YamlPropertySourceFactory` 适配器即可加载 yaml 文件：
+使用时通过 `factory` 属性指定该工厂即可：
 
-```plain
+```java
 @Data
 @Configuration
 @PropertySources({
-        @PropertySource(value = "classpath:xiaofu.yaml", encoding = "utf-8", factory = YamlPropertySourceFactory.class)
+        @PropertySource(value = "classpath:custom.yaml", encoding = "utf-8",
+                factory = YamlPropertySourceFactory.class)
 })
 public class PropertySourcesConf2 {
 
@@ -759,11 +830,20 @@ public class PropertySourcesConf2 {
 }
 ```
 
-### 五、YamlPropertiesFactoryBean 加载 YAML 文件
+另外，`@PropertySource` 加载的配置在上下文刷新阶段才加入环境，因此不能用于配置 `logging.*`、`spring.main.*` 这类"刷新前就要读取"的属性。
 
-可使用 `YamlPropertiesFactoryBean` 将 YAML 配置文件中的属性值注入到 Bean 中。
+### 方式五：YamlPropertiesFactoryBean 加载 YAML 文件
 
-```plain
+`YamlPropertiesFactoryBean` 是 Spring 提供的 YAML 解析工具，可把 YAML 文件解析为 `Properties`，再交给占位符解析器使用。适合在代码中显式加载额外 YAML 的场景。
+
+```java
+import org.springframework.beans.factory.config.PropertySourcesPlaceholderConfigurer;
+import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
+import java.util.Objects;
+
 @Configuration
 public class MyYamlConfig {
 
@@ -771,16 +851,16 @@ public class MyYamlConfig {
     public static PropertySourcesPlaceholderConfigurer yamlConfigurer() {
         PropertySourcesPlaceholderConfigurer configurer = new PropertySourcesPlaceholderConfigurer();
         YamlPropertiesFactoryBean yaml = new YamlPropertiesFactoryBean();
-        yaml.setResources(new ClassPathResource("xiaofu.yml"));
+        yaml.setResources(new ClassPathResource("custom.yml"));
         configurer.setProperties(Objects.requireNonNull(yaml.getObject()));
         return configurer;
     }
 }
 ```
 
-可通过 `@Value` 或 `Environment.getProperty()` 获取其中定义的属性值：
+加载后同样可用 `@Value` 或 `Environment` 读取：
 
-```plain
+```java
 @Slf4j
 @SpringBootTest
 public class YamlTest {
@@ -789,17 +869,17 @@ public class YamlTest {
     private String var11;
 
     @Test
-    public void  myYamlTest() {
+    public void myYamlTest() {
         log.info("Yaml 配置获取 {}", var11);
     }
 }
 ```
 
-### 六、Java 原生读取
+### 方式六：Java 原生读取
 
-也可直接注入 PropertySources 获取所有属性的配置队列，自行实现读取逻辑。
+不依赖 Spring，直接用 `Properties` 从 classpath 读取配置文件，适合工具类或与 Spring 解耦的模块：
 
-```plain
+```java
 @Slf4j
 @SpringBootTest
 public class CustomTest {
@@ -808,106 +888,448 @@ public class CustomTest {
     public void customTest() {
         Properties props = new Properties();
         try {
-            InputStreamReader inputStreamReader = new InputStreamReader(
-                    this.getClass().getClassLoader().getResourceAsStream("xushu.properties"),
+            InputStreamReader reader = new InputStreamReader(
+                    this.getClass().getClassLoader().getResourceAsStream("extra.properties"),
                     StandardCharsets.UTF_8);
-            props.load(inputStreamReader);
+            props.load(reader);
         } catch (IOException e1) {
-            System.out.println(e1);
+            log.error("读取配置文件失败", e1);
         }
-        System.out.println("Properties Name：" + props.getProperty("zhouyu.name"));
+        log.info("Properties Name：{}", props.getProperty("user.name"));
     }
 }
 ```
 
-### 总结
+这种方式拿不到 Spring 的多环境、占位符、类型转换等能力，只建议在边缘场景使用。
 
-可通过 `@Value`、`Environment` 类、`@ConfigurationProperties`、`@PropertySource` 等获取配置信息。其中 `@Value` 适用于单个值的注入，其他几种方式适用于批量配置的注入。不同方式在效率、灵活性、易用性等方面存在差异，选择时还需考虑个人编程习惯和业务需求：重视代码可读性和可维护性可选 `@ConfigurationProperties`；更注重运行效率可选 `Environment` 类。
+### 六种方式对比
 
-## SpringBoot 可以同时处理多少请求
+| 方式 | 适用场景 | 优点 | 局限 |
+| --- | --- | --- | --- |
+| `Environment` | 运行时动态取单个值 | 灵活、可判断是否存在 | 需自行做类型转换，字符串 key 易写错 |
+| `@Value` | 注入少量单值 | 写法简单直观 | 不支持批量绑定，静态/final 字段受限 |
+| `@ConfigurationProperties` | 一组结构化配置 | 批量、类型安全、可校验、有 IDE 提示 | 需要额外的类，改动配置后需重启（除非配合刷新） |
+| `@PropertySource` | 加载额外的 properties 文件 | 显式、可控 | 默认不支持 YAML；加载时机较晚 |
+| `YamlPropertiesFactoryBean` | 代码中加载 YAML | 复用 Spring 的 YAML 解析 | 需手写配置类，属性源顺序需注意 |
+| Java 原生 `Properties` | 与 Spring 解耦的工具 | 无框架依赖 | 无占位符、无多环境、无类型转换 |
 
-### 前言
+选型建议：单个值用 `@Value`；成组配置一律用 `@ConfigurationProperties`；需要在运行时按 key 动态取值用 `Environment`；自定义文件用 `@PropertySource`。
 
-Spring Boot 默认的内嵌容器是 Tomcat，程序实际运行在 Tomcat 里。所以与其说 Spring Boot 可以处理多少请求，不如说 Tomcat 可以处理多少请求。Tomcat 的默认配置都在 `spring-configuration-metadata.json` 文件中，对应的配置类是 `org.springframework.boot.autoconfigure.web.ServerProperties`。
+## 六、参数校验（Validation）
 
-### 线程池 4 大参数
+后端不能相信前端传入的参数：前端校验只是体验优化，绕过前端直接调接口的情况始终存在。Bean Validation 提供了一套声明式校验注解，配合 Spring MVC 可以在进入业务代码前就拦下非法参数。本节按"引依赖 → 用注解 → 自定义 → 统一处理异常"的顺序展开。
 
-```json
-{
-  "name": "server.tomcat.threads.min-spare",
-  "type": "java.lang.Integer",
-  "description": "Minimum amount of worker threads.",
-  "sourceType": "org.springframework.boot.autoconfigure.web.ServerProperties$Tomcat$Threads",
-  "defaultValue": 10
-},
-{
-  "name": "server.tomcat.max-threads",
-  "type": "java.lang.Integer",
-  "sourceType": "org.springframework.boot.autoconfigure.web.ServerProperties$Tomcat",
-  "deprecated": true,
-  "deprecation": {
-    "replacement": "server.tomcat.threads.max"
-  }
-},
-{
-  "name": "server.tomcat.max-connections",
-  "type": "java.lang.Integer",
-  "description": "Maximum number of connections that the server accepts and processes at any given time. Once the limit has been reached, the operating system may still accept connections based on the \"acceptCount\" property.",
-  "sourceType": "org.springframework.boot.autoconfigure.web.ServerProperties$Tomcat",
-  "defaultValue": 8192
-},
-{
-  "name": "server.tomcat.accept-count",
-  "type": "java.lang.Integer",
-  "description": "Maximum queue length for incoming connection requests when all possible request processing threads are in use.",
-  "sourceType": "org.springframework.boot.autoconfigure.web.ServerProperties$Tomcat",
-  "defaultValue": 100
-},
+### 6.1 引入依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-validation</artifactId>
+</dependency>
 ```
 
-* **server.tomcat.threads.min-spare**：最少的工作线程数，默认 10。
-  * 对于绝大部分场景，将它设置的和最大线程数相等即可。
-  * 将最小线程数设置小于最大线程数初衷是节省资源，因为每多创建一个线程都会耗费一定资源（尤其线程栈所需资源）。但选定最大线程数后表示系统总会利用这些线程，不如一开始就让线程池把需要的线程准备好。该影响一般很小，通常察觉不到差异。
-  * 批处理程序中最小线程数是否等于最大线程数并不重要，因为线程最后总需要被创建，程序运行时间几乎相同。对服务器程序而言影响也不大，但线程池中的线程在"热身"阶段就应被创建，所以建议将最小线程数设置为等于最大线程数。
-  * 一些场景需要不同的最小线程数。比如一个系统最大需同时处理 2000 个任务，而平均任务数量只有 20 个，就需将最小线程数设置为 20 而非 2000。否则闲置线程（Idle Thread）占用的资源较可观，尤其使用了 ThreadLocal 类型变量时。
-* **server.tomcat.threads.max**：最多的工作线程数，默认 200。
-  * 每次 HTTP 请求到达 Web 服务，Tomcat 都会创建一个线程处理该请求，最大线程数决定了 Web 服务容器可同时处理多少个请求。默认 200 建议增加。但增加线程有成本：更多线程不仅带来更多上下文切换成本，还意味着更多内存消耗。JVM 默认创建新线程时分配 1M 线程栈，所以更多线程意味着需要更多内存。线程数经验值为：1 核 2G 内存为 200；4 核 8G 内存为 800。
-* **server.tomcat.max-connections**：最大连接数，默认 8192。
+`spring-boot-starter-validation` 只提供规范与集成，真正的校验实现是 Hibernate Validator。
 
-  官方文档说明：
+> 版本说明：Spring Boot 2.x 的校验注解在 `javax.validation.constraints` 包下；Spring Boot 3.x 起迁移到 `jakarta.validation.constraints`。升级时需同步替换 import，并确认自定义校验器也改用 `jakarta.validation`。
 
-> 该参数指在同一时间 Tomcat 能够接受的最大连接数。对于 Java 阻塞式 BIO，默认值是 maxthreads 的值；若在 BIO 模式使用定制的 Executor 执行器，默认值将是执行器中 maxthreads 的值。对于 Java 新的 NIO 模式，maxConnections 默认值是 10000。
-> 对于 Windows 上 APR/native IO 模式，maxConnections 默认值为 8192，这是出于性能原因；如果配置的值不是 1024 的倍数，maxConnections 的实际值将减少到 1024 的最大倍数。
-> 例如，把 maxConnections 设置为 5000，Tomcat 在运行时会自动将其调整为 4096（1024 的最大倍数）。可理解为：在 APR/native IO 模式下，Tomcat 为保证性能强制要求 maxConnections 必须是 1024 的倍数，若设置了非 1024 倍数的值，Tomcat 会自动调整 maxConnections 为 1024 的最大倍数。
-> 如果设置为 -1，则禁用 maxConnections 功能，表示不限制 Tomcat 容器的连接数。
-> maxConnections 和 accept-count 的关系：当连接数达到最大值 maxConnections 后，系统会继续接收连接，但不会超过 acceptCount 的值。
+### 6.2 Validation 基本校验注解
 
-* **server.tomcat.accept-count**：等待队列的长度，默认 100。
+| **注解** | **描述** |
+| --- | --- |
+| **@Null** | 验证对象是否为 null |
+| **@NotNull** | 验证对象是否不为 null，无法检查长度为 0 的字符串 |
+| **@NotBlank** | 检查字符串是否不为 null 且 Trim 后长度大于 0，只适用于字符串 |
+| **@NotEmpty** | 检查集合、数组、Map 或字符串是否不为 null 且不为空 |
+| **@AssertTrue** | 验证 Boolean 对象是否为 true |
+| **@AssertFalse** | 验证 Boolean 对象是否为 false |
+| **@Size(min=, max=)** | 验证对象（Array、Collection、Map、String）长度是否在给定范围内 |
+| **@Length(min=, max=)** | 验证字符串长度是否在 min 与 max 之间（Hibernate Validator 扩展） |
+| **@Past** | 验证 Date、Calendar、LocalDate 等是否在当前时间之前 |
+| **@Future** | 验证 Date、Calendar、LocalDate 等是否在当前时间之后 |
+| **@Pattern** | 验证 String 是否符合正则表达式 |
+| **@Min** | 验证 Number 或 String 表示的数是否大于等于指定值 |
+| **@Max** | 验证 Number 或 String 表示的数是否小于等于指定值 |
+| **@DecimalMax** | 被标注的值必须不大于指定的最大值，参数为 BigDecimal 最大值的字符串表示，支持小数精度 |
+| **@DecimalMin** | 被标注的值必须不小于指定的最小值，参数为 BigDecimal 最小值的字符串表示，支持小数精度 |
+| **@Digits** | 验证 Number 或 String 的整数位与小数位是否合法 |
+| **@Digits(integer=, fraction=)** | 验证数字格式，**integer** 指定整数精度，**fraction** 指定小数精度 |
+| **@Range(min=, max=)** | 验证元素值是否在最小值和最大值之间（Hibernate Validator 扩展） |
+| **@Range(min=10000, max=50000, message="range.bean.wage")** | 验证元素值在 10000 与 50000 之间，自定义提示信息为 `range.bean.wage` |
+| **@Valid** | 标注在方法参数或字段上，递归校验该对象；集合/数组校验元素，Map 校验值部分 |
+| **@CreditCardNumber** | 信用卡号校验（Hibernate Validator 扩展） |
+| **@Email** | 校验邮箱格式；值为 null 时视为通过 |
+| **@ScriptAssert(lang=, script=, alias=)** | 用脚本表达式做自定义校验 |
+| **@URL(protocol=, host=, port=, regexp=, flags=)** | 校验 URL 格式，可限定协议与主机（Hibernate Validator 扩展） |
 
-  官方文档说明：
+### 6.3 添加参数校验
 
-> 当所有的请求处理线程都在使用时，所能接收的连接请求的队列的最大长度。当队列已满时，任何连接请求都将被拒绝。accept-count 默认值为 100。
-> 详细来说：当 HTTP 请求数达到 Tomcat 的最大线程数时，还有新的 HTTP 请求到来，Tomcat 会将该请求放在等待队列中，acceptCount 就是能够接受的最大等待数，默认 100。如果等待队列也被放满，新的请求就会被 Tomcat 拒绝（connection refused）。
+#### 在 DTO 属性上添加校验
 
-### 图解
+```java
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.validator.constraints.Length;
 
-![1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b.png](images/1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b-277072.png)
+import java.util.UUID;
 
-可用火锅店比喻 Tomcat 的最大线程数（maxThreads）、最大等待数（acceptCount）和最大连接数（maxConnections）三者关系：
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class RegistryUserDto {
 
-**（1）acceptCount 最大等待数**：类比火锅店的排号处能容纳排号的最大数量；排号数量不是无限制的，到了一定数量后服务往往会说"已经客满"。
-**（2）maxConnections 最大连接数**：类比火锅店大堂的餐桌数量，即可以就餐的桌数。如果所有桌子都坐满，则餐厅已满，不能再有顾客进入。
-**（3）maxThreads 最大线程数**：类比厨师的个数。每个厨师同一时刻只能给一张餐桌炒菜，就像 JVM 中的一条线程。
+    @NotBlank(message = "用户名不能为空")
+    private String username;
 
-#### 整个就餐流程大致如下
+    @NotBlank(message = "密码不能为空")
+    @Length(min = 6, max = 20, message = "密码长度在6-20之间")
+    private String password;
 
-（1）**取号**：如果 maxConnections 连接数没有满，就不需要取号，因为还有空余餐桌，直接被大堂服务员领上餐桌点菜就餐即可。如果 maxConnections 连接数满了但取号人数没有达到 acceptCount，则取号成功；如果取号人数已达到 acceptCount，则拿号失败，会得到 Tomcat 的 Connection refused connect 回复信息。
-（2）**上桌**：如果有餐桌空出来，表示 maxConnections 连接数没有满，排队的人可以进入大堂上桌就餐。
-（3）**就餐**：就餐需要厨师炒菜。厨师数量比顾客数量少，一个厨师需要给多张餐桌炒菜，就餐的人越多厨师越忙不过来。此时可增加厨师，增加到上限 maxThreads 的值；如果还是不够，只能拖慢每一张餐桌的上菜速度，即"上一道菜吃光了，下一道菜还没有上"的尴尬场景。
+    @Min(value = 0, message = "年龄最小为0")
+    @Max(value = 200, message = "年龄最大为200")
+    private Integer age;
 
-### 代码示例
+    @NotBlank(message = "邮箱不能为空")
+    @Email(message = "邮箱格式不正确")
+    private String email;
 
-在 `application.yml` 里配置这几个参数（默认数量太大不好测试，配小一点）：
+    @JsonIgnore
+    private String salt = UUID.randomUUID().toString().replaceAll("-", "");
+
+    private Boolean admin;
+}
+```
+
+#### 在 Controller 的 DTO 参数上添加 @Valid 或 @Validated
+
+```java
+@PostMapping("/registry")
+public ResponseResult registryUser(@RequestBody @Valid RegistryUserDto registryUserDto) {
+    return ResponseResult.okResult(registryUserDto);
+}
+```
+
+校验不通过时，Spring MVC 会抛出异常并返回 400（若项目里配置了统一异常处理，则可以返回自定义结构）。`@Valid` 来自 Bean Validation 规范，`@Validated` 是 Spring 的变体，额外支持分组校验，两者在"校验 DTO 属性"这一场景下效果相同。
+
+#### 复杂字符串校验可用正则
+
+```java
+@Pattern(regexp = "^1(3|4|5|7|8)\\d{9}$", message = "手机号码格式错误")
+@NotBlank(message = "手机号码不能为空")
+private String phone;
+```
+
+对于未封装成 DTO 的单个参数，需要先在 Controller 类上加 `@Validated`，再在参数前加校验注解：
+
+```java
+@RestController
+@RequestMapping("/user")
+@Validated
+public class UserController {
+
+    @PostMapping("/registry")
+    public ResponseResult registryUser(@NotBlank(message = "name不能为空") String name) {
+        return ResponseResult.okResult(name);
+    }
+}
+```
+
+### 6.4 自定义校验注解
+
+内置注解覆盖不了业务规则（如"状态只能是 1 或 2"）时，可以自定义注解与校验器，分三步完成。
+
+#### 新建自定义注解
+
+```java
+import com.example.validator.StatusValidator;
+import jakarta.validation.Constraint;
+import jakarta.validation.Payload;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Constraint(validatedBy = {StatusValidator.class})
+public @interface Status {
+
+    String[] statusType() default {};
+
+    String message() default "状态传递有误";
+
+    Class<?>[] groups() default {};
+
+    Class<? extends Payload>[] payload() default {};
+}
+```
+
+其中 `message`、`groups`、`payload` 是 Bean Validation 规范要求的三要素，`statusType` 是本例自定义的属性。
+
+#### 实现相应的校验逻辑
+
+```java
+import com.example.annotation.Status;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class StatusValidator implements ConstraintValidator<Status, Integer> {
+
+    private List<String> typeStatus;
+
+    @Override
+    public void initialize(Status constraintAnnotation) {
+        typeStatus = Arrays.asList(constraintAnnotation.statusType());
+        ConstraintValidator.super.initialize(constraintAnnotation);
+    }
+
+    @Override
+    public boolean isValid(Integer value, ConstraintValidatorContext context) {
+        if (value != null) {
+            return typeStatus.contains(String.valueOf(value));
+        }
+        return true;
+    }
+}
+```
+
+`isValid` 返回 `false` 即表示校验失败；`null` 通常交给 `@NotNull` 处理，这里直接放行，避免重复报错。
+
+#### 自定义注解的使用
+
+```java
+@Status(statusType = {"1", "2"})
+private Integer status;
+```
+
+### 6.5 校验失败统一异常处理
+
+默认的校验失败信息对前端不友好，通常会在全局异常处理器中捕获并转成统一响应结构。下面示例假定项目已有 `ResponseResult`、`AppHttpCodeEnum`、`SystemException` 等基础类。
+
+```java
+import com.example.domain.vo.ResponseResult;
+import com.example.enums.AppHttpCodeEnum;
+import com.example.exception.SystemException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.BindException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(SystemException.class)
+    public ResponseResult systemExceptionHandler(SystemException e) {
+        log.error("出现了异常! {}", e.getMessage());
+        return ResponseResult.errorResult(e.getCode(), e.getMsg());
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseResult exceptionHandler(Exception e) {
+        log.error("出现了异常! {}", e.getMessage());
+        return ResponseResult.errorResult(AppHttpCodeEnum.SYSTEM_ERROR.getCode(), e.getMessage());
+    }
+
+    /* 添加校验参数异常处理 */
+    @ExceptionHandler(BindException.class)
+    public ResponseResult bindExceptionHandler(BindException e) {
+        log.error("出现了异常! {}", e.getMessage());
+        return ResponseResult.errorResult(AppHttpCodeEnum.SYSTEM_ERROR,
+                e.getBindingResult().getAllErrors().get(0).getDefaultMessage());
+    }
+}
+```
+
+补充两点：对 `@RequestBody` 的 DTO 校验失败，Spring 6 抛出的是 `MethodArgumentNotValidException`，它是 `BindException` 的子类，因此上面的处理器可以一并覆盖；而对方法参数（`@Validated` + 参数注解）的校验失败抛出的是 `ConstraintViolationException`，需要单独加一个处理方法。
+
+## 七、内嵌容器与可执行 JAR
+
+Spring Boot 应用打成 JAR 后可以直接 `java -jar` 启动，不需要预先安装 Tomcat。本节解释这件事为什么成立，以及内嵌容器的默认值和替换方式。
+
+### 7.1 jar 为什么可以直接运行
+
+原因可以归为六点：
+
+1. **内嵌 Web 服务器**：Tomcat、Jetty、Undertow 作为普通依赖打进包里，应用自己启动容器，而不是把应用交给外部容器。
+2. **可执行 JAR**：包内有 `main` 方法作为入口，可以像运行普通 Java 程序一样运行。
+3. **类路径管理**：通过自定义类加载器从包内的嵌套 JAR 中加载类和资源，不依赖外部 `CLASSPATH`。
+4. **自动配置与依赖管理**：所需组件按依赖自动装配，配置随包一起分发，避免"换台机器就跑不起来"。
+5. **Maven/Gradle 插件**：`spring-boot-maven-plugin` 负责重打包，生成符合可执行格式的产物。
+6. **运行时自包含**：容器、Spring 框架、第三方库都在包内，形成自包含的运行单元。
+
+### 7.2 Fat JAR 的结构与启动过程
+
+`spring-boot-maven-plugin` 生成的包通常称为 Fat JAR（胖包）或 Uber JAR，结构如下：
+
+```text
+app.jar
+├── META-INF/
+│   └── MANIFEST.MF
+├── org/springframework/boot/loader/   # Spring Boot 的启动器类
+└── BOOT-INF/
+    ├── classes/                       # 应用自身的 class 与 resources
+    └── lib/                           # 所有依赖 jar
+```
+
+启动过程分为五步：
+
+1. `MANIFEST.MF` 中的 `Main-Class` 指向 `org.springframework.boot.loader.launch.JarLauncher`，`Start-Class` 指向应用真正的启动类。
+2. JVM 先执行 `JarLauncher`，由它创建一个自定义类加载器 `LaunchedURLClassLoader`。
+3. 该加载器能识别 `BOOT-INF/lib` 下的嵌套 JAR，把它们加入可加载的类路径。
+4. 随后以新线程调用 `Start-Class` 的 `main` 方法。
+5. `main` 中执行 `SpringApplication.run`，创建容器并启动内嵌 Tomcat，进程进入监听状态。
+
+> 版本说明：Spring Boot 3.2 起启动器类位于 `org.springframework.boot.loader.launch` 包；更早版本为 `org.springframework.boot.loader.JarLauncher`。`BOOT-INF/lib` 是标准布局，旧资料中出现的 `boot-lib` 并非官方目录名。
+
+### 7.3 内嵌容器：默认值与替换
+
+`spring-boot-starter-web` 默认使用 Tomcat，这是"引入 web starter 就得到 Tomcat"的原因。可选容器如下：
+
+| 容器 | Starter | 说明 |
+| --- | --- | --- |
+| Tomcat | `spring-boot-starter-tomcat` | 默认，Servlet 6.0（Tomcat 10.1，Boot 3.5） |
+| Jetty | `spring-boot-starter-jetty` | 轻量，适合长连接场景 |
+| Undertow | `spring-boot-starter-undertow` | 基于 NIO，内存占用较低 |
+| Reactor Netty | `spring-boot-starter-webflux` 默认 | 响应式栈，非 Servlet 容器 |
+
+替换容器时先排除默认依赖，再引入目标 Starter：
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+    <exclusions>
+        <exclusion>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-tomcat</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-jetty</artifactId>
+</dependency>
+```
+
+常用容器配置：
+
+```yaml
+server:
+  port: 8080
+  shutdown: graceful          # 优雅停机，等待处理中的请求结束
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+```
+
+### 7.4 进阶了解（可跳过）
+
+可执行 JAR 中的依赖是"嵌套 JAR"，标准 `URLClassLoader` 无法直接加载其中的类，因此 Spring Boot 自定义了 `LaunchedURLClassLoader` 与 `jar:file:...!/BOOT-INF/lib/xxx.jar!/` 形式的 URL 协议处理器。这也解释了两个常见现象：一是不能随意用 `java -cp app.jar` 运行（会找不到依赖）；二是某些依赖在扫描 classpath 资源时行为与普通工程不同，需要改用 `PathMatchingResourcePatternResolver` 等支持嵌套包的 API。
+
+## 八、并发能力：Spring Boot 能同时处理多少请求
+
+"Spring Boot 能处理多少请求"实际上问的是内嵌容器能同时处理多少请求。默认容器是 Tomcat，因此答案取决于 Tomcat 的线程池与连接参数。本节先给默认值，再解释每个参数的含义，最后给出配置建议。
+
+### 8.1 四个关键参数
+
+这些参数的默认值定义在 `ServerProperties`（包 `org.springframework.boot.autoconfigure.web`）中，也可以在 `spring-configuration-metadata.json` 里查到：
+
+```json
+[
+  {
+    "name": "server.tomcat.threads.min-spare",
+    "type": "java.lang.Integer",
+    "description": "Minimum amount of worker threads.",
+    "defaultValue": 10
+  },
+  {
+    "name": "server.tomcat.threads.max",
+    "type": "java.lang.Integer",
+    "description": "Maximum amount of worker threads.",
+    "defaultValue": 200
+  },
+  {
+    "name": "server.tomcat.max-connections",
+    "type": "java.lang.Integer",
+    "description": "Maximum number of connections that the server accepts and processes at any given time.",
+    "defaultValue": 8192
+  },
+  {
+    "name": "server.tomcat.accept-count",
+    "type": "java.lang.Integer",
+    "description": "Maximum queue length for incoming connection requests when all possible request processing threads are in use.",
+    "defaultValue": 100
+  }
+]
+```
+
+| 参数 | 含义 | Boot 3.5 默认值 |
+| --- | --- | --- |
+| `server.tomcat.threads.min-spare` | 核心工作线程数（最小空闲线程） | 10 |
+| `server.tomcat.threads.max` | 最大工作线程数 | 200 |
+| `server.tomcat.max-connections` | 同一时刻允许接受并处理的最大连接数 | 8192 |
+| `server.tomcat.accept-count` | 线程耗尽时等待队列的最大长度 | 100 |
+
+### 8.2 参数详解
+
+**`server.tomcat.threads.min-spare`（最少工作线程数，默认 10）**
+
+- 对绝大多数场景，把它设置成与最大线程数相等即可，让线程池一开始就准备好所需线程，避免流量突增时的"热身"开销。
+- 之所以默认留出差距，是为了节省资源：每个线程都要占用线程栈等内存。对服务器程序而言，预热带来的收益通常大于这点资源节省。
+- 若并发峰值很高但平均值很低（例如峰值 2000、平时 20），则应把最小线程数设小，否则大量空闲线程会长期占用资源，使用了 `ThreadLocal` 时尤其明显。
+
+**`server.tomcat.threads.max`（最多工作线程数，默认 200）**
+
+每个请求由一个工作线程处理，因此该值直接决定同时能处理多少请求。调大有用，但不是越大越好：线程切换、内存占用都会上升。JVM 默认给每个线程分配约 1 MB 栈空间，线程越多内存压力越大。
+
+社区常见的经验配置是"1 核 2G 内存配 200 个线程、4 核 8G 配 800 个线程"，这只是经验值而非官方标准，实际应结合压测结果与业务是 CPU 密集型还是 IO 密集型来定。
+
+**`server.tomcat.max-connections`（最大连接数，默认 8192）**
+
+指同一时刻 Tomcat 能接受并处理的最大连接数。Tomcat 官方文档的说明是：
+
+> 对 Java 阻塞式 BIO，默认值等于 maxThreads；若在 BIO 模式使用自定义 Executor，则等于该执行器的 maxThreads。对 NIO 模式，Tomcat 自身的默认值是 10000。
+> 在 Windows 上使用 APR/native IO 时，默认值为 8192，这是出于性能考虑；如果配置的值不是 1024 的倍数，实际值会向下取整到 1024 的倍数（例如设为 5000，运行时按 4096 生效）。
+> 设为 -1 表示禁用该限制，即不限制连接数。
+> 连接数达到 maxConnections 后，操作系统仍可继续接收连接，但新连接只能排队，排队上限由 acceptCount 决定。
+
+需要区分两个"默认值"：Tomcat 自身的 NIO 默认是 10000，而 Spring Boot 在 `ServerProperties` 中固定为 8192，因此使用 Spring Boot 时看到的是 8192。
+
+**`server.tomcat.accept-count`（等待队列长度，默认 100）**
+
+当所有工作线程都在忙时，新连接进入等待队列；队列满后，新连接会被拒绝（客户端看到 connection refused）。
+
+### 8.3 图解三者关系
+
+![Tomcat 线程与连接参数关系](images/1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b-277072.png)
+
+用火锅店打比方：
+
+- **accept-count**：门口排号处能容纳的号码数量，排满了店里就会说"已经客满"。
+- **max-connections**：大堂里的餐桌数，桌子坐满后不能再进人。
+- **threads.max**：厨师人数，一位厨师同一时刻只能给一桌炒菜。
+
+#### 完整就餐流程
+
+1. **取号**：还有空桌（连接数未达 max-connections）时直接入座；桌子满了但排号未满 accept-count 时取号成功；排号也满了则取号失败，对应 Tomcat 返回 connection refused。
+2. **上桌**：有桌子空出来（连接释放），排队的人依次入座。
+3. **就餐**：厨师（线程）数量少于餐桌数，一位厨师要轮着给多桌炒菜；忙不过来时可以加厨师，加到 threads.max 为止；仍不够就只能拖慢每桌的上菜速度，表现为响应时间变长。
+
+### 8.4 代码示例
+
+为便于观察，把参数调小：
 
 ```yaml
 server:
@@ -923,63 +1345,81 @@ server:
     accept-count: 10
 ```
 
-写一个简单接口：
-
 ```java
- @GetMapping("/test")
-     public String test(HttpServletRequest request) throws Exception {
-          log.info("线程:{}", Thread.currentThread().getName());
-          Thread.sleep(2000);
-          return "success";
- }
+@GetMapping("/test")
+public String test(HttpServletRequest request) throws Exception {
+    log.info("线程:{}", Thread.currentThread().getName());
+    Thread.sleep(2000);
+    return "success";
+}
 ```
 
-### 怎么配置才能让服务效率更高
+用压测工具并发请求该接口时，可以观察到线程名在 10~30 之间变化；并发数超过 40（30 个连接 + 10 个排队）后，多余请求被拒绝。
 
-首先这和 Tomcat 使用的 IO 模式有关。关于 Java IO 模式以及 IO 处理的线程模型等基础通信框架知识，是 Java 程序员的重要内功。
+### 8.5 怎么配置才能让服务效率更高
 
-## SpringBoot 根据配置文件动态创建 Bean
+首先取决于 Tomcat 使用的 IO 模型。Tomcat 8.5 之后默认使用 NIO，一个连接在等待数据时不独占线程，因此"连接数"可以远大于"线程数"；而在阻塞式 BIO 下，一个连接基本对应一个线程，连接数受线程数限制。
 
-需求：根据配置信息动态控制是否创建任意 Bean。
+实践建议：
 
-配置 `application.yml`（根据 `enabled` 控制下面的 `bean-class` 是否创建）：
+1. 先压测再调参，观察 CPU、内存、GC 与 P99 响应时间，而不是照搬数字。
+2. IO 密集型接口可适当提高 `threads.max`，CPU 密集型则不宜过高，否则线程切换会吃掉收益。
+3. `max-connections` 应大于 `threads.max`，让等待中的连接排队而不是被立即拒绝；队列长度结合可接受的最大延迟设置。
+4. Spring Boot 3.2+ 可开启虚拟线程，让阻塞式代码获得更高的并发能力：
+
+```yaml
+spring:
+  threads:
+    virtual:
+      enabled: true
+```
+
+开启后 Tomcat 使用虚拟线程处理请求，`server.tomcat.threads.max` 等参数不再起决定作用（官方文档明确说明此时这两个参数不生效），但仍需关注下游连接池、数据库连接数等真正的瓶颈。
+
+## 九、按配置动态创建 Bean
+
+有些需求无法靠固定注解满足：某个组件是否装配由配置开关决定，甚至要创建的类名也来自配置。本节把需求拆成"读配置"和"动态注册 Bean"两半，分别给出实现方式，并说明为什么某些组合行不通。
+
+### 9.1 需求与配置
+
+目标：由配置项 `enabled` 控制 `bean-class` 指定的类是否被注册为 Bean，同时把 `properties` 中的键值注入该 Bean。
 
 ```yaml
 com:
-  tuling:
+  example:
     bean:
-      enbaled: true  #业务需求：根据enbaled控制下面bean-class是否创建
-      bean-class: com.tuling.beans.TestComponent
+      enabled: true          # 业务需求：根据 enabled 控制下面 bean-class 是否创建
+      bean-class: com.example.beans.TestComponent
       properties:
         id: 1
-        name: xushu
+        name: user_a
 ```
 
-该需求可拆成**获取配置信息**和**动态创建 Bean**两部分。
+拆解后有两个子问题：如何读到这组配置、如何在运行时注册 Bean。前者有现成 API，后者的关键是理解 BeanDefinition。
 
-### 获取配置信息的几种方式
+### 9.2 获取配置信息的几种方式
 
 #### @Value
 
-通过 `@Value` 单个获取，一个个设置太麻烦。
+`@Value` 只能一个键一个键地取，配置项一多就很啰嗦：
 
 ```java
-@Value("${com.tuling.bean.bean-class}")
+@Value("${com.example.bean.bean-class}")
 private Class<?> beanClass;
 
-// Todo... 一个个获取
+// 还需要逐个声明 id、name 等字段，维护成本高
 ```
 
 #### @ConfigurationProperties
 
-通过 `@ConfigurationProperties(prefix = "com.tuling")` 可以批量获取，比较方便。
+用前缀一次性绑定整组配置，且支持 `Map`、嵌套对象与类型转换：
 
 ```java
-@ConfigurationProperties("com.tuling.bean")
-@Component   // 如果是自动配置类，请通过@EnableConfigurationProperties启用
+@ConfigurationProperties("com.example.bean")
+@Component   // 若在自动配置类中使用，应改用 @EnableConfigurationProperties 启用
 @Data
 public class BeanProperties {
-    private Boolean enbaled;
+    private Boolean enabled;
     private Class<?> beanClass;
     private Map<String, Object> properties;
 }
@@ -987,70 +1427,87 @@ public class BeanProperties {
 
 #### EnvironmentAware
 
-Spring 提供很多 XXXAware 接口，其中 `EnvironmentAware` 接口可通过其提供的 Environment 动态获取。
+Spring 提供了一系列 `XXXAware` 接口，用于把容器内部对象回调给 Bean。实现 `EnvironmentAware` 即可拿到 `Environment`，在 Bean 初始化阶段读取配置。
 
-* **第一步**：实现 `EnvironmentAware` 接口
+第一步，实现接口：
 
 ```java
+import org.springframework.context.EnvironmentAware;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Component;
+
 @Component
 public class TestEnvironmentAware implements EnvironmentAware {
+
     @Override
     public void setEnvironment(Environment environment) {
-        // Todo 绑定配置信息...
+        // 在此读取或绑定配置
     }
 }
 ```
 
-* **第二步**：获取/绑定配置，提供两种方式：
+第二步，读取配置，有两种写法。
 
-  方式一：单个获取
-
-```java
-public void setEnvironment(Environment environment) {
-         environment.getProperty("com.tuling.bean.bean-class");
-         // ToDo： 一个个获取更多配置信息..
-}
-```
-
-  方式二：通过 Binder 绑定到 properties 对象
+方式一，逐个取值：
 
 ```java
 @Override
 public void setEnvironment(Environment environment) {
-    BindResult<BeanProperties> bindResult = Binder.get(environment).bind("com.tuling.bean", BeanProperties.class);
+    String beanClass = environment.getProperty("com.example.bean.bean-class");
+    // 其余配置项同样逐个获取
+}
+```
+
+方式二，用 Binder 一次性绑定：
+
+```java
+@Override
+public void setEnvironment(Environment environment) {
+    BindResult<BeanProperties> bindResult = Binder.get(environment)
+            .bind("com.example.bean", BeanProperties.class);
     BeanProperties beanProperties = bindResult.get();
 }
 ```
 
-### 动态创建 Bean 的几种方式
+`Binder` 是 Spring Boot 提供的类型安全绑定器，`@ConfigurationProperties` 的底层也是它。
 
-这里需要的是**动态**——在运行过程中经过逻辑代码创建 Bean，而不是通过配置、`@Component` 这种不能自由控制业务逻辑的方式。
+### 9.3 动态创建 Bean 的几种方式
 
-想动态创建 Bean，先了解 Bean 创建的大概过程：
+这里的"动态"指在运行期由代码逻辑决定是否注册、注册哪个类，而不是靠 `@Component` 这类编译期就固定的方式。
 
-![1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da.png](images/1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da-848691.png)
+要理解动态注册，先理解 Bean 的创建过程：Spring 先解析配置得到 **BeanDefinition**（Bean 的定义，描述类名、作用域、属性值、构造参数等元信息），再由容器根据定义实例化 Bean。
 
-想动态注册 Bean，可先动态注册 BeanDefinition。Spring 提供了动态注册 BeanDefinition 的接口：
+**生活化比喻**：BeanDefinition 是建筑图纸，Bean 是按图纸盖出来的房子。想临时多盖一栋房，正确做法是先补一张图纸（注册 BeanDefinition），而不是直接搬砖（手动 new）。
+
+![Bean 的创建过程](images/1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da-848691.png)
 
 #### ImportBeanDefinitionRegistrar
 
-**第一步**：创建实现 `ImportBeanDefinitionRegistrar` 接口的类，演示一个 BeanDefinition 的注册
+**第一步**：实现 `ImportBeanDefinitionRegistrar`，在回调中注册 BeanDefinition：
 
 ```java
-public class MyImportBeanDefinitionRegistrar implements ImportBeanDefinitionRegistrar {
-    @Override
-    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry, BeanNameGenerator importBeanNameGenerator) {
-        GenericBeanDefinition beandefinition = new GenericBeanDefinition();
-        beandefinition.setBeanClassName("com.tuling.beans.TestComponent");
-        beandefinition.getPropertyValues().add("id", 1);
-        beandefinition.getPropertyValues().add("name", "张三");
+import org.springframework.beans.factory.support.BeanNameGenerator;
+import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
+import org.springframework.core.type.AnnotationMetadata;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 
-        registry.registerBeanDefinition("testComponent", beandefinition);
+public class MyImportBeanDefinitionRegistrar implements ImportBeanDefinitionRegistrar {
+
+    @Override
+    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
+            BeanDefinitionRegistry registry, BeanNameGenerator importBeanNameGenerator) {
+        GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
+        beanDefinition.setBeanClassName("com.example.beans.TestComponent");
+        beanDefinition.getPropertyValues().add("id", 1);
+        beanDefinition.getPropertyValues().add("name", "user_a");
+
+        registry.registerBeanDefinition("testComponent", beanDefinition);
     }
 }
 ```
 
-**第二步**：结合 `@Import` 让它生效
+**第二步**：用 `@Import` 让它生效：
 
 ```java
 @Import(MyImportBeanDefinitionRegistrar.class)
@@ -1058,105 +1515,130 @@ public class MyImportBeanDefinitionRegistrar implements ImportBeanDefinitionRegi
 
 #### BeanDefinitionRegistryPostProcessor
 
-创建实现 `BeanDefinitionRegistryPostProcessor` 接口的类，演示一个 BeanDefinition 的注册
+`BeanDefinitionRegistryPostProcessor` 是容器级扩展点，在所有 BeanDefinition 加载完成后、Bean 实例化之前执行，适合批量注册：
 
 ```java
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
+import org.springframework.beans.factory.support.GenericBeanDefinition;
+
 public class MyBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor {
+
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
-        GenericBeanDefinition beandefinition = new GenericBeanDefinition();
-        beandefinition.setBeanClassName("com.tuling.beans.TestComponent");
-        beandefinition.getPropertyValues().add("id", 1);
-        beandefinition.getPropertyValues().add("name", "张三");
+        GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
+        beanDefinition.setBeanClassName("com.example.beans.TestComponent");
+        beanDefinition.getPropertyValues().add("id", 1);
+        beanDefinition.getPropertyValues().add("name", "user_a");
 
-        registry.registerBeanDefinition("testComponent", beandefinition);
+        registry.registerBeanDefinition("testComponent", beanDefinition);
+    }
+
+    @Override
+    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+        // 此处可对已注册的 BeanDefinition 做二次修改
     }
 }
 ```
 
 #### 通过 BeanFactoryPostProcessor
 
-`BeanFactoryPostProcessor` 也可以，但其责任不如 `BeanDefinitionRegistryPostProcessor` 明确（后者专门用于注册），其他方式不再演示。
+`BeanFactoryPostProcessor` 也能拿到 `BeanFactory` 并注册 Bean，但它职责更宽泛，不像 `BeanDefinitionRegistryPostProcessor` 那样专用于注册，语义不如前者清晰，一般优先选前者。
 
-### 根据配置信息动态创建 Bean
+### 9.4 组合实现与顺序问题
 
-读取信息和动态创建 Bean 都学会了，结合即可：
+把"读配置"和"注册 Bean"组合起来，有两种可行搭配：
 
-1. `EnvironmentAware`（获取配置）+ `ImportBeanDefinitionRegistrar`（创建 Bean）
-2. `EnvironmentAware`（获取配置）+ `BeanDefinitionRegistryPostProcessor`（创建 Bean）
+1. `EnvironmentAware`（读配置）+ `ImportBeanDefinitionRegistrar`（注册 Bean）
+2. `EnvironmentAware`（读配置）+ `BeanDefinitionRegistryPostProcessor`（注册 Bean）
 
-为什么不能用 `@Value` 和 `@ConfigurationProperties` 注解方式获取配置？因为顺序原因：`@Value` 和 `@ConfigurationProperties` 注解依赖 **BeanPostProcessor** 解析，要调用 BeanPostProcessor 就**要先注册**，而 BeanPostProcessor 的注册是在 BeanDefinition 注册之后的。所以在注册 BeanDefinition 时获取不到注解绑定的配置信息。
+为什么不能用 `@Value` 或 `@ConfigurationProperties` 读配置后再注册？因为顺序不允许：这两个注解依赖 **BeanPostProcessor** 完成注入，而 BeanPostProcessor 本身要在 BeanDefinition 全部注册之后才创建。也就是说，等到能读注解绑定的配置时，注册 BeanDefinition 的时机已经过去了。
 
-![1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8.png](images/1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8-118286.png)
+![BeanDefinition 注册与 BeanPostProcessor 的先后顺序](images/1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8-118286.png)
 
 #### 实现
 
-**EnvironmentAware（获取配置）+ BeanDefinitionRegistryPostProcessor（创建 Bean）**
+下面用 `EnvironmentAware` + `BeanDefinitionRegistryPostProcessor` 完成完整逻辑：
 
 ```java
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
+import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.boot.context.properties.bind.BindResult;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+
 @Component
-public class MyBeanDefinitionRegistryPostProcessor implements
-        BeanDefinitionRegistryPostProcessor,
-        EnvironmentAware {
+public class DynamicBeanRegistrar implements BeanDefinitionRegistryPostProcessor, EnvironmentAware {
 
-    BeanProperties beanProperties;
+    private BeanProperties beanProperties;
 
-    // 根据配置信息进行逻辑控制，动态注册 BeanDefinition 从而创建 Bean
+    // 根据配置信息做逻辑控制，动态注册 BeanDefinition 从而创建 Bean
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
-        GenericBeanDefinition beandefinition = new GenericBeanDefinition();
-        beandefinition.setBeanClass(beanProperties.getBeanClass());
+        if (beanProperties == null || !Boolean.TRUE.equals(beanProperties.getEnabled())) {
+            return;   // 开关关闭时不注册
+        }
+        GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
+        beanDefinition.setBeanClass(beanProperties.getBeanClass());
         Map<String, Object> properties = beanProperties.getProperties();
         for (String propertyName : properties.keySet()) {
-            beandefinition.getPropertyValues().add(propertyName, properties.get(propertyName));
+            beanDefinition.getPropertyValues().add(propertyName, properties.get(propertyName));
         }
-        registry.registerBeanDefinition(beandefinition.getBeanClass().getName(), beandefinition);
+        registry.registerBeanDefinition(beanDefinition.getBeanClass().getName(), beanDefinition);
     }
 
     // 绑定配置信息
     @Override
     public void setEnvironment(Environment environment) {
-        BindResult<BeanProperties> bindResult = Binder.get(environment).bind("com.tuling.bean", BeanProperties.class);
+        BindResult<BeanProperties> bindResult = Binder.get(environment)
+                .bind("com.example.bean", BeanProperties.class);
         beanProperties = bindResult.get();
     }
 
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
-
+        // 无需额外处理
     }
 }
 ```
 
-#### 测试
+### 9.5 测试与效果
+
+用 `CommandLineRunner` 在启动后打印结果，配合 `@Autowired(required = false)` 判断 Bean 是否存在：
 
 ```java
 @Bean
-public CommandLineRunner runner(
-        @Autowired(required = false) TestComponent testComponent) {
-    return new CommandLineRunner() {
-        @Override
-        public void run(String... args) throws Exception {
-            System.out.println(testComponent);
-        }
-    };
+public CommandLineRunner runner(@Autowired(required = false) TestComponent testComponent) {
+    return args -> System.out.println(testComponent);
 }
 ```
 
-* 当 `com.tuling.bean.enbaled` 为 true 时，输出：
+当 `com.example.bean.enabled` 为 `true` 时，容器中存在该 Bean，输出对象信息：
 
-![1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2.png](images/1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2-014648.png)
+![enabled 为 true 时的输出](images/1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2-014648.png)
 
-* 当 `com.tuling.bean.enbaled` 为 false 时，输出：
+当 `enabled` 为 `false` 时，Bean 未注册，输出 `null`：
 
-![1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0.png](images/1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0-416342.png)
+![enabled 为 false 时的输出](images/1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0-416342.png)
 
-通过这种方式即可实现根据配置信息自由启用、禁用某些业务的实现，实际开发中可非常灵活，如通过配置创建多个 bean、通过更复杂的业务逻辑进行控制等。
+这种"配置驱动装配"的方式在实际项目中很常见：按开关启用某个业务实现、按环境注册不同的客户端、按租户动态生成多个 Bean 等。使用时要注意两点：动态注册的 Bean 不参与组件扫描，`@Transactional` 等基于代理的注解仍可生效，但依赖注入需保证其依赖已就绪；另外，注册逻辑应保持幂等，避免重复注册同名 BeanDefinition。
 
-## 如何对 SpringBoot 配置文件和代码加密
+## 十、安全加固：配置加密与防反编译
 
-### 如何对配置文件进行加密
+交付给客户或部署到第三方环境时，两类信息最容易泄露：配置文件里的数据库口令，以及 JAR 包中的字节码。本节分别给出加密与防反编译的做法。
 
-为不暴露数据库账号密码等敏感信息，需要对配置文件中的敏感信息进行加密。
+### 10.1 配置文件加密
+
+配置文件里常见明文口令：
 
 ```yaml
 # 数据源
@@ -1164,11 +1646,11 @@ spring:
   datasource:
     username: root
     password: 123456
-    url: jdbc:p6spy:mysql://localhost:3306/springboot_mybatis?characterEncoding=utf8&useSSL=false&serverTimezone=UTC&
+    url: jdbc:mysql://localhost:3306/springboot_mybatis?characterEncoding=utf8&useSSL=false&serverTimezone=UTC
     driver-class-name: com.mysql.cj.jdbc.Driver
 ```
 
-采用 jasypt 进行加密。
+常规做法是使用 jasypt（Java Simplified Encryption）加密敏感项，运行时再解密。它通过 `ENC(...)` 占位符识别密文，对代码零侵入。
 
 #### 依赖引入
 
@@ -1185,15 +1667,15 @@ spring:
 </dependency>
 ```
 
+> 版本说明：jasypt-spring-boot 3.x 面向 Spring Boot 2.x/3.x，具体兼容性以项目实测为准；不同小版本对 Jakarta 与配置加载机制的支持存在差异。
+
 #### 通过命令生成密文
 
-依次生成数据库用户名、密码、url：
-
-```xml
-mvn jasypt:encrypt-value -Djasypt.encryptor.password="123456" -Djasypt.plugin.value="123456"
+```bash
+mvn jasypt:encrypt-value -Djasypt.encryptor.password="changeit" -Djasypt.plugin.value="123456"
 ```
 
-加密后：
+依次为用户名、密码、URL 生成密文后替换原值：
 
 ```yaml
 # 数据源
@@ -1207,35 +1689,44 @@ spring:
 
 #### 运行程序解密
 
-![1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659.png](images/1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659-051305.png)
+启动时把密钥传给应用，jasypt 会在属性解析阶段自动解密：
+
+![jasypt 解密后的启动日志](images/1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659-051305.png)
 
 #### 部署 jar 包解密
 
 ```powershell
-java -jar springboot-encry-xs-1.0.0.jar --jasypt.encryptor.password=xushu666
+java -jar springboot-encry-xs-1.0.0.jar --jasypt.encryptor.password=changeit
 ```
 
-### 如何防止 SpringBoot 的 jar 反编译
+更安全的做法是通过环境变量传入，避免密钥出现在命令历史与进程列表中：
+
+```bash
+export JASYPT_ENCRYPTOR_PASSWORD=changeit
+java -jar app.jar
+```
+
+需要清醒认识：jasypt 的作用是"防止配置被随手看到"，密钥一旦泄露，密文同样可解。生产环境应配合密钥管理服务、最小权限账号、数据库访问白名单一起使用，不要把密钥写进代码仓库或配置文件。
+
+### 10.2 防止 Spring Boot 的 jar 被反编译
 
 #### 场景
 
-项目要求部署到其他公司的服务器上，又不想泄露源码，需要对正式环境的启动包进行安全性处理，防止客户直接通过反编译工具将代码反编译出来。
+项目部署到客户服务器，又不希望源码被反编译工具还原，需要对正式包做保护。
 
 #### 方案
 
 **第一种方案：代码混淆**
 
-采用 proguard-maven-plugin 插件。在单模块中此方案还算简单，但项目一般是多模块，一个模块依赖多个公共模块，使用此方案比较麻烦，配置复杂、文档难懂，各模块之间的调用在是否混淆时极易出错。
+使用 `proguard-maven-plugin`。单模块项目尚可，多模块项目依赖复杂，混淆规则难写，模块间调用容易出错，维护成本较高。
 
 **第二种方案：代码加密**
 
-采用 classfinal-maven-plugin 插件。相比上面方案简单许多，直接配置一个插件即可实现源码安全性保护，并可对 yml、properties 配置文件以及 lib 目录下的 maven 依赖进行加密处理。若想指定机器启动，支持绑定机器，项目加密后只能在特定机器运行。
-
-[ClassFinal 项目源码地址](https://gitee.com/roseboy/classfinal)
+使用 `classfinal-maven-plugin`。配置一个插件即可完成，可加密 class、`application.yml`/`application.properties` 等配置文件，以及 `lib` 目录下的依赖 JAR，还支持绑定机器，使加密后的包只能在指定机器运行。ClassFinal 是一个开源的 Java 加密工具，项目托管在 Gitee（此处不再列出网址）。
 
 #### 项目操作
 
-只需在启动类的 `pom.xml` 文件中加如下插件即可，注意该插件要放到 `spring-boot-maven-plugin` 插件后面，否则不起作用。
+在启动模块的 `pom.xml` 中加入插件，注意要放在 `spring-boot-maven-plugin` 之后，否则不生效：
 
 ```xml
 <plugin>
@@ -1243,13 +1734,13 @@ java -jar springboot-encry-xs-1.0.0.jar --jasypt.encryptor.password=xushu666
     <artifactId>classfinal-maven-plugin</artifactId>
     <version>1.2.1</version>
     <configuration>
-        <!-- 加密的密码，启动时需带密码 -->
+        <!-- 加密密码，启动时需要提供 -->
         <password>xxxx</password>
         <!-- 需要加密的包名（不含配置文件） -->
-        <packages>org.spring</packages>
+        <packages>com.example</packages>
         <!-- 需要加密的配置文件 -->
         <cfgfiles>application.yml,application-dev.yml</cfgfiles>
-        <!-- 需要加密的 maven 依赖 jar 包 -->
+        <!-- 需要加密的依赖 jar 包 -->
         <libjars>hutool-all.jar</libjars>
         <excludes>${groupId}</excludes>
     </configuration>
@@ -1275,91 +1766,75 @@ java -javaagent:xxx-encrypted.jar -jar xxx-encrypted.jar
 有密码启动：
 
 ```powershell
-java -javaagent:xxx-encrypted.jar='-pwd=密码'-jar xxx-encrypted.jar
+java -javaagent:xxx-encrypted.jar='-pwd=密码' -jar xxx-encrypted.jar
 ```
 
-![1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449.png](images/1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449-498667.png)
+![ClassFinal 加密包的启动方式](images/1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449-498667.png)
 
-## SpringBoot 如何自定义 Starter
+加密只能提高破解成本，无法做到绝对安全；对安全要求高的场景，还应结合代码托管权限、接口鉴权与服务端部署等方式。
 
-1. **创建项目结构**：创建 Maven 或 Gradle 项目，确保项目结构符合标准约定。通常包括 `src/main/java` 用于存放 Java 代码和 `src/main/resources` 用于存放资源文件。
-2. **编写自动配置类**：创建自动配置类负责配置自定义 Starter 的功能，在其上使用 `@Configuration` 注解，并通过 `@ConditionalOnClass`、`@ConditionalOnProperty` 等定义条件，确保只有在满足特定条件时才应用配置。
-3. **提供属性配置**：若 Starter 需要配置属性，可在 `application.properties` 或 `application.yml` 中定义，并在自动配置类中使用 `@Value` 注入。
-4. **创建 META-INF/spring.factories 文件**：在资源目录中创建该文件，注册自动配置类，以便 Spring Boot 自动识别和加载。
-5. **定义 Starter 依赖**：在 `pom.xml` 中定义 Spring Boot 核心依赖以及 Starter 所依赖的其他库。
-6. **测试和文档**：编写单元测试和集成测试确保功能正确，同时提供详细的文档和示例。
-7. **发布到仓库**：打包并发布到 Maven 中央仓库或私有仓库，以便其他项目引入使用。
+## 十一、监控与运维：Actuator
 
-其中创建 `META-INF/spring.factories` 文件是关键，因为它告诉 Spring Boot 如何自动装配功能。
+应用上线后，开发关心的"有没有报错"会变成运维关心的"服务是否健康、慢在哪里"。Actuator 提供了一组开箱即用的端点（endpoint），把应用内部状态以 HTTP 或 JMX 形式暴露出来。
 
-## 为什么 SpringBoot 的 jar 可以直接运行
+### 11.1 是什么、怎么启用
 
-1. **第一个关键点**：Spring Boot 提供了 Maven 插件（`spring-boot-maven-plugin`），用于将应用打包成可执行的 JAR 文件，执行 `mvn clean package` 等命令即可生成。
-2. **第二个关键点**：打包生成的 JAR 通常是"Fat JAR"或"Uber JAR"，包含应用的所有依赖项（含第三方库和 Spring Boot 框架本身），成为自包含的单一文件。
-3. **第三个关键点**：JAR 包含一个名为 `MANIFEST.MF` 的清单文件，其中包含关于 JAR 的元数据信息，主要信息是 `Main-Class`，指定了启动应用的主类。
-4. **第四个关键点**：可执行 JAR 通常由 `JarLauncher` 类启动，它负责创建一个类加载器（`LaunchedURLClassLoader`），加载 `boot-lib` 目录下的 JAR 文件（包括 Spring Boot loader 相关的类），然后在新线程中启动应用程序的 Main 方法。
-5. **第五个关键点**：执行 Main 方法最终会加载 Spring 容器，进而创建内嵌 Tomcat 进行阻塞线程，使 JAR 包完成 Web 应用的启动。
+Actuator 是 Spring Boot 的"生产就绪特性"（Production-ready Features）模块，通过端点暴露健康检查、指标、配置、线程栈等信息。引入依赖即可启用：
 
-## SpringBoot 的启动原理
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
 
-1. **运行 Main 方法**：应用启动始于 Main 方法执行，其中创建了一个 `SpringApplication` 实例用于引导应用启动。同时 `SpringApplication` 会根据 `spring.factories` 文件加载并注册监听器、`ApplicationContextInitializer` 等扩展接口实现。
-2. **运行 run 方法**：运行 `SpringApplication` 的 `run` 方法是应用启动的入口，这一步 Spring Boot 会启动 Spring 进而创建内置 Tomcat，进入 run 方法后还做了很多其他事。
-3. Spring Boot 会读取和解析环境变量、配置文件（如 `application.properties` 或 `application.yml`）等，以获取应用的配置信息。
-4. **之后再创建 ApplicationContext**（即我们熟知的 Spring 上下文）：Spring Boot 会根据应用类型（例如 Web 应用）创建相应的 ApplicationContext。对于 Web 应用，通常创建的是 `ServletWebServerApplicationContext`。
-5. **预初始化上下文**：将启动类作为配置类，读取并注册为 BeanDefinition，使 Spring 容器可识别应用的配置。
-6. **调用 refresh**：调用 `refresh` 方法加载和初始化 Spring 容器，过程中会执行一系列操作，包括解析 `@Import` 注解以加载自动配置类、创建和注册 BeanDefinition 等。
-7. **创建内置 servlet 容器**：若为 Web 应用，这一步创建内置 servlet 容器（例如 Tomcat），以便应用可以接受 HTTP 请求。该容器会被 Spring Boot 自动配置，并可通过配置自定义。
-8. **监听器和扩展点**：整个启动过程中，Spring Boot 会调用各种监听器和扩展点，用于对应用进行扩展和定制，例如使用监听器处理启动和关闭事件，或使用 `ApplicationContextInitializer` 自定义 ApplicationContext 的初始化。
+启用后，HTTP 端点的默认基础路径是 `/actuator`，例如健康检查为 `/actuator/health`。
 
-总的来说，Spring Boot 的启动过程是一个复杂流程，从 Main 方法开始，经过一系列步骤初始化 Spring 容器和启动内置 Tomcat。
+### 11.2 常用端点
 
-## 谈谈你对 SpringBoot 的理解
+| 端点 | 作用 |
+| --- | --- |
+| `health` | 应用健康状态，可聚合数据库、Redis 等组件的检查结果 |
+| `info` | 应用自定义信息（版本、构建时间等） |
+| `metrics` | 指标，如 JVM 内存、GC、HTTP 请求耗时 |
+| `env` | 所有属性源与属性值，排查"配置为什么不生效" |
+| `configprops` | `@ConfigurationProperties` 的绑定结果 |
+| `beans` | 容器中所有 Bean 及其依赖关系 |
+| `conditions` | 自动配置条件评估报告 |
+| `mappings` | 所有 `@RequestMapping` 映射 |
+| `loggers` | 查看与动态修改日志级别 |
+| `threaddump` | 线程栈，排查卡顿与死锁 |
+| `heapdump` | 堆转储文件（HPROF） |
+| `scheduledtasks` | 定时任务列表 |
+| `shutdown` | 优雅关闭应用（默认不开放） |
 
-1. **内置 Starter 和自动配置**：提供了丰富的内置 Starter（预定义依赖集合），可轻松集成各种主流框架和技术；通过自动配置大大减少繁琐的配置工作，让开发人员开箱即用。
-2. **零 XML 配置**：采用 JavaConfig 方式开发，不需要编写大量 XML 配置文件，让开发更简洁可读，同时提高可维护性。
-3. **内置 Web 容器**：内置 Tomcat、Jetty、Undertow 等多个 Web 容器，无需外部 Web 服务器，可将应用打包成可执行 JAR 直接运行，简化部署过程。
-4. **微服务支持**：与 Spring Cloud 结合可轻松快速构建和部署微服务架构。
-5. **依赖版本管理**：帮助管理常用第三方依赖的版本，防止版本冲突问题，让开发人员更专注于业务逻辑。
-6. **监控和管理**：自带监控功能，包括应用运行状况监控、内存使用情况、线程池状态、HTTP 请求统计等；还提供优雅关闭应用的方式。
+### 11.3 暴露与保护
 
-Spring Boot 旨在提供一个快速、高效、开箱即用的开发环境，设计理念是"约定优于配置"。
+出于安全考虑，Actuator **默认只通过 HTTP 暴露 `health` 端点**，其余端点需要显式开启；`health` 默认只返回 `UP`/`DOWN`，不展示细节。
 
-## Spring 和 SpringBoot 的关系和区别
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers
+  endpoint:
+    health:
+      show-details: when_authorized   # 细节仅对有权限的访问者展示
+```
 
-**关系：**
+几条实践原则：
 
-1. **Spring 是框架，Spring Boot 是脚手架**：Spring 是一个全功能的 Java 应用框架，旨在帮助开发人员构建各种类型的应用（Web 应用、企业级应用、批处理应用等），提供大量组件和功能，但需要开发人员进行详细配置和集成。Spring Boot 则是一个**脚手架**工具，基于 Spring 框架，旨在简化 Spring 应用的初始配置和开发过程，提供自动化配置和约定优于配置的特性。
-2. **Spring Boot 构建在 Spring 之上**：Spring Boot 不是独立框架，而是建立在 Spring 框架之上的工具，使用了 Spring 的核心功能（如依赖注入、面向切面编程、事务管理等）。因此 Spring Boot 项目可充分利用 Spring 框架的功能，但更容易启动和运行。
+1. **按需暴露**：只 include 运维真正需要的端点，`env`、`heapdump`、`shutdown` 等敏感端点不要在生产环境随意开放。
+2. **加访问控制**：Actuator 与业务接口通常共用端口，应通过 Spring Security 限制访问，或使用 `management.server.port` 暴露到独立端口并限制来源 IP。
+3. **不要公网可达**：端点信息足以勾勒出系统内部结构，属于攻击面。
+4. **接入监控体系**：引入 `micrometer-registry-prometheus` 后可通过 `/actuator/prometheus` 暴露指标，供 Prometheus 抓取、Grafana 展示。
 
-**区别：**
+## 参考资料
 
-1. **配置方式**：Spring 通常需要大量 XML 配置或 Java 注解定义应用配置；Spring Boot 采用"约定优于配置"原则，大部分配置可通过默认值和自动配置完成，减少配置复杂性。
-2. **开发速度**：Spring Boot 降低学习曲线，提供内置 Starter 和自动配置，开发更快速高效；Spring 需要更多手动配置和集成工作。
-3. **内置 Web 容器**：Spring Boot 内置多个内嵌式 Web 容器（Tomcat、Jetty、Undertow 等），可轻松创建独立的可执行 JAR 或 WAR 文件，无需外部 Web 服务器；Spring 通常需要外部 Web 服务器部署。
-
-总的来说，Spring 是全功能的 Java 应用框架，Spring Boot 是用于简化 Spring 应用开发的工具，特别适用于微服务和快速原型开发。
-
-## SpringBoot 的自动配置原理
-
-1. **引入 @EnableAutoConfiguration**：在主配置类（通常是带 `@SpringBootApplication` 注解的类）中引入 `@EnableAutoConfiguration` 注解，负责启动自动配置功能。
-2. **@EnableAutoConfiguration 引入了 @Import**：`@EnableAutoConfiguration` 实际通过 `@Import` 注解引入，会导入其他配置类，这些配置类包含 Spring Boot 自动配置的逻辑。
-3. **解析 @Import 注解**：Spring 容器启动时解析 `@Import` 注解，并加载相应的配置。
-4. **DeferredImportSelector**：通过 `@Import` 导入的配置类中可能包含一个 `DeferredImportSelector`，作用是确保 Spring Boot 的自动配置类在最后加载，以便方便扩展和覆盖。
-5. **读取 META-INF/spring.factories 文件**：Spring Boot 通过 SPI 机制读取类路径下的 `META-INF/spring.factories` 文件，该文件包含各种自动配置类的配置。
-6. **过滤出 AutoConfigurationClass**：从 `spring.factories` 文件中过滤出所有 `AutoConfigurationClass` 类型的类，这些类包含自动配置的具体实现。
-7. **条件化加载**：Spring Boot 根据条件（`@ConditionalXXX` 注解）排除或包含特定的自动配置类，条件会根据应用的环境和配置动态生效。
-
-总结：Spring Boot 的自动配置原理是通过 `@EnableAutoConfiguration` 注解引入自动配置逻辑，解析 `@Import` 注解，加载各种配置类（包括 `DeferredImportSelector` 和自动配置类）；通过 SPI 机制读取 `spring.factories` 文件，过滤出自动配置类，并根据条件化配置动态加载，从而实现自动配置。该机制使应用可根据环境和需求自动配置，极大简化了开发和部署工作。
-
-## SpringBoot 可以同时处理多少请求
-
-Spring Boot 默认的内嵌容器是 Tomcat，程序实际运行在 Tomcat 里，所以与其说 Spring Boot 可以处理多少请求，不如说 Tomcat 可以处理多少请求。相关参数有四个：
-
-+ **server.tomcat.threads.min-spare**：最少的工作线程数，默认 10。相当于长期工，如果并发请求数量达不到 10，就依次使用这几个线程处理请求。
-+ **server.tomcat.threads.max**：最多的工作线程数，默认 200。相当于临时工，如果并发请求数量在 10 到 200 之间，就使用这些临时工线程处理。
-+ **server.tomcat.max-connections**：最大连接数，默认 8192。表示 Tomcat 可以处理的最大请求数量，超过 8192 的请求会被放入等待队列。
-+ **server.tomcat.accept-count**：等待队列的长度，默认 100。
-
-把 Tomcat 比作饭店的话，一个请求相当于一位客人。min-spare 是厨师（长期工）；max 是厨师总数（长期工 + 临时工）；max-connections 是饭店里的座位数量；accept-count 是门口小板凳的数量。来的客人优先坐到饭店里面，厨师开始忙活：长期工干得完就让长期工干，干不完再让临时工干。若图中厨师共 15 人、饭店有 30 个座位，则来了 20 个客人时会有 5 人先在饭店里等着；来了 35 人时饭店坐不下，会让 5 人先到门口坐；来了 50 人时，饭店座位 + 门口小板凳共 40 个，会有 10 人离开。
-
-也就是说，Spring Boot 同时所能处理的最大请求数量是 max-connections + accept-count，超过该数量的请求直接就会被丢掉。
+- Spring Boot Reference Documentation 3.5.x：System Requirements、Auto-configuration、Creating Your Own Auto-configuration、Externalized Configuration、SpringApplication、Actuator Endpoints 等章节
+- Spring Boot Reference Documentation 2.7.x：配置数据加载与 `spring.factories` 兼容性对照
+- Apache Tomcat 10.1 Documentation：HTTP Connector 配置（maxConnections、acceptCount、maxThreads）
+- Hibernate Validator Documentation：内置约束注解与自定义约束
+- Jasypt Spring Boot 项目文档：属性加密与 `ENC()` 占位符
+- Spring Framework Reference Documentation：Environment 抽象、Bean 生命周期与 BeanPostProcessor
