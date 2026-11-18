@@ -1,429 +1,781 @@
-# Nginx知识汇总
+# Nginx 知识梳理：从并发模型到反向代理配置
 
-## NGINX 如何处理并发请求？你会如何调整 NGINX 的配置以优化性能？
+Nginx（读作 "engine-x"）是 Java 后端开发者绕不开的一层基础设施：它通常部署在 Tomcat / Spring Boot 应用前面，负责接收客户端请求、决定请求怎么被处理。本文按"是什么 → 为什么需要 → 怎么用/怎么配"的顺序，把并发模型、静态文件、缓存、反向代理、负载均衡、location 与 rewrite、gzip、HTTP/2、WebSocket、限流与安全控制等主题串起来，并给出可直接参考的配置片段。文中涉及的指令默认值与版本信息，均以官方文档为准；会随版本变化的数字，请以实际环境的 `nginx -V` 与对应版本文档复核。
 
-NGINX 是一个事件驱动的异步服务器，可以有效地处理并发请求。它使用事件驱动的方式来管理连接，从而能够同时处理多个连接和请求，而不会阻塞线程或进程。其处理并发请求的基本原理如下：
+## 本文导读
 
-1. **事件循环**：NGINX 使用事件循环机制，通过非阻塞 I/O 和事件通知来处理连接和请求。它监听各种事件（如新连接、数据到达等），然后根据事件类型进行相应处理。
-2. **工作进程**：NGINX 可以配置为多个工作进程，每个进程可以处理多个连接和请求，从而并行处理大量请求，提高并发处理能力。
-3. **多路复用**：NGINX 使用多路复用技术，如 epoll（Linux）、kqueue（FreeBSD、macOS）或 event ports（Solaris），来同时监听多个连接，从而有效地管理事件并提高效率。
+- 一、Nginx 是什么：定位与核心用途
+- 二、事件驱动模型：为什么它能扛住高并发
+- 三、工作进程、线程池与多核配置
+- 四、连接管理：长连接、短连接与 keep-alive
+- 五、静态文件：怎么发文件，怎么优化
+- 六、缓存：代理缓存与浏览器缓存
+- 七、反向代理与正向代理的区别
+- 八、负载均衡：算法与 upstream 参数
+- 九、location 匹配与 rewrite 规则
+- 十、HTTP 压缩：gzip 的正确配置
+- 十一、HTTP/2 与 HTTP/3
+- 十二、WebSocket 代理
+- 十三、IP 访问控制：allow / deny
+- 十四、限流、防爬虫与 DDoS 缓解
+- 十五、超时与缓冲区参数速查（含缓冲区溢出辨析）
+- 十六、用 Lua 扩展请求处理（OpenResty）
+- 十七、常用运维命令与排错
+- 参考资料
 
-优化 NGINX 性能的配置调整：
+## 一、Nginx 是什么：定位与核心用途
 
-1. **工作进程数**：通过 `worker_processes` 指定工作进程数，通常建议设置为 CPU 核心数的 1.5 倍左右，以便更好地利用系统资源。
-2. **连接数限制**：使用 `worker_connections` 设置每个工作进程允许的最大连接数，该值应根据服务器的硬件资源和预期的并发连接数来调整。
-3. **Keep-Alive 连接**：启用 Keep-Alive 后，客户端可在同一连接上发送多个请求，从而减少连接的建立和关闭开销。使用 `keepalive_timeout` 设置 Keep-Alive 连接的超时时间。
-4. **代理缓存和静态文件缓存**：配置适当的代理缓存和静态文件缓存，以减轻后端服务器负载，提高响应速度。
-5. **请求限制和速率限制**：使用 `limit_req` 和 `limit_conn` 模块限制每个 IP 的请求速率和并发连接数，防止过多请求占用资源。
-6. **启用压缩**：启用 Gzip 压缩可以减小传输数据量，提高性能。
-7. **调整缓冲区大小**：根据需要调整 `client_body_buffer_size` 和 `client_header_buffer_size` 等缓冲区大小，以适应请求内容大小。
-8. **优化内存使用**：避免过度分配内存，确保系统有足够内存处理连接和请求。
+Nginx 是一个用 C 语言编写的高性能 Web 服务器，同时也是反向代理、内容缓存与负载均衡器。它站在客户端和你的 Java 应用之间，决定请求"能不能进、由谁处理、能不能直接给结果"。
 
-以上只是基本的配置调整建议，实际优化需根据具体的应用场景、服务器硬件和网络环境进行调整。监控服务器性能并根据性能指标持续优化是一个持续的过程。
+可以把它想成一栋写字楼的前台：访客（客户端请求）不直接闯进办公室（后端应用），而是先到前台登记；前台可以核验证件（访问控制、TLS 终止），可以回答常见问题（静态文件与缓存），也可以把访客按当前忙闲分派给不同部门（负载均衡）。这个比喻能覆盖 Nginx 的绝大多数角色。
 
-## 什么是缓存？在 NGINX 中如何配置缓存以提升性能？
+它最初由 Igor Sysoev 编写，以 2-clause BSD 许可开源，诞生于 2000 年代中期，公认的设计目标之一是应对 C10k 问题——即"单机同时保持上万条连接"。在 Java 项目里，你最常见到的位置是：浏览器 → Nginx（80/443）→ Spring Boot（8080）。
 
-缓存是一种常用的计算机系统技术，用于存储临时数据副本，以便在将来的请求中更快地访问这些数据。缓存可以显著提升应用程序和网站的性能，因为它可以减少对后端服务器或数据库的重复请求，从而减少响应时间并降低资源消耗。
+| 角色 | 做什么 | 典型场景 |
+| --- | --- | --- |
+| Web 服务器 | 直接返回 HTML、CSS、JS、图片等静态资源 | 前端打包产物托管 |
+| 反向代理 | 把请求转发给后端应用，隐藏真实服务地址 | 前后端分离、灰度发布 |
+| 负载均衡 | 把请求分给多台后端实例 | 多副本部署 |
+| TLS 终止 | 在 Nginx 上解密 HTTPS，再以明文转发给内网应用 | 证书统一管理 |
+| 内容缓存 | 缓存后端响应，减少回源 | 商品详情、首页 |
+| 访问控制 | 按 IP、请求速率、来源页限制访问 | 后台管理口、防刷 |
 
-在 Web 服务器中，缓存通常用于存储已经生成的页面、资源或数据，以便下次请求时直接提供，而无需重新生成或从原始数据源获取。这可以减少处理时间、降低服务器负载，并提高用户体验。
-
-在 NGINX 中，可以使用以下方法配置缓存以提升性能：
-
-1. **代理缓存**：NGINX 作为反向代理服务器时，可以通过 `proxy_cache` 和相关指令设置代理缓存。你可以在 `http` 块内配置缓存路径、缓存键、缓存有效期等，然后在 `location` 块中使用 `proxy_cache` 指令启用代理缓存。例如：
+最小可用的配置骨架如下。Nginx 配置是分层的：`http` 块管 HTTP 全局，`server` 块代表一个虚拟主机，`location` 块决定某个 URL 前缀怎么处理；内层没有写的指令会从外层继承。
 
 ```nginx
+worker_processes auto;
+
+events {
+    worker_connections 1024;
+}
+
 http {
-    proxy_cache_path /path/to/cache levels=1:2 keys_zone=my_cache:10m max_size=10g;
+    include       mime.types;
+    default_type  application/octet-stream;
+
     server {
+        listen      80;
+        server_name example.com;
+
         location / {
-            proxy_pass http://backend_server;
-            proxy_cache my_cache;
-            proxy_cache_valid 200 1h;
+            root  /usr/share/nginx/html;
+            index index.html;
         }
     }
 }
 ```
 
-2. **FastCGI 缓存**：如果你使用 FastCGI 处理动态内容，可以使用 `fastcgi_cache` 模块设置 FastCGI 缓存。与代理缓存类似，需要配置缓存路径、缓存键、缓存有效期等，然后在 `location` 块中使用 `fastcgi_cache` 指令启用缓存。
-3. **静态文件缓存**：使用 `expires` 和 `add_header` 指令，可以设置静态文件的缓存过期时间和缓存控制头部，让客户端（浏览器）在一段时间内缓存静态资源，从而减少重复下载。
-4. **内存缓存**：如果服务器有足够内存，可以使用 `proxy_cache_path` 指令中的 `keys_zone` 参数设置内存缓存区，以加快缓存访问速度。
-5. **条件缓存**：使用条件缓存，可以在缓存数据的同时，使用 `proxy_cache_revalidate` 和 `proxy_cache_use_stale` 等指令设置条件，以决定何时使用缓存、何时重新验证源服务器。
+改完配置后，先用 `nginx -t` 校验语法，再用 `nginx -s reload` 平滑重载：主进程读取新配置并启动新的工作进程，旧工作进程把存量请求处理完后退出，因此通常不会中断线上流量。
 
-以上只是 NGINX 缓存的基本配置示例。实际应用中可根据具体需求和网站特点进行更详细的配置，以提升性能并优化缓存策略。
+## 二、事件驱动模型：为什么它能扛住高并发
 
-## 什么是 Lua 模块？你会如何使用 NGINX 的 Lua 模块来定制请求处理流程？
+本节解释 Nginx 处理连接的基本方式，以及这种方式为什么在高并发下比"一个连接一个线程"更省资源。理解它之后，后面所有性能相关的参数（工作进程数、连接数、线程池）才有落脚点。
 
-Lua 模块是 NGINX 的一个扩展，允许你使用 Lua 编程语言在 NGINX 配置中嵌入自定义的脚本逻辑，从而在请求处理过程中执行自定义操作，实现灵活的定制和扩展。
+关键在于一个比喻：餐厅里 20 桌客人，如果每桌配一名服务员，大部分时间服务员都在等客人点菜（等数据到达），人力浪费；如果一名服务员来回巡场，只在客人举手时才过去（事件通知），人力就能被充分利用。Nginx 的工作进程就是那名巡场的服务员。
 
-Lua 模块在 NGINX 中提供以下功能：
+事件驱动模型由四个要素组成：
 
-1. **请求处理**：使用 Lua 脚本修改请求头部、查询参数、请求体等。
-2. **响应处理**：使用 Lua 脚本处理服务器的响应，修改响应内容、响应头部等。
-3. **访问控制**：实现基于复杂条件的访问控制，例如 IP 白名单、黑名单，自定义访问规则等。
-4. **缓存控制**：实现自定义的缓存控制逻辑，以满足特定的缓存需求。
-5. **复杂重定向**：处理更复杂的重定向逻辑，根据请求条件进行不同的重定向操作。
+1. **事件循环**：工作进程不断询问操作系统"哪些连接有新动静"（新连接到达、数据可读、可写），拿到事件后调用对应的处理逻辑。
+2. **非阻塞 I/O**：读写不会原地等待，没有数据就立刻返回，工作进程转去处理别的连接。
+3. **多路复用**：一次系统调用就能同时监听成千上万个连接。Linux 上常用 `epoll`，FreeBSD/macOS 上是 `kqueue`，Solaris 上是 event ports。
+4. **事件处理器**：每种事件绑定一段处理代码，事件就绪即触发，例如读取请求、写回响应、关闭连接。
 
-使用 NGINX 的 Lua 模块定制请求处理流程的步骤：
+这种模型对性能的收益：
 
-1. **安装 Lua 模块**：确保已安装支持 Lua 的 NGINX 模块，可在编译 NGINX 时启用，或使用预编译版本（如 OpenResty）。
-2. **在配置中加载 Lua 模块**：在配置文件中使用 `lua_package_path` 和 `lua_package_cpath` 指定 Lua 模块的搜索路径，然后使用 `lua_include` 指令加载 Lua 文件。
+| 收益点 | 原因 |
+| --- | --- |
+| 资源占用低 | 不为每条连接创建线程或进程，连接状态只占少量内存 |
+| 上下文切换少 | 线程数少，CPU 不用频繁保存/恢复线程现场 |
+| 并发能力高 | 单线程即可管理大量连接，不会因线程数耗尽而拒绝服务 |
+| 响应延迟低 | 非阻塞 I/O 让工作进程总在处理"有进展"的连接 |
+
+需要同时知道它的代价：工作进程是单线程的，任何一次阻塞调用（例如读大文件、同步 DNS 解析）都会卡住该进程上的所有连接。这也正是下一节要引入线程池的原因。
+
+## 三、工作进程、线程池与多核配置
+
+本节讲 Nginx 的进程/线程结构，以及如何让它吃满多核 CPU。这是"配置 Nginx 优化性能"时最先要动的几个参数。
+
+**工作进程（worker process）**：真正处理请求的进程。每个工作进程是单线程的，靠事件循环并发处理多条连接。主进程（master）只负责读配置、管理 worker、平滑重载，不处理请求。
+
+**线程池（thread pool）**：一组可选的后台线程，主要用来把"读文件、发文件"这类可能阻塞的磁盘操作从工作进程上挪走，避免拖慢事件循环。它由 `thread_pool` 指令定义（1.7.11 起），再通过 `aio threads;` 启用。
+
+关于两个常见误解，这里需要按官方文档更正：
+
+- 不存在 `worker_threads` 指令。定义线程池用的是 `thread_pool 名字 threads=N max_queue=M;`，默认已有一个名为 `default` 的池，参数为 `threads=32 max_queue=65536`。
+- 线程池并非用来"解析 DNS、做 SSL 加解密"，它的设计目的是非阻塞地读写文件（`sendfile` 之外的路径）。DNS 解析、SSL 握手属于其它机制。
+
+配置多核的几个要点：
+
+1. **`worker_processes`**：默认值为 `1`。官方建议以 CPU 核心数为起点（`auto` 会自动探测，1.3.8 / 1.2.5 起支持）。流传较广的说法"设为 CPU 核心数的 1.5 倍左右"并无官方依据，这里按官方建议取"等于核心数"，再按压测结果微调。
+2. **`worker_connections`**：单个工作进程允许同时打开的最大连接数，默认 `512`。注意它统计的是**所有**连接，包含与上游服务器的连接，不只是客户端连接。理论上限约为 `worker_processes × worker_connections`，但实际还受系统"最大打开文件数"限制，可用 `worker_rlimit_nofile` 提高。
+3. **CPU 亲和性**：`worker_cpu_affinity auto;`（1.9.10 起，仅 Linux / FreeBSD）把工作进程绑定到不同 CPU，减少核间迁移。
+4. **事件模型**：一般不需要显式指定 `use`，Nginx 会自动选最有效的方法；确需固定时再写 `use epoll;`。
 
 ```nginx
-http {
-    lua_package_path "/path/to/lua-scripts/?.lua;;";
-    lua_package_cpath "/path/to/lua-scripts/?.so;;";
+worker_processes auto;          # 通常等于 CPU 核心数
+worker_rlimit_nofile 65535;     # 提高单进程可打开文件数上限
 
+events {
+    worker_connections 10240;   # 单 worker 连接上限，含与上游的连接
+    multi_accept on;
+}
+
+thread_pool my_pool threads=16 max_queue=65536;
+
+http {
+    # 在需要的 location 中启用：aio threads=my_pool;
     server {
-        location / {
-            content_by_lua_file /path/to/lua-script.lua;
+        listen 80;
+        location /video/ {
+            root /data;
+            sendfile on;
+            aio threads=my_pool;
         }
     }
 }
 ```
 
-3. **编写 Lua 脚本**：编写包含自定义逻辑的 Lua 脚本文件，在脚本中使用 NGINX 提供的 Lua API 访问请求、响应对象，修改头部信息，执行条件判断等。
-4. **在配置中调用 Lua 脚本**：使用 `content_by_lua_file` 或 `access_by_lua_file` 指令将 Lua 脚本嵌入到特定的请求处理阶段，请求到达该阶段时 NGINX 会执行脚本中的逻辑。
+调整顺序建议：先确认 `worker_processes` 与核心数匹配，再看 `worker_connections × worker_processes` 是否覆盖预期并发，最后用 `worker_rlimit_nofile` 与系统 `ulimit -n` 打通文件句柄上限。压测数据比任何"经验倍数"都可靠。
 
-通过 NGINX 的 Lua 模块，你可以实现高度定制化的请求处理逻辑，以处理复杂场景、满足特定业务需求。需要注意的是，使用 Lua 模块可能对性能产生影响，使用时要进行充分的测试和性能优化。
+## 四、连接管理：长连接、短连接与 keep-alive
 
-## 什么是 HTTP/2 协议？NGINX 如何支持 HTTP/2 并提升网站性能？
+本节讲 HTTP 连接的生命周期管理。它直接影响延迟和服务器可承载的连接数，也是排查"连接数打满"类问题的前置知识。
 
-HTTP/2 是一种用于在 Web 浏览器和服务器之间通信的协议，旨在提高网站性能和加载速度。它是 HTTP/1.1 的继任者，引入了许多优化和改进，以适应现代 Web 应用的需求。HTTP/2 的主要目标是减少延迟、提高效率，以及更好地支持并发请求。
+**长连接（持久连接）**：一条 TCP 连接上连续发送多个 HTTP 请求/响应，用完先不关，等超时或显式关闭。省掉了反复三次握手与慢启动的开销。
 
-HTTP/2 的特点和优势：
+**短连接**：每个请求都新建一条 TCP 连接，响应后立即关闭。实现简单、彼此隔离，但开销大。
 
-1. **多路复用**：允许在单个连接上并发发送多个请求和响应，避免了 HTTP/1.1 中的队头阻塞问题，提高并发性能。
-2. **头部压缩**：使用 HPACK 算法对请求和响应头部进行压缩，减少传输数据大小，降低带宽消耗。
-3. **服务器推送**：服务器可以在客户端请求前主动发送额外资源，提高页面加载速度。
-4. **二进制协议**：使用二进制编码传输数据，比 HTTP/1.1 的文本协议更高效。
-5. **流量优先级**：允许给每个流分配优先级，使浏览器可以更好地决定请求顺序，提高用户体验。
+| 维度 | 长连接 | 短连接 |
+| --- | --- | --- |
+| 建连次数 | 一次连接多次复用 | 每请求一次 |
+| 延迟 | 低（省握手） | 高 |
+| 服务器连接数 | 空闲连接也占资源 | 峰值过后立即释放 |
+| 适用 | 页面加载、API 调用、代理转发 | 低频、需强隔离的调用 |
 
-在 NGINX 中支持 HTTP/2 并提升网站性能的步骤：
+Nginx 侧的管理参数：
 
-1. **使用更新版本的 NGINX**：确保使用支持 HTTP/2 的版本，通常从 1.9.5 版本开始支持。
-2. **启用 SSL/TLS**：HTTP/2 在大多数情况下需要使用 SSL/TLS 加密连接，因此需要配置 SSL 证书，以便通过 HTTPS 通信。
-3. **启用 HTTP/2 模块**：在配置文件中使用 `http2` 指令启用，通常添加到 `listen` 指令中的 SSL 配置块内。
+| 指令 | 默认值 | 说明 |
+| --- | --- | --- |
+| `keepalive_timeout` | `75s` | 客户端长连接在服务端保持空闲的时间；设为 `0` 关闭长连接。可写第二个参数，用于生成 `Keep-Alive: timeout=` 响应头 |
+| `keepalive_requests` | `1000` | 单条长连接最多处理多少个请求（1.19.10 之前默认 `100`） |
+| `keepalive_time` | `1h` | 单条长连接的最长存活时间（1.19.10 起） |
+
+与上游（后端 Java 服务）之间也可以复用连接，配置在 `upstream` 块里，需要配合 `proxy_http_version 1.1` 并清空 `Connection` 头：
+
+```nginx
+upstream backend {
+    server 127.0.0.1:8080;
+    keepalive 64;              # 每个 worker 缓存的空闲长连接数
+    keepalive_requests 1000;   # 单条连接最多服务多少请求（1.15.3 起）
+    keepalive_timeout 60s;     # 空闲长连接保持时间（1.15.3 起）
+}
+
+server {
+    location /api/ {
+        proxy_pass http://backend;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+}
+```
+
+版本提示：`upstream` 中的 `keepalive` 在 1.29.7 起默认开启（每 worker 32 条），此前的版本必须显式写出；`proxy_http_version` 同样在 1.29.7 起默认为 `1.1`，更早版本默认是 `1.0`，所以老版本务必手写这两行。
+
+若要主动使用短连接，可以在响应中返回 `Connection: close`，让客户端在本次响应后关闭连接。
+
+## 五、静态文件：怎么发文件，怎么优化
+
+静态资源（HTML、CSS、JS、图片、视频）通常占网站流量的绝大部分，而 Java 应用并不擅长直接吐文件。本节讲 Nginx 发文件的机制，以及常见的优化手段。
+
+**处理机制：**
+
+1. **零拷贝**：开启 `sendfile on;` 后，文件数据由内核直接从页缓存送入 socket，避免"内核 → 用户态 → 内核"的两次多余拷贝。默认 `sendfile` 是关闭的，静态站点一般建议打开。
+2. **事件驱动**：一个工作进程可同时服务大量静态请求，不会被慢客户端拖住。
+3. **内存缓存**：`open_file_cache` 可缓存文件描述符、大小、修改时间与查找结果（默认关闭），减少重复的 `open`/`stat` 系统调用。
+4. **异步文件 I/O**：大文件场景可用 `aio threads;` 把读盘交给线程池，避免阻塞事件循环。
+
+**优化手段：**
+
+| 手段 | 作用 | 备注 |
+| --- | --- | --- |
+| `gzip on` | 压缩文本类资源 | 图片、视频本身已压缩，压缩无收益 |
+| `expires` / `add_header` | 让浏览器长期缓存，减少重复下载 | 静态资源常配 `1y` + 文件名带哈希 |
+| CDN | 就近分发，减轻源站压力 | 跨地域访问收益明显 |
+| 合并文件 / 雪碧图 | 减少请求数 | HTTP/2 多路复用后收益下降，是否合并需实测 |
+| 现代格式 | 同画质下体积更小（如 WebP、AVIF） | 注意浏览器兼容与降级 |
+| 对象存储 | 静态资源放分布式存储/CDN 源 | 便于扩容与异地容灾 |
 
 ```nginx
 server {
-    listen 443 ssl http2;
-    server_name example.com;
-    ssl_certificate /path/to/ssl/cert.crt;
-    ssl_certificate_key /path/to/ssl/cert.key;
-    # ...
+    listen 80;
+    server_name static.example.com;
+
+    root /data/www;
+    sendfile on;
+    tcp_nopush on;          # 与 sendfile 配合，减少小包
+    open_file_cache max=10000 inactive=60s;
+    open_file_cache_valid 30s;
+
+    location ~* \.(?:css|js|png|jpg|jpeg|gif|webp|svg|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        access_log off;
+    }
+
+    location ~* \.(?:html|json)$ {
+        expires 5m;         # 入口文件短缓存，便于发版
+    }
 }
 ```
 
-4. **优化资源**：利用 HTTP/2 的多路复用和服务器推送特性优化资源加载，确保将 CSS、JavaScript 和其他静态资源进行合并和最小化，以减少页面加载时间。
+## 六、缓存：代理缓存与浏览器缓存
 
-通过启用 HTTP/2 并进行相应优化，可以显著提升网站性能、改善用户体验、减少资源消耗。需要注意的是，虽然 HTTP/2 在现代浏览器中得到广泛支持，仍建议进行兼容性测试。
+缓存是把"算过的结果"存起来，下次直接给。对 Java 应用而言，Nginx 缓存能挡掉大量重复回源请求，是最省成本的性能优化之一。
 
-## 什么是 DDoS 攻击？NGINX 如何帮助缓解 DDoS 攻击？
+冰箱里备好常做的菜：客人点单时直接加热上桌，不必每次现买菜现做——Nginx 的代理缓存就是这个冰箱，`proxy_cache_path` 是冰箱的容积与位置，`proxy_cache_valid` 是保质期。
 
-DDoS（分布式拒绝服务）攻击是一种恶意的网络攻击，旨在通过发送大量请求或流量来超载目标服务器或网络资源，使其无法正常工作或提供服务。这种攻击通常涉及多个攻击者，它们可能通过僵尸计算机（被恶意软件控制的计算机）或其他方式协调，以使攻击更具威力。
+**服务端代理缓存（`ngx_http_proxy_module`）：**
 
-NGINX 是一个高性能的 Web 服务器和反向代理服务器，可以采取以下措施帮助缓解 DDoS 攻击：
+| 指令 | 作用 | 关键点 |
+| --- | --- | --- |
+| `proxy_cache_path` | 定义缓存目录与共享内存区 | 只能在 `http` 块使用；`keys_zone` 为必填参数 |
+| `proxy_cache` | 在 `location` 中启用某个缓存区 | 值要与 `keys_zone` 的名字一致 |
+| `proxy_cache_valid` | 按响应码设置缓存时长 | 只写时长（如 `5m`）时仅缓存 200/301/302 |
+| `proxy_cache_key` | 缓存键 | 默认 `$scheme$proxy_host$request_uri` |
+| `proxy_cache_min_uses` | 请求多少次后才缓存 | 默认 `1` |
+| `proxy_cache_use_stale` | 回源出错时是否用过期缓存兜底 | 默认 `off` |
+| `proxy_cache_revalidate` | 过期后是否用条件请求回源校验 | 默认 `off`（1.5.7 起） |
+| `proxy_cache_bypass` | 满足条件时绕过缓存 | 常用于后台强制刷新 |
+| `proxy_cache_lock` | 同一缓存键只允许一个请求回源 | 默认 `off`，可防缓存击穿 |
 
-1. **请求限制和速率限制**：NGINX 允许设置请求速率限制，防止单个 IP 或用户发送过多请求。使用 `limit_req` 模块可设置每秒允许的请求数和突发请求数量，从而限制来自单个源的请求。
-2. **连接限制和连接速率限制**：使用 `limit_conn` 模块可以设置允许的最大并发连接数，以及每个 IP 的最大连接数。
-3. **反向代理缓冲**：NGINX 作为反向代理可以缓存响应内容，请求到达时直接提供缓存内容，而不必每次都将请求传递给后端服务器，从而减轻后端服务器负担，提高其抵御 DDoS 攻击的能力。
-4. **IP 封锁和白名单**：使用 `ngx_http_access_module` 模块设置 IP 封锁和白名单，允许或拒绝特定 IP 的访问，从而阻止来自已知恶意 IP 的请求。
-5. **流量分发和负载均衡**：NGINX 可用作负载均衡器，将流量分发到多个后端服务器。即使一个服务器受到攻击，其他服务器仍可继续提供服务，从而减轻攻击的影响。
-6. **防御机制集成**：NGINX 可以与专门的 DDoS 防御服务或硬件设备（如 DDoS 防火墙、CDN）集成，以增强防御能力。
-
-需要注意的是，虽然 NGINX 可以采取这些措施缓解 DDoS 攻击，但对于大规模和复杂的攻击，可能需要使用专门的 DDoS 防御解决方案，这些方案可以在应用层、网络层和运营商层面上提供更强大的保护。
-
-## 如何防止恶意请求和爬虫访问你的网站？有哪些 NGINX 模块可以实现这些功能？
-
-防止恶意请求和爬虫访问是网站安全的重要方面。NGINX 提供了一些模块和方法来实现这些功能：
-
-1. **ngx_http_access_module**：允许设置 IP 地址的访问控制，通过 `allow` 和 `deny` 指令允许或拒绝特定 IP 的访问，可用来阻止恶意 IP。
-2. **ngx_http_geo_module**：允许创建基于地理位置的访问规则。可定义特定国家或地区的 IP 地址范围并设置相应的访问规则，从而阻止来自特定地理位置的恶意请求。
-3. **ngx_http_limit_req_module 和 ngx_http_limit_conn_module**：分别用于限制请求速率和并发连接数，可以帮助防止恶意请求和爬虫过多占用资源。
-4. **ngx_http_bot_protection_module**：第三方模块，专门用于识别和阻止爬虫和恶意机器人的访问。它通过检查 User-Agent 头部、IP 地址和其他特征来辨别这些访问，并采取相应措施。
-5. **ngx_http_referer_module**：允许设置防盗链，即限制只有从特定来源链接的请求才能访问资源，防止其他网站的恶意爬虫访问你的资源。
-6. **ngx_http_rewrite_module**：使用重写规则，可以根据请求的 URL 或其他标志重定向、拒绝或处理请求，用于识别和处理恶意请求。
-7. **ngx_http_security_headers_module**：允许设置安全相关的 HTTP 头部，如 X-Frame-Options、X-XSS-Protection 等，从而增强网站安全性。
-
-需要注意的是，恶意行为的多样性和不断变化可能需要综合多种策略来进行有效防御。使用 WAF（Web 应用防火墙）和专门的安全解决方案也可以进一步提高网站的安全性。
-
-## 解释一下 NGINX 的工作进程和线程池。如何配置这些以支持多核处理器？
-
-NGINX 的工作进程和线程池是用于处理客户端请求的重要组件，其配置会影响 NGINX 的性能和并发处理能力。
-
-**工作进程**：NGINX 的工作进程是独立运行的进程，每个进程可以处理多个客户端连接和请求。每个工作进程都是单线程的，但通过事件循环机制可以异步地处理多个连接和请求。工作进程的数量由 `worker_processes` 配置项指定。
-
-**线程池**：线程池是一组线程，用于处理某些任务，如解析 DNS、执行 SSL 加密解密等。默认情况下，NGINX 的工作进程不使用线程池，线程池的大小由 `worker_threads` 配置项指定。
-
-配置 NGINX 以支持多核处理器的步骤：
-
-1. **设置工作进程数**：通过 `worker_processes` 指定工作进程数量，通常可设置为服务器 CPU 核心数的 1.5 倍左右，从而充分利用多核处理器的性能，提高并发处理能力。
-
-```nginx
-worker_processes auto;  # 使用自动检测CPU核心数
-```
-
-2. **设置线程池**（可选）：如果希望工作进程使用线程池，可以设置 `worker_threads` 配置项。线程池可用于执行一些后台任务，如解析 DNS 等。
-
-```nginx
-worker_threads 4;  # 设置线程池中的线程数
-```
-
-3. **事件模型**：NGINX 支持多种事件模型，如 `epoll`（Linux）、`kqueue`（FreeBSD、macOS）等。根据操作系统选择合适的事件模型，以充分利用系统的 I/O 能力。
-
-```nginx
-events {
-    use epoll;  # 选择事件模型
-}
-```
-
-通过合适地配置工作进程和线程池，以及选择适当的事件模型，可以优化 NGINX 以支持多核处理器。注意，配置优化可能因服务器硬件、网络环境和负载类型而有所不同，定期的性能监控和测试也是确保优化结果的重要步骤。
-
-## 什么是 HTTP 长连接和短连接？在 NGINX 中如何管理这些连接？
-
-HTTP 长连接和短连接描述的是客户端（例如浏览器）和服务器之间连接的持续时间。
-
-**HTTP 长连接**：
-
-* 也称持久连接，指在单个 TCP 连接上可以发送多个 HTTP 请求和响应。
-* 客户端和服务器之间的 TCP 连接在一段时间内保持打开状态，允许多次请求和响应在同一连接上进行。
-* 这减少了连接的建立和关闭开销，提高了性能和响应时间，特别是在需要加载多个资源的网页中。
-
-**HTTP 短连接**：
-
-* 指每个 HTTP 请求和响应都使用单独的 TCP 连接。
-* 每次请求都需要建立新的 TCP 连接，然后在响应后关闭，这增加了连接管理的开销。
-
-在 NGINX 中管理长连接和短连接的方式：
-
-1. **长连接的管理**：
-   * NGINX 默认支持长连接，处理客户端请求时会自动保持连接打开，直到达到超时时间或请求完成。
-   * 可通过 `keepalive_timeout` 指令控制保持连接打开时等待的时间，例如 `keepalive_timeout 60s;` 将连接保持 60 秒。
-   * 还可使用 `keepalive_requests` 指令设置同一连接上允许的最大请求数，例如 `keepalive_requests 100;` 允许同一连接处理 100 个请求。
-2. **短连接的管理**：
-   * NGINX 默认也支持短连接，因为每个 HTTP 请求和响应都使用单独的 TCP 连接。
-   * 如果要强制关闭连接，可以使用 `Connection: close` 头部或在响应中包含它，告知客户端在响应后关闭连接。
-
-总之，NGINX 可以自动管理长连接和短连接，但你可以通过调整相关配置指令来影响连接行为。长连接适用于减少连接开销和提高性能，短连接适用于需要在每个请求之间保持隔离的情况。
-
-## NGINX 如何处理静态文件？你会如何优化静态文件的传输？
-
-NGINX 可以高效地处理静态文件，其设计目标之一就是提供快速的静态文件传输能力。
-
-**NGINX 处理静态文件的方式：**
-
-1. **零拷贝技术**：使用零拷贝技术最大限度地减少数据从磁盘到网络的复制次数，提高数据传输效率。
-2. **事件驱动模型**：允许同时处理多个并发连接，从而在高并发环境中有效地传输静态文件。
-3. **内存缓存**：可以将一部分静态文件缓存在内存中，以加速对这些文件的访问，减少对磁盘的读取操作。
-
-**优化静态文件传输的方法：**
-
-1. **启用 gzip 压缩**：减小静态文件大小，从而提高传输速度。NGINX 支持在传输过程中对内容进行 gzip 压缩。
-2. **使用 CDN**：将静态文件分发到全球各地的服务器节点，从而加速文件传输并减轻原始服务器的负载。
-3. **设置长期缓存**：为静态文件设置适当的缓存时间，让浏览器缓存文件并减少重复下载次数，可通过 HTTP 响应头中的 `Cache-Control` 和 `Expires` 字段实现。
-4. **合并文件和使用雪碧图**：将多个小文件合并为一个大文件，或将多张图片合并为一个雪碧图，可以减少 HTTP 请求次数，提高页面加载速度。
-5. **使用适当的文件格式**：选择适当的图片、视频和其他媒体文件格式以减小文件大小，例如使用 WebP 格式的图片可以更高效地压缩。
-6. **分布式存储**：将静态文件存储在分布式存储系统（如 Amazon S3、Google Cloud Storage 等）中，可以提供高可用性和快速的文件传输。
-
-总之，NGINX 的优化和配置可以显著改善静态文件传输的性能，结合适当的优化策略可以确保网站的静态资源快速、高效地加载。
-
-## NGINX 的事件驱动模型是什么？为什么这种模型对性能有益？
-
-NGINX 使用一种称为"事件驱动"或"事件驱动非阻塞"的模型来处理客户端请求和服务器操作。该模型在高并发环境下对性能非常有益，因为它可以在单个线程中有效地处理大量并发连接，而无需为每个连接创建一个新的线程或进程。
-
-NGINX 的事件驱动模型具体如下：
-
-1. **事件循环**：NGINX 的核心组件是一个事件循环，它不断监听事件（如新连接的到来、请求数据的可读性等），并相应地执行处理程序。
-2. **非阻塞 IO**：使用非阻塞 IO 处理输入和输出，当一个连接等待数据时不会阻塞整个线程，而是可以继续处理其他连接。这样一个线程可以同时管理多个连接。
-3. **事件处理器**：使用事件处理器处理不同类型的事件，可以同时处理很多连接，而无需为每个连接创建新线程。
-4. **事件触发**：当一个事件准备好被处理时，事件处理器会被触发，相应地执行操作，如读取数据、写入数据或关闭连接。
-
-这种事件驱动模型对性能有益的原因：
-
-+ **资源节省**：相对于为每个连接创建新线程或进程，事件驱动模型通过在一个线程内有效地管理多个连接来节省系统资源。
-+ **减少上下文切换**：线程切换需要消耗大量 CPU 时间，而事件驱动模型线程数较少，减少了线程切换的开销。
-+ **高并发处理**：允许单个线程处理大量并发连接，使 NGINX 能高效地处理高并发请求，而不会因线程资源耗尽而出现性能问题。
-+ **响应时间短**：非阻塞 IO 特性使 NGINX 能快速响应客户端请求，减少请求的等待时间。
-
-总之，NGINX 的事件驱动模型在高并发环境中的性能优势使其成为处理大量网络连接和请求的理想工具。
-
-## 什么是 WebSocket？NGINX 如何支持 WebSocket 协议？
-
-WebSocket 是一种在单个 TCP 连接上实现全双工通信的协议，允许服务器和客户端之间进行双向通信，而无需通过多次 HTTP 请求和响应来完成。与传统的 HTTP 请求-响应模式不同，WebSocket 连接保持打开状态，可以在连接建立后随时进行双向数据交换，这对于实时通信应用（如在线聊天、实时游戏等）非常有用。
-
-NGINX 可以通过适当的配置支持 WebSocket 协议：
-
-1. **安装更新的版本**：确保使用较新的 NGINX 版本，建议使用 NGINX 1.3.13 及更高版本。
-2. **配置 HTTP 请求头部**：WebSocket 连接需要一些特定的 HTTP 头部字段来协商和建立连接。客户端发起 WebSocket 连接时会发送升级请求，包括 `Upgrade` 头部和 `Connection` 头部；服务器需要适当地响应这些头部，以指示连接已升级为 WebSocket 连接。
-
-```nginx
-location /ws-endpoint {
-    proxy_pass http://backend_server;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-}
-```
-
-3. **启用 WebSocket 模块**：确保编译 NGINX 时启用了 WebSocket 模块。配置文件中可以使用 `proxy_set_header` 指令设置 Upgrade 和 Connection 头部，以及其他可能需要的头部。
-4. **后端服务器设置**：如果 WebSocket 连接需要与后端服务器通信，确保后端服务器能正确处理 WebSocket 连接，包括协商和处理 WebSocket 数据帧。
-5. **测试连接**：配置完成后，可使用 WebSocket 客户端工具或浏览器的开发工具测试连接，以确保连接成功建立。
-
-总之，配置 NGINX 支持 WebSocket 的关键是正确处理升级请求和响应头部，以及在后端服务器上正确处理 WebSocket 连接。通过合适的配置，NGINX 可以用作 WebSocket 代理，实现连接转发和负载均衡。
-
-## 什么是负载均衡？NGINX 是如何实现负载均衡的？
-
-负载均衡是一种技术和策略，用于在多台服务器之间分配传入的网络请求，以平衡服务器负载，提高性能和可靠性。它确保每台服务器都能充分利用其资源，避免某些服务器过载而导致性能下降或服务不可用。
-
-NGINX 是一款流行的反向代理服务器，可以用来实现负载均衡。一般步骤如下：
-
-1. **配置多个后端服务器**：这些服务器将处理实际的客户端请求，可以是相同的应用实例，也可以是不同的应用服务。
-2. **创建反向代理配置**：定义一个反向代理配置块，指定如何将传入请求分发给后端服务器，通常涉及使用 `upstream` 指令定义一组后端服务器，以及如何进行请求分发。
-3. **选择负载均衡算法**：NGINX 支持多种算法，例如轮询（Round Robin）、最少连接（Least Connections）、IP 哈希（IP Hash）等，可根据需求选择合适的算法。
-4. **配置虚拟服务器**：创建一个虚拟服务器块，监听指定端口，并在其中定义负载均衡的规则和策略。该虚拟服务器将接收客户端请求，并根据负载均衡算法将请求分发给后端服务器。
-5. **启动 NGINX 服务**：配置完成后启动 NGINX，使其开始监听指定端口并进行负载均衡。客户端请求首先经过 NGINX 反向代理服务器，然后由 NGINX 根据算法转发给后端服务器。
-
-通过这样的配置，NGINX 可以在多个后端服务器之间分发请求，确保每个服务器得到适当的负载，从而提高整体性能和可靠性。
-
-## 如何设置 HTTP 压缩以减少数据传输量？在 NGINX 中如何启用 Gzip 压缩？
-
-HTTP 压缩是一种通过在传输数据之前对内容进行压缩来减少数据传输量的技术，可以显著加快页面加载速度并降低带宽消耗。Gzip 是其中一种常见的压缩方法。
-
-在 NGINX 中启用 Gzip 压缩的步骤：
-
-1. 打开 NGINX 配置文件（通常是 `nginx.conf` 或 `/etc/nginx` 目录中的其他文件）。
-2. 在 `http` 块内添加以下配置指令来启用 Gzip 压缩：
+`proxy_cache_path` 中 `inactive`（默认 10 分钟）指"多久没被访问就清理"，即使内容还没过期；`max_size` 限制磁盘占用，超出后按最近最少使用淘汰。
 
 ```nginx
 http {
-    # 启用Gzip压缩
-    gzip on;
-    # 配置需要进行Gzip压缩的MIME类型
-    gzip_types text/plain text/css application/javascript application/json application/x-javascript text/xml application/xml application/xml+rss application/xhtml+xml application/x-font-ttf font/opentype image/svg+xml image/x-icon;
+    proxy_cache_path /data/nginx/cache
+                     levels=1:2
+                     keys_zone=api_cache:10m
+                     max_size=10g
+                     inactive=30m;
 
-    # 配置压缩级别，一般使用6即可（1-9）
-    gzip_comp_level 6;
-
-    # 配置最小压缩文件大小，小于该值的文件不会被压缩
-    gzip_min_length 1000;
-
-    # 配置压缩的缓冲区大小
-    gzip_buffers 16 8k;
-
-    # 配置压缩时使用的窗口大小
-    gzip_http_version 1.1;
-    gzip_proxied any;
-    gzip_disable "MSIE [1-6]\.";
-
-    # 配置Vary头部，以便正确缓存压缩的内容
-    gzip_vary on;
-
-    # 配置是否在响应中添加"Content-Encoding"头部
-    gzip_static on;
-}
-```
-
-3. 保存配置文件并重新加载或重启 NGINX，使配置生效。
-
-以上配置将启用 Gzip 压缩，并压缩特定 MIME 类型的内容，你可以根据需要进行调整。启用 Gzip 压缩后，NGINX 会自动在发送响应时对适当的内容进行压缩，并在响应头部中添加 `Content-Encoding: gzip`，以指示客户端对响应进行解压缩，从而显著减少传输数据量，提高页面加载速度。
-
-## 如何配置 NGINX 作为反向代理服务器来缓存后端服务的响应？
-
-配置 NGINX 作为反向代理服务器来缓存后端服务的响应，可以帮助减轻后端服务器的负载并提高响应速度。
-
-1. **安装更新的 NGINX 版本**：较新的版本通常提供更强大和稳定的缓存功能。
-2. **配置缓存路径和缓存区域**：在配置文件中使用 `proxy_cache_path` 指令配置缓存路径和缓存区域，缓存路径应指向一个文件系统目录，用于存储缓存的响应数据。
-
-```nginx
-http {
-    proxy_cache_path /path/to/cache levels=1:2 keys_zone=my_cache:10m max_size=1g;
-}
-```
-
-3. **配置缓存设置**：在反向代理的 `location` 块中，使用 `proxy_cache` 指令启用缓存，并使用 `proxy_cache_valid` 指令设置缓存的有效时间。此外还可以使用其他缓存相关指令调整缓存行为。
-
-```nginx
-location / {
-    proxy_pass http://backend_server;
-    proxy_cache my_cache;
-    proxy_cache_valid 200 1h;  # 设置缓存有效时间
-}
-```
-
-4. **更新响应头部**：为确保正确的缓存控制，可能需要更新后端服务返回的响应头部，特别是 `Cache-Control` 和 `Expires` 头部。
-5. **刷新缓存**：在需要时可以手动刷新缓存，或使用 `proxy_cache_bypass` 指令绕过缓存并直接从后端获取响应。
-6. **监控和调整**：监控缓存的命中率和性能，根据需要进行调整，如调整缓存的有效时间、缓存大小等参数。
-
-需要注意的是，缓存的配置可能因应用场景、响应频率和内容类型而有所不同。不适合所有场景的缓存配置可能导致不准确的数据或性能问题，因此配置缓存时要考虑具体的业务需求和服务器资源。
-
-## 解释一下 NGINX 的反向代理和正向代理的区别。
-
-NGINX 可以用作正向代理和反向代理，它们在代理服务器的使用方式和作用方向上有所不同。
-
-**正向代理**：
-
-1. **代理对象不同**：代理服务器位于客户端和目标服务器之间。客户端发送请求到正向代理服务器，然后代理服务器将请求转发给目标服务器。目标服务器不知道请求来自哪个客户端，只知道来自代理服务器。
-2. **用途**：主要用于保护客户端的隐私、绕过网络过滤或访问限制。它可以帮助客户端访问受限网站、隐藏客户端的真实 IP 地址，以及加强安全性，但不会直接优化服务器性能。
-3. **示例**：在公司中，如果有一个正向代理服务器，员工可以通过它访问受限制的网站，同时公司可以监控和过滤员工的网络访问。
-
-**反向代理**：
-
-1. **代理对象不同**：反向代理位于目标服务器和客户端之间。客户端发送请求到反向代理服务器，然后代理服务器根据规则将请求转发给后端的一个或多个真实服务器。客户端不知道后端服务器的存在。
-2. **用途**：主要用于负载均衡、缓存、SSL 终端和安全控制。它可以分发请求到多个服务器、缓存静态资源、终止 SSL 连接以减轻后端服务器负担，还可以提供一定的安全性和访问控制。
-3. **示例**：当用户访问一个高流量网站时，反向代理可以将请求分发到多台服务器上以平衡负载、提高性能；此外还可以缓存页面内容，减少对后端服务器的请求，加快内容传输速度。
-
-总结：正向代理用于保护客户端隐私和绕过访问限制，反向代理用于分发请求、负载均衡和提供其他性能与安全增强功能。
-
-## 什么是 NGINX？它是用来做什么的？
-
-NGINX（发音为"engine-x"）是一个开源的高性能、轻量级 Web 服务器软件和反向代理服务器。它最初由 Igor Sysoev 于 2004 年创建，旨在解决 C10k 问题，即在同一时间内处理大量并发连接的能力。
-
-NGINX 被广泛用于多种用途：
-
-1. **Web 服务器**：可用作静态资源（如 HTML、CSS、JavaScript、图像等）的 Web 服务器，能够快速响应客户端的 HTTP 请求，提供高性能的静态文件传输。
-2. **反向代理**：可作为反向代理服务器，将客户端请求转发给后端服务器，帮助分担服务器负载、优化流量分发、提高应用程序的可靠性和安全性。
-3. **负载均衡**：可以在多个后端服务器之间分配传入请求以实现负载均衡，确保请求被分散到不同服务器上，避免单一服务器过载，提高系统性能和可靠性。
-4. **SSL 终端**：可用于终止 SSL/TLS 连接，将加密的客户端请求解密后再转发给后端服务器，有助于减轻后端服务器负担、提高性能。
-5. **缓存**：可用作缓存服务器，将经常请求的内容缓存起来，以减少对后端服务器的请求，有助于加速内容传输、降低延迟。
-6. **安全性和访问控制**：可以配置为限制特定 IP 或用户的访问，还可以通过配置各种安全性设置提供基本的安全保护。
-
-总之，NGINX 是一个功能强大的服务器软件，在提供高性能、高可靠性的 Web 服务和负载均衡方面扮演着重要角色，许多大型网站和应用程序都使用 NGINX 来处理高流量、高并发的请求。
-
-## 如何在 NGINX 中实现基于 IP 的访问控制（IP 黑白名单）？
-
-在 NGINX 中，可以使用 `ngx_http_access_module` 模块实现基于 IP 的访问控制，包括 IP 黑名单和白名单。
-
-1. 打开 NGINX 配置文件（通常是 `nginx.conf` 或 `/etc/nginx` 目录中的其他文件）。
-2. 在适当位置使用 `allow` 和 `deny` 指令配置 IP 黑白名单：`allow` 指定允许的 IP，`deny` 指定拒绝的 IP，可根据需要在 `http` 块、`server` 块或 `location` 块中设置。例如：
-
-```nginx
-http {
     server {
-        location / {
-            # 允许指定的IP地址访问
-            allow 192.168.1.100;
-            allow 10.0.0.0/24;
-            # 拒绝其他IP地址访问
-            deny all;
+        location /api/ {
+            proxy_pass http://backend;
+            proxy_cache api_cache;
+            proxy_cache_key "$scheme$host$request_uri";
+            proxy_cache_valid 200 302 10m;
+            proxy_cache_valid 404 1m;
+            proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+            proxy_cache_lock on;
+            add_header X-Cache-Status $upstream_cache_status;
         }
     }
 }
 ```
 
-3. 保存配置文件并重新加载或重启 NGINX，使配置生效。
+`$upstream_cache_status` 能直接告诉你缓存是否命中，取值有 `MISS`、`HIT`、`BYPASS`、`EXPIRED`、`STALE`、`UPDATING`、`REVALIDATED`。排查"缓存为什么没生效"时先看这个头。
 
-上述配置将只允许 `192.168.1.100` 和 `10.0.0.0/24` 这些 IP 访问相应的位置，而拒绝其他 IP 的访问。
+**其它缓存形态：**
 
-需要注意的是，`allow` 和 `deny` 指令的顺序很重要，如果顺序颠倒可能会导致预期之外的结果。实际应用中，可以根据需求配置更复杂的 IP 黑白名单规则，如使用正则表达式匹配特定 IP 地址范围等。此外，为了确保安全性，可以使用防火墙或其他网络安全解决方案，增加额外的 IP 访问控制层次。
+- **FastCGI 缓存**：`fastcgi_cache` + `fastcgi_cache_path`，用于 PHP 一类 FastCGI 后端。
+- **静态资源缓存**：`expires`、`add_header` 设置 `Cache-Control` / `Expires`，让浏览器端缓存，减轻服务端压力。注意 `add_header` 默认只在部分响应码（200、201、204、206、301、302、303、304、307、308）上生效，需要覆盖全部响应时加 `always`。
+- **内存缓存区**：`keys_zone` 指定的共享内存只存键与元数据，不存响应体；给足 `keys_zone` 能提升命中判断速度。
 
-## 什么是缓冲区溢出？NGINX 是如何防止缓冲区溢出攻击的？
+缓存策略要按业务来：登录态相关、强一致要求的接口不适合长时间缓存；而列表页、详情页、静态接口通常是缓存收益最高的地方。
 
-缓冲区溢出是一种常见的安全漏洞，发生在程序试图向一个缓冲区写入超出其预分配大小的数据时。这可能导致数据覆盖相邻的内存区域，破坏程序的执行流程，甚至可以被恶意攻击者利用来执行恶意代码。
+## 七、反向代理与正向代理的区别
 
-NGINX 作为一款高性能的服务器软件，也考虑到了缓冲区溢出攻击，采取了一些安全措施来防止和减轻这种攻击：
+两者都是"代理"，区别在于**代理的是谁**、以及**谁不知道谁的存在**。理解这一点，才能说清 Nginx 在架构里的位置。
 
-1. **内存保护技术**：NGINX 在编写代码时可能会使用内存保护技术，如地址空间布局随机化（ASLR）和栈保护（Stack Canaries），以防止攻击者通过溢出覆盖内存来执行恶意代码。
-2. **输入验证和过滤**：NGINX 可能会对传入的请求进行输入验证和过滤，确保请求数据的有效性和合法性，从而减少恶意数据的影响。
-3. **错误处理和异常处理**：NGINX 可能会在程序中实现错误处理和异常处理机制，以便在检测到异常情况时适当地关闭连接或采取其他保护措施。
+**正向代理**：代理客户端。客户端明确配置了代理地址，请求先发给代理，由代理代客户端去访问目标站点。目标服务器只看到代理的 IP，不知道真实客户端。
 
-尽管 NGINX 采取了许多安全措施来防止缓冲区溢出攻击，作为用户你也应该始终将 NGINX 和其他软件保持在最新版本，以获取最新的安全修复，并采取额外的安全措施来保护服务器和应用程序。
+**反向代理**：代理服务器。客户端以为自己在访问网站本身，实际上请求先到 Nginx，再由 Nginx 按规则转发给后端的一台或多台服务器。客户端不知道后端的存在。
+
+| 维度 | 正向代理 | 反向代理 |
+| --- | --- | --- |
+| 服务对象 | 客户端 | 服务端 |
+| 部署位置 | 靠近客户端（公司出口、代理软件） | 靠近服务端（机房入口） |
+| 客户端是否知情 | 知情，需显式配置 | 通常不知情 |
+| 主要用途 | 突破访问限制、隐藏客户端 IP、上网行为审计 | 负载均衡、缓存、TLS 终止、安全控制 |
+| 典型例子 | 公司统一出口代理 | Nginx → 多台 Spring Boot |
+
+反向代理转发时，后端默认只能看到 Nginx 的地址，因此通常要显式传几个头，让 Java 应用能拿到真实客户端信息：
+
+```nginx
+location /api/ {
+    proxy_pass http://backend;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+如果应用里用 `request.getRemoteAddr()` 取客户端 IP，需要框架侧配合解析 `X-Forwarded-For`（例如 Spring Boot 的 `server.forward-headers-strategy`），否则拿到的永远是 Nginx 的地址。
+
+## 八、负载均衡：算法与 upstream 参数
+
+当后端从一台变成多台，就需要一个"分派规则"。本节讲 Nginx 支持的负载均衡算法、`upstream` 里 `server` 的常用参数，以及怎么组合使用。
+
+`upstream` 块定义一组后端服务器，默认使用**加权轮询**（weighted round-robin）：按权重比例依次分发。权重为 5、1、1 的三台服务器，每 7 个请求中第一台拿 5 个。
+
+| 算法 | 指令 | 行为 | 适用 |
+| --- | --- | --- | --- |
+| 加权轮询 | 默认，无需指令 | 按权重轮流分发 | 后端性能相近的无状态服务 |
+| 最少连接 | `least_conn;` | 优先给当前活跃连接最少的服务器（计入权重） | 请求耗时差异大 |
+| IP 哈希 | `ip_hash;` | 按客户端 IP 计算哈希（IPv4 取前三段），同一客户端固定到同一台 | 简易会话保持 |
+| 自定义哈希 | `hash $key [consistent];` | 按指定键哈希，加 `consistent` 用一致性哈希 | 缓存服务器分片 |
+| 随机 | `random [two [least_conn]];` | 随机选，`two` 表示随机取两台再择优（1.15.1 起） | 大规模集群 |
+| 最少时间 | `least_time ...;` | 按平均响应时间与活跃连接数选择 | 长期属于商业版能力，官方文档标注 1.31.0 起开源版可用，使用前请核对版本 |
+
+`upstream` 中 `server` 的常用参数：
+
+| 参数 | 默认值 | 含义 |
+| --- | --- | --- |
+| `weight=N` | `1` | 权重，越大分到的请求越多 |
+| `max_conns=N` | `0`（不限） | 到该后端的最大并发连接数（1.11.5 起） |
+| `max_fails=N` | `1` | 在 `fail_timeout` 时间内失败多少次即判定不可用 |
+| `fail_timeout=T` | `10s` | 失败统计窗口，同时是判定不可用后的摘除时长 |
+| `backup` | — | 备用机，主服务器全部不可用时才接流量 |
+| `down` | — | 手动标记下线，配合 `ip_hash` 可保持哈希稳定 |
+| `resolve` | — | 动态解析域名并自动更新地址，需配合 `resolver` |
+| `slow_start=T` | — | 商业版参数，恢复时权重渐进上升 |
+
+注意：开源版默认是**被动健康检查**——靠真实请求的失败次数（`max_fails`/`fail_timeout`）判断后端好坏；主动健康检查（`health_check`）属于商业版模块。若组内只有一台服务器，`max_fails`、`fail_timeout` 会被忽略，它永远不会被判为不可用。
+
+```nginx
+upstream backend {
+    least_conn;
+    server 10.0.0.11:8080 weight=3 max_fails=2 fail_timeout=10s;
+    server 10.0.0.12:8080 weight=1 max_fails=2 fail_timeout=10s;
+    server 10.0.0.13:8080 backup;
+    keepalive 64;
+}
+
+server {
+    listen 80;
+    server_name api.example.com;
+
+    location / {
+        proxy_pass http://backend;
+        proxy_next_upstream error timeout http_502 http_503;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+}
+```
+
+`proxy_next_upstream` 决定"什么情况下换下一台重试"，默认已包含 `error` 与 `timeout`；把它配得过于激进（例如把 `http_500` 也算失败）可能导致非幂等请求被重复提交，需要结合业务判断。
+
+## 九、location 匹配与 rewrite 规则
+
+`location` 决定"这个 URL 交给哪段配置处理"，`rewrite` 决定"URL 要不要改写、要不要跳转"。两者是 Nginx 配置里最容易写错、也最常被追问的部分。
+
+### 9.1 location 的匹配优先级
+
+匹配流程可以记成四步：
+
+1. 先在所有**前缀** location 中找最长匹配，并记下来；
+2. 如果这个最长前缀带 `^~` 修饰符，直接用它的配置，不再检查正则；
+3. 否则按**配置文件中的出现顺序**逐个尝试正则 location，第一个匹配上的立即生效；
+4. 正则都没匹配上，就用第 1 步记下的最长前缀 location。
+
+`=` 是精确匹配，一旦命中立即结束查找，所以高频路径（如 `location = /`）用它可以省掉后续比较。
+
+| 修饰符 | 含义 | 是否继续检查正则 |
+| --- | --- | --- |
+| `=` | URI 完全相等 | 否，命中即结束 |
+| `^~` | 前缀匹配，且命中后跳过正则 | 否 |
+| 无 | 普通前缀匹配，取最长 | 是 |
+| `~` | 区分大小写的正则 | 按顺序 |
+| `~*` | 不区分大小写的正则 | 按顺序 |
+| `@name` | 命名 location，只用于内部跳转（如 `try_files`、`error_page`） | 不参与普通匹配 |
+
+```nginx
+server {
+    location = / {                 # 1. 只匹配 "/"
+        return 200 "home\n";
+    }
+
+    location / {                   # 2. 兜底前缀
+        proxy_pass http://backend;
+    }
+
+    location ^~ /images/ {         # 3. 命中后不再看正则
+        root /data;
+    }
+
+    location ~* \.(gif|jpg|jpeg|png)$ {   # 4. 正则按出现顺序
+        expires 30d;
+    }
+
+    location @fallback {           # 5. 命名 location
+        proxy_pass http://backend;
+    }
+}
+```
+
+实践提示：把正则 location 写在前面并不会"优先"，优先级由类型决定，只有同类正则之间才比较出现顺序。这条规则与很多人的直觉相反，是排查"配置没生效"的高频原因。
+
+### 9.2 rewrite 与 return
+
+`rewrite 正则 替换串 [flag];` 的语义是：请求 URI 匹配正则时，按替换串改写。指令按配置中出现的顺序依次执行，直到被 flag 打断。
+
+| flag | 效果 |
+| --- | --- |
+| 无 | 继续执行后续 rewrite，然后按改写后的 URI 继续处理 |
+| `last` | 停止当前这组 rewrite，用新 URI 重新做一次 location 查找 |
+| `break` | 停止当前这组 rewrite，留在当前 location 继续处理 |
+| `redirect` | 返回 302 临时重定向（替换串不是以协议或 `$scheme` 开头的绝对地址时，默认使用该标志） |
+| `permanent` | 返回 301 永久重定向 |
+
+补充两点官方语义：如果替换串本身以协议开头，处理会直接停止并返回重定向；`rewrite` 只能写在 `server`、`location`、`if` 中。
+
+```nginx
+server {
+    # 老接口迁移到新路径，内部跳转，不改变浏览器地址
+    rewrite ^/old-api/(.*)$ /api/v2/$1 last;
+
+    # 强制 https（注意返回的是重定向）
+    if ($scheme = http) {
+        return 301 https://$host$request_uri;
+    }
+
+    # 更简单的做法：直接 return，避免不必要的正则开销
+    location = /health {
+        return 200 "ok\n";
+    }
+
+    # 单页应用的前端路由回退
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+`if` 在 `location` 中的行为有诸多限制（官方文档也提示其语义容易出错），能用 `map`、`try_files`、`return` 表达的，尽量不要用 `if`。
+
+## 十、HTTP 压缩：gzip 的正确配置
+
+压缩能直接减少传输字节数，对文本类响应（HTML、CSS、JS、JSON）收益明显。Gzip 是最通用的压缩方式，浏览器普遍支持。
+
+| 指令 | 默认值 | 说明 |
+| --- | --- | --- |
+| `gzip` | `off` | 总开关，默认关闭 |
+| `gzip_types` | `text/html` | 除 `text/html` 外还需要压缩的 MIME 类型；`text/html` 始终会被压缩 |
+| `gzip_comp_level` | `1` | 压缩级别 1~9，越高越费 CPU |
+| `gzip_min_length` | `20` | 小于该字节数的响应不压缩（依据 `Content-Length` 判断） |
+| `gzip_buffers` | `32 4k\|16 8k` | 压缩使用的缓冲块数量与大小 |
+| `gzip_http_version` | `1.1` | 允许压缩的最低 HTTP 版本 |
+| `gzip_proxied` | `off` | 对代理请求是否压缩（依据请求中的 `Via` 头判断） |
+| `gzip_vary` | `off` | 是否添加 `Vary: Accept-Encoding` 响应头 |
+| `gzip_disable` | — | 按 User-Agent 正则跳过压缩，如 `msie6` |
+| `gzip_static` | `off` | 独立模块：优先发送预压缩的 `.gz` 文件，需编译时开启 |
+
+```nginx
+http {
+    gzip on;
+    gzip_types text/plain text/css application/javascript application/json
+               application/xml application/xhtml+xml image/svg+xml;
+    gzip_comp_level 5;          # 1 最快，9 最小；5 左右是常见折中
+    gzip_min_length 1024;       # 太小压缩反而得不偿失
+    gzip_buffers 32 4k;
+    gzip_http_version 1.1;
+    gzip_proxied any;
+    gzip_disable "msie6";
+    gzip_vary on;               # 让缓存/CDN 区分压缩与非压缩版本
+    gzip_static on;             # 需模块支持：直接发送预生成的 .gz
+}
+```
+
+启用后，Nginx 会对符合条件的响应加上 `Content-Encoding: gzip`，由客户端负责解压。三个常见坑：
+
+- **`gzip_static` 不是"是否添加 Content-Encoding 头"的开关**，它表示"存在同名 `.gz` 文件时优先发送该文件"，属于 `ngx_http_gzip_static_module`，默认未编译进 Nginx，需要 `--with-http_gzip_static_module`。
+- **`gzip_http_version` 不是"压缩窗口大小"**，它只是"允许压缩的最低 HTTP 版本"。
+- **HTTPS 下的压缩要谨慎**：官方文档明确指出，TLS 上压缩后的响应可能受到 BREACH 类攻击影响，涉及敏感信息（如 CSRF token、会话标识）的响应不宜压缩。
+
+## 十一、HTTP/2 与 HTTP/3
+
+HTTP/2 是 HTTP/1.1 的继任者，目标是降低延迟、提升并发效率。Nginx 从 1.9.5 起提供支持，但需要模块被编译进来。
+
+主要特性：
+
+| 特性 | 说明 | 解决的问题 |
+| --- | --- | --- |
+| 多路复用 | 一条 TCP 连接上并发多个请求/响应流 | HTTP/1.1 的队头阻塞 |
+| 头部压缩 | HPACK 算法压缩请求/响应头 | 重复头部带来的带宽浪费 |
+| 二进制分帧 | 传输层改为二进制帧 | 文本解析的低效与歧义 |
+| 流优先级 | 客户端可标注流的优先级 | 关键资源优先加载 |
+| 服务器推送 | 服务端主动推送资源 | 减少一轮请求，但实际收益视场景而定，需测试评估 |
+
+Nginx 侧的配置要点：
+
+1. **版本与模块**：`ngx_http_v2_module` 自 1.9.5 起存在，默认不编译，需要 `--with-http_v2_module`。可用 `nginx -V` 确认编译参数。
+2. **写法的变化**：1.25.1 起推荐使用独立的 `http2 on;` 指令；`listen 443 ssl http2;` 中的 `http2` 参数已被官方标记为**弃用**（deprecated）。一些较老的示例仍写作 `listen 443 ssl http2;`，这里按新版写法更正。
+3. **TLS 要求**：通过 TLS 承载 HTTP/2 需要 ALPN 扩展，OpenSSL 需 1.0.2 及以上。HTTP/2 也可以跑在明文上，但浏览器普遍只在 HTTPS 下启用。
+4. **HTTP/3**：基于 QUIC（UDP），Nginx 1.25.0 起在 `listen` 中提供 `quic` 参数。
+
+```nginx
+server {
+    listen 443 ssl;
+    http2 on;                    # 1.25.1+ 推荐写法
+    server_name example.com;
+
+    ssl_certificate     /etc/nginx/ssl/example.com.crt;
+    ssl_certificate_key /etc/nginx/ssl/example.com.key;
+
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:10m;
+
+    location / {
+        proxy_pass http://backend;
+    }
+}
+```
+
+HTTP/2 下的优化思路与 HTTP/1.1 不同：请求数不再是最主要的瓶颈，域名分片、资源合并的收益明显下降，重点转向减小单个资源体积、合理设置缓存与优先级。上线前仍需做兼容性与压测，尤其是老客户端与中间设备。
+
+## 十二、WebSocket 代理
+
+WebSocket 是在一条 TCP 连接上做全双工通信的协议，适合聊天、实时推送、协同编辑等场景。它先用 HTTP/1.1 完成握手，再"升级"为长连接。
+
+把 HTTP 想象成寄信（一问一答，写完就结束），WebSocket 更像对讲机（按住频道后双方随时可以说话）。也正因为它是长连接，代理层必须保证连接不被中途掐断。
+
+Nginx 从 1.3.13 起支持 WebSocket 代理：当后端返回 `101 Switching Protocols`、且客户端请求带 `Upgrade` 头时，Nginx 会在客户端与后端之间建立隧道。关键在于 `Upgrade` 与 `Connection` 属于**逐跳头（hop-by-hop）**，默认不会转发，必须显式透传。
+
+```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    location /ws/ {
+        proxy_pass http://backend;
+        proxy_http_version 1.1;                              # 1.29.7 起默认即为 1.1
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        proxy_read_timeout 3600s;   # 长连接场景需放宽读超时，默认 60s 容易被动断开
+        proxy_send_timeout 3600s;
+    }
+}
+```
+
+配套注意点：
+
+- 后端（如 Spring 的 WebSocket/STOMP 端点）要正确处理握手与数据帧，否则 Nginx 侧配置正确也会失败。
+- 多实例部署时需要会话粘性（`ip_hash` 或基于 Cookie 的粘性策略），否则同一客户端的帧会落到不同实例。
+- 如果前面还有负载均衡设备或 CDN，同样需要允许 WebSocket 升级，并把空闲超时调大。
+- `proxy_read_timeout` 只统计"两次读操作之间"的间隔，不是整个连接的总时长，因此长连接把间隔放宽即可。
+
+## 十三、IP 访问控制：allow / deny
+
+`ngx_http_access_module` 提供最基础的网络层访问控制，适合给后台管理口、内部接口加一道门。
+
+规则按配置中出现的顺序逐条检查，**命中第一条即生效**，后面的规则不再看。这也是"顺序写反会得到相反结果"的根因。
+
+```nginx
+server {
+    location /admin/ {
+        allow 192.168.1.100;     # 单个地址
+        allow 10.0.0.0/24;       # 网段（CIDR）
+        allow 2001:db8::/32;     # IPv6 网段
+        deny  all;               # 其余全部拒绝
+
+        proxy_pass http://backend;
+    }
+}
+```
+
+规则可以写在 `http`、`server`、`location` 任一层，内层会覆盖外层同类型判断。几条实践经验：
+
+- `deny all;` 放在最后，否则前面的 `allow` 永远不会被检查到。
+- 反向代理场景下，`deny` 比较的是 `$remote_addr`。如果 Nginx 前面还有一层代理或 CDN，需要用 `real_ip` 相关指令还原真实客户端地址，否则限制的是上一跳的 IP。
+- 需要按国家/地区或大段地址做规则时，可以用 `geo` 模块把 IP 映射成变量，再配合 `if` 或 `map` 使用；按国家判断通常还需要 GeoIP 类模块。
+
+## 十四、限流、防爬虫与 DDoS 缓解
+
+访问控制只能挡"已知的坏 IP"，而刷接口、爬虫、DDoS 的共同特征是"量大"。本节讲 Nginx 能做的限速与拦截，以及它的能力边界。
+
+**请求速率限制**（`ngx_http_limit_req_module`）：按 key（通常是客户端 IP）用一个漏桶算法限速。
+
+```nginx
+http {
+    # 每个 IP 平均 5 请求/秒，状态存 10MB 共享内存
+    limit_req_zone $binary_remote_addr zone=perip:10m rate=5r/s;
+
+    server {
+        location /api/ {
+            limit_req zone=perip burst=10 nodelay;
+            limit_req_status 429;
+            proxy_pass http://backend;
+        }
+    }
+}
+```
+
+- `rate` 支持 `r/s` 与 `r/m`；`$binary_remote_addr` 比 `$remote_addr` 更省内存。
+- `burst` 允许的突发请求数，默认 `0`；超出的请求默认被延迟处理，加了 `nodelay` 则直接拒绝（返回 `limit_req_status` 指定的状态码）。
+
+**并发连接限制**（`ngx_http_limit_conn_module`）：
+
+```nginx
+http {
+    limit_conn_zone $binary_remote_addr zone=addr:10m;
+
+    server {
+        location /download/ {
+            limit_conn addr 1;        # 每个 IP 同时只允许 1 条连接
+            limit_conn_status 429;
+        }
+    }
+}
+```
+
+注意：在 HTTP/2、HTTP/3 下，每个并发请求会被当作一条独立连接计数，与 HTTP/1.1 的直觉不同。
+
+**防爬虫与恶意请求的常用模块：**
+
+| 模块 / 指令 | 作用 |
+| --- | --- |
+| `ngx_http_access_module`（`allow`/`deny`） | 按 IP 或网段放行、拒绝 |
+| `ngx_http_geo_module`（`geo`） | 把客户端 IP 映射为变量，便于做分组规则 |
+| `ngx_http_limit_req_module` | 限制请求速率，压制高频抓取 |
+| `ngx_http_limit_conn_module` | 限制并发连接数 |
+| `ngx_http_referer_module`（`valid_referers`、`$invalid_referer`） | 防盗链，只允许来自指定来源页的请求 |
+| `ngx_http_rewrite_module` | 按 UA、参数等条件做重定向或直接拒绝 |
+| `ngx_http_headers_module`（`add_header`） | 添加 `X-Frame-Options`、`Content-Security-Policy` 等安全响应头 |
+
+这里需要澄清两处常见误解：官方文档的模块清单中**没有** `ngx_http_security_headers_module`，设置安全响应头应使用 `ngx_http_headers_module` 的 `add_header`；`ngx_http_bot_protection_module` 同样不是官方模块，识别恶意爬虫需要引入第三方模块、商业版能力或上游 WAF，不应假设它开箱可用。
+
+**DDoS 缓解的现实边界：**
+
+1. 限速与限连接（`limit_req`、`limit_conn`）能压住单 IP 的高频请求。
+2. 缓存与代理缓冲能减少回源，让后端不被瞬间流量打穿；`proxy_request_buffering`、`client_body_buffer_size` 等参数影响大请求的处理方式。
+3. IP 黑/白名单可拦截已知恶意来源。
+4. 多实例 + 负载均衡可避免单点被打垮。
+5. 与 CDN、云 WAF、清洗中心联动是应对大流量攻击的主要手段。
+6. Nginx 自身也可能成为攻击目标（连接耗尽、慢速攻击），需要配合内核参数与上游防护。
+
+结论要诚实：Nginx 是"缓解"手段，面对大规模流量型攻击，专业清洗服务与运营商侧防护才是主力。
+
+## 十五、超时与缓冲区参数速查
+
+超时和缓冲是最常被调整、也最容易调错的参数。本节给出一张默认值速查表，并澄清一个常被混淆的概念——"缓冲区溢出"。
+
+| 指令 | 默认值 | 作用与超时后的结果 |
+| --- | --- | --- |
+| `client_header_timeout` | `60s` | 读请求头超时 → 408 |
+| `client_body_timeout` | `60s` | 两次读请求体之间超时 → 408 |
+| `send_timeout` | `60s` | 两次写响应之间超时 → 关闭连接 |
+| `keepalive_timeout` | `75s` | 客户端空闲长连接保持时间，`0` 为关闭 |
+| `keepalive_requests` | `1000` | 单条长连接可处理的请求数上限 |
+| `client_max_body_size` | `1m` | 请求体上限，超出 → 413 |
+| `client_header_buffer_size` | `1k` | 请求头缓冲 |
+| `large_client_header_buffers` | `4 8k` | 请求头超长时使用的更大缓冲 |
+| `client_body_buffer_size` | `8k\|16k` | 请求体缓冲，超出部分落临时文件 |
+| `proxy_connect_timeout` | `60s` | 与上游建连超时（官方提示通常不超过 75 秒） |
+| `proxy_read_timeout` | `60s` | 两次读上游响应之间超时 → 504 |
+| `proxy_send_timeout` | `60s` | 两次写上游请求之间超时 |
+| `proxy_buffering` | `on` | 是否缓冲上游响应 |
+| `proxy_buffer_size` | `4k\|8k` | 上游响应头缓冲，超出视为响应非法 |
+| `proxy_buffers` | `8 4k\|8k` | 上游响应体缓冲块数量与大小 |
+| `worker_connections` | `512` | 单 worker 最大连接数（含上游连接） |
+
+调参经验（属实践总结，非官方承诺）：上传接口要把 `client_max_body_size` 与 `client_body_buffer_size` 一起放大；大响应后端要评估 `proxy_buffers` 与 `proxy_max_temp_file_size`；慢接口优先看 `proxy_read_timeout`，不要盲目全局放大，否则故障会被拖得更久。
+
+关于内存：这些缓冲是按连接分配的，数值调大只是推高"并发连接数 × 缓冲大小"的内存占用，并不会让吞吐变高；按真实请求/响应体大小设置即可，并给系统预留足够内存给连接状态与临时文件。
+
+### 进阶了解（可跳过）
+
+初学阶段可以略过这一小节，知道"两者不是一回事"即可。
+
+一种常见误解是把"缓冲区溢出"当成 Nginx 要防的攻击类型，实际上是两个层面的问题：
+
+- **缓冲区溢出**是 C 程序把数据写到缓冲区边界之外，覆盖相邻内存，属于内存安全漏洞。它的防护依赖编译器与操作系统机制，例如栈保护（stack canary）、地址空间布局随机化（ASLR）、不可执行栈等，并不是"写代码时用到的某种技巧"。
+- **Nginx 的缓冲区参数**（`client_body_buffer_size`、`proxy_buffers` 等）是应用层的收发缓冲，影响内存占用与是否落盘，与内存安全漏洞无关。
+- Nginx 自身也会有安全公告（CVE），实践做法是关注官方安全公告、及时升级版本、最小化编译模块，而不是依赖单个参数。
+
+## 十六、用 Lua 扩展请求处理（OpenResty）
+
+有些逻辑用声明式配置表达很别扭，例如"先查缓存、再校验签名、最后改写响应体"。这类场景可以用 Lua 脚本嵌入请求处理流程。
+
+把它想成在流水线上临时加一个可编程工位：请求经过某个阶段时，交给你的 Lua 代码处理，处理完再继续往下走。
+
+**先明确归属**：Lua 能力来自第三方模块 `lua-nginx-module`，不属于 Nginx 官方源码；OpenResty 是把 Nginx 与该模块（以及一系列常用库）打包在一起的发行版，生产上通常直接使用 OpenResty 而不是自己编译。
+
+常见的用途：
+
+1. **请求处理**：改写请求头、查询参数、请求体。
+2. **响应处理**：修改响应体与响应头。
+3. **访问控制**：基于复杂条件（签名、Token、灰度规则）放行或拒绝。
+4. **缓存控制**：实现自定义的缓存键与失效逻辑。
+5. **复杂重定向**：按多条件组合决定跳转目标。
+
+接入步骤：
+
+1. 准备支持 Lua 的 Nginx（OpenResty，或自行编译并加载该模块）。
+2. 用 `lua_package_path` / `lua_package_cpath` 指定 Lua 代码与 C 模块的搜索路径。
+3. 在 `location` 中用阶段指令挂载脚本：`access_by_lua_file`（访问阶段，适合鉴权）、`content_by_lua_file`（内容阶段，直接生成响应）。
+4. 脚本中用 `ngx.var`、`ngx.req`、`ngx.say` 等 API 读写请求与响应。
+
+```nginx
+http {
+    lua_package_path  "/etc/nginx/lua/?.lua;;";
+    lua_package_cpath "/etc/nginx/lua/?.so;;";
+
+    server {
+        location /api/ {
+            access_by_lua_file /etc/nginx/lua/auth.lua;   # 鉴权通过后继续代理
+            proxy_pass http://backend;
+        }
+
+        location /hello {
+            content_by_lua_file /etc/nginx/lua/hello.lua; # 直接返回内容，不走后端
+        }
+    }
+}
+```
+
+关于加载方式需要说明一点：`lua-nginx-module` 并没有 `lua_include` 指令，复用代码的标准做法是把公共逻辑写成 Lua 模块，在脚本里用 `require` 引入，并保证模块所在目录已加入 `lua_package_path`。
+
+性能提醒：Lua 代码运行在工作进程的事件循环里，任何阻塞操作（同步 IO、长时间循环）都会拖慢该进程上的所有请求。官方文档也反复强调要避免阻塞型调用；上线前应做压测，并注意脚本异常的处理路径。
+
+## 十七、常用运维命令与排错
+
+前面各节讲的是"怎么配"，这一节讲"配完之后怎么确认它生效、出问题怎么定位"。
+
+```bash
+nginx -v                 # 版本
+nginx -V                 # 版本 + 编译参数（确认模块是否编进来）
+nginx -t                 # 校验配置语法
+nginx -T                 # 打印完整生效配置（含 include 展开）
+nginx -s reload          # 平滑重载
+nginx -s quit            # 优雅退出
+nginx -s stop            # 立即停止
+```
+
+状态码与常见原因对照：
+
+| 现象 | 常见原因 | 排查方向 |
+| --- | --- | --- |
+| 502 Bad Gateway | 后端不可达、后端提前断连、上游返回非法响应 | 后端端口/进程、`error.log`、`proxy_read_timeout` |
+| 504 Gateway Time-out | 后端处理超过 `proxy_read_timeout` | 后端耗时、慢 SQL、超时是否需单独放大 |
+| 413 Request Entity Too Large | 请求体超过 `client_max_body_size` | 上传接口单独放大该值 |
+| 499（Nginx 自定义） | 客户端在响应前主动断开 | 客户端超时设置、后端响应过慢 |
+| 429 Too Many Requests | 触发 `limit_req` / `limit_conn` | 调整 `rate`、`burst` 或换 key |
+| 静态资源 404 | `root` / `alias` 路径写错 | `nginx -T` 看生效路径；注意 `alias` 与 `location` 的斜杠 |
+
+排错时的顺序建议：先用 `nginx -T` 确认"你以为生效的配置"确实生效；再看 `error.log` 的具体报错；最后对照上游服务的日志确认问题在代理层还是应用层。
+
+## 参考资料
+
+- NGINX 官方文档：Core functionality（`worker_processes`、`worker_connections`、`thread_pool`、`worker_cpu_affinity` 等指令与默认值）
+- NGINX 官方文档：Module ngx_http_core_module（`location` 匹配规则、`keepalive_timeout`、`client_*` 系列、`listen` 参数）
+- NGINX 官方文档：Module ngx_http_upstream_module（负载均衡算法、`server` 参数、`keepalive` 系列）
+- NGINX 官方文档：Module ngx_http_proxy_module（`proxy_*` 超时、缓冲、缓存指令）
+- NGINX 官方文档：Module ngx_http_gzip_module 与 ngx_http_gzip_static_module
+- NGINX 官方文档：Module ngx_http_v2_module；WebSocket proxying 专题页
+- NGINX 官方文档：Module ngx_http_access_module、ngx_http_limit_req_module、ngx_http_limit_conn_module、ngx_http_geo_module、ngx_http_referer_module、ngx_http_rewrite_module、ngx_http_headers_module
+- OpenResty 项目文档：lua-nginx-module（`lua_package_path`、`access_by_lua_file`、`content_by_lua_file` 等）
