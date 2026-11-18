@@ -735,8 +735,6 @@ DeepSeek 界面简洁直观，主要包含：
 
 ## 6. 高手进化篇——解锁专业级生产力
 
-> 参考：[DeepSeek 搭建个人知识库教程](https://esouqpttmy.feishu.cn/wiki/WmI8wa7JAiWrPhkVEfxc8vRUnHb?from=from_copylink)
-
 ### 6.1 构建私人知识库
 
 **Step 1 数据准备**：适用法律判例库、疾病诊疗手册、产品知识等场景。创建结构化文档模板，例如糖尿病饮食管理（核心要点：每日碳水摄入 ≤ 130g、推荐荞麦/西蓝花/鳕鱼；禁忌：高 GI 水果荔枝/龙眼/香蕉，加工食品蜜饯/罐头/火腿肠；常见问题：无糖可乐建议每周不超过 2 罐）。文件格式转换：纸质资料→手机扫描王→可编辑 PDF，微信聊天记录→腾讯文档导出 TXT；数据清洗输入"请删除文档中的重复段落，并按'概念定义-操作步骤-注意事项'结构重组内容"。
@@ -1670,7 +1668,7 @@ QwQ-32B 已在魔搭社区、HuggingFace 及 GitHub 基于 Apache 2.0 协议开�
 - https://modelscope.cn/models/Qwen/QwQ-32B
 - https://ollama.com/library/qwq
 
-**本地部署**：可借助 Ollama 快速部署（细节参考 https://mp.weixin.qq.com/s?__biz=MzU1ODk1NTQ0Mg==&mid=2247485207&idx=1&sn=d8ac478fa0d83edde16df959ef616c91&scene=21#wechat_redirect ）。
+**本地部署**：可借助 Ollama 快速部署。
 
 ![1741243474629-84a0998b-98af-4395-810b-98588b354ccc.webp](images/1741243474629-84a0998b-98af-4395-810b-98588b354ccc-920758.webp)
 
@@ -2185,8 +2183,6 @@ DeepSeek 一哥位置没坐热阿里就推出 qwq-32b，性能差不多，相比
 
 ![1711377508294-85c7f232-01f0-476d-b976-c1001734806a.png](images/1711377508294-85c7f232-01f0-476d-b976-c1001734806a-352979.png)
 
-代码&文档：https://gitee.com/xscodeit/springboot-openai.git
-
 ---
 
 # DeepSeek 15 天指导手册（从入门到精通）
@@ -2457,8 +2453,6 @@ DeepSeek 卡顿用不了时，可本地部署，几分钟即可完成。
 # SpringBoot快速整合OpenAI
 
 ![1711377508294-85c7f232-01f0-476d-b976-c1001734806a.png](images/1711377508294-85c7f232-01f0-476d-b976-c1001734806a-352979.png)
-
-代码&文档：[https://gitee.com/xscodeit/springboot-openai.git](https://gitee.com/xscodeit/springboot-openai.git)
 
 
 # DeepSeek15天指导手册(从入门到精通)
