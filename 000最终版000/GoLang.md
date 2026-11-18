@@ -827,7 +827,7 @@ tips:如果不是要往go这块转或者云原生定制化，到此面个试基�
 ##### 图解：
 Erlang 之父 Joe Armstrong 用一张5岁小孩都能看懂的图解释了并发与并行的区别
 
-![1747395864128-2afa0fb4-86a4-4bd7-b999-8bb47ba23eb3.png](images/1747395864128-2afa0fb4-86a4-4bd7-b999-8bb47ba23eb3.png)
+![1747395864128-2afa0fb4-86a4-4bd7-b999-8bb47ba23eb3.png](images/1747395864128-2afa0fb4-86a4-4bd7-b999-8bb47ba23eb3-023347.png)
 
 #### 协程 goroutine 的引入
 ##### 需求 :
@@ -859,7 +859,7 @@ Golang：将统计分配给多个 goroutine去完成
 要求主线程和 goroutine同时执行
 
 ##### 流程图：
-![1747395890932-d4b5401a-c2f9-463d-9518-9ccdde19cee7.png](images/1747395890932-d4b5401a-c2f9-463d-9518-9ccdde19cee7.png)
+![1747395890932-d4b5401a-c2f9-463d-9518-9ccdde19cee7.png](images/1747395890932-d4b5401a-c2f9-463d-9518-9ccdde19cee7-711057.png)
 
 #### 百万级并发
 ```plain

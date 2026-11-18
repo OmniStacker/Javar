@@ -469,7 +469,7 @@ public abstract class PropertySource {
 
 PropertySource 有诸多的实现类用于管理应用程序的配置属性。不同的 PropertySource 实现类可以从不同的来源获取配置属性，例如文件、环境变量、命令行参数等。其中涉及到的一些实现类有：
 
-![1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4.png](images/1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4.png)
+![1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4.png](images/1688374407405-5d8293b0-ef15-40bf-a71b-7a22a9a9e0c4-271328.png)
 
 关系图
 
@@ -507,7 +507,7 @@ private void prepareContext(DefaultBootstrapContext bootstrapContext, Configurab
 
 PropertyResolver是获取配置的关键类，其内部提供了操作PropertySource 队列的方法，核心方法getProperty(key)获取配置值，看了下这个类的依赖关系，发现 Environment 是它子类。
 
-![1688374407538-78066da7-d837-4237-b8cd-68426b863725.png](images/1688374407538-78066da7-d837-4237-b8cd-68426b863725.png)
+![1688374407538-78066da7-d837-4237-b8cd-68426b863725.png](images/1688374407538-78066da7-d837-4237-b8cd-68426b863725-568270.png)
 
 那么直接用 PropertyResolver 来获取配置属性其实也是可以的，到这我们就大致明白了 Springboot 配置的加载和读取了。
 
@@ -565,7 +565,7 @@ public class EnvVariablesTest {
 
 毫无悬念，成功拿到配置数据。
 
-![1688374407401-af2eea5c-bcdb-4a45-83fa-559083551573.png](images/1688374407401-af2eea5c-bcdb-4a45-83fa-559083551573.png)
+![1688374407401-af2eea5c-bcdb-4a45-83fa-559083551573.png](images/1688374407401-af2eea5c-bcdb-4a45-83fa-559083551573-332305.png)
 
 虽然@Value注解方式使用起来很简单，如果使用不当还会遇到不少坑。
 
@@ -573,7 +573,7 @@ public class EnvVariablesTest {
 
 如果在代码中引用变量，配置文件中未进行配值，就会出现类似下图所示的错误。
 
-![1688374407391-2d0d979a-f635-44dc-956b-b01bf3a7f4c6.png](images/1688374407391-2d0d979a-f635-44dc-956b-b01bf3a7f4c6.png)
+![1688374407391-2d0d979a-f635-44dc-956b-b01bf3a7f4c6.png](images/1688374407391-2d0d979a-f635-44dc-956b-b01bf3a7f4c6-006353.png)
 
 为了避免此类错误导致服务启动异常，我们可以在引用变量的同时给它赋一个默认值，以确保即使在未正确配值的情况下，程序依然能够正常运行。
 
@@ -714,7 +714,7 @@ public class TestService {
 
 这就涉及到了 ConfigurationPropertiesBindingPostProcessor 类，它是 Bean后置处理器，负责扫描容器中所有被 @ConfigurationProperties 注解所标记的 Bean对象。如果找到了，则会使用 Binder 组件将外部属性的值绑定到它们身上，从而实现自动注入。
 
-![1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36.png](images/1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36.png)
+![1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36.png](images/1688374407371-7ede8bb7-43bb-4c4b-88d4-585478b8fe36-325267.png)
 
 * bindToSpringApplication 主要是将属性值绑定到 Bean 对象中；
 * ConfigurationPropertiesBindingPostProcessor 负责在 Spring 容器启动时将被注解标记的 Bean 对象注册到容器中，并完成后续的属性注入操作；
@@ -989,7 +989,7 @@ public class CustomTest {
 
 ### 图解
 
-![1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b.png](images/1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b.png)
+![1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b.png](images/1683606215543-e5a97d95-94a2-4df0-98c8-3d57d94ebd0b-277072.png)
 
 min-spare、maxConnections、maxThreads、acceptCount关系之间，具体的关系如何呢？ 有不少的同学对于这个问题是云里雾里的，并且多次进行求助。这里用一个形象的比喻，通俗易懂的解释一下tomcat的最大线程数（maxThreads）、最大等待数（acceptCount）和最大连接数（maxConnections）三者之间的关系。
 
@@ -1138,7 +1138,7 @@ public void setEnvironment(Environment environment) {
 注意！我们需要的是动态！\*\*动态！！\*\*是在运行过程中经过逻辑代码创建Bean,   不是通过配置、 @Component这种配置方式这种方式不能自由控制业务逻辑。
 
 想要动态创建Bean先了解Bean创建的大概过程：\
-![1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da.png](images/1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da.png)\
+![1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da.png](images/1638361031028-02a1ed20-738b-42d3-a004-bf1dc89cf7da-848691.png)\
 如果想动态注册Bean,可以通过先动态注册BeanDefintion即可，Spring提供了动态注册BeanDefinition的接口：
 
 ### ImportBeanDefinitionRegistrar
@@ -1199,7 +1199,7 @@ OK. 现在读取信息会了， 动态创建Bean也会了， 结合即可：\
 因为顺序原因！这里就要清楚：\
 [@Value ](/Value) 和@ConfigurationProperties注解依赖 **BeanPostProcessor**解析，要调用BeanPostProcessor就**要先注册**，而BeanPostProcessor的注册是在BeanDefinition的注册之后的。\
 所以在注册BeanDefinition时是获取不到注解绑定的配置信息的：\
-![1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8.png](images/1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8.png)
+![1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8.png](images/1638358868886-fcc0353a-8fe1-4d96-9bcf-3f537d30abe8-118286.png)
 
 ### 实现
 
@@ -1261,9 +1261,9 @@ public class MyBeanDefinitionRegistryPostProcessor implements
 ```
 
 * 当com.tuling.bean.enbaled为true
-  * 输出![1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2.png](images/1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2.png)
+  * 输出![1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2.png](images/1638359521588-06ef1fb2-5768-46fb-a188-85b0883556c2-014648.png)
 * 当com.tuling.bean.enbaled为false
-  * 输出![1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0.png](images/1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0.png)
+  * 输出![1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0.png](images/1638359650940-3f684da2-a22f-4eb3-9095-535e42405ef0-416342.png)
 
 通过这种方式就可以实现根据配置信息自由启用、禁用某些业务的实现 。 当然我这里只是抛砖引玉，实际开发中可以非常灵活， 我可以通过配置创建多个bean、通过更复杂的业务逻辑进行控制等等......  学会的同学给个赞吧。
 
@@ -1328,7 +1328,7 @@ spring:
 
 ### 运行程序解密：
 
-![1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659.png](images/1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659.png)
+![1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659.png](images/1727339698841-b52ffd0c-f10b-4be1-9d80-f0bb99226659-051305.png)
 
 ### 部署jar包解密：
 
@@ -1398,7 +1398,7 @@ java -javaagent:xxx-encrypted.jar -jar xxx-encrypted.jar
 java -javaagent:xxx-encrypted.jar='-pwd=密码'-jar xxx-encrypted.jar
 ```
 
-![1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449.png](images/1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449.png)
+![1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449.png](images/1740726084316-9c2f838d-bcb5-4a04-8224-4de8fbece449-498667.png)
 
 
 # SpringBoot如何自定义Starter

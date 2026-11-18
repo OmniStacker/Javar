@@ -10,7 +10,7 @@
 
 在解析@Component注册为BeanDefinition时会调用AnnotationBeanNameGenerator.buildDefaultBeanName
 
-![1699961891863-da50e961-d644-40c7-ae48-7d852742d4ce.png](images/1699961891863-da50e961-d644-40c7-ae48-7d852742d4ce.png)
+![1699961891863-da50e961-d644-40c7-ae48-7d852742d4ce.png](images/1699961891863-da50e961-d644-40c7-ae48-7d852742d4ce-482696.png)
 
 # 单例设计模式与Bean单例
 
@@ -20,7 +20,7 @@ Singleton模式主要作用是保证在Java应用程序中，一个Class有且�
 
 **但是**，单例设计模式与Bean单例具有一定的区别，主要在于它们运行环境，java单例设计模式的环境是JVM，而Bean单例的环境在于Bean容器。一个Spring程序可以有很多个Bean，但一个Java程序通常有且仅有一个自己的JVM。所以，虽然Spring的Bean单例在一个容器中有且仅有一个，但如果程序具有多个Bean容器，而且都有某个Bean，那么这个Bean在这个程序中并非只有一个。但在实际应用中，如果将对象的生命周期完全交给Spring管理(不在其他地方通过new、反射等方式创建)，其实也能达到单例模式的效果。
 
-![1699964082522-9710065b-58d7-479b-9a7f-ce62b63af7d1.png](images/1699964082522-9710065b-58d7-479b-9a7f-ce62b63af7d1.png)
+![1699964082522-9710065b-58d7-479b-9a7f-ce62b63af7d1.png](images/1699964082522-9710065b-58d7-479b-9a7f-ce62b63af7d1-906301.png)
 
 ByType-->byName
 
@@ -229,9 +229,9 @@ private MyBean myBean;
 
 @Autowired 和 @Resource 在使用时都可以设置参数，但二者支持的参数以及参数的个数完全不同，其中 @Autowired 只支持设置一个 required 的参数，而 @Resource 支持 7 个参数，支持的参数如下图所示：
 
-![1713513602763-e139ca2f-840a-48fe-9b72-bcb23635e992.png](images/1713513602763-e139ca2f-840a-48fe-9b72-bcb23635e992.png)
+![1713513602763-e139ca2f-840a-48fe-9b72-bcb23635e992.png](images/1713513602763-e139ca2f-840a-48fe-9b72-bcb23635e992-929550.png)
 
-![1713513555699-e4f935cf-aa03-4a14-a5c5-4d8cd9e0222d.png](images/1713513555699-e4f935cf-aa03-4a14-a5c5-4d8cd9e0222d.png)
+![1713513555699-e4f935cf-aa03-4a14-a5c5-4d8cd9e0222d.png](images/1713513555699-e4f935cf-aa03-4a14-a5c5-4d8cd9e0222d-896615.png)
 
 ## 依赖注入的用法支持不同
 
@@ -289,7 +289,7 @@ public class UserController {
 }
 ```
 
-![1661341346342-317ea714-5825-4dc9-96a0-f0a118158380.png](images/1661341346342-317ea714-5825-4dc9-96a0-f0a118158380.png)
+![1661341346342-317ea714-5825-4dc9-96a0-f0a118158380.png](images/1661341346342-317ea714-5825-4dc9-96a0-f0a118158380-824163.png)
 
 ## 总结
 
@@ -389,7 +389,7 @@ Spring AOP和AspectJ之间并没有特别强的关系，AOP表示面向切面编
 10. Spring事务的传播机制是Spring事务自己实现的，也是Spring事务中最复杂的
 11. Spring事务的传播机制是基于数据库连接来做的，一个数据库连接一个事务，如果传播机制配置为需要新开一个事务，那么实际上就是先建立一个数据库连接，在此新数据库连接上执行sql
 
-![1622966825505-41961ccc-19e0-4f70-8182-e6e3337eb3af.png](images/1622966825505-41961ccc-19e0-4f70-8182-e6e3337eb3af.png)
+![1622966825505-41961ccc-19e0-4f70-8182-e6e3337eb3af.png](images/1622966825505-41961ccc-19e0-4f70-8182-e6e3337eb3af-253691.png)
 
 # 你是如何理解Spring事务的传播机制的？底层是如何实现的？
 
@@ -440,7 +440,7 @@ Spring中一个Bean的创建大概分为以下几个步骤：
 
 当然其实真正的步骤更加细致，可以看下面的流程图
 
-![1625729452241-4bc1dbb0-a827-49f1-83b8-70e61fd29a65.png](images/1625729452241-4bc1dbb0-a827-49f1-83b8-70e61fd29a65.png)
+![1625729452241-4bc1dbb0-a827-49f1-83b8-70e61fd29a65.png](images/1625729452241-4bc1dbb0-a827-49f1-83b8-70e61fd29a65-108069.png)
 
 ****
 
@@ -468,7 +468,7 @@ BeanFactory是Spring中非常核心的组件，表示Bean工厂，可以生成Be
 7. 在源码中会更复杂，比如源码中会提供一些模板方法，让子类来实现，比如源码中还涉及到一些BeanFactoryPostProcessor和BeanPostProcessor的注册，Spring的扫描就是通过BenaFactoryPostProcessor来实现的，依赖注入就是通过BeanPostProcessor来实现的
 8. 在Spring启动过程中还会去处理@Import等注解
 
-![1622965863563-ce71fb30-d01f-4829-93a8-a94d784ccc2c.png](images/1622965863563-ce71fb30-d01f-4829-93a8-a94d784ccc2c.png)
+![1622965863563-ce71fb30-d01f-4829-93a8-a94d784ccc2c.png](images/1622965863563-ce71fb30-d01f-4829-93a8-a94d784ccc2c-279323.png)
 
 # @SpringBootApplication注解有什么用？为什么一定要写它？
 
@@ -518,7 +518,7 @@ SpringBoot在启动的过程中，会找出项目中所有的spring.factories文
 
 内置的这些配置类，也可以叫做自动配置类，我们在依赖了spring-boot-starter-web后，会间接的依赖到spring-boot-autoconfigure这个jar，这个jar中都包含了很多的自动配置类：
 
-![1673876857703-8dd2abe1-6432-4585-b439-9e0233c101ac.png](images/1673876857703-8dd2abe1-6432-4585-b439-9e0233c101ac.png)
+![1673876857703-8dd2abe1-6432-4585-b439-9e0233c101ac.png](images/1673876857703-8dd2abe1-6432-4585-b439-9e0233c101ac-206959.png)
 
 这其实就是SpringBoot的自动配置，帮程序员提前配置了很多东西，Bean或者注解。
 
@@ -621,7 +621,7 @@ ApplicationContext（应用上下文）继承了BeanFactory接口，是Spring提
 
 ### 2.2 功能差异
 
-![1744198548153-6b552ad8-1c14-4869-b5eb-41d8b8f043ec.png](images/1744198548153-6b552ad8-1c14-4869-b5eb-41d8b8f043ec.png)
+![1744198548153-6b552ad8-1c14-4869-b5eb-41d8b8f043ec.png](images/1744198548153-6b552ad8-1c14-4869-b5eb-41d8b8f043ec-363431.png)
 
 ApplicationContext比BeanFactory提供了更多的企业级功能：
 

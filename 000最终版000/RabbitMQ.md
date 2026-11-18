@@ -58,7 +58,7 @@ RabbitMQ 是一个开源的消息中间件，采用 AMQP（高级消息队列协
 
 以下是 RabbitMQ 的基本架构设计：
 
-![1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa.png](images/1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa.png)
+![1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa.png](images/1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa-502602.png)
 
 1. **生产者（Producer）：** 生产者是消息的发送方，负责产生并发送消息到 RabbitMQ。生产者通常将消息发送到交换机（Exchange）。
 2. **交换机（Exchange）：** 交换机是消息的分发中心，负责将接收到的消息路由到一个或多个队列。它定义了消息的传递规则，可以根据规则将消息发送到一个或多个队列。
@@ -79,7 +79,7 @@ RabbitMQ 的架构设计允许多个生产者、多个消费者之间通过消�
 ## 丢失原因分析
 观察整个 RabbitMQ 消息发送过程：
 
-![1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa.png](images/1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa.png)
+![1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa.png](images/1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa-927066.png)
 
 从上述流程我们可以得知：消息从生产者到达消费者，经过两次网络传输，并且在 RabbitMQ 服务器中进行路由。
 
@@ -231,7 +231,7 @@ System.out.println(message);
 当然上面确保不丢失，会自动重试，可能会造成重复消费问题。具体处理可往下看第5点。
 
 # RabbitMQ中如何解决消息堆积问题
-### ![1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa.png](images/1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa.png)
+### ![1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa.png](images/1703762138526-20dbcc46-ede2-4c9c-b623-806f0ede58aa-829645.png)
 ## 消息堆积原因
 [画板]
 
